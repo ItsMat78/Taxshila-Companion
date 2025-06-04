@@ -6,7 +6,7 @@ import {
   Clock,
   Bot,
   CalendarDays,
-  type Icon as LucideIcon, // Use `type` for type-only imports
+  type Icon as LucideIcon,
 } from 'lucide-react';
 import type { UserRole } from '@/types/auth';
 
@@ -17,7 +17,7 @@ export type NavItem = {
   disabled?: boolean;
   label?: string;
   items?: NavItem[];
-  roles?: UserRole[]; // Added roles to specify who can see this item
+  roles?: UserRole[]; 
 };
 
 export const mainNav: NavItem[] = [
@@ -43,13 +43,13 @@ export const mainNav: NavItem[] = [
     title: 'Booking',
     href: '#', 
     icon: Clock,
-    roles: ['member', 'admin'], // Group accessible to both, items within will specify further
+    roles: ['admin'], // Group now admin-only, items within will specify further if needed
     items: [
       {
         title: 'Shift Selection',
         href: '/booking/shifts',
         icon: Clock,
-        roles: ['member'],
+        roles: ['admin'], // Shift selection is now admin-only
       },
       {
         title: 'Seat Release AI',
@@ -63,6 +63,6 @@ export const mainNav: NavItem[] = [
     title: 'Attendance Calendar',
     href: '/attendance/calendar',
     icon: CalendarDays,
-    roles: ['member', 'admin'], // Accessible to both, content might differ based on role
+    roles: ['member', 'admin'], 
   },
 ];

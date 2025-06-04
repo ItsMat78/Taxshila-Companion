@@ -26,10 +26,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
   React.useEffect(() => {
-    // In a real app, you'd check for an existing session (e.g., from localStorage or a cookie)
-    // For this mock setup, we'll just simulate a loading state.
     const mockSessionCheck = setTimeout(() => {
-      // Try to load user from session storage for persistence across refreshes (basic)
       const storedUser = sessionStorage.getItem('taxshilaUser');
       if (storedUser) {
         setUser(JSON.parse(storedUser));
@@ -48,18 +45,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = (email: string, role: UserRole) => {
     const userData = { email, role };
     setUser(userData);
-    sessionStorage.setItem('taxshilaUser', JSON.stringify(userData)); // Persist user
+    sessionStorage.setItem('taxshilaUser', JSON.stringify(userData));
     setIsLoading(false);
     if (role === 'admin') {
-      router.push('/'); // Admin dashboard
+      router.push('/'); 
     } else {
-      router.push('/booking/shifts'); // Member default page
+      router.push('/attendance/calendar'); // Changed redirect for members
     }
   };
 
   const logout = () => {
     setUser(null);
-    sessionStorage.removeItem('taxshilaUser'); // Clear persisted user
+    sessionStorage.removeItem('taxshilaUser');
     router.push('/login');
   };
 
