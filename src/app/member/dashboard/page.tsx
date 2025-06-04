@@ -17,7 +17,7 @@ import {
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/auth-context';
-import { Camera, QrCode, Receipt, IndianRupee, MessageSquare, Bell, ScrollText, Star, Loader2, XCircle, LogIn } from 'lucide-react';
+import { Camera, QrCode, Receipt, IndianRupee, MessageSquare, Bell, ScrollText, Star, Loader2, XCircle, LogIn, Home } from 'lucide-react';
 
 type DashboardTileProps = {
   title: string;
@@ -30,7 +30,7 @@ type DashboardTileProps = {
 };
 
 const DashboardTile: React.FC<DashboardTileProps> = ({ title, description, icon: Icon, href, action, className = "", isPrimaryAction = false }) => {
-  const content = (
+  const tileContent = (
     <Card className={`shadow-lg hover:shadow-xl transition-shadow h-full flex flex-col ${isPrimaryAction ? 'bg-primary text-primary-foreground hover:bg-primary/90' : 'hover:bg-muted/50'} ${className}`}>
       <CardHeader className="pb-2">
         <CardTitle className={`flex items-center ${isPrimaryAction ? 'text-primary-foreground' : ''}`}>
@@ -45,20 +45,31 @@ const DashboardTile: React.FC<DashboardTileProps> = ({ title, description, icon:
   );
 
   if (href) {
-    return (
-      <Link href={href} passHref legacyBehavior={href.startsWith('http')}>
-        <a target={href.startsWith('http') ? '_blank' : undefined} rel={href.startsWith('http') ? 'noopener noreferrer' : undefined} className="block h-full no-underline">
-          {content}
-        </a>
-      </Link>
-    );
+    if (href.startsWith('http')) { // External link
+      return (
+        <Link
+          href={href}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="block h-full no-underline"
+        >
+          {tileContent}
+        </Link>
+      );
+    } else { // Internal link
+      return (
+        <Link href={href} className="block h-full no-underline">
+          {tileContent}
+        </Link>
+      );
+    }
   }
 
   if (action) {
-    return <button onClick={action} className="block w-full h-full text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-lg">{content}</button>;
+    return <button onClick={action} className="block w-full h-full text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-lg">{tileContent}</button>;
   }
 
-  return content;
+  return tileContent;
 };
 
 
@@ -145,14 +156,19 @@ export default function MemberDashboardPage() {
       <PageTitle title={`Welcome, ${user?.email?.split('@')[0] || 'Member'}!`} description="Your Taxshila Companion dashboard." />
       
       <Dialog open={isScannerOpen} onOpenChange={setIsScannerOpen}>
-        <DashboardTile
-          title="Mark Attendance"
-          description="Scan the QR code at the library to check-in/out."
-          icon={QrCode}
-          action={handleOpenScanner}
-          className="md:col-span-2 bg-primary text-primary-foreground hover:bg-primary/90"
-          isPrimaryAction={true}
-        />
+        <DialogTrigger asChild>
+           {/* The DashboardTile for Mark Attendance is a button, so it's handled by the 'action' prop */}
+          <div className="md:col-span-2"> {/* Ensure this div spans if in a grid for layout consistency */}
+            <DashboardTile
+              title="Mark Attendance"
+              description="Scan the QR code at the library to check-in/out."
+              icon={QrCode}
+              action={handleOpenScanner}
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
+              isPrimaryAction={true}
+            />
+          </div>
+        </DialogTrigger>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center"><Camera className="mr-2"/>Scan QR Code</DialogTitle>
