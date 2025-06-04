@@ -28,9 +28,3 @@ export interface PaymentRecord {
   transactionId: string;
   method: "UPI" | "Cash" | "Card" | "Online"; // Add more as needed
 }
-
-// Define all seat numbers (e.g., 01-85)
-// Adjusted to a more realistic seat naming convention for the example
-export const ALL_SEAT_NUMBERS = Array.from({ length: 20 }, (_, i) => `A${String(i + 1).padStart(2, '0')}`)
-  .concat(Array.from({ length: 20 }, (_, i) => `B${String(i + 1).padStart(2, '0')}`))
-  .concat(Array.from({ length: 45 }, (_, i) => `C${String(i + 1).padStart(2, '0')}`));
