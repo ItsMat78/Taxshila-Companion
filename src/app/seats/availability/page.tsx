@@ -36,14 +36,17 @@ export default function SeatAvailabilityPage() {
   const [isLoading, setIsLoading] = React.useState(true);
   const [selectedShiftView, setSelectedShiftView] = React.useState<ShiftView>('morning');
   
-  const [occupiedMorningCount, setOccupiedMorningCount] = React.useState(0);
-  const [occupiedEveningCount, setOccupiedEveningCount] = React.useState(0);
-  const [occupiedFullDayCount, setOccupiedFullDayCount] = React.useState(0);
+  const [occupiedMorningStudentsCount, setOccupiedMorningStudentsCount] = React.useState(0);
+  const [occupiedEveningStudentsCount, setOccupiedEveningStudentsCount] = React.useState(0);
+  const [occupiedFullDayStudentsCount, setOccupiedFullDayStudentsCount] = React.useState(0);
+  const [uniquePhysicallyOccupiedSeatsCount, setUniquePhysicallyOccupiedSeatsCount] = React.useState(0);
   
   const [availableMorningSlotsCount, setAvailableMorningSlotsCount] = React.useState(0);
   const [availableEveningSlotsCount, setAvailableEveningSlotsCount] = React.useState(0);
-  const [availableFullDaySlotsCount, setAvailableFullDaySlotsCount] = React.useState(0);
+  const [availableForFullDayBookingCount, setAvailableForFullDayBookingCount] = React.useState(0);
   const [isLoadingOverallAvailableStats, setIsLoadingOverallAvailableStats] = React.useState(true);
+  const [uniqueSeatsWithAvailableSlotsCount, setUniqueSeatsWithAvailableSlotsCount] = React.useState(0);
+
 
   const [showOccupiedSeatsDialog, setShowOccupiedSeatsDialog] = React.useState(false);
   const [showAvailableSeatsDialog, setShowAvailableSeatsDialog] = React.useState(false);
@@ -62,9 +65,13 @@ export default function SeatAvailabilityPage() {
         setAllStudents(studentsData);
 
         const activeSeatHolders = studentsData.filter(s => s.activityStatus === "Active" && s.seatNumber);
-        setOccupiedMorningCount(activeSeatHolders.filter(s => s.shift === 'morning').length);
-        setOccupiedEveningCount(activeSeatHolders.filter(s => s.shift === 'evening').length);
-        setOccupiedFullDayCount(activeSeatHolders.filter(s => s.shift === 'fullday').length);
+        
+        setOccupiedMorningStudentsCount(activeSeatHolders.filter(s => s.shift === 'morning').length);
+        setOccupiedEveningStudentsCount(activeSeatHolders.filter(s => s.shift === 'evening').length);
+        setOccupiedFullDayStudentsCount(activeSeatHolders.filter(s => s.shift === 'fullday').length);
+        
+        const physicallyOccupiedSeats = new Set(activeSeatHolders.map(s => s.seatNumber!));
+        setUniquePhysicallyOccupiedSeatsCount(physicallyOccupiedSeats.size);
 
         const [morningAvail, eveningAvail, fulldayAvail] = await Promise.all([
           getAvailableSeats('morning'),
@@ -73,7 +80,10 @@ export default function SeatAvailabilityPage() {
         ]);
         setAvailableMorningSlotsCount(morningAvail.length);
         setAvailableEveningSlotsCount(eveningAvail.length);
-        setAvailableFullDaySlotsCount(fulldayAvail.length);
+        setAvailableForFullDayBookingCount(fulldayAvail.length);
+
+        const seatsWithAnySlot = new Set([...morningAvail, ...eveningAvail]);
+        setUniqueSeatsWithAvailableSlotsCount(seatsWithAnySlot.size);
         
       } catch (error) {
         console.error("Failed to fetch initial data:", error);
@@ -96,7 +106,7 @@ export default function SeatAvailabilityPage() {
       studentsToList = activeStudents.filter(s => s.seatNumber && (s.shift === 'morning' || s.shift === 'fullday'));
     } else if (selectedShiftView === 'evening') {
       studentsToList = activeStudents.filter(s => s.seatNumber && (s.shift === 'evening' || s.shift === 'fullday'));
-    } else { 
+    } else { // fullday_occupied
       studentsToList = activeStudents.filter(s => s.seatNumber && s.shift === 'fullday');
     }
     setDialogOccupiedStudentList(studentsToList.sort((a,b) => parseInt(a.seatNumber!) - parseInt(b.seatNumber!)));
@@ -143,17 +153,12 @@ export default function SeatAvailabilityPage() {
     } else if (view === 'fullday_occupied') { 
       if (studentFullDay) {
         studentOnSeat = studentFullDay; isAvailable = false; colorClass = 'bg-yellow-200 border-yellow-300 text-yellow-800 hover:bg-yellow-300'; shiftIcon = Sun;
-      } else { // For 'fullday_occupied' view, if not taken by a full-day student, it's considered "available" in this specific context (meaning bookable for full day)
-        isAvailable = true; 
-         // Check if it's available for full day booking
-        const isTrulyAvailableFullDay = !studentMorning && !studentEvening;
-        if (!isTrulyAvailableFullDay) {
-             // If occupied by morning or evening, it's not fully available.
-             // This part is tricky for 'fullday_occupied' view if we want to show partial occupancy.
-             // For now, keeping it simple: if not full-day student, it's blue.
-             // A more advanced view might show half-occupied seats differently.
-        }
+      } else if (studentMorning) {
+        studentOnSeat = studentMorning; isAvailable = false; colorClass = 'bg-orange-200 border-orange-300 text-orange-800 hover:bg-orange-300'; shiftIcon = Sunrise;
+      } else if (studentEvening) {
+        studentOnSeat = studentEvening; isAvailable = false; colorClass = 'bg-purple-200 border-purple-300 text-purple-800 hover:bg-purple-300'; shiftIcon = Sunset;
       }
+      // If none of the above, it remains available (Light Blue), which is correct for "available for full-day booking".
     }
     return { student: studentOnSeat, isAvailable, colorClass, shiftIcon };
   };
@@ -200,11 +205,11 @@ export default function SeatAvailabilityPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="text-sm space-y-1 pt-2">
-                {isLoading ? <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /> : (
+                {isLoading ? <Loader2 className="h-5 w-5 animate-spin text-muted-foreground mx-auto" /> : (
                   <>
-                    <div className="flex justify-between"><span>Morning:</span> <span className="font-semibold">{occupiedMorningCount} students</span></div>
-                    <div className="flex justify-between"><span>Evening:</span> <span className="font-semibold">{occupiedEveningCount} students</span></div>
-                    <div className="flex justify-between"><span>Full Day:</span> <span className="font-semibold">{occupiedFullDayCount} students</span></div>
+                    <div className="flex justify-between"><span>Morning:</span> <span className="font-semibold">{occupiedMorningStudentsCount} students</span></div>
+                    <div className="flex justify-between"><span>Evening:</span> <span className="font-semibold">{occupiedEveningStudentsCount} students</span></div>
+                    <div className="flex justify-between"><span>Full Day:</span> <span className="font-semibold">{occupiedFullDayStudentsCount} students</span></div>
                   </>
                 )}
               </CardContent>
@@ -258,11 +263,11 @@ export default function SeatAvailabilityPage() {
                   </CardTitle>
               </CardHeader>
               <CardContent className="text-sm space-y-1 pt-2">
-                 {isLoadingOverallAvailableStats ? <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /> : (
+                 {isLoadingOverallAvailableStats ? <Loader2 className="h-5 w-5 animate-spin text-muted-foreground mx-auto" /> : (
                   <>
                     <div className="flex justify-between"><span>Morning:</span> <span className="font-semibold">{availableMorningSlotsCount} slots</span></div>
                     <div className="flex justify-between"><span>Evening:</span> <span className="font-semibold">{availableEveningSlotsCount} slots</span></div>
-                    <div className="flex justify-between"><span>Full Day:</span> <span className="font-semibold">{availableFullDaySlotsCount} slots</span></div>
+                    <div className="flex justify-between"><span>Full Day:</span> <span className="font-semibold">{availableForFullDayBookingCount} slots</span></div>
                   </>
                 )}
               </CardContent>
