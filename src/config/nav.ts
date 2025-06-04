@@ -2,12 +2,13 @@
 import {
   LayoutDashboard,
   Users,
-  Armchair, // Changed from Clock
+  Armchair,
   Bot,
   CalendarDays,
   ListChecks,
   UserPlus,
   Eye,
+  Database, // Added Database icon
   type Icon as LucideIcon,
 } from 'lucide-react';
 import type { UserRole } from '@/types/auth';
@@ -30,33 +31,33 @@ export const mainNav: NavItem[] = [
     roles: ['admin'],
   },
   {
-    title: 'Students', // Changed from 'Student Profiles'
-    href: '#', // Adjusted as it now has sub-items
+    title: 'Students',
+    href: '#',
     icon: Users,
     roles: ['admin'],
     items: [
       {
         title: 'Student List',
-        href: '/students/list', // New href
+        href: '/students/list',
         icon: ListChecks,
         roles: ['admin'],
       },
       {
         title: 'Register Student',
-        href: '/students/register', // New href
+        href: '/students/register',
         icon: UserPlus,
         roles: ['admin'],
       },
     ]
   },
   {
-    title: 'Seat Management', // Changed from 'Booking Management'
+    title: 'Seat Management',
     href: '#',
-    icon: Armchair, // Changed icon
+    icon: Armchair,
     roles: ['admin'],
     items: [
       {
-        title: 'Check Seat Availability', // New item
+        title: 'Check Seat Availability',
         href: '/seats/availability',
         icon: Eye,
         roles: ['admin'],
@@ -73,6 +74,12 @@ export const mainNav: NavItem[] = [
     title: 'Attendance Calendar',
     href: '/attendance/calendar',
     icon: CalendarDays,
-    roles: ['member', 'admin'], // Remains for members to check-in and admins to view general
+    roles: ['member', 'admin'],
+  },
+  {
+    title: 'Data Management', // New Item
+    href: '/admin/data-management',
+    icon: Database,
+    roles: ['admin'],
   },
 ];
