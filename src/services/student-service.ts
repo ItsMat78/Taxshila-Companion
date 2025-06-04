@@ -1,3 +1,4 @@
+
 import type { Student, Shift, FeeStatus, PaymentRecord, ActivityStatus, AttendanceRecord } from '@/types/student';
 import type { FeedbackItem, FeedbackType, FeedbackStatus, AlertItem } from '@/types/communication';
 import { format, parseISO, differenceInDays, isPast, addMonths, subHours, subMinutes, startOfDay, endOfDay, isValid } from 'date-fns';
@@ -38,14 +39,14 @@ let students: Student[] = [
     email: "priya.patel@example.com",
     phone: "9876543211",
     shift: "evening",
-    seatNumber: "1", 
+    seatNumber: "1",
     idCardFileName: "priya_id.png",
-    feeStatus: "Paid", 
+    feeStatus: "Paid",
     activityStatus: "Active",
     registrationDate: "2024-02-20",
-    lastPaymentDate: format(new Date(), 'yyyy-MM-dd'), 
-    nextDueDate: format(addMonths(new Date(), 1), 'yyyy-MM-dd'), 
-    amountDue: "₹0", 
+    lastPaymentDate: format(new Date(), 'yyyy-MM-dd'),
+    nextDueDate: format(addMonths(new Date(), 1), 'yyyy-MM-dd'),
+    amountDue: "₹0",
     paymentHistory: [
       { paymentId: "PAYMENT_PRIYA_PREV", date: format(new Date(), 'yyyy-MM-dd'), amount: "₹700", transactionId: "TXN_PRIYA_PREV", method: "UPI" },
     ],
@@ -137,7 +138,7 @@ function applyAutomaticStatusUpdates(student: Student): Student {
 
 function processStudentsForUpdates(studentArray: Student[]): Student[] {
     const processedStudents = studentArray.map(s => {
-        let currentStudentState = {...s}; 
+        let currentStudentState = {...s};
 
         if (currentStudentState.activityStatus === 'Active' && currentStudentState.feeStatus !== 'Paid' && currentStudentState.nextDueDate) {
             try {
@@ -198,7 +199,7 @@ export function getStudentById(studentId: string): Promise<Student | undefined> 
 export function getStudentByEmail(email: string): Promise<Student | undefined> {
   return new Promise((resolve) => {
     setTimeout(() => {
-      const studentIdx = students.findIndex(s => s.email === email); 
+      const studentIdx = students.findIndex(s => s.email === email);
       if (studentIdx !== -1) {
         const student = students[studentIdx];
         const updatedStudent = applyAutomaticStatusUpdates({...student});
@@ -246,9 +247,9 @@ export function addStudent(studentData: AddStudentData): Promise<Student> {
         s.activityStatus === "Active" &&
         s.seatNumber === studentData.seatNumber &&
         (
-          s.shift === "fullday" || 
-          studentData.shift === "fullday" || 
-          s.shift === studentData.shift 
+          s.shift === "fullday" ||
+          studentData.shift === "fullday" ||
+          s.shift === studentData.shift
         )
       );
 
@@ -281,9 +282,9 @@ export function addStudent(studentData: AddStudentData): Promise<Student> {
   });
 }
 
-export function updateStudent(studentId: string, studentUpdateData: Partial<Omit<Student, 'studentId'>>): Promise<Student | undefined> {
+export async function updateStudent(studentId: string, studentUpdateData: Partial<Omit<Student, 'studentId'>>): Promise<Student | undefined> {
   return new Promise((resolve, reject) => {
-    setTimeout(() => {
+    setTimeout(async () => {
       processStudentsForUpdates([...students]);
       const studentIndex = students.findIndex(s => s.studentId === studentId);
       if (studentIndex === -1) {
@@ -291,55 +292,83 @@ export function updateStudent(studentId: string, studentUpdateData: Partial<Omit
         return;
       }
 
-      const currentStudent = students[studentIndex];
+      const currentStudent = { ...students[studentIndex] }; // State before this specific update
+
       const newShift = studentUpdateData.shift || currentStudent.shift;
       const newSeatNumber = studentUpdateData.seatNumber !== undefined ? studentUpdateData.seatNumber : currentStudent.seatNumber;
 
       if (newSeatNumber && (newSeatNumber !== currentStudent.seatNumber || newShift !== currentStudent.shift || (studentUpdateData.activityStatus === 'Active' && currentStudent.activityStatus === 'Left'))) {
         const isSeatTakenForShift = students.some(s =>
-          s.studentId !== studentId && 
+          s.studentId !== studentId &&
           s.activityStatus === "Active" &&
           s.seatNumber === newSeatNumber &&
-          (
-            s.shift === "fullday" ||
-            newShift === "fullday" ||
-            s.shift === newShift
-          )
+          (s.shift === "fullday" || newShift === "fullday" || s.shift === newShift)
         );
-
         if (isSeatTakenForShift) {
           reject(new Error(`Seat ${newSeatNumber} is not available for the ${newShift} shift.`));
           return;
         }
-        if (newSeatNumber && !ALL_SEAT_NUMBERS.includes(newSeatNumber)) {
+        if (!ALL_SEAT_NUMBERS.includes(newSeatNumber)) {
             reject(new Error("Invalid new seat number selected."));
             return;
         }
       }
 
-      let updatedStudentData = { ...currentStudent, ...studentUpdateData };
+      let tempUpdatedStudentData = { ...currentStudent, ...studentUpdateData };
 
-      if (studentUpdateData.activityStatus === 'Left') {
-        updatedStudentData.seatNumber = null;
-        updatedStudentData.feeStatus = 'N/A';
-        updatedStudentData.amountDue = 'N/A';
-        updatedStudentData.lastPaymentDate = undefined;
-        updatedStudentData.nextDueDate = undefined;
+      if (studentUpdateData.activityStatus === 'Left' && currentStudent.activityStatus === 'Active') {
+        tempUpdatedStudentData.seatNumber = null;
+        tempUpdatedStudentData.feeStatus = 'N/A';
+        tempUpdatedStudentData.amountDue = 'N/A';
+        tempUpdatedStudentData.lastPaymentDate = undefined;
+        tempUpdatedStudentData.nextDueDate = undefined;
       } else if (studentUpdateData.activityStatus === 'Active' && currentStudent.activityStatus === 'Left') {
-        if (!updatedStudentData.seatNumber || !ALL_SEAT_NUMBERS.includes(updatedStudentData.seatNumber)) {
+        if (!tempUpdatedStudentData.seatNumber || !ALL_SEAT_NUMBERS.includes(tempUpdatedStudentData.seatNumber)) {
             reject(new Error("A valid seat must be selected to re-activate a student."));
             return;
         }
-        updatedStudentData.feeStatus = 'Due';
-        updatedStudentData.amountDue = updatedStudentData.shift === "fullday" ? "₹1200" : "₹700";
-        updatedStudentData.lastPaymentDate = undefined; 
-        updatedStudentData.nextDueDate = format(addMonths(new Date(), 1), 'yyyy-MM-dd'); 
-        updatedStudentData.paymentHistory = []; 
+        tempUpdatedStudentData.feeStatus = 'Due';
+        tempUpdatedStudentData.amountDue = tempUpdatedStudentData.shift === "fullday" ? "₹1200" : "₹700";
+        tempUpdatedStudentData.lastPaymentDate = undefined;
+        tempUpdatedStudentData.nextDueDate = format(addMonths(new Date(), 1), 'yyyy-MM-dd');
+        tempUpdatedStudentData.paymentHistory = [];
       }
 
+      students[studentIndex] = { ...tempUpdatedStudentData };
+      const newlyUpdatedStudent = { ...students[studentIndex] };
 
-      students[studentIndex] = updatedStudentData;
-      resolve({...students[studentIndex]});
+      let alertSentDueToStatusChange = false;
+      if (studentUpdateData.activityStatus === 'Active' && currentStudent.activityStatus === 'Left') {
+        try {
+          await sendAlertToStudent(studentId, "Account Re-activated", `Welcome back, ${newlyUpdatedStudent.name}! Your student account has been re-activated. Your shift is ${newlyUpdatedStudent.shift} and seat is ${newlyUpdatedStudent.seatNumber}. Fee is due by ${newlyUpdatedStudent.nextDueDate}.`, "info");
+          alertSentDueToStatusChange = true;
+        } catch (e) { console.error("Failed to send re-activation alert:", e); }
+      } else if (studentUpdateData.activityStatus === 'Left' && currentStudent.activityStatus === 'Active') {
+        try {
+          await sendAlertToStudent(studentId, "Account Status Update", `Hi ${newlyUpdatedStudent.name}, your student account has been marked as 'Left'. If this is an error, please contact administration.`, "info");
+          alertSentDueToStatusChange = true;
+        } catch (e) { console.error("Failed to send marked-as-left alert:", e); }
+      }
+      
+      // Check for other profile changes only if not handled by status change alerts AND if it's not just a fee status update triggered by marking payment (handled by recordStudentPayment)
+      const isFeeStatusChangeOnlyToPaid = studentUpdateData.feeStatus === 'Paid' && currentStudent.feeStatus !== 'Paid' && Object.keys(studentUpdateData).length === 1;
+
+      if (!alertSentDueToStatusChange && !isFeeStatusChangeOnlyToPaid && newlyUpdatedStudent.activityStatus === 'Active') {
+        const nameChanged = studentUpdateData.name && studentUpdateData.name !== currentStudent.name;
+        const emailChanged = studentUpdateData.email !== undefined && studentUpdateData.email !== currentStudent.email;
+        const phoneChanged = studentUpdateData.phone && studentUpdateData.phone !== currentStudent.phone;
+        const shiftChanged = studentUpdateData.shift && studentUpdateData.shift !== currentStudent.shift;
+        const seatChanged = studentUpdateData.seatNumber !== undefined && studentUpdateData.seatNumber !== currentStudent.seatNumber;
+        const idCardChanged = studentUpdateData.idCardFileName !== undefined && studentUpdateData.idCardFileName !== currentStudent.idCardFileName;
+
+        if (nameChanged || emailChanged || phoneChanged || shiftChanged || seatChanged || idCardChanged) {
+          try {
+            await sendAlertToStudent(studentId, "Profile Details Updated", `Hi ${newlyUpdatedStudent.name}, your profile details have been updated by an administrator. Please log in to review them if necessary.`, "info");
+          } catch (e) { console.error("Failed to send profile update alert:", e); }
+        }
+      }
+
+      resolve({ ...newlyUpdatedStudent });
     }, 50);
   });
 }
@@ -354,9 +383,9 @@ export function getAvailableSeats(shiftToConsider: Shift): Promise<string[]> {
           s.activityStatus === "Active" &&
           s.seatNumber === seat &&
           (
-            s.shift === "fullday" || 
-            shiftToConsider === "fullday" || 
-            s.shift === shiftToConsider 
+            s.shift === "fullday" ||
+            shiftToConsider === "fullday" ||
+            s.shift === shiftToConsider
           )
         );
         if (!isSeatTaken) {
@@ -444,13 +473,13 @@ export function getAttendanceRecordsByStudentId(studentId: string): Promise<Atte
   });
 }
 
-export function recordStudentPayment(
+export async function recordStudentPayment(
   studentId: string,
-  paymentAmount: string, 
-  paymentMethod: "UPI" | "Cash" | "Card" | "Online"
+  paymentAmountInput: string,
+  paymentMethod: PaymentRecord['method'] | "Admin Recorded"
 ): Promise<Student | undefined> {
   return new Promise((resolve, reject) => {
-    setTimeout(() => {
+    setTimeout(async () => {
       const studentIndex = students.findIndex(s => s.studentId === studentId);
       if (studentIndex === -1) {
         reject(new Error("Student not found."));
@@ -465,14 +494,21 @@ export function recordStudentPayment(
       
       const today = new Date();
       const newPaymentId = `PAY${String(Date.now()).slice(-6)}${String(Math.floor(Math.random() * 100)).padStart(2,'0')}`;
-      const newTransactionId = `TXN${String(Date.now()).slice(-8)}`;
+      const newTransactionId = `TXN${paymentMethod === "Admin Recorded" ? "ADMIN" : "MEM"}${String(Date.now()).slice(-7)}`;
 
+      let actualPaymentAmount = paymentAmountInput;
+      if (paymentAmountInput === "FULL_DUE" && student.amountDue && student.amountDue !== "N/A" && student.amountDue !== "₹0") {
+        actualPaymentAmount = student.amountDue;
+      } else if (paymentAmountInput === "FULL_DUE") { // Fallback if amountDue is not set or ₹0
+        actualPaymentAmount = student.shift === "fullday" ? "₹1200" : "₹700";
+      }
+      
       const newPaymentRecord: PaymentRecord = {
         paymentId: newPaymentId,
         date: format(today, 'yyyy-MM-dd'),
-        amount: paymentAmount,
+        amount: actualPaymentAmount,
         transactionId: newTransactionId,
-        method: paymentMethod,
+        method: paymentMethod === "Admin Recorded" ? "Desk Payment" : paymentMethod,
       };
 
       const updatedStudent: Student = {
@@ -485,7 +521,19 @@ export function recordStudentPayment(
       };
 
       students[studentIndex] = updatedStudent;
-      resolve({...updatedStudent});
+
+      try {
+        await sendAlertToStudent(
+          studentId,
+          "Payment Confirmation",
+          `Hi ${updatedStudent.name}, your fee payment of ${actualPaymentAmount} has been successfully recorded. Your fees are now paid up to ${updatedStudent.nextDueDate}. Thank you!`,
+          "info"
+        );
+      } catch (alertError) {
+        console.error("Failed to send payment confirmation alert:", alertError);
+      }
+
+      resolve({ ...updatedStudent });
     }, 50);
   });
 }
@@ -581,10 +629,10 @@ export function sendGeneralAlert(title: string, message: string, type: AlertItem
   });
 }
 
-export function sendAlertToStudent(
-    studentId: string, 
-    title: string, 
-    message: string, 
+export async function sendAlertToStudent(
+    studentId: string,
+    title: string,
+    message: string,
     type: AlertItem['type'],
     originalFeedbackId?: string,
     originalFeedbackMessageSnippet?: string
@@ -592,24 +640,29 @@ export function sendAlertToStudent(
   return new Promise((resolve, reject) => {
     setTimeout(() => {
       const studentExists = students.some(s => s.studentId === studentId);
-      if (!studentExists && type === 'feedback_response') {
-        reject(new Error(`Student with ID ${studentId} not found for feedback response.`));
-        return;
+      if (!studentExists) { // Simplified check, as studentId presence means it's targeted
+        console.warn(`Attempted to send targeted alert to non-existent student ID: ${studentId} for title: "${title}"`);
+        // Do not reject outright if it's a general status update for a student being marked left etc.
+        // However, if it's a feedback response to a non-existent student, that's an issue.
+        if (type === 'feedback_response') {
+             reject(new Error(`Student with ID ${studentId} not found for feedback response.`));
+             return;
+        }
       }
       const newAlert: AlertItem = {
         id: getNextAlertId(),
-        studentId, // Mark as targeted
+        studentId,
         title,
         message,
         type,
         dateSent: new Date().toISOString(),
-        isRead: false, // Targeted alerts start as unread for the target student
+        isRead: false,
         originalFeedbackId,
         originalFeedbackMessageSnippet,
       };
       alertItems.push(newAlert);
       resolve({...newAlert});
-    }, 50);
+    }, 20); // Short delay for alerts
   });
 }
 
@@ -617,34 +670,30 @@ export function getAlertsForStudent(studentId: string): Promise<AlertItem[]> {
   return new Promise((resolve) => {
     setTimeout(() => {
       const studentSpecificReadGeneral = studentReadGeneralAlerts.get(studentId) || new Set<string>();
-      
+
       const contextualizedAlerts = alertItems
-        .filter(alert => 
-          alert.studentId === studentId || // Targeted to this student
-          (!alert.studentId && alert.type !== 'feedback_response') // General (and not a feedback response for someone else)
+        .filter(alert =>
+          alert.studentId === studentId ||
+          (!alert.studentId && alert.type !== 'feedback_response')
         )
         .map(originalAlert => {
-          const contextualAlert = { ...originalAlert }; // Create a copy
-          if (!originalAlert.studentId) { // General alert
+          const contextualAlert = { ...originalAlert };
+          if (!originalAlert.studentId) {
             contextualAlert.isRead = studentSpecificReadGeneral.has(originalAlert.id);
-          } else if (originalAlert.studentId === studentId) { // Targeted alert for this student
-            // The isRead on the originalAlert item is authoritative here
+          } else if (originalAlert.studentId === studentId) {
             contextualAlert.isRead = originalAlert.isRead;
           }
-          // For alerts targeted to *other* students, they are already filtered out.
           return contextualAlert;
         });
-      
+
       resolve(contextualizedAlerts.sort((a, b) => parseISO(b.dateSent).getTime() - parseISO(a.dateSent).getTime()));
     }, 50);
   });
 }
 
-export function getAllAdminSentAlerts(): Promise<AlertItem[]> { 
+export function getAllAdminSentAlerts(): Promise<AlertItem[]> {
    return new Promise((resolve) => {
     setTimeout(() => {
-      // For admin view, isRead status might not be relevant or could be a summary
-      // For now, return the raw isRead status from the global list.
       resolve([...alertItems].sort((a, b) => parseISO(b.dateSent).getTime() - parseISO(a.dateSent).getTime()));
     }, 50);
   });
@@ -656,22 +705,18 @@ export function markAlertAsRead(alertId: string, studentId: string): Promise<Ale
       const alertIndex = alertItems.findIndex(alert => alert.id === alertId);
       if (alertIndex !== -1) {
         const alertToUpdate = alertItems[alertIndex];
-        if (alertToUpdate.studentId === studentId) { // Targeted alert for this student
+        if (alertToUpdate.studentId === studentId) {
           alertToUpdate.isRead = true;
-        } else if (!alertToUpdate.studentId) { // General alert
+        } else if (!alertToUpdate.studentId) {
           if (!studentReadGeneralAlerts.has(studentId)) {
             studentReadGeneralAlerts.set(studentId, new Set<string>());
           }
           studentReadGeneralAlerts.get(studentId)!.add(alertId);
         } else {
-          // This case (alert is targeted to someone else but this student is trying to mark it) 
-          // shouldn't happen if getAlertsForStudent is filtering correctly,
-          // but as a safeguard, we don't modify it.
           reject(new Error("Alert not found for this student or permission denied."));
           return;
         }
-        
-        // Return a contextualized alert for the student who marked it read
+
         const contextualAlert = { ...alertToUpdate };
         if (!contextualAlert.studentId) {
             contextualAlert.isRead = studentReadGeneralAlerts.get(studentId)?.has(alertId) || false;
@@ -684,3 +729,4 @@ export function markAlertAsRead(alertId: string, studentId: string): Promise<Ale
     }, 50);
   });
 }
+

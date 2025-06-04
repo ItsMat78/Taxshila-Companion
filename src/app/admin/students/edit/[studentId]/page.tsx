@@ -37,7 +37,7 @@ import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Save, ClipboardCheck, Loader2, UserX, UserCheck } from 'lucide-react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { getStudentById, updateStudent, getAvailableSeats } from '@/services/student-service';
+import { getStudentById, updateStudent, getAvailableSeats, recordStudentPayment } from '@/services/student-service';
 import type { Student, Shift } from '@/types/student';
 import { format, addMonths } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -111,7 +111,7 @@ export default function EditStudentPage() {
       toast({ title: "Error", description: "Failed to load student data.", variant: "destructive" });
     } finally {
       setIsLoading(false);
-      setIsDirtyOverride(false); 
+      setIsDirtyOverride(false);
     }
   }, [form, toast]);
 
@@ -127,12 +127,10 @@ export default function EditStudentPage() {
 
       setIsLoadingSeats(true);
       setAvailableSeatOptions([]);
-      // Reset seat if shift changes OR if student is 'Left' and new shift is selected
       if (form.getValues("shift") !== studentData.shift || studentData.activityStatus === 'Left') {
          form.setValue("seatNumber", null, {shouldDirty: true});
          setIsDirtyOverride(true);
       } else {
-        // If it's the student's current shift and they are active, keep their seat selected for now.
         form.setValue("seatNumber", studentData.seatNumber, { shouldDirty: false });
       }
       
@@ -154,7 +152,7 @@ export default function EditStudentPage() {
       }
     };
 
-    if (selectedShift && studentData) { // Ensure studentData is loaded before fetching seats based on its state
+    if (selectedShift && studentData) {
       fetchSeatsForShift(selectedShift);
     } else {
       setAvailableSeatOptions([]);
@@ -170,8 +168,9 @@ export default function EditStudentPage() {
 
     let payload: Partial<Student>;
     let successMessage: string;
+    let wasReactivated = false;
 
-    if (isStudentLeft) { // Re-activation logic
+    if (isStudentLeft) { 
       if (!data.seatNumber) {
         form.setError("seatNumber", { type: "manual", message: "A seat must be selected to re-activate." });
         toast({ title: "Re-activation Failed", description: "A seat must be selected.", variant: "destructive" });
@@ -184,32 +183,30 @@ export default function EditStudentPage() {
         phone: data.phone,
         shift: data.shift,
         seatNumber: data.seatNumber,
-        activityStatus: 'Active',
-        feeStatus: 'Due',
-        amountDue: data.shift === "fullday" ? "₹1200" : "₹700",
-        lastPaymentDate: undefined, // Reset payment details for re-activation
-        nextDueDate: format(addMonths(new Date(), 1), 'yyyy-MM-dd'),
-        registrationDate: studentData.registrationDate, // Keep original registration date
+        activityStatus: 'Active', // Key change for re-activation
+        // Fee status, amountDue, nextDueDate will be set by updateStudent service
+        registrationDate: studentData.registrationDate, 
         idCardFileName: data.idCardFileName,
       };
-      successMessage = `${data.name} has been re-activated for ${data.shift} shift with seat ${data.seatNumber}.`;
-    } else { // Standard edit logic for active student
+      successMessage = `${data.name} has been re-activated. An alert has been sent.`;
+      wasReactivated = true;
+    } else { 
       payload = {
         name: data.name,
         email: data.email,
         phone: data.phone,
         shift: data.shift,
-        seatNumber: data.seatNumber, // seatNumber should be validated by schema already
+        seatNumber: data.seatNumber,
         idCardFileName: data.idCardFileName,
       };
-      successMessage = `${data.name}'s details have been updated.`;
+      successMessage = `${data.name}'s details have been updated. An alert has been sent if changes were made.`;
     }
 
     try {
       const updatedStudent = await updateStudent(studentId, payload);
       if (updatedStudent) {
-        setStudentData(updatedStudent); // Update local student data
-        form.reset({ // Reset form with new data
+        setStudentData(updatedStudent); 
+        form.reset({ 
             name: updatedStudent.name,
             email: updatedStudent.email || "",
             phone: updatedStudent.phone,
@@ -217,9 +214,9 @@ export default function EditStudentPage() {
             seatNumber: updatedStudent.activityStatus === 'Left' ? null : updatedStudent.seatNumber,
             idCardFileName: updatedStudent.idCardFileName || "",
         });
-        setIsDirtyOverride(false); // Reset dirty override after successful save
+        setIsDirtyOverride(false); 
         toast({
-          title: isStudentLeft ? "Student Re-activated" : "Changes Saved",
+          title: wasReactivated ? "Student Re-activated" : "Changes Saved",
           description: successMessage,
         });
       } else {
@@ -239,21 +236,18 @@ export default function EditStudentPage() {
   async function handleMarkPaymentPaid() {
     if (!studentId || !studentData || isStudentLeft) return;
     setIsSaving(true);
-    const today = new Date();
-    const paymentUpdatePayload: Partial<Student> = {
-      feeStatus: "Paid",
-      amountDue: "₹0",
-      lastPaymentDate: format(today, 'yyyy-MM-dd'),
-      nextDueDate: format(addMonths(today, 1), 'yyyy-MM-dd'),
-    };
+    
+    const amountToPay = studentData.amountDue && studentData.amountDue !== "₹0" && studentData.amountDue !== "N/A" 
+                       ? studentData.amountDue 
+                       : (studentData.shift === "fullday" ? "₹1200" : "₹700");
     try {
-      const updatedStudent = await updateStudent(studentId, paymentUpdatePayload);
+      const updatedStudent = await recordStudentPayment(studentId, amountToPay, "Admin Recorded");
       if (updatedStudent) {
-        setStudentData(updatedStudent); // Update local student data
+        setStudentData(updatedStudent); 
         setIsDirtyOverride(false);
          toast({
           title: "Payment Status Updated",
-          description: `Payment for ${updatedStudent.name} has been marked as Paid.`,
+          description: `Payment for ${updatedStudent.name} has been marked as Paid. An alert has been sent.`,
         });
       } else {
         toast({ title: "Error", description: "Failed to update payment status.", variant: "destructive"});
@@ -275,28 +269,22 @@ export default function EditStudentPage() {
     try {
       const updatedStudent = await updateStudent(studentId, {
         activityStatus: 'Left',
-        seatNumber: null, // This is key to free up the seat
-        feeStatus: 'N/A',
-        amountDue: 'N/A',
-        lastPaymentDate: undefined,
-        nextDueDate: undefined,
       });
       if (updatedStudent) {
-        setStudentData(updatedStudent); // Update local student data
-        form.reset({ // Reset form reflecting "Left" status
+        setStudentData(updatedStudent); 
+        form.reset({ 
             name: updatedStudent.name,
             email: updatedStudent.email || "",
             phone: updatedStudent.phone,
-            shift: updatedStudent.shift, 
-            seatNumber: null, 
+            shift: updatedStudent.shift,
+            seatNumber: null,
             idCardFileName: updatedStudent.idCardFileName || "",
         });
-        setIsDirtyOverride(true); // Form is now "dirty" because seat is nullified for 'Left' student.
+        setIsDirtyOverride(true); 
         toast({
           title: "Student Marked as Left",
-          description: `${updatedStudent.name} is now marked as Left. Their seat is available.`,
+          description: `${updatedStudent.name} is now marked as Left. Their seat is available. An alert has been sent.`,
         });
-        // Re-fetch available seats for the selected shift in form
         if (selectedShift) {
            setIsLoadingSeats(true);
             try {
@@ -325,7 +313,6 @@ export default function EditStudentPage() {
       form.setValue("idCardFileName", file.name, {shouldDirty: true});
       setIsDirtyOverride(true);
     } else {
-      // If no file is selected, retain the existing filename or clear if it was empty
       form.setValue("idCardFileName", studentData?.idCardFileName || "", {shouldDirty: true});
     }
   };
@@ -495,5 +482,3 @@ export default function EditStudentPage() {
     </>
   );
 }
-
-    
