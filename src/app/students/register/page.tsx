@@ -42,7 +42,7 @@ const studentFormSchema = z.object({
   phone: z.string().min(10, { message: "Phone number must be at least 10 digits." }),
   shift: z.enum(["morning", "evening", "fullday"], { required_error: "Shift selection is required." }),
   idCardImage: z.any().optional(),
-  seatNumber: z.string().optional(),
+  seatNumber: z.string().min(1, "Seat selection or auto-assign is required."),
 });
 
 type StudentFormValues = z.infer<typeof studentFormSchema>;
@@ -53,17 +53,15 @@ const shiftOptions = [
   { value: "fullday", label: "Full Day (7 AM - 10 PM)" },
 ];
 
-// Define all seat numbers
-const ALL_SEAT_NUMBERS = [
-  ...Array.from({ length: 5 }, (_, i) => `A${String(i + 1).padStart(2, '0')}`), // A01-A05
-  ...Array.from({ length: 5 }, (_, i) => `B${String(i + 1).padStart(2, '0')}`), // B01-B05
-];
+// Define all seat numbers from S01 to S85
+const ALL_SEAT_NUMBERS = Array.from({ length: 85 }, (_, i) => `S${String(i + 1).padStart(2, '0')}`);
 
 // Placeholder for existing students to determine taken seats
 // In a real app, this data would come from a state management solution or API
 const MOCK_EXISTING_STUDENTS_FOR_SEAT_CHECK = [
-  { studentId: "TS001", seatNumber: "A01" },
-  { studentId: "TS002", seatNumber: "B03" },
+  { studentId: "TS001", seatNumber: "S01" },
+  { studentId: "TS002", seatNumber: "S05" },
+  { studentId: "TS003", seatNumber: "S85" },
 ];
 
 export default function StudentRegisterPage() {
@@ -81,7 +79,7 @@ export default function StudentRegisterPage() {
       phone: "",
       shift: undefined,
       idCardImage: undefined,
-      seatNumber: undefined,
+      seatNumber: undefined, // Will show placeholder "Select a seat or Auto-assign"
     },
   });
 
@@ -90,14 +88,29 @@ export default function StudentRegisterPage() {
     if (data.idCardImage && data.idCardImage.length > 0) {
       idCardFileName = data.idCardImage[0].name;
     }
-    // Handle seatNumber from "None" option or empty string, convert to undefined for consistency
-    const finalSeatNumber = data.seatNumber === "NO_SEAT" || data.seatNumber === "" ? undefined : data.seatNumber;
 
-    console.log("New student data:", { ...data, idCardFileName, seatNumber: finalSeatNumber });
+    let assignedSeatNumber: string | undefined;
+
+    if (data.seatNumber === "AUTO_ASSIGN_SEAT") {
+      if (availableSeats.length > 0) {
+        assignedSeatNumber = availableSeats[0]; // Assign the first available seat
+      } else {
+        toast({
+          title: "Registration Failed",
+          description: "No seats available for auto-assignment. Please check seat availability.",
+          variant: "destructive",
+        });
+        return; // Stop submission
+      }
+    } else {
+      assignedSeatNumber = data.seatNumber;
+    }
+    
+    console.log("New student data:", { ...data, idCardFileName, seatNumber: assignedSeatNumber });
     
     toast({
       title: "Student Registration Submitted (Placeholder)",
-      description: `${data.name} has been submitted. ID card: ${idCardFileName}. Seat: ${finalSeatNumber || 'N/A'}. Student ID will be auto-generated.`,
+      description: `${data.name} has been submitted. ID card: ${idCardFileName}. Assigned Seat: ${assignedSeatNumber}. Student ID will be auto-generated.`,
     });
     form.reset();
     if (idCardImageRef.current) {
@@ -144,27 +157,27 @@ export default function StudentRegisterPage() {
                 name="seatNumber"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Seat Number (Optional)</FormLabel>
+                    <FormLabel>Seat Number</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value || ""} defaultValue={field.value || ""}>
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="Select an available seat" />
+                          <SelectValue placeholder="Select a seat or Auto-assign" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="NO_SEAT"><em>None</em></SelectItem>
+                        <SelectItem value="AUTO_ASSIGN_SEAT">Auto-assign Seat</SelectItem>
                         {availableSeats.map(seat => (
                           <SelectItem key={seat} value={seat}>
                             {seat}
                           </SelectItem>
                         ))}
                         {availableSeats.length === 0 && (
-                           <p className="p-2 text-xs text-muted-foreground">No seats currently available.</p>
+                           <p className="p-2 text-xs text-muted-foreground">No specific seats currently available for manual selection. Choose Auto-assign.</p>
                         )}
                       </SelectContent>
                     </Select>
                     <FormDescription>
-                      Choose an available seat or leave as "None".
+                      Choose a specific available seat or select "Auto-assign Seat".
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
