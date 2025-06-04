@@ -33,7 +33,9 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useToast } from "@/hooks/use-toast";
-import { Send, Megaphone, Info, AlertTriangle } from 'lucide-react';
+import { Send, Megaphone, Info, AlertTriangle, Loader2 } from 'lucide-react';
+import { sendGeneralAlert } from '@/services/student-service';
+import type { AlertItem } from '@/types/communication';
 
 const alertFormSchema = z.object({
   alertTitle: z.string().min(5, { message: "Title must be at least 5 characters." }).max(100, {message: "Title must not exceed 100 characters."}),
@@ -44,13 +46,14 @@ const alertFormSchema = z.object({
 type AlertFormValues = z.infer<typeof alertFormSchema>;
 
 const alertTypeOptions = [
-  { value: "info", label: "General Info / Update", icon: <Info className="mr-2 h-4 w-4" /> },
-  { value: "warning", label: "Warning / Maintenance", icon: <AlertTriangle className="mr-2 h-4 w-4 text-yellow-500" /> },
-  { value: "closure", label: "Closure / Important Notice", icon: <Info className="mr-2 h-4 w-4 text-blue-500" /> },
+  { value: "info" as AlertItem['type'], label: "General Info / Update", icon: <Info className="mr-2 h-4 w-4" /> },
+  { value: "warning" as AlertItem['type'], label: "Warning / Maintenance", icon: <AlertTriangle className="mr-2 h-4 w-4 text-yellow-500" /> },
+  { value: "closure" as AlertItem['type'], label: "Closure / Important Notice", icon: <Info className="mr-2 h-4 w-4 text-blue-500" /> },
 ];
 
 export default function AdminSendAlertPage() {
   const { toast } = useToast();
+  const [isSending, setIsSending] = React.useState(false);
   const form = useForm<AlertFormValues>({
     resolver: zodResolver(alertFormSchema),
     defaultValues: {
@@ -60,14 +63,25 @@ export default function AdminSendAlertPage() {
     },
   });
 
-  function onSubmit(data: AlertFormValues) {
-    // Placeholder for actual alert sending logic
-    console.log("Alert to send:", data);
-    toast({
-      title: `Alert Sent (Type: ${data.alertType.toUpperCase()})`,
-      description: `"${data.alertTitle}" has been broadcasted to all members.`,
-    });
-    form.reset();
+  async function onSubmit(data: AlertFormValues) {
+    setIsSending(true);
+    try {
+      await sendGeneralAlert(data.alertTitle, data.alertMessage, data.alertType as AlertItem['type']);
+      toast({
+        title: `General Alert Sent (Type: ${data.alertType.toUpperCase()})`,
+        description: `"${data.alertTitle}" has been broadcasted to all members.`,
+      });
+      form.reset();
+    } catch (error) {
+      toast({
+        title: "Failed to Send Alert",
+        description: "An error occurred while trying to send the alert. Please try again.",
+        variant: "destructive",
+      });
+      console.error("Failed to send alert:", error);
+    } finally {
+      setIsSending(false);
+    }
   }
 
   return (
@@ -91,7 +105,7 @@ export default function AdminSendAlertPage() {
                   <FormItem>
                     <FormLabel>Alert Title</FormLabel>
                     <FormControl>
-                      <Input placeholder="e.g., Library Closure, Maintenance Update" {...field} />
+                      <Input placeholder="e.g., Library Closure, Maintenance Update" {...field} disabled={isSending} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -103,7 +117,7 @@ export default function AdminSendAlertPage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Alert Type</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isSending}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select an alert type" />
@@ -113,7 +127,7 @@ export default function AdminSendAlertPage() {
                         {alertTypeOptions.map(option => (
                           <SelectItem key={option.value} value={option.value}>
                             <div className="flex items-center">
-                              {React.cloneElement(option.icon, {className: "mr-2 h-4 w-4"})} 
+                              {React.cloneElement(option.icon, {className: "mr-2 h-4 w-4"})}
                               {option.label}
                             </div>
                           </SelectItem>
@@ -135,6 +149,7 @@ export default function AdminSendAlertPage() {
                         placeholder="Type the full alert message here..."
                         className="min-h-[120px]"
                         {...field}
+                        disabled={isSending}
                       />
                     </FormControl>
                     <FormMessage />
@@ -143,9 +158,9 @@ export default function AdminSendAlertPage() {
               />
             </CardContent>
             <CardFooter>
-              <Button type="submit" className="w-full sm:w-auto">
-                <Send className="mr-2 h-4 w-4" />
-                Send Alert
+              <Button type="submit" className="w-full sm:w-auto" disabled={isSending}>
+                {isSending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
+                {isSending ? "Sending..." : "Send Alert"}
               </Button>
             </CardFooter>
           </form>
