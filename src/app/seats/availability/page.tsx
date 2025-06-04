@@ -4,7 +4,6 @@
 import * as React from 'react';
 import { PageTitle } from '@/components/shared/page-title';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import {
   Table,
   TableBody,
@@ -39,13 +38,11 @@ export default function SeatAvailabilityPage() {
   const [occupiedMorningStudentsCount, setOccupiedMorningStudentsCount] = React.useState(0);
   const [occupiedEveningStudentsCount, setOccupiedEveningStudentsCount] = React.useState(0);
   const [occupiedFullDayStudentsCount, setOccupiedFullDayStudentsCount] = React.useState(0);
-  const [uniquePhysicallyOccupiedSeatsCount, setUniquePhysicallyOccupiedSeatsCount] = React.useState(0);
   
   const [availableMorningSlotsCount, setAvailableMorningSlotsCount] = React.useState(0);
   const [availableEveningSlotsCount, setAvailableEveningSlotsCount] = React.useState(0);
   const [availableForFullDayBookingCount, setAvailableForFullDayBookingCount] = React.useState(0);
   const [isLoadingOverallAvailableStats, setIsLoadingOverallAvailableStats] = React.useState(true);
-  const [uniqueSeatsWithAvailableSlotsCount, setUniqueSeatsWithAvailableSlotsCount] = React.useState(0);
 
 
   const [showOccupiedSeatsDialog, setShowOccupiedSeatsDialog] = React.useState(false);
@@ -70,9 +67,6 @@ export default function SeatAvailabilityPage() {
         setOccupiedEveningStudentsCount(activeSeatHolders.filter(s => s.shift === 'evening').length);
         setOccupiedFullDayStudentsCount(activeSeatHolders.filter(s => s.shift === 'fullday').length);
         
-        const physicallyOccupiedSeats = new Set(activeSeatHolders.map(s => s.seatNumber!));
-        setUniquePhysicallyOccupiedSeatsCount(physicallyOccupiedSeats.size);
-
         const [morningAvail, eveningAvail, fulldayAvail] = await Promise.all([
           getAvailableSeats('morning'),
           getAvailableSeats('evening'),
@@ -81,9 +75,6 @@ export default function SeatAvailabilityPage() {
         setAvailableMorningSlotsCount(morningAvail.length);
         setAvailableEveningSlotsCount(eveningAvail.length);
         setAvailableForFullDayBookingCount(fulldayAvail.length);
-
-        const seatsWithAnySlot = new Set([...morningAvail, ...eveningAvail]);
-        setUniqueSeatsWithAvailableSlotsCount(seatsWithAnySlot.size);
         
       } catch (error) {
         console.error("Failed to fetch initial data:", error);
@@ -158,7 +149,6 @@ export default function SeatAvailabilityPage() {
       } else if (studentEvening) {
         studentOnSeat = studentEvening; isAvailable = false; colorClass = 'bg-purple-200 border-purple-300 text-purple-800 hover:bg-purple-300'; shiftIcon = Sunset;
       }
-      // If none of the above, it remains available (Light Blue), which is correct for "available for full-day booking".
     }
     return { student: studentOnSeat, isAvailable, colorClass, shiftIcon };
   };
@@ -181,7 +171,7 @@ export default function SeatAvailabilityPage() {
     <>
       <PageTitle title="Seat Availability & Occupancy" description="Overall hall status and shift-specific seat layout." />
       
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-6 mb-6">
         <Card className="shadow-md">
           <CardHeader className="pb-3">
             <CardTitle className="text-lg flex items-center">
@@ -205,7 +195,7 @@ export default function SeatAvailabilityPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="text-sm space-y-1 pt-2">
-                {isLoading ? <Loader2 className="h-5 w-5 animate-spin text-muted-foreground mx-auto" /> : (
+                {isLoading ? <div className="flex justify-center py-1"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div> : (
                   <>
                     <div className="flex justify-between"><span>Morning:</span> <span className="font-semibold">{occupiedMorningStudentsCount} students</span></div>
                     <div className="flex justify-between"><span>Evening:</span> <span className="font-semibold">{occupiedEveningStudentsCount} students</span></div>
@@ -242,7 +232,7 @@ export default function SeatAvailabilityPage() {
                   ))}
                   {dialogOccupiedStudentList.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={5} className="text-center text-muted-foreground">
+                        <TableCell colSpan={5} className="text-center text-muted-foreground py-4">
                           No students occupying seats for this view.
                         </TableCell>
                       </TableRow>
@@ -263,7 +253,7 @@ export default function SeatAvailabilityPage() {
                   </CardTitle>
               </CardHeader>
               <CardContent className="text-sm space-y-1 pt-2">
-                 {isLoadingOverallAvailableStats ? <Loader2 className="h-5 w-5 animate-spin text-muted-foreground mx-auto" /> : (
+                 {isLoadingOverallAvailableStats ? <div className="flex justify-center py-1"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div> : (
                   <>
                     <div className="flex justify-between"><span>Morning:</span> <span className="font-semibold">{availableMorningSlotsCount} slots</span></div>
                     <div className="flex justify-between"><span>Evening:</span> <span className="font-semibold">{availableEveningSlotsCount} slots</span></div>
@@ -366,11 +356,10 @@ export default function SeatAvailabilityPage() {
                   const { student, colorClass } = getSeatStatusForLayout(seatNum, selectedShiftView);
                   const ShiftIcon = getSeatStatusForLayout(seatNum, selectedShiftView).shiftIcon;
                   return (
-                    <Badge
+                    <div
                       key={seatNum}
-                      variant="outline"
                       className={cn(
-                        "relative flex items-center justify-center h-10 w-10 sm:h-12 sm:w-12 text-xs sm:text-sm rounded-md transition-colors font-medium",
+                        "relative flex items-center justify-center h-10 w-10 sm:h-12 sm:w-12 text-xs sm:text-sm rounded-md border transition-colors font-medium",
                         colorClass,
                         "cursor-default" 
                       )}
@@ -378,7 +367,7 @@ export default function SeatAvailabilityPage() {
                     >
                       {ShiftIcon && <ShiftIcon className="absolute top-1 right-1 h-3 w-3" />}
                       {seatNum}
-                    </Badge>
+                    </div>
                   );
                 })}
               </div>
