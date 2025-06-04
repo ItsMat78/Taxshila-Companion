@@ -45,7 +45,6 @@ function AdminDashboardContent() {
   const [isLoadingAvailabilityStats, setIsLoadingAvailabilityStats] = React.useState(true);
   const [isLoadingCheckedInStudents, setIsLoadingCheckedInStudents] = React.useState(true);
   
-  const [totalRegisteredStudents, setTotalRegisteredStudents] = React.useState(0);
   const [morningShiftStudentCount, setMorningShiftStudentCount] = React.useState(0);
   const [eveningShiftStudentCount, setEveningShiftStudentCount] = React.useState(0);
   const [fullDayShiftStudentCount, setFullDayShiftStudentCount] = React.useState(0);
@@ -82,7 +81,6 @@ function AdminDashboardContent() {
         setMorningShiftStudentCount(morningRegistered);
         setEveningShiftStudentCount(eveningRegistered);
         setFullDayShiftStudentCount(fulldayRegistered);
-        setTotalRegisteredStudents(morningRegistered + eveningRegistered + fulldayRegistered);
         setIsLoadingDashboardStats(false);
 
         setAvailableMorningSlotsCount(morningAvail.length);
@@ -107,7 +105,6 @@ function AdminDashboardContent() {
 
       } catch (error) {
         console.error("Failed to load dashboard stats:", error);
-        setTotalRegisteredStudents(0);
         setMorningShiftStudentCount(0);
         setEveningShiftStudentCount(0);
         setFullDayShiftStudentCount(0);
@@ -132,6 +129,7 @@ function AdminDashboardContent() {
     { title: "Seat Dashboard", icon: Eye, description: "View current seat status.", href: "/seats/availability" },
   ];
 
+  const totalRegisteredStudents = morningShiftStudentCount + eveningShiftStudentCount + fullDayShiftStudentCount;
 
   return (
     <>
@@ -180,7 +178,7 @@ function AdminDashboardContent() {
         </DialogContent>
       </Dialog>
       
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
         {/* Total Students Card */}
         <Link href="/students/list" className="block no-underline focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-lg h-full">
             <Card className="flex flex-col items-center justify-center text-center p-3 w-full h-full shadow-md hover:shadow-lg transition-shadow">
@@ -217,7 +215,7 @@ function AdminDashboardContent() {
           <Card className="flex flex-col items-center justify-center text-center p-3 w-full h-full shadow-md hover:shadow-lg transition-shadow">
             <Armchair className="h-6 w-6 mb-1 text-primary" />
             <ShadcnCardTitle className="text-sm font-semibold text-card-foreground mb-1">Available Booking Slots</ShadcnCardTitle>
-            <CardContent className="p-0 text-xs space-y-0.5 text-muted-foreground w-full mt-1">
+            <CardContent className="p-0 text-xs text-muted-foreground w-full mt-1 space-y-0.5">
               {isLoadingAvailabilityStats ? <Loader2 className="h-5 w-5 animate-spin my-2 mx-auto" /> : (
                 <>
                   <div className="flex justify-between px-2"><span>Morning Slots:</span> <span className="font-semibold text-foreground">{availableMorningSlotsCount}</span></div>
