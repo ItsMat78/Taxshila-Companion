@@ -18,6 +18,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/auth-context';
 import { Camera, QrCode, Receipt, IndianRupee, MessageSquare, Bell, ScrollText, Star, Loader2, XCircle, Home } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 type DashboardTileProps = {
   title: string;
@@ -27,38 +28,48 @@ type DashboardTileProps = {
   action?: () => void;
   className?: string;
   isPrimaryAction?: boolean;
+  external?: boolean;
 };
 
-const DashboardTile: React.FC<DashboardTileProps> = ({ title, description, icon: Icon, href, action, className = "", isPrimaryAction = false }) => {
+const DashboardTile: React.FC<DashboardTileProps> = ({ title, description, icon: Icon, href, action, className = "", isPrimaryAction = false, external = false }) => {
   const tileContent = (
-    <Card className={`shadow-lg hover:shadow-xl transition-shadow h-full flex flex-col ${isPrimaryAction ? 'bg-primary text-primary-foreground hover:bg-primary/90' : 'hover:bg-muted/50'} ${className}`}>
-      <CardHeader className="pb-2">
-        <CardTitle className={`flex items-center text-base font-semibold ${isPrimaryAction ? 'text-primary-foreground' : ''}`}>
-          <Icon className="mr-3 h-5 w-5" />
+    <Card className={cn(
+      "shadow-lg hover:shadow-xl transition-shadow h-full flex flex-col",
+      isPrimaryAction ? 'bg-primary text-primary-foreground hover:bg-primary/90' : 'hover:bg-muted/50',
+      className // Allows passing aspect-square or other structural classes from outside
+    )}>
+      <CardHeader className={cn("pb-2", isPrimaryAction ? "pt-6 pb-3" : "pt-4")}>
+        <CardTitle className={cn(
+          "flex items-center font-semibold",
+          isPrimaryAction ? 'text-xl' : 'text-lg',
+        )}>
+          <Icon className={cn("mr-3", isPrimaryAction ? "h-6 w-6" : "h-5 w-5")} />
           {title}
         </CardTitle>
       </CardHeader>
       <CardContent className="flex-grow">
-        {description && <p className={`text-xs ${isPrimaryAction ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}>{description}</p>}
+        {description && <p className={cn(
+          isPrimaryAction ? 'text-sm text-primary-foreground/80' : 'text-xs text-muted-foreground',
+        )}>{description}</p>}
       </CardContent>
     </Card>
   );
 
   if (href) {
-    if (href.startsWith('http')) { // External link
+    if (external) {
       return (
-        <Link
+        <a
           href={href}
           target="_blank"
           rel="noopener noreferrer"
-          className={`block h-full no-underline ${className}`}
+          className={cn("block h-full no-underline", className)}
         >
           {tileContent}
-        </Link>
+        </a>
       );
-    } else { // Internal link
+    } else {
       return (
-        <Link href={href} className={`block h-full no-underline ${className}`}>
+        <Link href={href} className={cn("block h-full no-underline", className)}>
           {tileContent}
         </Link>
       );
@@ -66,7 +77,7 @@ const DashboardTile: React.FC<DashboardTileProps> = ({ title, description, icon:
   }
 
   if (action) {
-    return <button onClick={action} className={`block w-full h-full text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-lg ${className}`}>{tileContent}</button>;
+    return <button onClick={action} className={cn("block w-full h-full text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-lg", className)}>{tileContent}</button>;
   }
 
   return <div className={className}>{tileContent}</div>;
@@ -133,22 +144,25 @@ export default function MemberDashboardPage() {
 
   const simulateQrScan = async () => {
     setIsProcessingQr(true);
-    await new Promise(resolve => setTimeout(resolve, 2000)); // Simulate scan and network
+    await new Promise(resolve => setTimeout(resolve, 2000)); 
     setIsProcessingQr(false);
-    setIsScannerOpen(false); // Close dialog on successful scan
+    setIsScannerOpen(false); 
     toast({
       title: "Attendance Marked!",
       description: `Your attendance has been recorded at ${new Date().toLocaleTimeString()}.`,
     });
   };
   
-  const dashboardTiles: DashboardTileProps[] = [
+  const coreActionTiles: DashboardTileProps[] = [
     { title: "My Fees", description: "View your fee status and history.", icon: Receipt, href: "/member/fees" },
     { title: "Pay Fees", description: "Settle your outstanding dues.", icon: IndianRupee, href: "/member/pay" },
     { title: "Submit Feedback", description: "Share suggestions or report issues.", icon: MessageSquare, href: "/member/feedback" },
     { title: "View Alerts", description: "Catch up on important announcements.", icon: Bell, href: "/member/alerts" },
+  ];
+
+  const otherResourcesTiles: DashboardTileProps[] = [
     { title: "Library Rules", description: "Familiarize yourself with guidelines.", icon: ScrollText, href: "/member/rules" },
-    { title: "Rate Us", description: "Love our space? Let others know!", icon: Star, href: "https://www.google.com/maps/search/?api=1&query=Taxshila+Study+Hall+Pune" },
+    { title: "Rate Us", description: "Love our space? Let others know!", icon: Star, href: "https://www.google.com/maps/search/?api=1&query=Taxshila+Study+Hall+Pune", external: true },
   ];
 
   return (
@@ -157,13 +171,12 @@ export default function MemberDashboardPage() {
       
       <Dialog open={isScannerOpen} onOpenChange={setIsScannerOpen}>
         <DialogTrigger asChild>
-          <div className="md:col-span-2 mb-6"> {/* Added mb-6 for spacing */}
+          <div className="mb-6 cursor-pointer">
             <DashboardTile
               title="Mark Attendance"
               description="Scan the QR code at the library to check-in/out."
               icon={QrCode}
               action={handleOpenScanner}
-              className="bg-primary text-primary-foreground hover:bg-primary/90"
               isPrimaryAction={true}
             />
           </div>
@@ -213,8 +226,19 @@ export default function MemberDashboardPage() {
         </DialogContent>
       </Dialog>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {dashboardTiles.map((tile) => (
+      {/* Core Action Tiles - Square */}
+      <div className="grid grid-cols-2 gap-4 sm:gap-6">
+        {coreActionTiles.map((tile) => (
+          <DashboardTile key={tile.title} {...tile} className="aspect-square" />
+        ))}
+      </div>
+
+      {/* Separator */}
+      <div className="my-8 border-t border-border"></div>
+
+      {/* Other Resources Tiles */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+        {otherResourcesTiles.map((tile) => (
           <DashboardTile key={tile.title} {...tile} />
         ))}
       </div>
