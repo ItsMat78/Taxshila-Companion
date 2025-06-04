@@ -12,6 +12,7 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle as ShadcnDialogTitle, // Aliased to avoid conflict with CardTitle if any confusion
+  DialogTrigger, // Added DialogTrigger
 } from "@/components/ui/dialog";
 import { Alert, AlertDescription, AlertTitle as ShadcnAlertTitle } from '@/components/ui/alert'; // Aliased
 import { useToast } from '@/hooks/use-toast';
@@ -32,14 +33,14 @@ type DashboardTileProps = {
 };
 
 const DashboardTile: React.FC<DashboardTileProps> = ({ title, description, icon: Icon, href, action, className = "", isPrimaryAction = false, external = false, hasNew = false }) => {
-  const tileContent = (
+  const content = (
     <Card className={cn(
       "shadow-lg hover:shadow-xl transition-shadow h-full flex flex-col relative", 
       isPrimaryAction ? 'bg-primary text-primary-foreground hover:bg-primary/90' : 'hover:bg-muted/50',
       className
     )}>
       <CardHeader className={cn(
-        isPrimaryAction ? "pt-4 pb-2" : "p-3 pb-1" // Reduced padding
+        isPrimaryAction ? "p-4 pb-2" : "p-3 pb-1" 
       )}>
         {hasNew && !isPrimaryAction && (
           <span className="absolute top-2 right-2 flex h-3 w-3">
@@ -49,15 +50,15 @@ const DashboardTile: React.FC<DashboardTileProps> = ({ title, description, icon:
         )}
         <CardTitle className={cn(
           "flex items-center",
-          isPrimaryAction ? 'text-lg font-semibold' : 'text-base font-semibold', // Reduced font size
+          isPrimaryAction ? 'text-lg font-semibold' : 'text-base font-semibold', 
         )}>
-          <Icon className={cn("mr-3", isPrimaryAction ? "h-5 w-5" : "h-4 w-4")} /> {/* Reduced icon size */}
+          <Icon className={cn("mr-3", isPrimaryAction ? "h-5 w-5" : "h-4 w-4")} /> 
           {title}
         </CardTitle>
       </CardHeader>
       <CardContent className={cn(
         "flex-grow",
-         isPrimaryAction ? "pt-0 pb-3 px-4" : "p-3 pt-0" // Reduced padding
+         isPrimaryAction ? "pt-0 pb-3 px-4" : "p-3 pt-0" 
         )}>
         {description && <p className={cn(
           isPrimaryAction ? 'text-sm text-primary-foreground/80' : 'text-xs text-muted-foreground',
@@ -72,16 +73,16 @@ const DashboardTile: React.FC<DashboardTileProps> = ({ title, description, icon:
       : {};
     return (
       <Link href={href} {...linkProps} className={cn("block h-full no-underline", className)}>
-        {tileContent}
+        {content}
       </Link>
     );
   }
 
   if (action) {
-    return <button onClick={action} className={cn("block w-full h-full text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-lg", className)}>{tileContent}</button>;
+    return <button onClick={action} className={cn("block w-full h-full text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-lg", className)}>{content}</button>;
   }
 
-  return <div className={className}>{tileContent}</div>;
+  return <div className={className}>{content}</div>;
 };
 
 
