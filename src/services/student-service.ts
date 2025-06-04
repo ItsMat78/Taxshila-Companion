@@ -46,6 +46,7 @@ let students: Student[] = [
     lastPaymentDate: "2024-05-05",
     nextDueDate: "2024-06-05",
     amountDue: "₹700",
+    paymentHistory: [],
   },
   {
     studentId: "TS003",
@@ -61,13 +62,14 @@ let students: Student[] = [
     lastPaymentDate: "2024-03-15",
     nextDueDate: format(addMonths(new Date(), -2), 'yyyy-MM-dd'),
     amountDue: "₹1200",
+    paymentHistory: [],
   },
-   { studentId: "TS004", name: "Vikram Singh", email: "vikram.singh@example.com", phone: "9876543213", shift: "evening", seatNumber: "40", feeStatus: "Paid", activityStatus: "Active", registrationDate: "2024-04-01", lastPaymentDate: "2024-06-03", nextDueDate: "2024-07-03", amountDue: "₹0" },
-   { studentId: "TS005", name: "Neha Reddy", email: "neha.reddy@example.com", phone: "9876543214", shift: "fullday", seatNumber: "50", feeStatus: "Paid", activityStatus: "Active", registrationDate: "2024-04-05", lastPaymentDate: "2024-06-01", nextDueDate: "2024-07-01", amountDue: "₹0" },
-   { studentId: "TS006", name: "Old Overdue For Auto-Left", email: "old.overdue@example.com", phone: "9876543215", shift: "morning", seatNumber: "6", feeStatus: "Overdue", activityStatus: "Active", registrationDate: "2024-01-01", lastPaymentDate: "2024-02-01", nextDueDate: format(addMonths(new Date(), -3), 'yyyy-MM-dd'), amountDue: "₹700" },
-   { studentId: "TS007", name: "Sanya Gupta Due", email: "sanya.gupta@example.com", phone: "9876543216", shift: "morning", seatNumber: "8", feeStatus: "Due", activityStatus: "Active", registrationDate: "2024-05-01", lastPaymentDate: "2024-05-10", nextDueDate: "2024-06-10", amountDue: "₹700" },
-   { studentId: "TS008", name: "Kavita Singh Paid", email: "kavita.singh@example.com", phone: "9876543217", shift: "morning", seatNumber: "10", feeStatus: "Paid", activityStatus: "Active", registrationDate: "2024-05-10", lastPaymentDate: "2024-06-01", nextDueDate: "2024-07-01", amountDue: "₹0" },
-   { studentId: "TS012", name: "Karan Verma Long Overdue", email: "karan.verma@example.com", phone: "9876543221", shift: "evening", seatNumber: "15", feeStatus: "Overdue", activityStatus: "Active", registrationDate: "2024-01-01", lastPaymentDate: "2024-01-20", nextDueDate: format(addMonths(new Date(), -4), 'yyyy-MM-dd'), amountDue: "₹700" },
+   { studentId: "TS004", name: "Vikram Singh", email: "vikram.singh@example.com", phone: "9876543213", shift: "evening", seatNumber: "40", feeStatus: "Paid", activityStatus: "Active", registrationDate: "2024-04-01", lastPaymentDate: "2024-06-03", nextDueDate: "2024-07-03", amountDue: "₹0", paymentHistory: [] },
+   { studentId: "TS005", name: "Neha Reddy", email: "neha.reddy@example.com", phone: "9876543214", shift: "fullday", seatNumber: "50", feeStatus: "Paid", activityStatus: "Active", registrationDate: "2024-04-05", lastPaymentDate: "2024-06-01", nextDueDate: "2024-07-01", amountDue: "₹0", paymentHistory: [] },
+   { studentId: "TS006", name: "Old Overdue For Auto-Left", email: "old.overdue@example.com", phone: "9876543215", shift: "morning", seatNumber: "6", feeStatus: "Overdue", activityStatus: "Active", registrationDate: "2024-01-01", lastPaymentDate: "2024-02-01", nextDueDate: format(addMonths(new Date(), -3), 'yyyy-MM-dd'), amountDue: "₹700", paymentHistory: [] },
+   { studentId: "TS007", name: "Sanya Gupta Due", email: "sanya.gupta@example.com", phone: "9876543216", shift: "morning", seatNumber: "8", feeStatus: "Due", activityStatus: "Active", registrationDate: "2024-05-01", lastPaymentDate: "2024-05-10", nextDueDate: "2024-06-10", amountDue: "₹700", paymentHistory: [] },
+   { studentId: "TS008", name: "Kavita Singh Paid", email: "kavita.singh@example.com", phone: "9876543217", shift: "morning", seatNumber: "10", feeStatus: "Paid", activityStatus: "Active", registrationDate: "2024-05-10", lastPaymentDate: "2024-06-01", nextDueDate: "2024-07-01", amountDue: "₹0", paymentHistory: [] },
+   { studentId: "TS012", name: "Karan Verma Long Overdue", email: "karan.verma@example.com", phone: "9876543221", shift: "evening", seatNumber: "15", feeStatus: "Overdue", activityStatus: "Active", registrationDate: "2024-01-01", lastPaymentDate: "2024-01-20", nextDueDate: format(addMonths(new Date(), -4), 'yyyy-MM-dd'), amountDue: "₹700", paymentHistory: [] },
 ];
 
 let attendanceRecords: AttendanceRecord[] = [
@@ -118,7 +120,26 @@ function applyAutomaticStatusUpdates(student: Student): Student {
 
 function processStudentsForUpdates(studentArray: Student[]): Student[] {
     const processedStudents = studentArray.map(s => {
-        const updatedStudent = applyAutomaticStatusUpdates(s);
+        let currentStudentState = {...s}; // Work with a copy
+
+        // Update fee status based on nextDueDate for active students not already 'Left' or 'Paid'
+        if (currentStudentState.activityStatus === 'Active' && currentStudentState.feeStatus !== 'Paid' && currentStudentState.nextDueDate) {
+            try {
+                const dueDate = parseISO(currentStudentState.nextDueDate);
+                const today = new Date();
+                if (isValid(dueDate) && isPast(dueDate)) {
+                    currentStudentState.feeStatus = 'Overdue';
+                } else if (isValid(dueDate) && !isPast(dueDate) && currentStudentState.feeStatus !== 'Due') {
+                    // This case might be for if a payment was just made but dueDate is future, ensure it's 'Due' or 'Paid'
+                    // For now, if not Paid and not Overdue, it's 'Due' by default if nextDueDate exists
+                    // This part of logic might need refinement based on how 'Due' is triggered initially
+                }
+            } catch (e) {
+                console.error(`Error processing fee status for student ${currentStudentState.studentId}: ${currentStudentState.nextDueDate}`, e);
+            }
+        }
+        
+        const updatedStudent = applyAutomaticStatusUpdates(currentStudentState);
         const indexInMainArray = students.findIndex(orig => orig.studentId === updatedStudent.studentId);
         if (indexInMainArray !== -1) {
              if (students[indexInMainArray].activityStatus !== updatedStudent.activityStatus ||
@@ -145,20 +166,17 @@ export function getAllStudents(): Promise<Student[]> {
 export function getStudentById(studentId: string): Promise<Student | undefined> {
   return new Promise((resolve) => {
     setTimeout(() => {
-      let student = students.find(s => s.studentId === studentId);
-      if (student) {
+      let studentIdx = students.findIndex(s => s.studentId === studentId);
+      if (studentIdx !== -1) {
+        const student = students[studentIdx];
         const updatedStudent = applyAutomaticStatusUpdates({...student});
-        const indexInMainArray = students.findIndex(orig => orig.studentId === updatedStudent.studentId);
-        if (indexInMainArray !== -1) {
-             if (students[indexInMainArray].activityStatus !== updatedStudent.activityStatus ||
-                 students[indexInMainArray].seatNumber !== updatedStudent.seatNumber ||
-                 students[indexInMainArray].feeStatus !== updatedStudent.feeStatus) {
-                 students[indexInMainArray] = { ...students[indexInMainArray], ...updatedStudent };
-            }
-            resolve(students[indexInMainArray] ? {...students[indexInMainArray]} : undefined);
-        } else {
-             resolve(updatedStudent ? {...updatedStudent} : undefined);
+        // Update the main array if changes occurred
+        if (students[studentIdx].activityStatus !== updatedStudent.activityStatus ||
+            students[studentIdx].seatNumber !== updatedStudent.seatNumber ||
+            students[studentIdx].feeStatus !== updatedStudent.feeStatus) {
+           students[studentIdx] = { ...students[studentIdx], ...updatedStudent };
         }
+        resolve(students[studentIdx] ? {...students[studentIdx]} : undefined);
       } else {
         resolve(undefined);
       }
@@ -169,11 +187,25 @@ export function getStudentById(studentId: string): Promise<Student | undefined> 
 export function getStudentByEmail(email: string): Promise<Student | undefined> {
   return new Promise((resolve) => {
     setTimeout(() => {
-      const student = students.find(s => s.email === email && s.activityStatus === 'Active');
-      if (student) {
-        resolve({...student});
+      const studentIdx = students.findIndex(s => s.email === email && s.activityStatus === 'Active');
+      if (studentIdx !== -1) {
+        const student = students[studentIdx];
+        const updatedStudent = applyAutomaticStatusUpdates({...student});
+         // Update the main array if changes occurred
+        if (students[studentIdx].activityStatus !== updatedStudent.activityStatus ||
+            students[studentIdx].seatNumber !== updatedStudent.seatNumber ||
+            students[studentIdx].feeStatus !== updatedStudent.feeStatus) {
+           students[studentIdx] = { ...students[studentIdx], ...updatedStudent };
+        }
+        resolve(students[studentIdx] ? {...students[studentIdx]} : undefined);
       } else {
-        resolve(undefined);
+        // Check if student exists but is 'Left'
+        const leftStudent = students.find(s => s.email === email && s.activityStatus === 'Left');
+        if (leftStudent) {
+            resolve({...leftStudent}); // Return left student details if needed by pay page
+        } else {
+            resolve(undefined);
+        }
       }
     }, 50);
   });
@@ -290,11 +322,19 @@ export function updateStudent(studentId: string, studentUpdateData: Partial<Omit
         updatedStudentData.lastPaymentDate = undefined;
         updatedStudentData.nextDueDate = undefined;
       } else if (studentUpdateData.activityStatus === 'Active' && currentStudent.activityStatus === 'Left') {
+        // When re-activating
         if (!updatedStudentData.seatNumber || !ALL_SEAT_NUMBERS.includes(updatedStudentData.seatNumber)) {
             reject(new Error("A valid seat must be selected to re-activate a student."));
             return;
         }
+        // Reset fee details upon re-activation
+        updatedStudentData.feeStatus = 'Due';
+        updatedStudentData.amountDue = updatedStudentData.shift === "fullday" ? "₹1200" : "₹700";
+        updatedStudentData.lastPaymentDate = undefined; // Clear last payment
+        updatedStudentData.nextDueDate = format(addMonths(new Date(), 1), 'yyyy-MM-dd'); // Set next due date to 1 month from now
+        updatedStudentData.paymentHistory = []; // Clear previous payment history
       }
+
 
       students[studentIndex] = updatedStudentData;
       resolve({...students[studentIndex]});
@@ -402,4 +442,51 @@ export function getAttendanceRecordsByStudentId(studentId: string): Promise<Atte
   });
 }
 
-    
+// New function to record student payment
+export function recordStudentPayment(
+  studentId: string,
+  paymentAmount: string, // e.g., "₹700"
+  paymentMethod: "UPI" | "Cash" | "Card" | "Online"
+): Promise<Student | undefined> {
+  return new Promise((resolve, reject) => {
+    setTimeout(() => {
+      const studentIndex = students.findIndex(s => s.studentId === studentId);
+      if (studentIndex === -1) {
+        reject(new Error("Student not found."));
+        return;
+      }
+
+      const student = students[studentIndex];
+      if (student.activityStatus === 'Left') {
+        reject(new Error("Cannot record payment for a student who has left."));
+        return;
+      }
+      
+      // For simplicity, assume full payment makes status "Paid"
+      // More complex logic could handle partial payments, etc.
+      const today = new Date();
+      const newPaymentId = `PAY${String(Date.now()).slice(-6)}${String(Math.floor(Math.random() * 100)).padStart(2,'0')}`;
+      const newTransactionId = `TXN${String(Date.now()).slice(-8)}`;
+
+      const newPaymentRecord: PaymentRecord = {
+        paymentId: newPaymentId,
+        date: format(today, 'yyyy-MM-dd'),
+        amount: paymentAmount,
+        transactionId: newTransactionId,
+        method: paymentMethod,
+      };
+
+      const updatedStudent: Student = {
+        ...student,
+        feeStatus: "Paid",
+        lastPaymentDate: format(today, 'yyyy-MM-dd'),
+        nextDueDate: format(addMonths(today, 1), 'yyyy-MM-dd'),
+        amountDue: "₹0",
+        paymentHistory: [...(student.paymentHistory || []), newPaymentRecord],
+      };
+
+      students[studentIndex] = updatedStudent;
+      resolve({...updatedStudent});
+    }, 50);
+  });
+}
