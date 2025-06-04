@@ -15,6 +15,12 @@ import {
   BarChart3,
   History,
   QrCode,
+  MessageSquare, // Added
+  Bell,          // Added
+  ScrollText,    // Added
+  Star,          // Added
+  Inbox,         // Added
+  Send,          // Added
   type Icon as LucideIcon,
 } from 'lucide-react';
 import type { UserRole } from '@/types/auth';
@@ -27,6 +33,7 @@ export type NavItem = {
   label?: string;
   items?: NavItem[];
   roles?: UserRole[];
+  external?: boolean; // To indicate external links
 };
 
 export const mainNav: NavItem[] = [
@@ -39,7 +46,7 @@ export const mainNav: NavItem[] = [
   },
   {
     title: 'Students',
-    href: '#', // Parent item, no direct link
+    href: '#', 
     icon: Users,
     roles: ['admin'],
     items: [
@@ -59,7 +66,7 @@ export const mainNav: NavItem[] = [
   },
   {
     title: 'Seat Management',
-    href: '#', // Parent item
+    href: '#', 
     icon: Armchair,
     roles: ['admin'],
     items: [
@@ -72,27 +79,47 @@ export const mainNav: NavItem[] = [
     ]
   },
   {
-    title: 'Attendance Overview', // Renamed for clarity, admin specific
+    title: 'Attendance Overview', 
     href: '/attendance/calendar',
     icon: CalendarDays,
     roles: ['admin'],
   },
   {
     title: 'Financials',
-    href: '#', // Parent item
+    href: '#', 
     icon: DollarSign,
     roles: ['admin'],
     items: [
       {
         title: 'Fees Due List',
         href: '/admin/fees/due',
-        icon: CreditCard, // More relevant icon for dues
+        icon: CreditCard, 
         roles: ['admin'],
       },
       {
         title: 'Payment History',
         href: '/admin/fees/payments-history',
         icon: History,
+        roles: ['admin'],
+      },
+    ]
+  },
+  {
+    title: 'Communication',
+    href: '#',
+    icon: MessageSquare, // Using a general icon for communication
+    roles: ['admin'],
+    items: [
+      {
+        title: 'View Feedback',
+        href: '/admin/feedback',
+        icon: Inbox,
+        roles: ['admin'],
+      },
+      {
+        title: 'Send Alert',
+        href: '/admin/alerts/send',
+        icon: Send,
         roles: ['admin'],
       },
     ]
@@ -108,7 +135,7 @@ export const mainNav: NavItem[] = [
   {
     title: 'My Attendance',
     href: '/member/attendance',
-    icon: BarChart3, // Using a different icon for member's view
+    icon: BarChart3, 
     roles: ['member'],
   },
   {
@@ -120,7 +147,32 @@ export const mainNav: NavItem[] = [
   {
     title: 'Pay Fees',
     href: '/member/pay',
-    icon: QrCode, // Icon suggests QR or payment
+    icon: QrCode, 
     roles: ['member'],
+  },
+  {
+    title: 'Submit Feedback',
+    href: '/member/feedback',
+    icon: MessageSquare,
+    roles: ['member'],
+  },
+  {
+    title: 'Alerts',
+    href: '/member/alerts',
+    icon: Bell,
+    roles: ['member'],
+  },
+  {
+    title: 'Library Rules',
+    href: '/member/rules',
+    icon: ScrollText,
+    roles: ['member'],
+  },
+  {
+    title: 'Rate Us',
+    href: 'https://www.google.com/maps/search/?api=1&query=Taxshila+Study+Hall+Pune', // Example Google Maps URL
+    icon: Star,
+    roles: ['member'],
+    external: true, // Mark as an external link
   },
 ];
