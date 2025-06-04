@@ -13,7 +13,9 @@ import {
   Send as SendIcon, 
   Inbox,
   Eye,
-  LogIn
+  LogIn,
+  BarChart3, // Added for new chart
+  TrendingUp // Added for new chart
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle as ShadcnCardTitle, CardDescription as ShadcnCardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -31,14 +33,21 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+  type ChartConfig, // Import ChartConfig
+} from "@/components/ui/chart"; // Import ChartContainer and ChartTooltipContent
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Legend } from 'recharts'; // Import Recharts components
 import { useAuth } from '@/contexts/auth-context';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
-import { getAllStudents, getAvailableSeats, getAllAttendanceRecords, getAllFeedback, calculateMonthlyRevenue } from '@/services/student-service'; 
+import { getAllStudents, getAvailableSeats, getAllAttendanceRecords, calculateMonthlyRevenue, getMonthlyRevenueHistory, type MonthlyRevenueData } from '@/services/student-service'; 
 import type { Student, Shift, AttendanceRecord } from '@/types/student';
 import type { FeedbackItem } from '@/types/communication'; 
 import { format, parseISO, isToday, getHours } from 'date-fns';
-import { useNotificationCounts } from '@/hooks/use-notification-counts'; // Import the hook
+import { useNotificationCounts } from '@/hooks/use-notification-counts';
 
 type CheckedInStudentInfo = Student & { 
   checkInTime: string;
@@ -61,10 +70,20 @@ function AdminDashboardContent() {
 
   const [checkedInStudents, setCheckedInStudents] = React.useState<CheckedInStudentInfo[]>([]);
   const [showCheckedInDialog, setShowCheckedInDialog] = React.useState(false);
-  // const [hasOpenFeedback, setHasOpenFeedback] = React.useState(false); // This will now be derived from useNotificationCounts
   const [monthlyRevenue, setMonthlyRevenue] = React.useState<string | null>(null);
+  const [currentMonthName, setCurrentMonthName] = React.useState<string>(format(new Date(), 'MMMM'));
 
   const { count: openFeedbackCount, isLoadingCount: isLoadingFeedbackCount } = useNotificationCounts();
+
+  const [revenueHistoryData, setRevenueHistoryData] = React.useState<MonthlyRevenueData[]>([]);
+  const [isLoadingRevenueHistory, setIsLoadingRevenueHistory] = React.useState(true);
+
+  const revenueChartConfig = {
+    revenue: {
+      label: "Revenue (₹)",
+      color: "hsl(var(--chart-1))",
+    },
+  } satisfies ChartConfig;
 
 
   React.useEffect(() => {
@@ -73,7 +92,7 @@ function AdminDashboardContent() {
       setIsLoadingAvailabilityStats(true);
       setIsLoadingCheckedInStudents(true);
       setIsLoadingRevenue(true);
-      // setHasOpenFeedback(false); // No longer needed directly, will use openFeedbackCount
+      setIsLoadingRevenueHistory(true);
 
       try {
         const [
@@ -82,16 +101,16 @@ function AdminDashboardContent() {
           eveningAvail,
           fulldayAvail,
           allAttendance,
-          // allFeedbackItems, // No longer fetching feedback items directly here for the tile
           currentMonthRevenue,
+          revenueHistData,
         ] = await Promise.all([
           getAllStudents(),
           getAvailableSeats('morning'),
           getAvailableSeats('evening'),
           getAvailableSeats('fullday'),
           getAllAttendanceRecords(),
-          // getAllFeedback(), // We use useNotificationCounts now
           calculateMonthlyRevenue(),
+          getMonthlyRevenueHistory(6), // Fetch for last 6 months
         ]);
 
         const activeStudentsWithSeats = allStudentsData.filter(s => s.activityStatus === "Active" && s.seatNumber);
@@ -131,9 +150,8 @@ function AdminDashboardContent() {
         
         setCheckedInStudents(checkedInStudentDetails);
         setMonthlyRevenue(currentMonthRevenue);
-
-        // const openFeedbackExists = allFeedbackItems.some(fb => fb.status === "Open");
-        // setHasOpenFeedback(openFeedbackExists); // No longer directly setting this for the tile
+        setCurrentMonthName(format(new Date(), 'MMMM'));
+        setRevenueHistoryData(revenueHistData);
 
       } catch (error) {
         console.error("Failed to load dashboard stats:", error);
@@ -145,12 +163,13 @@ function AdminDashboardContent() {
         setAvailableFullDaySlotsCount(0);
         setCheckedInStudents([]);
         setMonthlyRevenue("₹0");
-        // setHasOpenFeedback(false);
+        setRevenueHistoryData([]);
       } finally {
         setIsLoadingDashboardStats(false);
         setIsLoadingAvailabilityStats(false);
         setIsLoadingCheckedInStudents(false);
         setIsLoadingRevenue(false);
+        setIsLoadingRevenueHistory(false);
       }
     };
     fetchDashboardData();
@@ -166,8 +185,6 @@ function AdminDashboardContent() {
       icon: Inbox, 
       description: "Review member suggestions.", 
       href: "/admin/feedback",
-      // dynamicHasNew will be handled in the mapping logic below
-      // The raw title is just "View Feedback", we'll append count dynamically
     }, 
     { title: "Seat Dashboard", icon: Eye, description: "View current seat status.", href: "/seats/availability" },
   ];
@@ -277,18 +294,60 @@ function AdminDashboardContent() {
         <Link href="/admin/fees/payments-history" className="block no-underline focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-lg h-full">
              <Card className="flex flex-col items-center justify-center text-center p-3 w-full h-full shadow-md hover:shadow-lg transition-shadow">
                 <IndianRupee className="h-6 w-6 mb-1 text-primary" />
-                <ShadcnCardTitle className="text-sm font-semibold text-card-foreground mb-1">Revenue (This Month)</ShadcnCardTitle>
+                <ShadcnCardTitle className="text-sm font-semibold text-card-foreground mb-1">Revenue ({currentMonthName})</ShadcnCardTitle>
                 {isLoadingRevenue ? (
                      <Loader2 className="h-5 w-5 animate-spin my-1" />
                 ) : (
                     <div className="text-2xl font-bold text-foreground mb-1">{monthlyRevenue || "₹0"}</div>
                 )}
-                <p className="text-xs text-muted-foreground">Est. from current data</p>
+                <p className="text-xs text-muted-foreground">From received payments this month</p>
             </Card>
         </Link>
       </div>
 
       <div className="my-8 border-t border-border"></div>
+
+      <Card className="mb-8 shadow-lg">
+        <CardHeader>
+          <ShadcnCardTitle className="flex items-center">
+            <TrendingUp className="mr-2 h-5 w-5" />
+            Monthly Revenue History (Last 6 Months)
+          </ShadcnCardTitle>
+          <ShadcnCardDescription>Comparison of revenue from received payments over the past months.</ShadcnCardDescription>
+        </CardHeader>
+        <CardContent>
+          {isLoadingRevenueHistory ? (
+            <div className="flex items-center justify-center h-[300px]">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+          ) : revenueHistoryData.length > 0 ? (
+            <ChartContainer config={revenueChartConfig} className="min-h-[200px] w-full aspect-video">
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={revenueHistoryData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="month" tickLine={false} axisLine={false} tickMargin={8} />
+                  <YAxis 
+                    tickFormatter={(value) => `₹${value/1000}k`} 
+                    tickLine={false} 
+                    axisLine={false} 
+                    tickMargin={8} 
+                    width={40}
+                  />
+                  <RechartsTooltip
+                    cursor={{ fill: 'hsl(var(--muted))', radius: 4 }}
+                    content={<ChartTooltipContent indicator="dot" formatter={(value) => `₹${Number(value).toLocaleString()}`} />}
+                  />
+                  <Bar dataKey="revenue" fill="var(--color-revenue)" radius={4} />
+                </BarChart>
+              </ResponsiveContainer>
+            </ChartContainer>
+          ) : (
+            <p className="text-center text-muted-foreground py-10">No revenue history data available to display.</p>
+          )}
+        </CardContent>
+      </Card>
+
+
       <h2 className="text-lg font-headline font-semibold tracking-tight mb-4">Quick Actions</h2>
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
         {adminActionTiles.map((tile) => {
@@ -299,15 +358,13 @@ function AdminDashboardContent() {
 
           if (tile.href === "/admin/feedback") {
             if (isLoadingFeedbackCount) {
-              tileTitle = "View Feedback"; // Or "View Feedback (Loading...)"
+              tileTitle = "View Feedback";
             } else if (openFeedbackCount > 0) {
               tileTitle = `View Feedback (${openFeedbackCount} Open)`;
               currentHasNew = true;
             } else {
               tileTitle = "View Feedback";
             }
-          } else {
-            currentHasNew = (tile as any).dynamicHasNew ? (tile as any).dynamicHasNew() : (tile as any).hasNew;
           }
           
           return (
@@ -380,5 +437,3 @@ export default function MainPage() {
       </div>
   );
 }
-
-    

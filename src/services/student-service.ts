@@ -33,6 +33,7 @@ let students: Student[] = [
         { paymentId: "PAY_TS001_CURRENT", date: format(new Date(), 'yyyy-MM-dd'), amount: "₹700", transactionId: "TXN_TS001_CURRENT", method: "UPI" },
         { paymentId: "PAY001", date: "2024-06-01", amount: "₹700", transactionId: "TXN12345601", method: "UPI" },
         { paymentId: "PAY001B", date: format(subMonths(new Date(),1), 'yyyy-MM-dd'), amount: "₹700", transactionId: "TXN12345PREV", method: "UPI" },
+        { paymentId: "PAY_TS001_2MONTHS_AGO", date: format(subMonths(new Date(),2), 'yyyy-MM-dd'), amount: "₹700", transactionId: "TXN_TS001_2MAGO", method: "Cash" },
     ]
   },
   {
@@ -51,6 +52,7 @@ let students: Student[] = [
     amountDue: "₹0",
     paymentHistory: [
       { paymentId: "PAYMENT_PRIYA_PREV", date: format(new Date(), 'yyyy-MM-dd'), amount: "₹700", transactionId: "TXN_PRIYA_PREV", method: "UPI" },
+      { paymentId: "PAYMENT_PRIYA_2MAGO", date: format(subMonths(new Date(), 2), 'yyyy-MM-dd'), amount: "₹700", transactionId: "TXN_PRIYA_2MAGO", method: "Card" },
     ],
     profilePictureUrl: "https://placehold.co/200x200.png?text=PP",
   },
@@ -68,11 +70,13 @@ let students: Student[] = [
     lastPaymentDate: "2024-03-15",
     nextDueDate: format(addMonths(new Date(), -2), 'yyyy-MM-dd'),
     amountDue: "₹1200",
-    paymentHistory: [],
+    paymentHistory: [
+        { paymentId: "PAY_TS003_1MONTH_AGO", date: format(subMonths(new Date(),1), 'yyyy-MM-dd'), amount: "₹1200", transactionId: "TXN_TS003_1MAGO", method: "UPI" },
+    ],
     profilePictureUrl: "https://placehold.co/200x200.png?text=RM",
   },
-   { studentId: "TS004", name: "Vikram Singh", email: "vikram.singh@example.com", phone: "9876543213", shift: "evening", seatNumber: "40", feeStatus: "Paid", activityStatus: "Active", registrationDate: "2024-04-01", lastPaymentDate: "2024-06-03", nextDueDate: "2024-07-03", amountDue: "₹0", paymentHistory: [], profilePictureUrl: "https://placehold.co/200x200.png?text=VS" },
-   { studentId: "TS005", name: "Neha Reddy", email: "neha.reddy@example.com", phone: "9876543214", shift: "fullday", seatNumber: "50", feeStatus: "Paid", activityStatus: "Active", registrationDate: "2024-04-05", lastPaymentDate: "2024-06-01", nextDueDate: "2024-07-01", amountDue: "₹0", paymentHistory: [], profilePictureUrl: "https://placehold.co/200x200.png?text=NR" },
+   { studentId: "TS004", name: "Vikram Singh", email: "vikram.singh@example.com", phone: "9876543213", shift: "evening", seatNumber: "40", feeStatus: "Paid", activityStatus: "Active", registrationDate: "2024-04-01", lastPaymentDate: "2024-06-03", nextDueDate: "2024-07-03", amountDue: "₹0", paymentHistory: [{ paymentId: "PAY_TS004_1MONTH_AGO", date: format(subMonths(new Date(),1), 'yyyy-MM-dd'), amount: "₹700", transactionId: "TXN_TS004_1MAGO", method: "Cash" }], profilePictureUrl: "https://placehold.co/200x200.png?text=VS" },
+   { studentId: "TS005", name: "Neha Reddy", email: "neha.reddy@example.com", phone: "9876543214", shift: "fullday", seatNumber: "50", feeStatus: "Paid", activityStatus: "Active", registrationDate: "2024-04-05", lastPaymentDate: "2024-06-01", nextDueDate: "2024-07-01", amountDue: "₹0", paymentHistory: [{ paymentId: "PAY_TS005_LAST_MONTH", date: format(subMonths(new Date(),1), 'yyyy-MM-dd'), amount: "₹1200", transactionId: "TXN_TS005_LM", method: "Card" }], profilePictureUrl: "https://placehold.co/200x200.png?text=NR" },
    { studentId: "TS006", name: "Old Overdue For Auto-Left", email: "old.overdue@example.com", phone: "9876543215", shift: "morning", seatNumber: "6", feeStatus: "Overdue", activityStatus: "Active", registrationDate: "2024-01-01", lastPaymentDate: "2024-02-01", nextDueDate: format(addMonths(new Date(), -3), 'yyyy-MM-dd'), amountDue: "₹700", paymentHistory: [] },
    { studentId: "TS007", name: "Sanya Gupta Due", email: "sanya.gupta@example.com", phone: "9876543216", shift: "morning", seatNumber: "8", feeStatus: "Due", activityStatus: "Active", registrationDate: "2024-05-01", lastPaymentDate: "2024-05-10", nextDueDate: "2024-06-10", amountDue: "₹700", paymentHistory: [] },
    { studentId: "TS008", name: "Kavita Singh Paid", email: "kavita.singh@example.com", phone: "9876543217", shift: "morning", seatNumber: "10", feeStatus: "Paid", activityStatus: "Active", registrationDate: "2024-05-10", lastPaymentDate: "2024-06-01", nextDueDate: "2024-07-01", amountDue: "₹0", paymentHistory: [] },
@@ -85,7 +89,6 @@ const todayAtFivePM = new Date();
 todayAtFivePM.setHours(17, 0, 0, 0);
 
 let attendanceRecords: AttendanceRecord[] = [
-  // Changed TS001's previously active check-in to a completed one
   { recordId: "AR001B_COMPLETED_SAMPLE", studentId: "TS001", date: format(new Date(), 'yyyy-MM-dd'), checkInTime: todayAtFourPM.toISOString(), checkOutTime: todayAtFivePM.toISOString() },
   { recordId: "AR002", studentId: "TS002", date: format(new Date(), 'yyyy-MM-dd'), checkInTime: subHours(new Date(), 1).toISOString(), checkOutTime: subMinutes(new Date(), 15).toISOString() },
   { recordId: "AR003", studentId: "TS001", date: format(subHours(new Date(), 25), 'yyyy-MM-dd'), checkInTime: subHours(new Date(), 25).toISOString(), checkOutTime: subHours(new Date(), 20).toISOString() },
@@ -809,6 +812,50 @@ export async function calculateMonthlyRevenue(): Promise<string> {
   return `₹${totalRevenue.toLocaleString()}`;
 }
 
+export type MonthlyRevenueData = {
+  month: string; // e.g., "Jan", "Feb"
+  revenue: number;
+};
+
+export async function getMonthlyRevenueHistory(numberOfMonths: number): Promise<MonthlyRevenueData[]> {
+  const allStudentsData = await getAllStudents(); // Fetch once
+  const history: MonthlyRevenueData[] = [];
+  const today = new Date();
+
+  for (let i = 0; i < numberOfMonths; i++) {
+    const targetMonthDate = subMonths(today, i);
+    const monthStart = startOfMonth(targetMonthDate);
+    const monthEnd = endOfMonth(targetMonthDate);
+    let monthRevenue = 0;
+
+    allStudentsData.forEach(student => {
+      if (student.paymentHistory) {
+        student.paymentHistory.forEach(payment => {
+          try {
+            const paymentDate = parseISO(payment.date);
+            if (isValid(paymentDate) && isWithinInterval(paymentDate, { start: monthStart, end: monthEnd })) {
+              const amountValue = parseInt(payment.amount.replace('₹', ''), 10);
+              if (!isNaN(amountValue)) {
+                monthRevenue += amountValue;
+              }
+            }
+          } catch (e) {
+            console.error(`Error processing payment ${payment.paymentId} for revenue history:`, e);
+          }
+        });
+      }
+    });
+
+    history.push({
+      month: format(targetMonthDate, 'MMM'), // Short month name e.g., "Jun"
+      revenue: monthRevenue,
+    });
+  }
+
+  return history.reverse(); // To have oldest month first for the chart
+}
+
+
 // New function for calculating monthly study hours for a student
 export async function calculateMonthlyStudyHours(studentId: string): Promise<number> {
   const records = await getAttendanceRecordsByStudentId(studentId);
@@ -843,4 +890,3 @@ export async function calculateMonthlyStudyHours(studentId: string): Promise<num
   });
   return Math.round(totalMilliseconds / (1000 * 60 * 60)); // Convert ms to hours
 }
-
