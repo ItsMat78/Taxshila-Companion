@@ -21,10 +21,11 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Armchair, Briefcase, UserCheck, Clock, AlertTriangle, Loader2, Circle } from 'lucide-react';
+import { Armchair, Briefcase, UserCheck, Clock, AlertTriangle, Loader2, Circle, Sunrise, Sunset, Sun } from 'lucide-react';
 import { getAllStudents, ALL_SEAT_NUMBERS as serviceAllSeats } from '@/services/student-service';
-import type { Student } from '@/types/student';
+import type { Student, Shift } from '@/types/student';
 import { useToast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
 
 export default function SeatAvailabilityPage() {
   const { toast } = useToast();
@@ -55,15 +56,43 @@ export default function SeatAvailabilityPage() {
   }, [toast]);
 
   const activeStudents = allStudents.filter(s => s.activityStatus === "Active");
-  const occupiedSeatNumbers = activeStudents.map(s => s.seatNumber).filter(Boolean) as string[];
+  const occupiedSeatMap = new Map<string, Student>();
+  activeStudents.forEach(student => {
+    if (student.seatNumber) {
+      occupiedSeatMap.set(student.seatNumber, student);
+    }
+  });
+
+  const occupiedSeatNumbers = Array.from(occupiedSeatMap.keys());
   
   const totalSeats = serviceAllSeats.length;
   const occupiedSeatsCount = occupiedSeatNumbers.length;
   const availableSeatsCount = totalSeats - occupiedSeatsCount;
 
+  const occupiedMorningCount = activeStudents.filter(s => s.shift === 'morning').length;
+  const occupiedEveningCount = activeStudents.filter(s => s.shift === 'evening').length;
+  const occupiedFullDayCount = activeStudents.filter(s => s.shift === 'fullday').length;
+
   const availableSeatObjects = serviceAllSeats
-    .filter(seat => !occupiedSeatNumbers.includes(seat))
+    .filter(seat => !occupiedSeatMap.has(seat))
     .map(seatNumber => ({ seatNumber }));
+
+  const getSeatBadgeClass = (seatNumber: string): string => {
+    const student = occupiedSeatMap.get(seatNumber);
+    if (student) {
+      switch (student.shift) {
+        case 'morning':
+          return 'bg-orange-200 border-orange-300 text-orange-800 hover:bg-orange-300';
+        case 'evening':
+          return 'bg-purple-200 border-purple-300 text-purple-800 hover:bg-purple-300';
+        case 'fullday':
+          return 'bg-yellow-200 border-yellow-300 text-yellow-800 hover:bg-yellow-300';
+        default:
+          return 'bg-destructive/80 border-destructive text-destructive-foreground hover:bg-destructive'; // Fallback for occupied
+      }
+    }
+    return 'bg-sky-200 border-sky-300 text-sky-800 hover:bg-sky-300'; // Available
+  };
 
   return (
     <>
@@ -83,6 +112,7 @@ export default function SeatAvailabilityPage() {
               </CardHeader>
               <CardContent>
                 <p className="text-3xl font-bold">{totalSeats}</p>
+                <p className="text-xs text-muted-foreground pt-1">Capacity of study hall</p>
               </CardContent>
             </Card>
 
@@ -97,6 +127,9 @@ export default function SeatAvailabilityPage() {
                   </CardHeader>
                   <CardContent>
                     <p className="text-3xl font-bold text-destructive">{occupiedSeatsCount}</p>
+                     <p className="text-xs text-muted-foreground pt-1">
+                      M: {occupiedMorningCount}, E: {occupiedEveningCount}, F: {occupiedFullDayCount}
+                    </p>
                   </CardContent>
                 </Card>
               </DialogTrigger>
@@ -115,8 +148,7 @@ export default function SeatAvailabilityPage() {
                         <TableHead>Name</TableHead>
                         <TableHead>Phone</TableHead>
                         <TableHead>Seat</TableHead>
-                        {/* <TableHead className="flex items-center"><Clock className="mr-1 h-4 w-4"/>Time In Library</TableHead> */}
-                        {/* <TableHead>Status</TableHead> */}
+                        <TableHead>Shift</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -126,17 +158,12 @@ export default function SeatAvailabilityPage() {
                           <TableCell className="font-medium">{student.name}</TableCell>
                           <TableCell>{student.phone}</TableCell>
                           <TableCell>{student.seatNumber}</TableCell>
-                          {/* <TableCell>Placeholder Time</TableCell> */}
-                          {/* <TableCell>
-                            {student.feeStatus === 'Overdue' && ( // Example: Highlight overdue on active list
-                              <AlertTriangle className="h-5 w-5 text-destructive" />
-                            )}
-                          </TableCell> */}
+                          <TableCell className="capitalize">{student.shift}</TableCell>
                         </TableRow>
                       ))}
                       {activeStudents.length === 0 && (
                           <TableRow>
-                            <TableCell colSpan={4} className="text-center text-muted-foreground">
+                            <TableCell colSpan={5} className="text-center text-muted-foreground">
                               No students currently active in the library.
                             </TableCell>
                           </TableRow>
@@ -158,6 +185,7 @@ export default function SeatAvailabilityPage() {
                   </CardHeader>
                   <CardContent>
                     <p className="text-3xl font-bold text-green-600">{availableSeatsCount}</p>
+                     <p className="text-xs text-muted-foreground pt-1">Currently vacant seats</p>
                   </CardContent>
                 </Card>
               </DialogTrigger>
@@ -198,33 +226,40 @@ export default function SeatAvailabilityPage() {
           <Card className="mt-6 shadow-lg">
             <CardHeader>
               <CardTitle>Seat Layout</CardTitle>
-              <CardDescription>Visual representation of seat occupancy.</CardDescription>
+              <CardDescription>Visual representation of seat occupancy by shift.</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="flex items-center space-x-4 mb-4">
-                <div className="flex items-center">
-                  <Circle className="h-4 w-4 mr-2 fill-green-500 text-green-500" />
-                  <span className="text-sm">Available</span>
+              <div className="flex flex-wrap items-center space-x-4 mb-4 text-xs sm:text-sm">
+                <div className="flex items-center mr-2 mb-1 sm:mb-0">
+                  <Circle className="h-3 w-3 sm:h-4 sm:w-4 mr-1 fill-sky-200 text-sky-300" />
+                  <span>Available</span>
                 </div>
-                <div className="flex items-center">
-                  <Circle className="h-4 w-4 mr-2 fill-destructive text-destructive" />
-                  <span className="text-sm">Occupied</span>
+                <div className="flex items-center mr-2 mb-1 sm:mb-0">
+                  <Sunrise className="h-3 w-3 sm:h-4 sm:w-4 mr-1 text-orange-500" /> 
+                  <span className="mr-0.5">Morning:</span>
+                  <Circle className="h-3 w-3 sm:h-4 sm:w-4 fill-orange-200 text-orange-300" />
+                </div>
+                <div className="flex items-center mr-2 mb-1 sm:mb-0">
+                  <Sunset className="h-3 w-3 sm:h-4 sm:w-4 mr-1 text-purple-500" />
+                  <span className="mr-0.5">Evening:</span>
+                   <Circle className="h-3 w-3 sm:h-4 sm:w-4 fill-purple-200 text-purple-300" />
+                </div>
+                <div className="flex items-center mb-1 sm:mb-0">
+                  <Sun className="h-3 w-3 sm:h-4 sm:w-4 mr-1 text-yellow-500" />
+                  <span className="mr-0.5">Full Day:</span>
+                  <Circle className="h-3 w-3 sm:h-4 sm:w-4 fill-yellow-200 text-yellow-300" />
                 </div>
               </div>
               <div className="grid grid-cols-10 gap-2 sm:gap-3 md:grid-cols-12 lg:grid-cols-15 xl:grid-cols-17">
                 {serviceAllSeats.map((seatNum) => {
-                  const isOccupied = occupiedSeatNumbers.includes(seatNum);
                   return (
                     <Badge
                       key={seatNum}
                       variant="outline"
-                      className={`flex items-center justify-center h-10 w-10 sm:h-12 sm:w-12 text-xs sm:text-sm rounded-md transition-colors
-                        ${isOccupied 
-                          ? 'bg-destructive/80 border-destructive text-destructive-foreground hover:bg-destructive' 
-                          : 'bg-green-500/80 border-green-600 text-green-foreground hover:bg-green-600'
-                        }
-                        font-medium
-                      `}
+                      className={cn(
+                        "flex items-center justify-center h-10 w-10 sm:h-12 sm:w-12 text-xs sm:text-sm rounded-md transition-colors font-medium",
+                        getSeatBadgeClass(seatNum)
+                      )}
                     >
                       {seatNum}
                     </Badge>
@@ -239,4 +274,3 @@ export default function SeatAvailabilityPage() {
   );
 }
 
-    
