@@ -11,10 +11,9 @@ import {
   DialogContent,
   DialogDescription,
   DialogHeader,
-  DialogTitle,
-  DialogTrigger,
+  DialogTitle as ShadcnDialogTitle, // Aliased to avoid conflict with CardTitle if any confusion
 } from "@/components/ui/dialog";
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Alert, AlertDescription, AlertTitle as ShadcnAlertTitle } from '@/components/ui/alert'; // Aliased
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/auth-context';
 import { Camera, QrCode, Receipt, IndianRupee, MessageSquare, Bell, ScrollText, Star, Loader2, XCircle, Home } from 'lucide-react';
@@ -29,19 +28,18 @@ type DashboardTileProps = {
   className?: string;
   isPrimaryAction?: boolean;
   external?: boolean;
-  hasNew?: boolean; // For new alert indicator
+  hasNew?: boolean; 
 };
 
 const DashboardTile: React.FC<DashboardTileProps> = ({ title, description, icon: Icon, href, action, className = "", isPrimaryAction = false, external = false, hasNew = false }) => {
   const tileContent = (
     <Card className={cn(
-      "shadow-lg hover:shadow-xl transition-shadow h-full flex flex-col relative", // Added relative for positioning the dot
+      "shadow-lg hover:shadow-xl transition-shadow h-full flex flex-col relative", 
       isPrimaryAction ? 'bg-primary text-primary-foreground hover:bg-primary/90' : 'hover:bg-muted/50',
       className
     )}>
       <CardHeader className={cn(
-        "pb-2", 
-        isPrimaryAction ? "pt-6 pb-3" : "pt-4 pb-2" // Adjusted padding
+        isPrimaryAction ? "pt-4 pb-2" : "p-3 pb-1" // Reduced padding
       )}>
         {hasNew && !isPrimaryAction && (
           <span className="absolute top-2 right-2 flex h-3 w-3">
@@ -51,15 +49,15 @@ const DashboardTile: React.FC<DashboardTileProps> = ({ title, description, icon:
         )}
         <CardTitle className={cn(
           "flex items-center",
-          isPrimaryAction ? 'text-xl font-semibold' : 'text-lg font-semibold',
+          isPrimaryAction ? 'text-lg font-semibold' : 'text-base font-semibold', // Reduced font size
         )}>
-          <Icon className={cn("mr-3", isPrimaryAction ? "h-6 w-6" : "h-5 w-5")} />
+          <Icon className={cn("mr-3", isPrimaryAction ? "h-5 w-5" : "h-4 w-4")} /> {/* Reduced icon size */}
           {title}
         </CardTitle>
       </CardHeader>
       <CardContent className={cn(
         "flex-grow",
-        isPrimaryAction ? "pt-0 pb-4 px-6" : "p-4 pt-0" // Ensured padding for content
+         isPrimaryAction ? "pt-0 pb-3 px-4" : "p-3 pt-0" // Reduced padding
         )}>
         {description && <p className={cn(
           isPrimaryAction ? 'text-sm text-primary-foreground/80' : 'text-xs text-muted-foreground',
@@ -69,24 +67,14 @@ const DashboardTile: React.FC<DashboardTileProps> = ({ title, description, icon:
   );
 
   if (href) {
-    if (external) {
-      return (
-        <a
-          href={href}
-          target="_blank"
-          rel="noopener noreferrer"
-          className={cn("block h-full no-underline", className)}
-        >
-          {tileContent}
-        </a>
-      );
-    } else {
-      return (
-        <Link href={href} className={cn("block h-full no-underline", className)}>
-          {tileContent}
-        </Link>
-      );
-    }
+    const linkProps = external
+      ? { target: '_blank', rel: 'noopener noreferrer' }
+      : {};
+    return (
+      <Link href={href} {...linkProps} className={cn("block h-full no-underline", className)}>
+        {tileContent}
+      </Link>
+    );
   }
 
   if (action) {
@@ -167,7 +155,7 @@ export default function MemberDashboardPage() {
   };
   
   const coreActionTiles: DashboardTileProps[] = [
-    { title: "View Alerts", description: "Catch up on important announcements.", icon: Bell, href: "/member/alerts", hasNew: true }, // Added hasNew placeholder
+    { title: "View Alerts", description: "Catch up on important announcements.", icon: Bell, href: "/member/alerts", hasNew: true }, 
     { title: "My Fees", description: "View your fee status and history.", icon: Receipt, href: "/member/fees" },
     { title: "Pay Fees", description: "Settle your outstanding dues.", icon: IndianRupee, href: "/member/pay" },
     { title: "Submit Feedback", description: "Share suggestions or report issues.", icon: MessageSquare, href: "/member/feedback" },
@@ -196,7 +184,7 @@ export default function MemberDashboardPage() {
         </DialogTrigger>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="flex items-center"><Camera className="mr-2"/>Scan QR Code</DialogTitle>
+            <ShadcnDialogTitle className="flex items-center"><Camera className="mr-2"/>Scan QR Code</ShadcnDialogTitle>
             <DialogDescription>
               Point your camera at the QR code provided at the library desk.
             </DialogDescription>
@@ -206,7 +194,7 @@ export default function MemberDashboardPage() {
             {hasCameraPermission === false && (
               <Alert variant="destructive">
                 <XCircle className="h-4 w-4" />
-                <AlertTitle>Camera Access Denied</AlertTitle>
+                <ShadcnAlertTitle>Camera Access Denied</ShadcnAlertTitle>
                 <AlertDescription>
                   Camera access is required. Please enable it in your browser settings and try again.
                 </AlertDescription>
@@ -255,5 +243,3 @@ export default function MemberDashboardPage() {
     </>
   );
 }
-
-    

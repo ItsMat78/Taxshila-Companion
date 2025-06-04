@@ -1,3 +1,4 @@
+
 import * as React from "react"
 
 import { cn } from "@/lib/utils"
@@ -36,7 +37,7 @@ const CardTitle = React.forwardRef<
   <h3 // Changed from div to h3 for semantic title
     ref={ref}
     className={cn(
-      "text-lg font-semibold leading-snug tracking-tight font-headline", // Reduced font size, changed to leading-snug
+      "text-lg font-semibold leading-tight tracking-tight font-headline", // Changed to leading-tight
       className
     )}
     {...props}
