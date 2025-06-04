@@ -20,9 +20,9 @@ import {
 } from "@/components/ui/table";
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { MailWarning, MessageSquare, Archive, CheckCircle, Loader2, Send } from 'lucide-react';
+import { MailWarning, MessageSquare, Archive, CheckCircle, Loader2, Send, Reply } from 'lucide-react';
 import { getAllFeedback, updateFeedbackStatus as updateFeedbackStatusService, sendAlertToStudent } from '@/services/student-service';
-import type { FeedbackItem, FeedbackStatus } from '@/types/communication';
+import type { FeedbackItem, FeedbackStatus, FeedbackType } from '@/types/communication';
 import { useToast } from '@/hooks/use-toast';
 import { format, parseISO } from 'date-fns';
 import {
@@ -34,13 +34,13 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Textarea } from '@/components/ui/textarea';
-import { Label } from "@/components/ui/label"; // Added 'from' clause
+import { Label } from "@/components/ui/label";
 
 interface FeedbackResponseDialogProps {
   feedbackItem: FeedbackItem | null;
   isOpen: boolean;
   onClose: () => void;
-  onSendResponse: (feedbackId: string, responseMessage: string) => Promise<void>;
+  onSendResponse: (feedbackId: string, responseMessage: string, originalMessage: string) => Promise<void>;
 }
 
 function FeedbackResponseDialog({ feedbackItem, isOpen, onClose, onSendResponse }: FeedbackResponseDialogProps) {
@@ -49,7 +49,7 @@ function FeedbackResponseDialog({ feedbackItem, isOpen, onClose, onSendResponse 
 
   React.useEffect(() => {
     if (isOpen) {
-      setResponseMessage(""); // Reset when dialog opens
+      setResponseMessage(""); 
     }
   }, [isOpen]);
 
@@ -61,32 +61,38 @@ function FeedbackResponseDialog({ feedbackItem, isOpen, onClose, onSendResponse 
       return;
     }
     setIsSending(true);
-    await onSendResponse(feedbackItem.id, responseMessage);
+    await onSendResponse(feedbackItem.id, responseMessage, feedbackItem.message);
     setIsSending(false);
-    onClose(); // Close dialog after sending
+    onClose(); 
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent>
+      <DialogContent className="sm:max-w-[525px]">
         <DialogHeader>
-          <DialogTitle>Respond to Feedback: "{feedbackItem.message.substring(0, 30)}..."</DialogTitle>
+          <DialogTitle className="flex items-center">
+            <Reply className="mr-2 h-5 w-5" />
+            Respond to Feedback
+            </DialogTitle>
           <DialogDescription>
-            Compose a message to send to {feedbackItem.studentName || 'the student'} regarding their feedback.
-            This will also mark the feedback as "Resolved".
+            Your response will be sent as an alert to {feedbackItem.studentName || 'the student'} and this feedback will be marked as "Resolved".
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="responseMessage" className="text-right col-span-1">
-              Message
+          <div className="mb-2 p-3 bg-muted/50 rounded-md border">
+            <p className="text-xs font-semibold text-muted-foreground">Original Feedback from {feedbackItem.studentName || 'Student'}:</p>
+            <p className="text-sm italic line-clamp-3">"{feedbackItem.message}"</p>
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="responseMessage" className="text-left">
+              Your Response Message
             </Label>
             <Textarea
               id="responseMessage"
               value={responseMessage}
               onChange={(e) => setResponseMessage(e.target.value)}
               placeholder="Type your response here..."
-              className="col-span-3 min-h-[100px]"
+              className="min-h-[100px]"
               disabled={isSending}
             />
           </div>
@@ -129,27 +135,30 @@ export default function AdminFeedbackPage() {
     fetchFeedback();
   }, [fetchFeedback]);
 
-  const handleUpdateStatus = async (feedbackId: string, status: FeedbackStatus, responseMessage?: string) => {
+  const handleUpdateStatus = async (feedbackId: string, status: FeedbackStatus, responseMessage?: string, originalMessage?: string) => {
     setUpdatingFeedbackId(feedbackId);
     try {
       await updateFeedbackStatusService(feedbackId, status);
-      if (status === "Resolved" && responseMessage && selectedFeedbackForResponse?.studentId) {
+      if (status === "Resolved" && responseMessage && selectedFeedbackForResponse?.studentId && originalMessage) {
+        const snippet = originalMessage.substring(0, 50) + (originalMessage.length > 50 ? "..." : "");
         await sendAlertToStudent(
           selectedFeedbackForResponse.studentId,
-          `Regarding your feedback: "${selectedFeedbackForResponse.message.substring(0,20)}..."`,
+          `Response to your feedback: "${snippet}"`,
           responseMessage,
-          "info" // Using 'info' type for feedback responses
+          "feedback_response", // New alert type
+          selectedFeedbackForResponse.id, // originalFeedbackId
+          snippet // originalFeedbackMessageSnippet
         );
         toast({ title: "Response Sent", description: `Alert sent to ${selectedFeedbackForResponse.studentName || 'student'} and feedback marked as Resolved.` });
-      } else {
+      } else if (status !== "Resolved") { // Only toast for Archive if not part of resolve flow
         toast({ title: "Feedback Updated", description: `Status changed to ${status}.` });
       }
-      await fetchFeedback(); // Refresh list
+      await fetchFeedback(); 
     } catch (error: any) {
       toast({ title: "Update Failed", description: error.message || "Could not update feedback status.", variant: "destructive" });
     } finally {
       setUpdatingFeedbackId(null);
-      setSelectedFeedbackForResponse(null);
+      setSelectedFeedbackForResponse(null); // Clear selection after any update
     }
   };
 
@@ -158,8 +167,8 @@ export default function AdminFeedbackPage() {
     setIsResponseDialogOpen(true);
   };
 
-  const handleSendAndResolve = async (feedbackId: string, responseMessage: string) => {
-    await handleUpdateStatus(feedbackId, "Resolved", responseMessage);
+  const handleSendAndResolve = async (feedbackId: string, responseMsg: string, originalMsg: string) => {
+    await handleUpdateStatus(feedbackId, "Resolved", responseMsg, originalMsg);
   };
 
   const handleArchiveFeedback = (feedbackId: string) => {
@@ -242,17 +251,17 @@ export default function AdminFeedbackPage() {
                     <TableCell className="text-sm">{item.message}</TableCell>
                     <TableCell>{getFeedbackStatusBadge(item.status)}</TableCell>
                     <TableCell className="text-right space-x-1">
-                      {item.status === "Open" && (
+                      {item.status === "Open" && item.studentId && ( // Only allow resolve if studentId is present
                         <Button
                           variant="outline"
                           size="sm"
                           onClick={() => handleOpenResponseDialog(item)}
                           disabled={updatingFeedbackId === item.id}
                         >
-                          {updatingFeedbackId === item.id && item.status === "Open" ? (
+                          {updatingFeedbackId === item.id && selectedFeedbackForResponse?.id === item.id ? (
                             <Loader2 className="mr-1 h-3 w-3 animate-spin" />
                           ) : (
-                            <CheckCircle className="mr-1 h-3 w-3" />
+                            <Reply className="mr-1 h-3 w-3" />
                           )}
                           Resolve
                         </Button>
@@ -262,10 +271,10 @@ export default function AdminFeedbackPage() {
                           variant="ghost"
                           size="sm"
                           onClick={() => handleArchiveFeedback(item.id)}
-                          disabled={updatingFeedbackId === item.id}
+                          disabled={updatingFeedbackId === item.id && selectedFeedbackForResponse?.id !== item.id}
                           className="text-muted-foreground hover:text-destructive"
                         >
-                          {updatingFeedbackId === item.id && item.status !== "Archived" ? (
+                          {updatingFeedbackId === item.id && selectedFeedbackForResponse?.id !== item.id ? (
                             <Loader2 className="mr-1 h-3 w-3 animate-spin" />
                           ) : (
                             <Archive className="mr-1 h-3 w-3" />
@@ -286,7 +295,7 @@ export default function AdminFeedbackPage() {
         isOpen={isResponseDialogOpen}
         onClose={() => {
             setIsResponseDialogOpen(false);
-            setSelectedFeedbackForResponse(null);
+            setSelectedFeedbackForResponse(null); // Ensure selection is cleared
         }}
         onSendResponse={handleSendAndResolve}
       />

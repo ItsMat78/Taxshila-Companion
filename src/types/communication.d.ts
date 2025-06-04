@@ -17,8 +17,9 @@ export interface AlertItem {
   studentId?: string; // Optional: for targeted alerts to a specific student
   title: string;
   message: string;
-  type: "info" | "warning" | "closure"; // Corresponds to admin alert types
+  type: "info" | "warning" | "closure" | "feedback_response"; // Added feedback_response
   dateSent: string; // ISO date string
+  isRead?: boolean; // New field for read status
+  originalFeedbackId?: string; // New field
+  originalFeedbackMessageSnippet?: string; // New field
 }
-
-    

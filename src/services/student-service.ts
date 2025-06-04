@@ -1,3 +1,4 @@
+
 import type { Student, Shift, FeeStatus, PaymentRecord, ActivityStatus, AttendanceRecord } from '@/types/student';
 import type { FeedbackItem, FeedbackType, FeedbackStatus, AlertItem } from '@/types/communication';
 import { format, parseISO, differenceInDays, isPast, addMonths, subHours, subMinutes, startOfDay, endOfDay, isValid } from 'date-fns';
@@ -86,12 +87,10 @@ let feedbackItems: FeedbackItem[] = [
     { id: "FB003", studentId: "TS001", studentName: "Aarav Sharma", dateSubmitted: "2024-06-26", type: "Compliment", message: "The library is always clean and quiet. Great job!", status: "Resolved" },
 ];
 
-// Placeholder for AlertItem store
 let alertItems: AlertItem[] = [
-  // These are general alerts initially present for members to see
-  { id: "ALERT001", title: "Library Closure Notification", message: "The library will be closed on July 4th for Independence Day. We will reopen on July 5th.", dateSent: "2024-06-28", type: "closure" },
-  { id: "ALERT002", title: "New Quiet Study Zone", message: "We've opened a new dedicated quiet study zone on the 2nd floor. Please maintain silence.", dateSent: "2024-06-25", type: "info" },
-  { id: "ALERT003", title: "Maintenance Scheduled", message: "Network maintenance is scheduled for this Sunday from 2 AM to 4 AM. Internet services might be intermittent.", dateSent: "2024-06-20", type: "warning" },
+  { id: "ALERT001", title: "Library Closure Notification", message: "The library will be closed on July 4th for Independence Day. We will reopen on July 5th.", dateSent: "2024-06-28", type: "closure", isRead: false },
+  { id: "ALERT002", title: "New Quiet Study Zone", message: "We've opened a new dedicated quiet study zone on the 2nd floor. Please maintain silence.", dateSent: "2024-06-25", type: "info", isRead: false },
+  { id: "ALERT003", title: "Maintenance Scheduled", message: "Network maintenance is scheduled for this Sunday from 2 AM to 4 AM. Internet services might be intermittent.", dateSent: "2024-06-20", type: "warning", isRead: false },
 ];
 
 
@@ -519,7 +518,7 @@ export function submitFeedback(
         studentName,
         message,
         type,
-        dateSubmitted: format(new Date(), 'yyyy-MM-dd'),
+        dateSubmitted: format(new Date(), 'yyyy-MM-dd'), // Changed to current date for new feedback
         status: "Open",
       };
       feedbackItems.push(newFeedback);
@@ -572,8 +571,8 @@ export function sendGeneralAlert(title: string, message: string, type: AlertItem
         title,
         message,
         type,
-        dateSent: format(new Date(), 'yyyy-MM-dd'),
-        // studentId is undefined for general alerts
+        dateSent: new Date().toISOString(),
+        isRead: false,
       };
       alertItems.push(newAlert);
       resolve({...newAlert});
@@ -581,12 +580,19 @@ export function sendGeneralAlert(title: string, message: string, type: AlertItem
   });
 }
 
-export function sendAlertToStudent(studentId: string, title: string, message: string, type: AlertItem['type']): Promise<AlertItem> {
+export function sendAlertToStudent(
+    studentId: string, 
+    title: string, 
+    message: string, 
+    type: AlertItem['type'],
+    originalFeedbackId?: string,
+    originalFeedbackMessageSnippet?: string
+): Promise<AlertItem> {
   return new Promise((resolve, reject) => {
     setTimeout(() => {
       const studentExists = students.some(s => s.studentId === studentId);
-      if (!studentExists) {
-        reject(new Error(`Student with ID ${studentId} not found.`));
+      if (!studentExists && type === 'feedback_response') { // Only reject if it's a feedback response for a non-existent student
+        reject(new Error(`Student with ID ${studentId} not found for feedback response.`));
         return;
       }
       const newAlert: AlertItem = {
@@ -595,7 +601,10 @@ export function sendAlertToStudent(studentId: string, title: string, message: st
         title,
         message,
         type,
-        dateSent: format(new Date(), 'yyyy-MM-dd'),
+        dateSent: new Date().toISOString(),
+        isRead: false,
+        originalFeedbackId,
+        originalFeedbackMessageSnippet,
       };
       alertItems.push(newAlert);
       resolve({...newAlert});
@@ -607,19 +616,31 @@ export function getAlertsForStudent(studentId: string): Promise<AlertItem[]> {
   return new Promise((resolve) => {
     setTimeout(() => {
       const relevantAlerts = alertItems.filter(alert => 
-        alert.studentId === studentId || !alert.studentId // Targeted to this student OR general alert
+        alert.studentId === studentId || (!alert.studentId && alert.type !== 'feedback_response') // Targeted OR general (but not feedback responses for OTHERS)
       );
       resolve([...relevantAlerts].sort((a, b) => parseISO(b.dateSent).getTime() - parseISO(a.dateSent).getTime()));
     }, 50);
   });
 }
 
-export function getAllAdminSentAlerts(): Promise<AlertItem[]> { // For admin/alerts/history page
+export function getAllAdminSentAlerts(): Promise<AlertItem[]> { 
    return new Promise((resolve) => {
     setTimeout(() => {
-      // Returns all alerts, as admin sent them all.
-      // Could be filtered later if there were "system" alerts not directly sent by admin.
       resolve([...alertItems].sort((a, b) => parseISO(b.dateSent).getTime() - parseISO(a.dateSent).getTime()));
+    }, 50);
+  });
+}
+
+export function markAlertAsRead(alertId: string): Promise<AlertItem | undefined> {
+  return new Promise((resolve, reject) => {
+    setTimeout(() => {
+      const alertIndex = alertItems.findIndex(alert => alert.id === alertId);
+      if (alertIndex !== -1) {
+        alertItems[alertIndex].isRead = true;
+        resolve({...alertItems[alertIndex]});
+      } else {
+        reject(new Error("Alert not found."));
+      }
     }, 50);
   });
 }
