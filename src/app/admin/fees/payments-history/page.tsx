@@ -19,18 +19,61 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from '@/components/ui/badge';
-import { History, ListChecks, CreditCard } from 'lucide-react';
+import { History, ListChecks, CreditCard, Loader2 } from 'lucide-react';
+import { getAllStudents } from '@/services/student-service';
+import type { Student, PaymentRecord } from '@/types/student';
+import { useToast } from '@/hooks/use-toast';
+import { format, parseISO, isValid } from 'date-fns';
 
-// Placeholder data for payment history
-const placeholderPaymentHistory = [
-  { id: "PAY001", studentId: "TS001", studentName: "Aarav Sharma", date: "2024-06-01", amount: "₹700", transactionId: "TXN12345601", method: "UPI" },
-  { id: "PAY002", studentId: "TS002", studentName: "Priya Patel", date: "2024-06-02", amount: "₹700", transactionId: "TXN12345602", method: "Cash" },
-  { id: "PAY003", studentId: "TS003", studentName: "Rohan Mehta", date: "2024-05-15", amount: "₹1200", transactionId: "TXN12345523", method: "UPI" },
-  { id: "PAY004", studentId: "TS004", studentName: "Vikram Singh", date: "2024-06-03", amount: "₹700", transactionId: "TXN12345604", method: "Card" },
-  { id: "PAY005", studentId: "TS007", studentName: "Sanya Gupta", date: "2024-05-10", amount: "₹700", transactionId: "TXN12345400", method: "UPI" },
-];
+interface AggregatedPaymentRecord extends PaymentRecord {
+  studentId: string;
+  studentName: string;
+}
 
 export default function PaymentHistoryPage() {
+  const { toast } = useToast();
+  const [allPayments, setAllPayments] = React.useState<AggregatedPaymentRecord[]>([]);
+  const [isLoading, setIsLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    const fetchPaymentHistory = async () => {
+      setIsLoading(true);
+      try {
+        const allStudents = await getAllStudents();
+        const aggregatedPayments: AggregatedPaymentRecord[] = [];
+
+        allStudents.forEach(student => {
+          if (student.paymentHistory && student.paymentHistory.length > 0) {
+            student.paymentHistory.forEach(payment => {
+              aggregatedPayments.push({
+                ...payment,
+                studentId: student.studentId,
+                studentName: student.name,
+              });
+            });
+          }
+        });
+
+        // Sort by date, most recent first
+        aggregatedPayments.sort((a, b) => {
+          try {
+            const dateA = a.date && isValid(parseISO(a.date)) ? parseISO(a.date) : new Date(0);
+            const dateB = b.date && isValid(parseISO(b.date)) ? parseISO(b.date) : new Date(0);
+            return dateB.getTime() - dateA.getTime();
+          } catch (e) { return 0; }
+        });
+
+        setAllPayments(aggregatedPayments);
+      } catch (error) {
+        console.error("Failed to fetch payment history:", error);
+        toast({ title: "Error", description: "Could not load payment history.", variant: "destructive" });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchPaymentHistory();
+  }, [toast]);
+
   return (
     <>
       <PageTitle title="Recent Payment History" description="View a log of recent fee payments made by students." />
@@ -41,46 +84,57 @@ export default function PaymentHistoryPage() {
             <ListChecks className="mr-2 h-5 w-5 text-primary" />
             All Payments
           </CardTitle>
-          <CardDescription>Displaying recent transactions. Placeholder data used.</CardDescription>
+          <CardDescription>Displaying all recorded transactions, sorted by most recent.</CardDescription>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Payment ID</TableHead>
-                <TableHead>Student Name</TableHead>
-                <TableHead>Date</TableHead>
-                <TableHead>Amount</TableHead>
-                <TableHead>Transaction ID</TableHead>
-                <TableHead>Method</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {placeholderPaymentHistory.map((payment) => (
-                <TableRow key={payment.id}>
-                  <TableCell>{payment.id}</TableCell>
-                  <TableCell className="font-medium">{payment.studentName} ({payment.studentId})</TableCell>
-                  <TableCell>{payment.date}</TableCell>
-                  <TableCell>{payment.amount}</TableCell>
-                  <TableCell>{payment.transactionId}</TableCell>
-                  <TableCell>
-                    <Badge variant="secondary" className="capitalize">
-                      <CreditCard className="mr-1 h-3 w-3"/> 
-                      {payment.method}
-                    </Badge>
-                  </TableCell>
-                </TableRow>
-              ))}
-              {placeholderPaymentHistory.length === 0 && (
+          {isLoading ? (
+            <div className="flex items-center justify-center py-10">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <p className="ml-2 text-muted-foreground">Loading payment history...</p>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center text-muted-foreground py-4">
-                     <History className="mx-auto mb-2 h-8 w-8 text-muted-foreground" />
-                    No payment history found.
-                  </TableCell>
+                  <TableHead>Payment ID</TableHead>
+                  <TableHead>Student Name</TableHead>
+                  <TableHead className="w-[150px]">Date</TableHead>
+                  <TableHead>Amount</TableHead>
+                  <TableHead>Transaction ID</TableHead>
+                  <TableHead className="w-[120px]">Method</TableHead>
                 </TableRow>
-              )}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {allPayments.map((payment) => (
+                  <TableRow key={payment.paymentId}>
+                    <TableCell>{payment.paymentId}</TableCell>
+                    <TableCell className="font-medium">{payment.studentName} ({payment.studentId})</TableCell>
+                    <TableCell>
+                      {payment.date && isValid(parseISO(payment.date))
+                        ? format(parseISO(payment.date), 'MMM d, yyyy')
+                        : 'N/A'}
+                    </TableCell>
+                    <TableCell>{payment.amount}</TableCell>
+                    <TableCell>{payment.transactionId}</TableCell>
+                    <TableCell>
+                      <Badge variant="secondary" className="capitalize">
+                        <CreditCard className="mr-1 h-3 w-3"/> 
+                        {payment.method}
+                      </Badge>
+                    </TableCell>
+                  </TableRow>
+                ))}
+                {allPayments.length === 0 && !isLoading && (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center text-muted-foreground py-6">
+                       <History className="mx-auto mb-2 h-10 w-10 text-muted-foreground" />
+                      No payment history found.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
     </>
