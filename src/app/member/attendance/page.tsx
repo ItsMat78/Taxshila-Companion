@@ -15,8 +15,11 @@ import {
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Camera, Loader2, XCircle, BarChart3, Clock } from 'lucide-react';
+import { Camera, Loader2, XCircle, BarChart3, Clock, LogIn, LogOut } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
+import { getStudentByEmail, getActiveCheckIn, addCheckIn, addCheckOut, getAttendanceForDate } from '@/services/student-service';
+import type { AttendanceRecord } from '@/types/student';
+import { format, parseISO } from 'date-fns';
 
 export default function MemberAttendancePage() {
   const { user } = useAuth();
@@ -28,6 +31,38 @@ export default function MemberAttendancePage() {
   const [isProcessingQr, setIsProcessingQr] = React.useState(false);
   const streamRef = React.useRef<MediaStream | null>(null);
 
+  const [currentStudentId, setCurrentStudentId] = React.useState<string | null>(null);
+  const [attendanceForDay, setAttendanceForDay] = React.useState<AttendanceRecord[]>([]);
+  const [isLoadingDetails, setIsLoadingDetails] = React.useState(false);
+
+  React.useEffect(() => {
+    if (user?.email) {
+      const fetchStudent = async () => {
+        try {
+          const student = await getStudentByEmail(user.email);
+          if (student) {
+            setCurrentStudentId(student.studentId);
+          } else {
+            toast({
+              title: "Student Record Not Found",
+              description: "Could not find a student record associated with your email.",
+              variant: "destructive",
+            });
+            setCurrentStudentId(null);
+          }
+        } catch (error) {
+          toast({
+            title: "Error",
+            description: "Failed to fetch student details.",
+            variant: "destructive",
+          });
+          setCurrentStudentId(null);
+        }
+      };
+      fetchStudent();
+    }
+  }, [user, toast]);
+
   React.useEffect(() => {
     const getCameraPermission = async () => {
       if (isScannerOpen) {
@@ -37,6 +72,7 @@ export default function MemberAttendancePage() {
           setHasCameraPermission(true);
           if (videoRef.current) {
             videoRef.current.srcObject = stream;
+            videoRef.current.playsInline = true; // For better mobile compatibility
           }
         } catch (error) {
           console.error('Error accessing camera:', error);
@@ -68,6 +104,32 @@ export default function MemberAttendancePage() {
     };
   }, [isScannerOpen, toast]);
 
+  const fetchAttendanceForSelectedDate = React.useCallback(async () => {
+    if (currentStudentId && date) {
+      setIsLoadingDetails(true);
+      try {
+        const records = await getAttendanceForDate(currentStudentId, format(date, 'yyyy-MM-dd'));
+        setAttendanceForDay(records);
+      } catch (error) {
+        toast({
+          title: "Error Fetching Attendance",
+          description: "Could not load attendance for the selected date.",
+          variant: "destructive",
+        });
+        setAttendanceForDay([]);
+      } finally {
+        setIsLoadingDetails(false);
+      }
+    } else {
+      setAttendanceForDay([]);
+    }
+  }, [currentStudentId, date, toast]);
+
+  React.useEffect(() => {
+    fetchAttendanceForSelectedDate();
+  }, [fetchAttendanceForSelectedDate]);
+
+
   const handleScanButtonClick = () => {
     setIsScannerOpen(true);
     setHasCameraPermission(null); 
@@ -78,14 +140,41 @@ export default function MemberAttendancePage() {
   };
 
   const simulateQrScan = async () => {
+    if (!currentStudentId) {
+      toast({
+        title: "Error",
+        description: "Student ID not found. Cannot record attendance.",
+        variant: "destructive",
+      });
+      return;
+    }
     setIsProcessingQr(true);
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    setIsProcessingQr(false);
-    setIsScannerOpen(false);
-    toast({
-      title: "Attendance Marked!",
-      description: `${user?.email || 'Your'} attendance has been recorded at ${new Date().toLocaleTimeString()}.`,
-    });
+    try {
+      const activeCheckIn = await getActiveCheckIn(currentStudentId);
+      if (activeCheckIn) {
+        await addCheckOut(activeCheckIn.recordId);
+        toast({
+          title: "Checked Out!",
+          description: `Successfully checked out at ${new Date().toLocaleTimeString()}.`,
+        });
+      } else {
+        await addCheckIn(currentStudentId);
+        toast({
+          title: "Checked In!",
+          description: `Successfully checked in at ${new Date().toLocaleTimeString()}.`,
+        });
+      }
+      await fetchAttendanceForSelectedDate(); // Refresh daily attendance
+    } catch (error) {
+      toast({
+        title: "Scan Error",
+        description: "Failed to process attendance. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsProcessingQr(false);
+      setIsScannerOpen(false);
+    }
   };
 
   return (
@@ -106,7 +195,7 @@ export default function MemberAttendancePage() {
           </CardHeader>
           <CardContent>
             {!isScannerOpen ? (
-              <Button onClick={handleScanButtonClick} className="w-full">
+              <Button onClick={handleScanButtonClick} className="w-full" disabled={!currentStudentId}>
                 Scan QR for Check-in/Check-out
               </Button>
             ) : (
@@ -144,6 +233,12 @@ export default function MemberAttendancePage() {
                     </div>
                 )}
               </div>
+            )}
+            {!currentStudentId && !user && (
+                 <p className="text-xs text-muted-foreground mt-2 text-center">Loading user details...</p>
+            )}
+             {!currentStudentId && user && (
+                 <p className="text-xs text-destructive mt-2 text-center">Could not link your email to a student record. Please contact admin.</p>
             )}
           </CardContent>
         </Card>
@@ -185,15 +280,53 @@ export default function MemberAttendancePage() {
       {date && (
         <Card className="mt-6 shadow-lg">
           <CardHeader>
-            <CardTitle>Details for {date.toLocaleDateString()}</CardTitle>
+            <CardTitle>Details for {format(date, 'PPP')}</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-muted-foreground">
-              No specific check-in/out records for this day (placeholder).
-            </p>
+            {isLoadingDetails && (
+              <div className="flex items-center justify-center text-muted-foreground">
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading details...
+              </div>
+            )}
+            {!isLoadingDetails && attendanceForDay.length === 0 && (
+              <p className="text-muted-foreground">No attendance records found for this day.</p>
+            )}
+            {!isLoadingDetails && attendanceForDay.length > 0 && (
+              <ul className="space-y-3">
+                {attendanceForDay.map(record => (
+                  <li key={record.recordId} className="p-3 border rounded-md bg-muted/30">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center">
+                         <LogIn className="mr-2 h-4 w-4 text-green-600" />
+                         <span className="font-medium">Checked In:</span>
+                      </div>
+                      <span className="text-sm">{format(parseISO(record.checkInTime), 'p')}</span>
+                    </div>
+                    {record.checkOutTime ? (
+                       <div className="flex items-center justify-between mt-1">
+                         <div className="flex items-center">
+                            <LogOut className="mr-2 h-4 w-4 text-red-600" />
+                            <span className="font-medium">Checked Out:</span>
+                         </div>
+                         <span className="text-sm">{format(parseISO(record.checkOutTime), 'p')}</span>
+                       </div>
+                    ) : (
+                      <div className="flex items-center justify-between mt-1">
+                         <div className="flex items-center">
+                            <Clock className="mr-2 h-4 w-4 text-yellow-500" />
+                            <span className="font-medium">Status:</span>
+                         </div>
+                         <span className="text-sm text-yellow-600">Currently Checked In</span>
+                       </div>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
           </CardContent>
         </Card>
       )}
     </>
   );
 }
+

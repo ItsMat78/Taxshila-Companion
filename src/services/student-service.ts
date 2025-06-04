@@ -1,6 +1,6 @@
 
 import type { Student, Shift, FeeStatus, PaymentRecord, ActivityStatus, AttendanceRecord } from '@/types/student';
-import { format, parseISO, differenceInDays, isPast, addMonths, subHours, subMinutes } from 'date-fns';
+import { format, parseISO, differenceInDays, isPast, addMonths, subHours, subMinutes, startOfDay, endOfDay, isValid } from 'date-fns';
 
 // Define ALL_SEAT_NUMBERS directly in this file
 const ALL_SEAT_NUMBERS: string[] = [];
@@ -43,7 +43,7 @@ let students: Student[] = [
     activityStatus: "Active",
     registrationDate: "2024-02-20",
     lastPaymentDate: "2024-05-05",
-    nextDueDate: "2024-06-05", // This will be overdue
+    nextDueDate: "2024-06-05",
     amountDue: "₹700",
   },
   {
@@ -58,7 +58,7 @@ let students: Student[] = [
     activityStatus: "Active",
     registrationDate: "2024-03-10",
     lastPaymentDate: "2024-03-15", 
-    nextDueDate: format(addMonths(new Date(), -2), 'yyyy-MM-dd'), // Overdue by 2 months
+    nextDueDate: format(addMonths(new Date(), -2), 'yyyy-MM-dd'),
     amountDue: "₹1200",
   },
    { studentId: "TS004", name: "Vikram Singh", email: "vikram.singh@example.com", phone: "9876543213", shift: "evening", seatNumber: "40", feeStatus: "Paid", activityStatus: "Active", registrationDate: "2024-04-01", lastPaymentDate: "2024-06-03", nextDueDate: "2024-07-03", amountDue: "₹0" },
@@ -71,9 +71,9 @@ let students: Student[] = [
 
 // In-memory store for attendance records
 let attendanceRecords: AttendanceRecord[] = [
-  { recordId: "AR001", studentId: "TS001", date: format(new Date(), 'yyyy-MM-dd'), checkInTime: subHours(new Date(), 2).toISOString() }, // Checked in 2 hours ago
-  { recordId: "AR002", studentId: "TS002", date: format(new Date(), 'yyyy-MM-dd'), checkInTime: subHours(new Date(), 1).toISOString(), checkOutTime: subMinutes(new Date(), 15).toISOString() }, // Checked in 1 hour ago, checked out 15 mins ago
-  { recordId: "AR003", studentId: "TS001", date: format(subHours(new Date(), 25).toISOString(), 'yyyy-MM-dd'), checkInTime: subHours(new Date(), 25).toISOString(), checkOutTime: subHours(new Date(), 20).toISOString() }, // Yesterday's record
+  { recordId: "AR001", studentId: "TS001", date: format(new Date(), 'yyyy-MM-dd'), checkInTime: subHours(new Date(), 2).toISOString() },
+  { recordId: "AR002", studentId: "TS002", date: format(new Date(), 'yyyy-MM-dd'), checkInTime: subHours(new Date(), 1).toISOString(), checkOutTime: subMinutes(new Date(), 15).toISOString() },
+  { recordId: "AR003", studentId: "TS001", date: format(subHours(new Date(), 25), 'yyyy-MM-dd'), checkInTime: subHours(new Date(), 25).toISOString(), checkOutTime: subHours(new Date(), 20).toISOString() },
 ];
 
 function getNextAttendanceRecordId(): string {
@@ -96,10 +96,10 @@ function applyAutomaticStatusUpdates(student: Student): Student {
       const dueDate = parseISO(student.nextDueDate);
       const today = new Date();
       
-      const todayDateOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-      const dueDateOnly = new Date(dueDate.getFullYear(), dueDate.getMonth(), dueDate.getDate());
+      const todayDateOnly = startOfDay(today);
+      const dueDateOnly = startOfDay(dueDate);
 
-      if (isPast(dueDateOnly) && differenceInDays(todayDateOnly, dueDateOnly) > 5) {
+      if (isValid(dueDateOnly) && isPast(dueDateOnly) && differenceInDays(todayDateOnly, dueDateOnly) > 5) {
         console.log(`Auto-marking student ${student.studentId} (${student.name}) as Left due to overdue fees (Due date: ${student.nextDueDate}, Days overdue: ${differenceInDays(todayDateOnly, dueDateOnly)}).`);
         return {
             ...student,
@@ -142,8 +142,8 @@ export function getAllStudents(): Promise<Student[]> {
   return new Promise((resolve) => {
     setTimeout(() => {
         const updatedStudentsList = processStudentsForUpdates([...students]);
-        resolve(updatedStudentsList.map(s => ({...s}))); // Return copies
-    }, 50); // Reduced timeout for faster feedback
+        resolve(updatedStudentsList.map(s => ({...s}))); 
+    }, 50);
   });
 }
 
@@ -152,20 +152,33 @@ export function getStudentById(studentId: string): Promise<Student | undefined> 
     setTimeout(() => {
       let student = students.find(s => s.studentId === studentId);
       if (student) {
-        const updatedStudent = applyAutomaticStatusUpdates({...student}); // Work on a copy
+        const updatedStudent = applyAutomaticStatusUpdates({...student}); 
         const indexInMainArray = students.findIndex(orig => orig.studentId === updatedStudent.studentId);
 
         if (indexInMainArray !== -1) {
-             // If actual changes occurred due to applyAutomaticStatusUpdates, update the main array
              if (students[indexInMainArray].activityStatus !== updatedStudent.activityStatus ||
                  students[indexInMainArray].seatNumber !== updatedStudent.seatNumber ||
                  students[indexInMainArray].feeStatus !== updatedStudent.feeStatus) {
                  students[indexInMainArray] = { ...students[indexInMainArray], ...updatedStudent };
             }
-            resolve(students[indexInMainArray] ? {...students[indexInMainArray]} : undefined); // Return a copy
+            resolve(students[indexInMainArray] ? {...students[indexInMainArray]} : undefined); 
         } else {
-             resolve(updatedStudent ? {...updatedStudent} : undefined); // Return a copy
+             resolve(updatedStudent ? {...updatedStudent} : undefined); 
         }
+      } else {
+        resolve(undefined);
+      }
+    }, 50);
+  });
+}
+
+export function getStudentByEmail(email: string): Promise<Student | undefined> {
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      const student = students.find(s => s.email === email && s.activityStatus === 'Active');
+      if (student) {
+        // No need to run applyAutomaticStatusUpdates here as it's for fee status, not general lookup
+        resolve({...student}); // Return a copy
       } else {
         resolve(undefined);
       }
@@ -199,7 +212,7 @@ export interface AddStudentData {
 export function addStudent(studentData: AddStudentData): Promise<Student> {
   return new Promise((resolve, reject) => {
     setTimeout(() => {
-      processStudentsForUpdates([...students]); // Ensure student statuses are up-to-date before checking seats
+      processStudentsForUpdates([...students]); 
       if (students.some(s => s.seatNumber === studentData.seatNumber && s.activityStatus === "Active")) {
         reject(new Error("Seat already taken by an active student."));
         return;
@@ -217,7 +230,7 @@ export function addStudent(studentData: AddStudentData): Promise<Student> {
         paymentHistory: []
       };
       students.push(newStudent);
-      resolve({...newStudent}); // Return a copy
+      resolve({...newStudent}); 
     }, 50);
   });
 }
@@ -225,7 +238,7 @@ export function addStudent(studentData: AddStudentData): Promise<Student> {
 export function updateStudent(studentId: string, studentUpdateData: Partial<Omit<Student, 'studentId'>>): Promise<Student | undefined> {
   return new Promise((resolve, reject) => {
     setTimeout(() => {
-      processStudentsForUpdates([...students]); // Update student statuses first
+      processStudentsForUpdates([...students]); 
       const studentIndex = students.findIndex(s => s.studentId === studentId);
       if (studentIndex === -1) {
         reject(new Error("Student not found."));
@@ -234,7 +247,6 @@ export function updateStudent(studentId: string, studentUpdateData: Partial<Omit
 
       const currentStudent = students[studentIndex];
       
-      // Check if seat is being changed and if the new seat is taken
       if (studentUpdateData.seatNumber && 
           studentUpdateData.seatNumber !== currentStudent.seatNumber && 
           (studentUpdateData.activityStatus === 'Active' || (studentUpdateData.activityStatus === undefined && currentStudent.activityStatus === 'Active'))) {
@@ -246,17 +258,18 @@ export function updateStudent(studentId: string, studentUpdateData: Partial<Omit
       
       let updatedStudentData = { ...currentStudent, ...studentUpdateData };
 
-      // If student is marked as Left, clear fee and seat related data
       if (studentUpdateData.activityStatus === 'Left') {
         updatedStudentData.seatNumber = null;
         updatedStudentData.feeStatus = 'N/A';
         updatedStudentData.amountDue = 'N/A';
         updatedStudentData.lastPaymentDate = undefined;
         updatedStudentData.nextDueDate = undefined;
+      } else if (studentUpdateData.activityStatus === 'Active' && currentStudent.activityStatus === 'Left') {
+        // Re-activating student specific logic already handled in edit page, here we just update
       }
       
       students[studentIndex] = updatedStudentData;
-      resolve({...students[studentIndex]}); // Return a copy
+      resolve({...students[studentIndex]}); 
     }, 50);
   });
 }
@@ -264,12 +277,12 @@ export function updateStudent(studentId: string, studentUpdateData: Partial<Omit
 export function getAvailableSeats(): Promise<string[]> {
   return new Promise((resolve) => {
     setTimeout(() => {
-      processStudentsForUpdates([...students]); // Update student statuses first
+      processStudentsForUpdates([...students]); 
       const takenSeats = students
         .filter(s => s.activityStatus === 'Active' && s.seatNumber !== null)
         .map(s => s.seatNumber as string);
       const available = ALL_SEAT_NUMBERS.filter(seat => !takenSeats.includes(seat));
-      resolve(available.sort((a, b) => parseInt(a) - parseInt(b))); // Sort numerically
+      resolve(available.sort((a, b) => parseInt(a) - parseInt(b))); 
     }, 50);
   });
 }
@@ -277,21 +290,76 @@ export function getAvailableSeats(): Promise<string[]> {
 export function getTakenSeats(): Promise<string[]> {
    return new Promise((resolve) => {
     setTimeout(() => {
-      processStudentsForUpdates([...students]); // Update student statuses first
+      processStudentsForUpdates([...students]); 
       const takenSeats = students
         .filter(s => s.activityStatus === 'Active' && s.seatNumber !== null)
         .map(s => s.seatNumber as string);
-      resolve(takenSeats.sort((a, b) => parseInt(a) - parseInt(b))); // Sort numerically
+      resolve(takenSeats.sort((a, b) => parseInt(a) - parseInt(b))); 
     }, 50);
   });
 }
 
-// --- Attendance Service Functions (Basic) ---
+// --- Attendance Service Functions ---
+
+export function getActiveCheckIn(studentId: string): Promise<AttendanceRecord | undefined> {
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      const todayStr = format(new Date(), 'yyyy-MM-dd');
+      const activeRecord = attendanceRecords
+        .filter(ar => ar.studentId === studentId && ar.date === todayStr && !ar.checkOutTime)
+        .sort((a, b) => parseISO(b.checkInTime).getTime() - parseISO(a.checkInTime).getTime())[0]; // Get the latest if multiple (shouldn't happen with current logic)
+      resolve(activeRecord ? {...activeRecord} : undefined);
+    }, 50);
+  });
+}
+
+export function addCheckIn(studentId: string): Promise<AttendanceRecord> {
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      const now = new Date();
+      const newRecord: AttendanceRecord = {
+        recordId: getNextAttendanceRecordId(),
+        studentId,
+        date: format(now, 'yyyy-MM-dd'),
+        checkInTime: now.toISOString(),
+      };
+      attendanceRecords.push(newRecord);
+      resolve({...newRecord});
+    }, 50);
+  });
+}
+
+export function addCheckOut(recordId: string): Promise<AttendanceRecord | undefined> {
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      const recordIndex = attendanceRecords.findIndex(ar => ar.recordId === recordId);
+      if (recordIndex !== -1) {
+        attendanceRecords[recordIndex].checkOutTime = new Date().toISOString();
+        resolve({...attendanceRecords[recordIndex]});
+      } else {
+        resolve(undefined);
+      }
+    }, 50);
+  });
+}
+
+export function getAttendanceForDate(studentId: string, date: string): Promise<AttendanceRecord[]> { // date in YYYY-MM-DD
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      resolve(
+        attendanceRecords
+          .filter(ar => ar.studentId === studentId && ar.date === date)
+          .map(ar => ({...ar})) 
+          .sort((a,b) => parseISO(a.checkInTime).getTime() - parseISO(b.checkInTime).getTime())
+      );
+    }, 50);
+  });
+}
 
 export function getAllAttendanceRecords(): Promise<AttendanceRecord[]> {
   return new Promise((resolve) => {
     setTimeout(() => {
-      resolve(attendanceRecords.map(ar => ({...ar}))); // Return copies
+      resolve(attendanceRecords.map(ar => ({...ar}))); 
     }, 50);
   });
 }
@@ -302,22 +370,8 @@ export function getAttendanceRecordsByStudentId(studentId: string): Promise<Atte
       resolve(
         attendanceRecords
           .filter(ar => ar.studentId === studentId)
-          .map(ar => ({...ar})) // Return copies
+          .map(ar => ({...ar})) 
       );
     }, 50);
   });
 }
-
-export function getAttendanceRecordsByDate(date: string): Promise<AttendanceRecord[]> { // date in YYYY-MM-DD
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve(
-        attendanceRecords
-          .filter(ar => ar.date === date)
-          .map(ar => ({...ar})) // Return copies
-      );
-    }, 50);
-  });
-}
-
-// More functions like addCheckIn, addCheckOut will be added later.
