@@ -58,7 +58,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
              Taxshila Companion
           </Link>
         </header>
-        <main className="flex-1 p-4 sm:p-6 lg:p-8">
+        <main className="flex-1 p-4 sm:p-6 lg:p-8 min-w-0"> {/* Added min-w-0 here */}
           {children}
         </main>
       </SidebarInset>
