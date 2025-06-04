@@ -3,10 +3,9 @@ import type { Student, Shift, FeeStatus, PaymentRecord, ActivityStatus, Attendan
 import { format, parseISO, differenceInDays, isPast, addMonths, subHours, subMinutes, startOfDay, endOfDay, isValid } from 'date-fns';
 
 export const ALL_SEAT_NUMBERS: string[] = [];
+// Seat 17 is now included
 for (let i = 1; i <= 85; i++) {
-  if (i !== 17) {
-    ALL_SEAT_NUMBERS.push(String(i));
-  }
+  ALL_SEAT_NUMBERS.push(String(i));
 }
 ALL_SEAT_NUMBERS.sort((a, b) => parseInt(a) - parseInt(b));
 
@@ -67,6 +66,22 @@ let students: Student[] = [
    { studentId: "TS007", name: "Sanya Gupta Due", email: "sanya.gupta@example.com", phone: "9876543216", shift: "morning", seatNumber: "8", feeStatus: "Due", activityStatus: "Active", registrationDate: "2024-05-01", lastPaymentDate: "2024-05-10", nextDueDate: "2024-06-10", amountDue: "₹700" },
    { studentId: "TS008", name: "Kavita Singh Paid", email: "kavita.singh@example.com", phone: "9876543217", shift: "morning", seatNumber: "10", feeStatus: "Paid", activityStatus: "Active", registrationDate: "2024-05-10", lastPaymentDate: "2024-06-01", nextDueDate: "2024-07-01", amountDue: "₹0" },
    { studentId: "TS012", name: "Karan Verma Long Overdue", email: "karan.verma@example.com", phone: "9876543221", shift: "evening", seatNumber: "15", feeStatus: "Overdue", activityStatus: "Active", registrationDate: "2024-01-01", lastPaymentDate: "2024-01-20", nextDueDate: format(addMonths(new Date(), -4), 'yyyy-MM-dd'), amountDue: "₹700" },
+   {
+    studentId: "TS017",
+    name: "Seventeen Seater",
+    email: "seat17.fullday@example.com",
+    phone: "9876543217",
+    shift: "fullday",
+    seatNumber: "17",
+    idCardFileName: "seat17_id.jpg",
+    feeStatus: "Paid",
+    activityStatus: "Active",
+    registrationDate: "2024-06-01",
+    lastPaymentDate: "2024-06-01",
+    nextDueDate: "2024-07-01",
+    amountDue: "₹0",
+    profilePictureUrl: "https://placehold.co/200x200.png",
+  },
 ];
 
 let attendanceRecords: AttendanceRecord[] = [
@@ -209,9 +224,9 @@ export function addStudent(studentData: AddStudentData): Promise<Student> {
         s.activityStatus === "Active" &&
         s.seatNumber === studentData.seatNumber &&
         (
-          s.shift === "fullday" || // A fullday student occupies the seat for all shifts
-          studentData.shift === "fullday" || // A new fullday student conflicts with any shift
-          s.shift === studentData.shift // Same shift conflict
+          s.shift === "fullday" || 
+          studentData.shift === "fullday" || 
+          s.shift === studentData.shift 
         )
       );
 
@@ -258,10 +273,9 @@ export function updateStudent(studentId: string, studentUpdateData: Partial<Omit
       const newShift = studentUpdateData.shift || currentStudent.shift;
       const newSeatNumber = studentUpdateData.seatNumber !== undefined ? studentUpdateData.seatNumber : currentStudent.seatNumber;
 
-      // Check for seat conflict only if seat or shift is changing, or if re-activating
       if (newSeatNumber && (newSeatNumber !== currentStudent.seatNumber || newShift !== currentStudent.shift || (studentUpdateData.activityStatus === 'Active' && currentStudent.activityStatus === 'Left'))) {
         const isSeatTakenForShift = students.some(s =>
-          s.studentId !== studentId && // Exclude the current student from the check
+          s.studentId !== studentId && 
           s.activityStatus === "Active" &&
           s.seatNumber === newSeatNumber &&
           (
@@ -294,7 +308,6 @@ export function updateStudent(studentId: string, studentUpdateData: Partial<Omit
             reject(new Error("A valid seat must be selected to re-activate a student."));
             return;
         }
-        // Fee status, amountDue, nextDueDate should be set by the caller for re-activation
       }
 
       students[studentIndex] = updatedStudentData;
@@ -313,9 +326,9 @@ export function getAvailableSeats(shiftToConsider: Shift): Promise<string[]> {
           s.activityStatus === "Active" &&
           s.seatNumber === seat &&
           (
-            s.shift === "fullday" || // A fullday student occupies the seat for all shifts
-            shiftToConsider === "fullday" || // If we're checking for fullday availability, any occupancy is a conflict
-            s.shift === shiftToConsider // Same shift conflict
+            s.shift === "fullday" || 
+            shiftToConsider === "fullday" || 
+            s.shift === shiftToConsider 
           )
         );
         if (!isSeatTaken) {
@@ -328,7 +341,6 @@ export function getAvailableSeats(shiftToConsider: Shift): Promise<string[]> {
 }
 
 
-// --- Attendance Service Functions ---
 export function getActiveCheckIn(studentId: string): Promise<AttendanceRecord | undefined> {
   return new Promise((resolve) => {
     setTimeout(() => {
@@ -403,3 +415,5 @@ export function getAttendanceRecordsByStudentId(studentId: string): Promise<Atte
     }, 50);
   });
 }
+
+    

@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/dialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
-import { Armchair, Users, UserCheck, Loader2, Circle, Sunrise, Sunset, Sun, Briefcase } from 'lucide-react'; // Added Briefcase
+import { Armchair, Users, UserCheck, Loader2, Circle, Sunrise, Sunset, Sun, Briefcase } from 'lucide-react';
 import { getAllStudents, ALL_SEAT_NUMBERS as serviceAllSeats, getAvailableSeats } from '@/services/student-service';
 import type { Student, Shift } from '@/types/student';
 import { useToast } from '@/hooks/use-toast';
@@ -36,13 +36,13 @@ export default function SeatAvailabilityPage() {
   const [isLoading, setIsLoading] = React.useState(true);
   const [selectedShiftView, setSelectedShiftView] = React.useState<ShiftView>('morning');
   
-  const [morningShiftStudentCount, setMorningShiftStudentCount] = React.useState(0);
-  const [eveningShiftStudentCount, setEveningShiftStudentCount] = React.useState(0);
-  const [fullDayShiftStudentCount, setFullDayShiftStudentCount] = React.useState(0);
+  const [occupiedMorningCount, setOccupiedMorningCount] = React.useState(0);
+  const [occupiedEveningCount, setOccupiedEveningCount] = React.useState(0);
+  const [occupiedFullDayCount, setOccupiedFullDayCount] = React.useState(0);
   
   const [availableMorningSlotsCount, setAvailableMorningSlotsCount] = React.useState(0);
   const [availableEveningSlotsCount, setAvailableEveningSlotsCount] = React.useState(0);
-  const [availableFullDaySlotsCount, setAvailableFullDaySlotsCount] = React.useState(0); // For seats bookable as full-day
+  const [availableFullDaySlotsCount, setAvailableFullDaySlotsCount] = React.useState(0);
   const [isLoadingOverallAvailableStats, setIsLoadingOverallAvailableStats] = React.useState(true);
 
   const [showOccupiedSeatsDialog, setShowOccupiedSeatsDialog] = React.useState(false);
@@ -62,9 +62,9 @@ export default function SeatAvailabilityPage() {
         setAllStudents(studentsData);
 
         const activeSeatHolders = studentsData.filter(s => s.activityStatus === "Active" && s.seatNumber);
-        setMorningShiftStudentCount(activeSeatHolders.filter(s => s.shift === 'morning').length);
-        setEveningShiftStudentCount(activeSeatHolders.filter(s => s.shift === 'evening').length);
-        setFullDayShiftStudentCount(activeSeatHolders.filter(s => s.shift === 'fullday').length);
+        setOccupiedMorningCount(activeSeatHolders.filter(s => s.shift === 'morning').length);
+        setOccupiedEveningCount(activeSeatHolders.filter(s => s.shift === 'evening').length);
+        setOccupiedFullDayCount(activeSeatHolders.filter(s => s.shift === 'fullday').length);
 
         const [morningAvail, eveningAvail, fulldayAvail] = await Promise.all([
           getAvailableSeats('morning'),
@@ -143,8 +143,16 @@ export default function SeatAvailabilityPage() {
     } else if (view === 'fullday_occupied') { 
       if (studentFullDay) {
         studentOnSeat = studentFullDay; isAvailable = false; colorClass = 'bg-yellow-200 border-yellow-300 text-yellow-800 hover:bg-yellow-300'; shiftIcon = Sun;
-      } else {
+      } else { // For 'fullday_occupied' view, if not taken by a full-day student, it's considered "available" in this specific context (meaning bookable for full day)
         isAvailable = true; 
+         // Check if it's available for full day booking
+        const isTrulyAvailableFullDay = !studentMorning && !studentEvening;
+        if (!isTrulyAvailableFullDay) {
+             // If occupied by morning or evening, it's not fully available.
+             // This part is tricky for 'fullday_occupied' view if we want to show partial occupancy.
+             // For now, keeping it simple: if not full-day student, it's blue.
+             // A more advanced view might show half-occupied seats differently.
+        }
       }
     }
     return { student: studentOnSeat, isAvailable, colorClass, shiftIcon };
@@ -194,9 +202,9 @@ export default function SeatAvailabilityPage() {
               <CardContent className="text-sm space-y-1 pt-2">
                 {isLoading ? <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /> : (
                   <>
-                    <div className="flex justify-between"><span>Morning:</span> <span className="font-semibold">{morningShiftStudentCount} students</span></div>
-                    <div className="flex justify-between"><span>Evening:</span> <span className="font-semibold">{eveningShiftStudentCount} students</span></div>
-                    <div className="flex justify-between"><span>Full Day:</span> <span className="font-semibold">{fullDayShiftStudentCount} students</span></div>
+                    <div className="flex justify-between"><span>Morning:</span> <span className="font-semibold">{occupiedMorningCount} students</span></div>
+                    <div className="flex justify-between"><span>Evening:</span> <span className="font-semibold">{occupiedEveningCount} students</span></div>
+                    <div className="flex justify-between"><span>Full Day:</span> <span className="font-semibold">{occupiedFullDayCount} students</span></div>
                   </>
                 )}
               </CardContent>
@@ -348,7 +356,7 @@ export default function SeatAvailabilityPage() {
                   <span>Full Day Occupied</span>
                 </div>
               </div>
-              <div className="grid grid-cols-10 gap-2 sm:gap-3 md:grid-cols-12 lg:grid-cols-15 xl:grid-cols-17">
+              <div className="grid grid-cols-[repeat(auto-fill,minmax(2.75rem,1fr))] sm:grid-cols-[repeat(auto-fill,minmax(3.25rem,1fr))] gap-1 sm:gap-1.5">
                 {serviceAllSeats.map((seatNum) => {
                   const { student, colorClass } = getSeatStatusForLayout(seatNum, selectedShiftView);
                   const ShiftIcon = getSeatStatusForLayout(seatNum, selectedShiftView).shiftIcon;
@@ -377,3 +385,4 @@ export default function SeatAvailabilityPage() {
   );
 }
 
+    
