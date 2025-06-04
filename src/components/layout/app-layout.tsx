@@ -6,9 +6,47 @@ import Link from 'next/link';
 import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar';
 import { AppSidebarContent } from './app-sidebar-content';
 import { Button } from '@/components/ui/button';
-import { PanelLeft } from 'lucide-react';
+import { PanelLeft, Inbox, Bell, Loader2 } from 'lucide-react'; // Added Inbox, Bell, Loader2
 import { useAuth } from '@/contexts/auth-context';
-import { Skeleton } from '@/components/ui/skeleton'; // For loading state
+import { Skeleton } from '@/components/ui/skeleton';
+import { useNotificationCounts } from '@/hooks/use-notification-counts'; // New Hook
+import { NotificationBadge } from '@/components/shared/notification-badge'; // New Component
+import { cn } from '@/lib/utils';
+
+function NotificationIconArea() {
+  const { user } = useAuth();
+  const { count, isLoadingCount } = useNotificationCounts();
+
+  if (!user) return null;
+  if (isLoadingCount) {
+    return <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />;
+  }
+
+  let href = "/";
+  let IconComponent = Inbox; // Default to avoid errors, should be overridden
+
+  if (user.role === 'admin') {
+    href = "/admin/feedback";
+    IconComponent = Inbox;
+  } else if (user.role === 'member') {
+    href = "/member/alerts";
+    IconComponent = Bell;
+  }
+
+  if (count > 0) {
+    return (
+      <Link href={href} passHref legacyBehavior>
+        <Button variant="ghost" size="icon" aria-label={user.role === 'admin' ? 'View Feedback' : 'View Alerts'}>
+          <NotificationBadge icon={IconComponent} count={count} iconClassName="h-5 w-5" />
+        </Button>
+      </Link>
+    );
+  }
+  // Optionally, render the icon without a badge if count is 0, or nothing.
+  // For a cleaner look, let's render nothing if count is 0 and not loading.
+  return null; 
+}
+
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
@@ -31,18 +69,14 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     );
   }
   
-  // If not authenticated and not on a login page, router effect will redirect.
-  // This check prevents rendering layout for non-authed users briefly.
   if (!user && !pathname.startsWith('/login')) {
     return null; 
   }
 
-  // If on a login page, don't render the AppLayout (sidebar, header, etc.)
   if (pathname.startsWith('/login')) {
     return <>{children}</>;
   }
   
-  // Authenticated users see the AppLayout
   return (
     <SidebarProvider defaultOpen>
       <AppSidebarContent />
@@ -57,8 +91,11 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           <Link href="/" className="flex items-center gap-2 font-headline text-lg font-semibold">
              Taxshila Companion
           </Link>
+          <div className="ml-auto flex items-center gap-2">
+            <NotificationIconArea />
+          </div>
         </header>
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 min-w-0"> {/* Added min-w-0 here */}
+        <main className="flex-1 p-4 sm:p-6 lg:p-8 min-w-0">
           {children}
         </main>
       </SidebarInset>
