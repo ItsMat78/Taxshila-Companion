@@ -29,13 +29,14 @@ type StudentData = {
   email: string;
   phone?: string;
   shift: "morning" | "evening" | "fullday";
+  seatNumber?: string; // Added seatNumber
 };
 
 // Placeholder data for existing students - this would come from an API or state management in a real app
 const placeholderStudents: StudentData[] = [
-  { studentId: "TS001", name: "Aarav Sharma", email: "aarav.sharma@example.com", phone: "9876543210", shift: "morning" },
-  { studentId: "TS002", name: "Priya Patel", email: "priya.patel@example.com", phone: "9876543211", shift: "evening" },
-  { studentId: "TS003", name: "Rohan Mehta", email: "rohan.mehta@example.com", phone: "9876543212", shift: "fullday" },
+  { studentId: "TS001", name: "Aarav Sharma", email: "aarav.sharma@example.com", phone: "9876543210", shift: "morning", seatNumber: "A101" },
+  { studentId: "TS002", name: "Priya Patel", email: "priya.patel@example.com", phone: "9876543211", shift: "evening", seatNumber: "B203" },
+  { studentId: "TS003", name: "Rohan Mehta", email: "rohan.mehta@example.com", phone: "9876543212", shift: "fullday", seatNumber: "C007" },
 ];
 
 export default function StudentListPage() {
@@ -60,6 +61,7 @@ export default function StudentListPage() {
                 <TableHead>Name</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>Shift</TableHead>
+                <TableHead>Seat Number</TableHead> {/* New Column */}
                 <TableHead>Details</TableHead>
               </TableRow>
             </TableHeader>
@@ -74,6 +76,7 @@ export default function StudentListPage() {
                   </TableCell>
                   <TableCell>{student.email}</TableCell>
                   <TableCell className="capitalize">{student.shift}</TableCell>
+                  <TableCell>{student.seatNumber || 'N/A'}</TableCell> {/* Display Seat Number */}
                   <TableCell>
                     <Link href={`/students/profiles/${student.studentId}`} passHref legacyBehavior>
                       <Button variant="outline" size="sm">
