@@ -19,17 +19,53 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from '@/components/ui/badge';
-import { AlertTriangle, CalendarClock, CheckCircle2 } from 'lucide-react';
-
-// Placeholder data for students with fees due
-const placeholderFeesDue = [
-  { studentId: "TS001", name: "Aarav Sharma", amountDue: "₹700", lastPayment: "2024-05-01", nextDueDate: "2024-06-01", status: "Due" },
-  { studentId: "TS003", name: "Rohan Mehta", amountDue: "₹1200", lastPayment: "2024-04-15", nextDueDate: "2024-05-15", status: "Overdue" },
-  { studentId: "TS007", name: "Sanya Gupta", amountDue: "₹700", lastPayment: "2024-05-10", nextDueDate: "2024-06-10", status: "Due" },
-  { studentId: "TS012", name: "Karan Verma", amountDue: "₹700", lastPayment: "2024-03-20", nextDueDate: "2024-04-20", status: "Overdue" },
-];
+import { AlertTriangle, CalendarClock, CheckCircle2, Loader2 } from 'lucide-react';
+import { getAllStudents } from '@/services/student-service';
+import type { Student } from '@/types/student';
+import { useToast } from '@/hooks/use-toast';
+import { format, parseISO, isValid } from 'date-fns';
 
 export default function FeesDuePage() {
+  const { toast } = useToast();
+  const [feesDueStudents, setFeesDueStudents] = React.useState<Student[]>([]);
+  const [isLoading, setIsLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    const fetchFeesDue = async () => {
+      setIsLoading(true);
+      try {
+        const allStudents = await getAllStudents();
+        const dueStudents = allStudents.filter(student => 
+          student.activityStatus === "Active" && 
+          (student.feeStatus === "Due" || student.feeStatus === "Overdue")
+        );
+
+        // Sort: Overdue first, then Due. Within each, sort by nextDueDate (oldest first)
+        dueStudents.sort((a, b) => {
+          const statusOrder = (status: Student['feeStatus']) => status === "Overdue" ? 0 : 1;
+          if (statusOrder(a.feeStatus) !== statusOrder(b.feeStatus)) {
+            return statusOrder(a.feeStatus) - statusOrder(b.feeStatus);
+          }
+          try {
+            const dateA = a.nextDueDate && isValid(parseISO(a.nextDueDate)) ? parseISO(a.nextDueDate) : new Date(0); // Oldest if invalid
+            const dateB = b.nextDueDate && isValid(parseISO(b.nextDueDate)) ? parseISO(b.nextDueDate) : new Date(0);
+            return dateA.getTime() - dateB.getTime();
+          } catch (e) {
+            return 0; // Fallback if date parsing fails critically
+          }
+        });
+
+        setFeesDueStudents(dueStudents);
+      } catch (error) {
+        console.error("Failed to fetch fees due:", error);
+        toast({ title: "Error", description: "Could not load fees due list.", variant: "destructive" });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchFeesDue();
+  }, [toast]);
+
   return (
     <>
       <PageTitle title="Student Fees Due" description="Manage and track students with outstanding fee payments." />
@@ -40,46 +76,64 @@ export default function FeesDuePage() {
             <AlertTriangle className="mr-2 h-5 w-5 text-destructive" />
             Fees Due List
           </CardTitle>
-          <CardDescription>Students are ordered by their due status and then by due date (placeholder logic).</CardDescription>
+          <CardDescription>Students are ordered by overdue status, then by due date.</CardDescription>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Student ID</TableHead>
-                <TableHead>Name</TableHead>
-                <TableHead>Amount Due</TableHead>
-                <TableHead>Last Payment</TableHead>
-                <TableHead>Next Due Date</TableHead>
-                <TableHead>Status</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {placeholderFeesDue.map((student) => (
-                <TableRow key={student.studentId} className={student.status === "Overdue" ? "bg-destructive/10" : ""}>
-                  <TableCell>{student.studentId}</TableCell>
-                  <TableCell className="font-medium">{student.name}</TableCell>
-                  <TableCell>{student.amountDue}</TableCell>
-                  <TableCell>{student.lastPayment}</TableCell>
-                  <TableCell>{student.nextDueDate}</TableCell>
-                  <TableCell>
-                    <Badge variant={student.status === "Overdue" ? "destructive" : "default"} className="capitalize">
-                      {student.status === "Overdue" && <CalendarClock className="mr-1 h-3 w-3" />}
-                      {student.status}
-                    </Badge>
-                  </TableCell>
-                </TableRow>
-              ))}
-              {placeholderFeesDue.length === 0 && (
+          {isLoading ? (
+            <div className="flex items-center justify-center py-10">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <p className="ml-2 text-muted-foreground">Loading student fee data...</p>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center text-muted-foreground py-4">
-                     <CheckCircle2 className="mx-auto mb-2 h-8 w-8 text-green-500" />
-                    No outstanding fees at the moment.
-                  </TableCell>
+                  <TableHead className="w-[120px]">Student ID</TableHead>
+                  <TableHead>Name</TableHead>
+                  <TableHead className="w-[150px]">Amount Due</TableHead>
+                  <TableHead className="w-[150px]">Last Payment</TableHead>
+                  <TableHead className="w-[150px]">Next Due Date</TableHead>
+                  <TableHead className="w-[120px]">Status</TableHead>
                 </TableRow>
-              )}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {feesDueStudents.map((student) => (
+                  <TableRow key={student.studentId} className={student.feeStatus === "Overdue" ? "bg-destructive/10 hover:bg-destructive/15" : "hover:bg-muted/30"}>
+                    <TableCell>{student.studentId}</TableCell>
+                    <TableCell className="font-medium">{student.name}</TableCell>
+                    <TableCell>{student.amountDue || 'N/A'}</TableCell>
+                    <TableCell>
+                      {student.lastPaymentDate && isValid(parseISO(student.lastPaymentDate)) 
+                        ? format(parseISO(student.lastPaymentDate), 'MMM d, yyyy') 
+                        : 'N/A'}
+                    </TableCell>
+                    <TableCell>
+                      {student.nextDueDate && isValid(parseISO(student.nextDueDate))
+                        ? format(parseISO(student.nextDueDate), 'MMM d, yyyy')
+                        : 'N/A'}
+                    </TableCell>
+                    <TableCell>
+                      <Badge 
+                        variant={student.feeStatus === "Overdue" ? "destructive" : "default"} 
+                        className={`capitalize ${student.feeStatus === "Due" ? "bg-yellow-100 text-yellow-700 border-yellow-300 hover:bg-yellow-200" : ""}`}
+                      >
+                        {student.feeStatus === "Overdue" && <CalendarClock className="mr-1 h-3 w-3" />}
+                        {student.feeStatus}
+                      </Badge>
+                    </TableCell>
+                  </TableRow>
+                ))}
+                {feesDueStudents.length === 0 && !isLoading && (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center text-muted-foreground py-6">
+                       <CheckCircle2 className="mx-auto mb-2 h-10 w-10 text-green-500" />
+                      No outstanding fees at the moment.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
     </>
