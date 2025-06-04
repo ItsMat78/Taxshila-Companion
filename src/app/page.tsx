@@ -16,7 +16,7 @@ import {
   LogIn
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle as ShadcnCardTitle, CardDescription as ShadcnCardDescription } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge'; // Import Badge
+import { Badge } from '@/components/ui/badge';
 import {
   Dialog,
   DialogContent,
@@ -41,7 +41,6 @@ import { format, parseISO, isToday, getHours } from 'date-fns';
 
 type CheckedInStudentInfo = Student & { 
   checkInTime: string;
-  isOutsideShift?: boolean; 
 };
 
 function AdminDashboardContent() {
@@ -91,7 +90,6 @@ function AdminDashboardContent() {
           calculateMonthlyRevenue(),
         ]);
 
-        // Calculate Total Students stats
         const activeStudentsWithSeats = allStudentsData.filter(s => s.activityStatus === "Active" && s.seatNumber);
         const morningRegistered = activeStudentsWithSeats.filter(s => s.shift === 'morning').length;
         const eveningRegistered = activeStudentsWithSeats.filter(s => s.shift === 'evening').length;
@@ -113,23 +111,7 @@ function AdminDashboardContent() {
           .map(record => {
             const student = allStudentsData.find(s => s.studentId === record.studentId);
             if (!student) return null;
-
-            const checkInDate = parseISO(record.checkInTime);
-            const checkInHour = getHours(checkInDate); // Using date-fns getHours
-            let isStudyingOutsideShift = false;
-
-            if (student.shift === "morning") { // 7 AM (7) to 2 PM (14)
-              if (checkInHour < 7 || checkInHour >= 14) {
-                isStudyingOutsideShift = true;
-              }
-            } else if (student.shift === "evening") { // 3 PM (15) to 10 PM (22)
-              if (checkInHour < 15 || checkInHour >= 22) {
-                isStudyingOutsideShift = true;
-              }
-            }
-            // No check for fullday as they cover the entire operational time.
-
-            return { ...student, checkInTime: record.checkInTime, isOutsideShift: isStudyingOutsideShift };
+            return { ...student, checkInTime: record.checkInTime };
           })
           .filter((s): s is CheckedInStudentInfo => s !== null)
           .sort((a, b) => parseISO(a.checkInTime).getTime() - parseISO(b.checkInTime).getTime());
@@ -137,7 +119,6 @@ function AdminDashboardContent() {
         setCheckedInStudents(checkedInStudentDetails);
         setMonthlyRevenue(currentMonthRevenue);
 
-        // Check for open feedback
         const openFeedbackExists = allFeedbackItems.some(fb => fb.status === "Open");
         setHasOpenFeedback(openFeedbackExists);
 
@@ -201,12 +182,7 @@ function AdminDashboardContent() {
                   {checkedInStudents.map((student) => (
                     <TableRow key={student.studentId}>
                       <TableCell>{student.studentId}</TableCell>
-                      <TableCell className="font-medium">
-                        {student.name}
-                        {student.isOutsideShift && (
-                            <Badge variant="outline" className="ml-2 border-yellow-500 text-yellow-600 text-xs">Outside Shift</Badge>
-                        )}
-                      </TableCell>
+                      <TableCell className="font-medium">{student.name}</TableCell>
                       <TableCell>{student.seatNumber || 'N/A'}</TableCell>
                       <TableCell>{format(parseISO(student.checkInTime), 'p')}</TableCell>
                     </TableRow>
@@ -361,4 +337,3 @@ export default function MainPage() {
       </div>
   );
 }
-
