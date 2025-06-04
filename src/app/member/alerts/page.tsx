@@ -92,74 +92,68 @@ export default function MemberAlertsPage() {
   const [isAlertDetailsOpen, setIsAlertDetailsOpen] = React.useState(false);
   const [currentAlertInModal, setCurrentAlertInModal] = React.useState<AlertItem | null>(null);
 
-
-  const fetchAlerts = React.useCallback(async (currentStudentId: string | null) => {
-    if (!currentStudentId) {
-        setIsLoading(false); // If no studentId, stop loading early
-        setAlertsList([]);
-        return;
+  // Effect to get studentId based on user
+  React.useEffect(() => {
+    if (user?.email) {
+      setIsLoading(true); // Indicate start of loading sequence
+      setStudentId(null); // Reset studentId if user changes, to trigger alert fetch
+      setAlertsList([]);  // Clear previous alerts
+      getStudentByEmail(user.email)
+        .then(student => {
+          if (student) {
+            setStudentId(student.studentId); // This will trigger the next useEffect
+          } else {
+            toast({ title: "Error", description: "Could not find your student record.", variant: "destructive" });
+            setIsLoading(false); // End loading if no student found
+          }
+        })
+        .catch(error => {
+          toast({ title: "Error", description: "Failed to fetch your details.", variant: "destructive" });
+          setIsLoading(false); // End loading on error
+        });
+    } else if (!user) { // No user logged in
+      setStudentId(null);
+      setAlertsList([]);
+      setIsLoading(false);
     }
-    // Don't set isLoading to true here if it's a refresh, only for initial load
+  }, [user, toast]);
+
+
+  // Callback to fetch alerts, independent of isLoading state
+  const fetchAlerts = React.useCallback(async (currentStudentId: string) => {
+    // This function should not set global isLoading. It just fetches.
     try {
       const fetchedAlerts = await getAlertsForStudent(currentStudentId);
       setAlertsList(fetchedAlerts);
     } catch (error) {
       toast({ title: "Error", description: "Could not load alerts.", variant: "destructive" });
-    } finally {
-      if (isLoading) setIsLoading(false); // Only turn off initial loading
+      setAlertsList([]); // Clear alerts on error
     }
-  }, [toast, isLoading]); // isLoading is included to ensure initial load sets it false
+  }, [toast]); // Depends only on toast
 
-
-  React.useEffect(() => {
-    if (user?.email) {
-      setIsLoading(true); // Set loading true for initial student fetch
-      const fetchStudentDetails = async () => {
-        try {
-          const student = await getStudentByEmail(user.email);
-          if (student) {
-            setStudentId(student.studentId);
-            // fetchAlerts will be called by the studentId useEffect
-          } else {
-            toast({ title: "Error", description: "Could not find your student record.", variant: "destructive" });
-            setIsLoading(false);
-            setAlertsList([]);
-          }
-        } catch (error) {
-          toast({ title: "Error", description: "Failed to fetch your details.", variant: "destructive" });
-          setIsLoading(false);
-          setAlertsList([]);
-        }
-      };
-      fetchStudentDetails();
-    } else if (!user) {
-      setIsLoading(false);
-      setAlertsList([]);
-    }
-  }, [user, toast]);
-
+  // Effect to fetch alerts when studentId is set (and marks end of initial load)
   React.useEffect(() => {
     if (studentId) {
-        // If isLoading is already true, it means it's the initial load triggered by studentId setting
-        // If isLoading is false, it means studentId changed for other reasons, so we re-trigger loading for alerts.
-        if(!isLoading) setIsLoading(true);
-        fetchAlerts(studentId);
-    } else if (!isLoading && !user) { 
-        setAlertsList([]);
-        setIsLoading(false);
+      // If setIsLoading(true) was called by the previous effect,
+      // this fetch completes the loading sequence.
+      fetchAlerts(studentId).finally(() => {
+          setIsLoading(false); // End of initial loading sequence
+      });
     }
-  }, [studentId, user, isLoading, fetchAlerts]);
+    // If studentId becomes null (e.g., user logs out while on page),
+    // and isLoading was true, this path might not set it to false.
+    // But the first useEffect handles !user case.
+  }, [studentId, fetchAlerts]);
+
 
   const handleOpenAlertDetails = async (alertItem: AlertItem) => {
     setCurrentAlertInModal(alertItem);
     setIsAlertDetailsOpen(true);
-    if (!alertItem.isRead && studentId) {
+    if (!alertItem.isRead && studentId) { // Ensure studentId is available
       try {
         await markAlertAsRead(alertItem.id);
-        // Re-fetch alerts silently in the background to update the read status in the list
-        // This will reflect once the dialog is closed or if other actions trigger a re-render
-        const currentStudentId = studentId; // Capture studentId in closure
-        fetchAlerts(currentStudentId); 
+        // Refresh alerts. isLoading state is not changed here.
+        fetchAlerts(studentId); // studentId here should be the one from state
       } catch (error) {
         toast({ title: "Error", description: "Could not mark alert as read.", variant: "destructive" });
       }
@@ -269,4 +263,3 @@ export default function MemberAlertsPage() {
     </>
   );
 }
-
