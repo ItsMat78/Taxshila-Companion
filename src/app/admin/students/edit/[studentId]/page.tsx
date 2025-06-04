@@ -48,7 +48,9 @@ const ID_CARD_PLACEHOLDER_EDIT = "https://placehold.co/150x100.png?text=ID+Previ
 const studentEditFormSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
   email: z.string().email({ message: "Invalid email address." }).optional().or(z.literal('')),
-  phone: z.string().min(10, { message: "Phone number must be at least 10 digits." }),
+  phone: z.string()
+    .length(10, { message: "Phone number must be exactly 10 digits." })
+    .regex(/^\d+$/, { message: "Phone number must contain only digits." }),
   shift: z.enum(["morning", "evening", "fullday"], { required_error: "Shift selection is required." }),
   seatNumber: z.string().nullable().refine(val => val !== null && val !== "", { message: "Seat selection is required."}),
   idCardFileName: z.string().optional(),
