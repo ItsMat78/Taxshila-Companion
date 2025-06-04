@@ -3,6 +3,7 @@
 
 import * as React from 'react';
 import Image from 'next/image';
+import Link from 'next/link'; // Import Link
 import { PageTitle } from '@/components/shared/page-title';
 import { Button } from "@/components/ui/button";
 import {
@@ -17,26 +18,47 @@ import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from '@/contexts/auth-context';
-import { UserCircle, UploadCloud, Save, Mail, Phone, BookOpen, MapPin } from 'lucide-react';
+import { getStudentByEmail } from '@/services/student-service'; // Import service
+import type { Student } from '@/types/student'; // Import Student type
+import { UserCircle, UploadCloud, Save, Mail, Phone, BookOpen, MapPin, Receipt, Loader2 } from 'lucide-react';
 
-// Placeholder for current member data - in a real app, this would come from useAuth or an API
-const placeholderMemberData = {
-  name: "Aarav Sharma",
-  email: "aarav.sharma@example.com",
-  phone: "9876543210",
-  shift: "Morning",
-  seatNumber: "A101",
-  profilePictureUrl: "https://placehold.co/200x200.png", // Default placeholder
-};
+const DEFAULT_PROFILE_PLACEHOLDER = "https://placehold.co/200x200.png";
 
 export default function MemberProfilePage() {
-  const { user } = useAuth(); // We'll use this for email, but mostly rely on placeholder for demo
+  const { user } = useAuth();
   const { toast } = useToast();
 
-  const [currentProfilePicture, setCurrentProfilePicture] = React.useState(placeholderMemberData.profilePictureUrl);
+  const [memberDetails, setMemberDetails] = React.useState<Student | null>(null);
+  const [isLoading, setIsLoading] = React.useState(true);
+
+  const [currentProfilePicture, setCurrentProfilePicture] = React.useState(DEFAULT_PROFILE_PLACEHOLDER);
   const [profilePicturePreview, setProfilePicturePreview] = React.useState<string | null>(null);
   const [selectedFile, setSelectedFile] = React.useState<File | null>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  React.useEffect(() => {
+    if (user?.email) {
+      setIsLoading(true);
+      getStudentByEmail(user.email)
+        .then(student => {
+          if (student) {
+            setMemberDetails(student);
+            setCurrentProfilePicture(student.profilePictureUrl || DEFAULT_PROFILE_PLACEHOLDER);
+          } else {
+            toast({ title: "Error", description: "Could not load your profile data.", variant: "destructive" });
+          }
+        })
+        .catch(error => {
+          console.error("Failed to fetch member details:", error);
+          toast({ title: "Error", description: "An error occurred while loading your profile.", variant: "destructive" });
+        })
+        .finally(() => {
+          setIsLoading(false);
+        });
+    } else {
+      setIsLoading(false); // Not logged in or no email
+    }
+  }, [user, toast]);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -52,29 +74,50 @@ export default function MemberProfilePage() {
 
   const handleSaveProfilePicture = () => {
     if (profilePicturePreview && selectedFile) {
-      // Simulate API call to save the profile picture
-      console.log("Saving profile picture:", selectedFile.name);
-      setCurrentProfilePicture(profilePicturePreview);
+      console.log("Saving profile picture (simulated):", selectedFile.name);
+      setCurrentProfilePicture(profilePicturePreview); // Update displayed picture
+      // In a real app, you'd call a service to upload the file and update student's profilePictureUrl
+      // For this prototype, we'll also update the local memberDetails state if it exists
+      if (memberDetails) {
+        setMemberDetails(prev => prev ? { ...prev, profilePictureUrl: profilePicturePreview } : null);
+      }
       setProfilePicturePreview(null);
       setSelectedFile(null);
       if(fileInputRef.current) {
-        fileInputRef.current.value = ""; // Reset file input
+        fileInputRef.current.value = "";
       }
       toast({
         title: "Profile Picture Updated (Simulated)",
-        description: "Your new profile picture has been saved.",
+        description: "Your new profile picture has been set for this session.",
       });
     }
   };
 
-  const memberDisplayDetails = {
-      name: user?.email === placeholderMemberData.email ? placeholderMemberData.name : (user?.email?.split('@')[0] || "Member"),
-      email: user?.email || placeholderMemberData.email,
-      phone: placeholderMemberData.phone,
-      shift: placeholderMemberData.shift,
-      seatNumber: placeholderMemberData.seatNumber,
-  };
+  if (isLoading) {
+    return (
+      <>
+        <PageTitle title="My Profile" description="Loading your details..." />
+        <div className="flex justify-center items-center py-10">
+          <Loader2 className="h-12 w-12 animate-spin text-primary" />
+        </div>
+      </>
+    );
+  }
 
+  if (!memberDetails) {
+     return (
+      <>
+        <PageTitle title="My Profile" description="Could not load your profile information." />
+        <Card className="shadow-md">
+          <CardContent className="pt-6 text-center text-muted-foreground">
+            Please try again later or contact support if the issue persists.
+          </CardContent>
+        </Card>
+      </>
+    );
+  }
+
+  const displayName = memberDetails.name || user?.email?.split('@')[0] || "Member";
 
   return (
     <>
@@ -90,8 +133,8 @@ export default function MemberProfilePage() {
           </CardHeader>
           <CardContent className="flex flex-col items-center space-y-4">
             <Avatar className="h-40 w-40 border-2 border-primary shadow-md">
-              <AvatarImage src={profilePicturePreview || currentProfilePicture} alt={memberDisplayDetails.name} data-ai-hint="profile person" />
-              <AvatarFallback className="text-4xl">{memberDisplayDetails.name.substring(0, 2).toUpperCase()}</AvatarFallback>
+              <AvatarImage src={profilePicturePreview || currentProfilePicture} alt={displayName} data-ai-hint="profile person" />
+              <AvatarFallback className="text-4xl">{displayName.substring(0, 2).toUpperCase()}</AvatarFallback>
             </Avatar>
             
             <Input
@@ -130,38 +173,45 @@ export default function MemberProfilePage() {
               <UserCircle className="mr-3 h-5 w-5 text-muted-foreground" />
               <div>
                 <p className="text-sm text-muted-foreground">Full Name</p>
-                <p className="font-medium">{memberDisplayDetails.name}</p>
+                <p className="font-medium">{displayName}</p>
               </div>
             </div>
             <div className="flex items-center">
               <Mail className="mr-3 h-5 w-5 text-muted-foreground" />
               <div>
                 <p className="text-sm text-muted-foreground">Email Address</p>
-                <p className="font-medium">{memberDisplayDetails.email}</p>
+                <p className="font-medium">{memberDetails.email || user?.email}</p>
               </div>
             </div>
             <div className="flex items-center">
               <Phone className="mr-3 h-5 w-5 text-muted-foreground" />
               <div>
                 <p className="text-sm text-muted-foreground">Phone Number</p>
-                <p className="font-medium">{memberDisplayDetails.phone}</p>
+                <p className="font-medium">{memberDetails.phone}</p>
               </div>
             </div>
              <div className="flex items-center">
               <BookOpen className="mr-3 h-5 w-5 text-muted-foreground" />
               <div>
                 <p className="text-sm text-muted-foreground">Shift</p>
-                <p className="font-medium capitalize">{memberDisplayDetails.shift}</p>
+                <p className="font-medium capitalize">{memberDetails.shift}</p>
               </div>
             </div>
              <div className="flex items-center">
               <MapPin className="mr-3 h-5 w-5 text-muted-foreground" />
               <div>
                 <p className="text-sm text-muted-foreground">Seat Number</p>
-                <p className="font-medium">{memberDisplayDetails.seatNumber}</p>
+                <p className="font-medium">{memberDetails.seatNumber || "N/A (Not Assigned / Left)"}</p>
               </div>
             </div>
           </CardContent>
+           <CardFooter>
+             <Link href="/member/fees" passHref legacyBehavior>
+                <Button variant="outline" size="sm">
+                  <Receipt className="mr-2 h-4 w-4" /> View Payment History
+                </Button>
+              </Link>
+          </CardFooter>
         </Card>
       </div>
     </>
