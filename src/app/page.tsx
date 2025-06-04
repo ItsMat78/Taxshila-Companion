@@ -15,7 +15,7 @@ import {
   Loader2,
   UserPlus,
   CalendarDays,
-  Send as SendIcon, // Renamed to avoid conflict with Send component if any
+  Send as SendIcon, 
   Inbox,
   Eye,
   Database 
@@ -100,7 +100,7 @@ function AdminDashboardContent() {
   return (
     <>
       <PageTitle title="Admin Dashboard" description="Overview of Taxshila Companion activities." />
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
         {stats.map((stat) => {
           const statCardElement = (
             <StatCard
