@@ -3,7 +3,7 @@
 
 import * as React from 'react';
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import * as z from "zod";
 import { PageTitle } from '@/components/shared/page-title';
 import { Button } from "@/components/ui/button";
@@ -43,6 +43,7 @@ const studentFormSchema = z.object({
   phone: z.string().min(10, { message: "Phone number must be at least 10 digits." }),
   shift: z.enum(["morning", "evening", "fullday"], { required_error: "Shift selection is required." }),
   seatNumber: z.string().min(1, "Seat selection is required."),
+  idCardFileName: z.string().optional(), // For storing filename
 });
 
 type StudentFormValues = z.infer<typeof studentFormSchema>;
@@ -57,7 +58,8 @@ export default function StudentRegisterPage() {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [availableSeatOptions, setAvailableSeatOptions] = React.useState<string[]>([]);
-  const [isLoadingSeats, setIsLoadingSeats] = React.useState(true);
+  const [isLoadingSeats, setIsLoadingSeats] = React.useState(false);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const form = useForm<StudentFormValues>({
     resolver: zodResolver(studentFormSchema),
@@ -67,54 +69,88 @@ export default function StudentRegisterPage() {
       phone: "",
       shift: undefined,
       seatNumber: "",
+      idCardFileName: "",
     },
   });
 
-  const fetchSeats = React.useCallback(async () => {
-    setIsLoadingSeats(true);
-    try {
-      const seats = await getAvailableSeats();
-      setAvailableSeatOptions(seats);
-    } catch (error) {
-      console.error("Failed to fetch available seats:", error);
-      toast({ title: "Error", description: "Could not load available seats.", variant: "destructive" });
-      setAvailableSeatOptions([]);
-    } finally {
-      setIsLoadingSeats(false);
-    }
-  }, [toast]);
+  const selectedShift = form.watch("shift");
 
   React.useEffect(() => {
-    fetchSeats();
-  }, [fetchSeats]);
+    const fetchSeatsForShift = async (shift: Shift) => {
+      setIsLoadingSeats(true);
+      setAvailableSeatOptions([]); // Clear previous options
+      form.setValue("seatNumber", ""); // Reset seat number when shift changes
+      try {
+        const seats = await getAvailableSeats(shift);
+        setAvailableSeatOptions(seats);
+      } catch (error) {
+        console.error(`Failed to fetch available seats for ${shift} shift:`, error);
+        toast({ title: "Error", description: `Could not load seats for ${shift} shift.`, variant: "destructive" });
+        setAvailableSeatOptions([]);
+      } finally {
+        setIsLoadingSeats(false);
+      }
+    };
+
+    if (selectedShift) {
+      fetchSeatsForShift(selectedShift);
+    } else {
+      setAvailableSeatOptions([]); // Clear seats if no shift is selected
+      setIsLoadingSeats(false);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedShift, toast, form.setValue]);
+
 
   async function onSubmit(data: StudentFormValues) {
     setIsSubmitting(true);
     try {
-      const studentPayload: AddStudentData = { 
-        ...data, 
+      const studentPayload: AddStudentData = {
+        name: data.name,
         email: data.email || undefined,
+        phone: data.phone,
+        shift: data.shift,
+        seatNumber: data.seatNumber,
+        idCardFileName: data.idCardFileName,
       };
       const newStudent = await addStudent(studentPayload);
       toast({
         title: "Student Registered Successfully",
-        description: `${newStudent.name} (ID: ${newStudent.studentId}) has been registered with seat ${newStudent.seatNumber}.`,
+        description: `${newStudent.name} (ID: ${newStudent.studentId}) has been registered with seat ${newStudent.seatNumber} for ${newStudent.shift} shift.`,
       });
       form.reset();
-      await fetchSeats(); // Refresh available seats after successful registration
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ""; // Reset file input
+      }
+      setAvailableSeatOptions([]); // Clear seat options after registration
     } catch (error: any) {
        toast({
         title: "Registration Failed",
         description: error.message || "An unexpected error occurred.",
         variant: "destructive",
       });
-      if (error.message?.toLowerCase().includes("seat")) {
-        await fetchSeats(); // Refresh seats if it was a seat conflict
+      // Optionally re-fetch seats for the selected shift if it was a seat conflict
+      if (selectedShift && error.message?.toLowerCase().includes("seat")) {
+        setIsLoadingSeats(true);
+        try {
+            const seats = await getAvailableSeats(selectedShift);
+            setAvailableSeatOptions(seats);
+        } catch (e) { console.error(e); }
+        finally { setIsLoadingSeats(false); }
       }
     } finally {
       setIsSubmitting(false);
     }
   }
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      form.setValue("idCardFileName", file.name);
+    } else {
+      form.setValue("idCardFileName", "");
+    }
+  };
 
   return (
     <>
@@ -139,7 +175,7 @@ export default function StudentRegisterPage() {
               <FormField control={form.control} name="shift" render={({ field }) => (
                 <FormItem className="space-y-3"><FormLabel>Shift Selection</FormLabel>
                   <FormControl>
-                    <RadioGroup onValueChange={field.onChange} defaultValue={field.value} className="flex flex-col space-y-2" disabled={isSubmitting}>
+                    <RadioGroup onValueChange={field.onChange} value={field.value} className="flex flex-col space-y-2" disabled={isSubmitting}>
                       {shiftOptions.map(option => (
                         <FormItem key={option.value} className="flex items-center space-x-3 space-y-0">
                           <FormControl><RadioGroupItem value={option.value} disabled={isSubmitting} /></FormControl>
@@ -156,15 +192,22 @@ export default function StudentRegisterPage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Seat Number</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value} disabled={isSubmitting || isLoadingSeats}>
+                    <Select
+                      onValueChange={field.onChange}
+                      value={field.value}
+                      disabled={isSubmitting || isLoadingSeats || !selectedShift}
+                    >
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder={isLoadingSeats ? "Loading seats..." : "Select an available seat"} />
+                          <SelectValue placeholder={!selectedShift ? "Select shift first" : (isLoadingSeats ? "Loading seats..." : "Select an available seat")} />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {!isLoadingSeats && availableSeatOptions.length === 0 && (
-                            <p className="p-2 text-xs text-muted-foreground">No seats currently available.</p>
+                        {!isLoadingSeats && !selectedShift && (
+                            <p className="p-2 text-xs text-muted-foreground">Please select a shift to see available seats.</p>
+                        )}
+                        {!isLoadingSeats && selectedShift && availableSeatOptions.length === 0 && (
+                            <p className="p-2 text-xs text-muted-foreground">No seats currently available for {selectedShift} shift.</p>
                         )}
                         {availableSeatOptions.map(seat => (
                           <SelectItem key={seat} value={seat}>
@@ -177,9 +220,24 @@ export default function StudentRegisterPage() {
                   </FormItem>
                 )}
               />
+              <FormItem>
+                <FormLabel>ID Card (Optional - Photo/Scan)</FormLabel>
+                <FormControl>
+                  <Input
+                    type="file"
+                    accept="image/*,.pdf"
+                    ref={fileInputRef}
+                    onChange={handleFileChange}
+                    disabled={isSubmitting}
+                    className="file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-primary-foreground hover:file:bg-primary/90"
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+
             </CardContent>
             <CardFooter>
-              <Button type="submit" className="w-full sm:w-auto" disabled={isSubmitting || isLoadingSeats}>
+              <Button type="submit" className="w-full sm:w-auto" disabled={isSubmitting || isLoadingSeats || !selectedShift}>
                 {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UserPlus className="mr-2 h-4 w-4" />}
                 {isSubmitting ? "Registering..." : "Register Student"}
               </Button>

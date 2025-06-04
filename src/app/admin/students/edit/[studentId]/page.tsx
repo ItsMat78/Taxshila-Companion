@@ -48,6 +48,7 @@ const studentEditFormSchema = z.object({
   phone: z.string().min(10, { message: "Phone number must be at least 10 digits." }),
   shift: z.enum(["morning", "evening", "fullday"], { required_error: "Shift selection is required." }),
   seatNumber: z.string().min(1, "Seat selection is required.").nullable(),
+  idCardFileName: z.string().optional(),
 });
 
 type StudentEditFormValues = z.infer<typeof studentEditFormSchema>;
@@ -68,6 +69,8 @@ export default function EditStudentPage() {
   const [availableSeatOptions, setAvailableSeatOptions] = React.useState<string[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [isSaving, setIsSaving] = React.useState(false);
+  const [isLoadingSeats, setIsLoadingSeats] = React.useState(false);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const form = useForm<StudentEditFormValues>({
     resolver: zodResolver(studentEditFormSchema),
@@ -77,15 +80,17 @@ export default function EditStudentPage() {
       phone: "",
       shift: undefined,
       seatNumber: null,
+      idCardFileName: "",
     },
   });
 
-  const fetchStudentAndSeats = React.useCallback(async (currentStudentId: string) => {
+  const selectedShift = form.watch("shift");
+  const currentSeatNumber = studentData?.seatNumber; // Original seat number for comparison
+
+  const fetchStudentDetails = React.useCallback(async (currentStudentId: string) => {
     setIsLoading(true);
     try {
       const student = await getStudentById(currentStudentId);
-      const seats = await getAvailableSeats();
-      
       if (student) {
         setStudentData(student);
         form.reset({
@@ -94,23 +99,16 @@ export default function EditStudentPage() {
           phone: student.phone,
           shift: student.shift,
           seatNumber: student.seatNumber,
+          idCardFileName: student.idCardFileName || "",
         });
-
-        const seatOptionsSet = new Set(seats);
-        // If student is active and has a seat, ensure it's in the options
-        if (student.seatNumber && student.activityStatus === 'Active') {
-          seatOptionsSet.add(student.seatNumber);
-        }
-        setAvailableSeatOptions(Array.from(seatOptionsSet).sort());
-
+        // Initial seat loading will be triggered by useEffect watching selectedShift
       } else {
         toast({ title: "Error", description: "Student not found.", variant: "destructive" });
         setStudentData(null);
-        setAvailableSeatOptions(seats.sort()); // Still set available seats
       }
     } catch (error) {
-      console.error("Failed to fetch student data or seats:", error);
-      toast({ title: "Error", description: "Failed to load student data or seats.", variant: "destructive" });
+      console.error("Failed to fetch student data:", error);
+      toast({ title: "Error", description: "Failed to load student data.", variant: "destructive" });
     } finally {
       setIsLoading(false);
     }
@@ -118,9 +116,47 @@ export default function EditStudentPage() {
 
   React.useEffect(() => {
     if (studentId) {
-      fetchStudentAndSeats(studentId);
+      fetchStudentDetails(studentId);
     }
-  }, [studentId, fetchStudentAndSeats]);
+  }, [studentId, fetchStudentDetails]);
+
+  React.useEffect(() => {
+    const fetchSeatsForShift = async (shift: Shift) => {
+      if (!studentData) return; // Don't fetch if student data isn't loaded yet
+
+      setIsLoadingSeats(true);
+      setAvailableSeatOptions([]);
+      // Don't reset seatNumber here if it's the student's current shift and seat
+      
+      try {
+        const seats = await getAvailableSeats(shift);
+        const seatOptionsSet = new Set(seats);
+
+        // If student is active, has a seat, and the current form shift matches student's actual shift,
+        // ensure their current seat is in the options list.
+        if (studentData.seatNumber && studentData.activityStatus === 'Active' && studentData.shift === shift) {
+          seatOptionsSet.add(studentData.seatNumber);
+        }
+        // For re-activation, if they had a seat and the selected shift could accommodate it (hypothetically)
+        // it doesn't make sense to pre-select. Let them choose a new one.
+        
+        setAvailableSeatOptions(Array.from(seatOptionsSet).sort((a,b) => parseInt(a) - parseInt(b)));
+      } catch (error) {
+        console.error(`Failed to fetch available seats for ${shift} shift:`, error);
+        toast({ title: "Error", description: `Could not load seats for ${shift} shift.`, variant: "destructive" });
+        setAvailableSeatOptions([]);
+      } finally {
+        setIsLoadingSeats(false);
+      }
+    };
+
+    if (selectedShift) {
+      fetchSeatsForShift(selectedShift);
+    } else {
+      setAvailableSeatOptions([]);
+      setIsLoadingSeats(false);
+    }
+  }, [selectedShift, studentData, toast]);
 
 
   async function onSaveChanges(data: StudentEditFormValues) {
@@ -130,7 +166,7 @@ export default function EditStudentPage() {
     let payload: Partial<Student>;
     let successMessage: string;
 
-    if (studentData.activityStatus === 'Left') { // Re-activation logic
+    if (studentData.activityStatus === 'Left') {
       if (!data.seatNumber) {
         toast({
             title: "Re-activation Failed",
@@ -151,9 +187,10 @@ export default function EditStudentPage() {
         amountDue: data.shift === "fullday" ? "₹1200" : "₹700",
         lastPaymentDate: undefined,
         nextDueDate: format(addMonths(new Date(), 1), 'yyyy-MM-dd'),
-        registrationDate: studentData.registrationDate, // Keep original registration date
+        registrationDate: studentData.registrationDate,
+        idCardFileName: data.idCardFileName,
       };
-      successMessage = `${data.name} has been re-activated.`;
+      successMessage = `${data.name} has been re-activated for ${data.shift} shift with seat ${data.seatNumber}.`;
 
     } else { // Standard edit logic
       payload = {
@@ -162,6 +199,7 @@ export default function EditStudentPage() {
         phone: data.phone,
         shift: data.shift,
         seatNumber: data.seatNumber,
+        idCardFileName: data.idCardFileName,
       };
       successMessage = `${data.name}'s details have been updated.`;
     }
@@ -169,25 +207,32 @@ export default function EditStudentPage() {
     try {
       const updatedStudent = await updateStudent(studentId, payload);
       if (updatedStudent) {
-        setStudentData(updatedStudent); 
-        form.reset({ // Re-populate form with potentially updated data from service
+        setStudentData(updatedStudent);
+        form.reset({ 
             name: updatedStudent.name,
             email: updatedStudent.email || "",
             phone: updatedStudent.phone,
             shift: updatedStudent.shift,
             seatNumber: updatedStudent.seatNumber,
+            idCardFileName: updatedStudent.idCardFileName || "",
         });
         toast({
           title: studentData.activityStatus === 'Left' ? "Student Re-activated" : "Changes Saved",
           description: successMessage,
         });
-        // Re-fetch available seats
-        const seats = await getAvailableSeats();
-        const seatOptionsSet = new Set(seats);
-        if (updatedStudent.seatNumber && updatedStudent.activityStatus === 'Active') {
-          seatOptionsSet.add(updatedStudent.seatNumber);
+        // Re-fetch available seats for the current shift
+        if (updatedStudent.shift) {
+            setIsLoadingSeats(true);
+            try {
+                const seats = await getAvailableSeats(updatedStudent.shift);
+                const seatOptionsSet = new Set(seats);
+                if (updatedStudent.seatNumber && updatedStudent.activityStatus === 'Active') {
+                    seatOptionsSet.add(updatedStudent.seatNumber);
+                }
+                setAvailableSeatOptions(Array.from(seatOptionsSet).sort((a,b)=>parseInt(a)-parseInt(b)));
+            } catch(e) { console.error(e); }
+            finally { setIsLoadingSeats(false); }
         }
-        setAvailableSeatOptions(Array.from(seatOptionsSet).sort());
       } else {
          toast({ title: "Error", description: "Failed to save changes.", variant: "destructive"});
       }
@@ -238,29 +283,37 @@ export default function EditStudentPage() {
     if (!studentId || !studentData || studentData.activityStatus === 'Left') return;
     setIsSaving(true);
     try {
-      const updatedStudent = await updateStudent(studentId, { 
-        activityStatus: 'Left', 
-        seatNumber: null, 
-        feeStatus: 'N/A', 
+      const updatedStudent = await updateStudent(studentId, {
+        activityStatus: 'Left',
+        seatNumber: null,
+        feeStatus: 'N/A',
         amountDue: 'N/A',
         lastPaymentDate: undefined,
         nextDueDate: undefined,
       });
       if (updatedStudent) {
         setStudentData(updatedStudent);
-        form.reset({ 
+        form.reset({
             name: updatedStudent.name,
             email: updatedStudent.email || "",
             phone: updatedStudent.phone,
-            shift: updatedStudent.shift,
-            seatNumber: null,
+            shift: updatedStudent.shift, // Keep their last shift
+            seatNumber: null, // Seat is now null
+            idCardFileName: updatedStudent.idCardFileName || "",
         });
         toast({
           title: "Student Marked as Left",
-          description: `${updatedStudent.name} is now marked as Left. Their seat is available.`,
+          description: `${updatedStudent.name} is now marked as Left. Their seat is available for their shift.`,
         });
-        const seats = await getAvailableSeats();
-        setAvailableSeatOptions(seats.sort());
+        // Seats for the current form shift might need refreshing if the student's shift was this one
+        if (selectedShift) {
+           setIsLoadingSeats(true);
+            try {
+                const seats = await getAvailableSeats(selectedShift);
+                setAvailableSeatOptions(seats.sort((a,b)=>parseInt(a)-parseInt(b)));
+            } catch(e) { console.error(e); }
+            finally { setIsLoadingSeats(false); }
+        }
       } else {
         toast({ title: "Error", description: "Failed to mark student as Left.", variant: "destructive"});
       }
@@ -275,6 +328,15 @@ export default function EditStudentPage() {
     }
   }
 
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      form.setValue("idCardFileName", file.name);
+    } else {
+      form.setValue("idCardFileName", studentData?.idCardFileName || "");
+    }
+  };
+
 
   if (isLoading) {
     return (
@@ -288,7 +350,7 @@ export default function EditStudentPage() {
             <Skeleton className="h-4 w-full" />
           </CardHeader>
           <CardContent className="space-y-6">
-            {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}
+            {[...Array(6)].map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}
           </CardContent>
           <CardFooter className="flex justify-between">
             <Skeleton className="h-10 w-40" />
@@ -310,7 +372,7 @@ export default function EditStudentPage() {
       </div>
     );
   }
-  
+
   const isStudentLeft = studentData.activityStatus === 'Left';
 
   return (
@@ -329,7 +391,7 @@ export default function EditStudentPage() {
           <CardDescription>
             Current Fee Status: <span className="font-semibold">{studentData.feeStatus}</span>.
             Activity Status: <span className={`font-semibold ${isStudentLeft ? 'text-destructive' : 'text-green-600'}`}>{studentData.activityStatus}</span>.
-            {isStudentLeft && " Update details and select a seat to re-activate."}
+            {isStudentLeft && " Update details and select a shift & seat to re-activate."}
           </CardDescription>
         </CardHeader>
         <Form {...form}>
@@ -370,52 +432,58 @@ export default function EditStudentPage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Seat Number</FormLabel>
-                    <Select 
-                        onValueChange={field.onChange} 
-                        value={field.value || ""} 
-                        disabled={isSaving}
+                    <Select
+                        onValueChange={field.onChange}
+                        value={field.value || ""}
+                        disabled={isSaving || isLoadingSeats || !selectedShift}
                     >
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder={isStudentLeft ? "Select a new seat to re-activate" : "Select a seat"} />
+                          <SelectValue placeholder={!selectedShift ? "Select shift first" : (isLoadingSeats ? "Loading seats..." : (isStudentLeft ? "Select new seat" : "Select a seat"))} />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
+                        {!selectedShift && (<p className="p-2 text-xs text-muted-foreground">Select a shift to see available seats.</p>)}
+                        {selectedShift && isLoadingSeats && (<p className="p-2 text-xs text-muted-foreground">Loading seats...</p>)}
+                        {selectedShift && !isLoadingSeats && availableSeatOptions.length === 0 && (
+                           <p className="p-2 text-xs text-muted-foreground">No seats currently available for {selectedShift} shift.</p>
+                        )}
                         {availableSeatOptions.map(seat => (
                           <SelectItem key={seat} value={seat}>
-                            {seat}{seat === studentData.seatNumber && !isStudentLeft ? " (Current)" : ""}
+                            {seat}{seat === studentData.seatNumber && studentData.shift === selectedShift && !isStudentLeft ? " (Current)" : ""}
                           </SelectItem>
                         ))}
-                        {availableSeatOptions.length === 0 && !isStudentLeft && ( // Only show if not left and no seats
-                           <p className="p-2 text-xs text-muted-foreground">No seats currently available.</p>
-                        )}
-                         {availableSeatOptions.length === 0 && isStudentLeft && ( // Show if left and no seats to pick
-                           <p className="p-2 text-xs text-muted-foreground">No seats currently available to assign.</p>
-                        )}
                       </SelectContent>
                     </Select>
-                    {isStudentLeft && <FormDescription>Student is currently Left. Selecting a seat is required to re-activate.</FormDescription>}
+                    {isStudentLeft && <FormDescription>Student is Left. Selecting a shift and new seat is required to re-activate.</FormDescription>}
+                    {!isStudentLeft && studentData.seatNumber && studentData.shift !== selectedShift && <FormDescription>Shift changed. Select a new seat for the {selectedShift} shift.</FormDescription>}
                     <FormMessage />
                   </FormItem>
                 )}
               />
               <FormItem>
-                <FormLabel>ID Card Information</FormLabel>
-                 <div className="flex items-center p-3 border rounded-md bg-muted/50">
-                    <InfoIcon className="mr-2 h-4 w-4 text-muted-foreground" />
-                    <p className="text-sm text-muted-foreground">
-                      ID Card on file: {studentData.idCardFileName || "Not available"}. (Editing ID card image is not supported in this demo).
-                    </p>
-                </div>
+                <FormLabel>ID Card (Optional - Photo/Scan)</FormLabel>
+                 <Input
+                    type="file"
+                    accept="image/*,.pdf"
+                    ref={fileInputRef}
+                    onChange={handleFileChange}
+                    disabled={isSaving}
+                    className="text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:font-semibold file:bg-primary file:text-primary-foreground hover:file:bg-primary/90"
+                  />
+                  {form.getValues("idCardFileName") && (
+                    <FormDescription>Current file: {form.getValues("idCardFileName")}</FormDescription>
+                  )}
+                   <FormDescription>Editing/re-uploading ID card image not fully supported in demo (filename change only).</FormDescription>
               </FormItem>
             </CardContent>
             <CardFooter className="flex flex-col sm:flex-row justify-between items-start gap-4">
-              <Button 
-                type="button" 
-                variant="outline" 
-                onClick={handleMarkAsLeft} 
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleMarkAsLeft}
                 disabled={isSaving || isStudentLeft}
-                className={isStudentLeft ? "hidden" : ""} 
+                className={isStudentLeft ? "hidden" : ""}
               >
                 {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UserX className="mr-2 h-4 w-4" />}
                  Mark as Left
@@ -425,7 +493,7 @@ export default function EditStudentPage() {
                   {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ClipboardCheck className="mr-2 h-4 w-4" />}
                   Mark Payment as Paid
                 </Button>
-                <Button type="submit" disabled={isSaving}>
+                <Button type="submit" disabled={isSaving || isLoadingSeats || (!isStudentLeft && !form.formState.isDirty && !fileInputRef.current?.files?.length) }>
                   {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : (isStudentLeft ? <UserCheck className="mr-2 h-4 w-4" /> : <Save className="mr-2 h-4 w-4" />)}
                   {isStudentLeft ? "Save and Re-activate" : "Save Changes"}
                 </Button>

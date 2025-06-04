@@ -2,7 +2,6 @@
 import type { Student, Shift, FeeStatus, PaymentRecord, ActivityStatus, AttendanceRecord } from '@/types/student';
 import { format, parseISO, differenceInDays, isPast, addMonths, subHours, subMinutes, startOfDay, endOfDay, isValid } from 'date-fns';
 
-// Define ALL_SEAT_NUMBERS directly in this file and export it
 export const ALL_SEAT_NUMBERS: string[] = [];
 for (let i = 1; i <= 85; i++) {
   if (i !== 17) {
@@ -12,7 +11,6 @@ for (let i = 1; i <= 85; i++) {
 ALL_SEAT_NUMBERS.sort((a, b) => parseInt(a) - parseInt(b));
 
 
-// In-memory store for students
 let students: Student[] = [
   {
     studentId: "TS001",
@@ -39,7 +37,7 @@ let students: Student[] = [
     email: "priya.patel@example.com",
     phone: "9876543211",
     shift: "evening",
-    seatNumber: "20",
+    seatNumber: "1", // Now shares seat with Aarav but different shift
     idCardFileName: "priya_id.png",
     feeStatus: "Due",
     activityStatus: "Active",
@@ -50,16 +48,16 @@ let students: Student[] = [
   },
   {
     studentId: "TS003",
-    name: "Rohan Mehta Overdue AutoLeft Test",
+    name: "Rohan Mehta (Full Day)",
     email: "rohan.mehta@example.com",
     phone: "9876543212",
     shift: "fullday",
     seatNumber: "35",
     idCardFileName: "rohan_aadhar.jpeg",
-    feeStatus: "Overdue", 
+    feeStatus: "Overdue",
     activityStatus: "Active",
     registrationDate: "2024-03-10",
-    lastPaymentDate: "2024-03-15", 
+    lastPaymentDate: "2024-03-15",
     nextDueDate: format(addMonths(new Date(), -2), 'yyyy-MM-dd'),
     amountDue: "₹1200",
   },
@@ -71,7 +69,6 @@ let students: Student[] = [
    { studentId: "TS012", name: "Karan Verma Long Overdue", email: "karan.verma@example.com", phone: "9876543221", shift: "evening", seatNumber: "15", feeStatus: "Overdue", activityStatus: "Active", registrationDate: "2024-01-01", lastPaymentDate: "2024-01-20", nextDueDate: format(addMonths(new Date(), -4), 'yyyy-MM-dd'), amountDue: "₹700" },
 ];
 
-// In-memory store for attendance records
 let attendanceRecords: AttendanceRecord[] = [
   { recordId: "AR001", studentId: "TS001", date: format(new Date(), 'yyyy-MM-dd'), checkInTime: subHours(new Date(), 2).toISOString(), checkOutTime: subHours(new Date(), 1).toISOString() },
   { recordId: "AR002", studentId: "TS002", date: format(new Date(), 'yyyy-MM-dd'), checkInTime: subHours(new Date(), 1).toISOString(), checkOutTime: subMinutes(new Date(), 15).toISOString() },
@@ -91,13 +88,11 @@ function getNextAttendanceRecordId(): string {
   return `AR${String(maxId + 1).padStart(3, '0')}`;
 }
 
-
 function applyAutomaticStatusUpdates(student: Student): Student {
   if (student.activityStatus === 'Active' && student.feeStatus === 'Overdue' && student.nextDueDate) {
     try {
       const dueDate = parseISO(student.nextDueDate);
       const today = new Date();
-      
       const todayDateOnly = startOfDay(today);
       const dueDateOnly = startOfDay(dueDate);
 
@@ -122,10 +117,8 @@ function applyAutomaticStatusUpdates(student: Student): Student {
 
 function processStudentsForUpdates(studentArray: Student[]): Student[] {
     const processedStudents = studentArray.map(s => {
-        const updatedStudent = applyAutomaticStatusUpdates(s); 
-        
+        const updatedStudent = applyAutomaticStatusUpdates(s);
         const indexInMainArray = students.findIndex(orig => orig.studentId === updatedStudent.studentId);
-
         if (indexInMainArray !== -1) {
              if (students[indexInMainArray].activityStatus !== updatedStudent.activityStatus ||
                  students[indexInMainArray].seatNumber !== updatedStudent.seatNumber ||
@@ -134,17 +127,16 @@ function processStudentsForUpdates(studentArray: Student[]): Student[] {
             }
             return students[indexInMainArray];
         }
-        return updatedStudent; 
+        return updatedStudent;
     });
     return processedStudents;
 }
-
 
 export function getAllStudents(): Promise<Student[]> {
   return new Promise((resolve) => {
     setTimeout(() => {
         const updatedStudentsList = processStudentsForUpdates([...students]);
-        resolve(updatedStudentsList.map(s => ({...s}))); 
+        resolve(updatedStudentsList.map(s => ({...s})));
     }, 50);
   });
 }
@@ -154,18 +146,17 @@ export function getStudentById(studentId: string): Promise<Student | undefined> 
     setTimeout(() => {
       let student = students.find(s => s.studentId === studentId);
       if (student) {
-        const updatedStudent = applyAutomaticStatusUpdates({...student}); 
+        const updatedStudent = applyAutomaticStatusUpdates({...student});
         const indexInMainArray = students.findIndex(orig => orig.studentId === updatedStudent.studentId);
-
         if (indexInMainArray !== -1) {
              if (students[indexInMainArray].activityStatus !== updatedStudent.activityStatus ||
                  students[indexInMainArray].seatNumber !== updatedStudent.seatNumber ||
                  students[indexInMainArray].feeStatus !== updatedStudent.feeStatus) {
                  students[indexInMainArray] = { ...students[indexInMainArray], ...updatedStudent };
             }
-            resolve(students[indexInMainArray] ? {...students[indexInMainArray]} : undefined); 
+            resolve(students[indexInMainArray] ? {...students[indexInMainArray]} : undefined);
         } else {
-             resolve(updatedStudent ? {...updatedStudent} : undefined); 
+             resolve(updatedStudent ? {...updatedStudent} : undefined);
         }
       } else {
         resolve(undefined);
@@ -179,14 +170,13 @@ export function getStudentByEmail(email: string): Promise<Student | undefined> {
     setTimeout(() => {
       const student = students.find(s => s.email === email && s.activityStatus === 'Active');
       if (student) {
-        resolve({...student}); 
+        resolve({...student});
       } else {
         resolve(undefined);
       }
     }, 50);
   });
 }
-
 
 function getNextStudentId(): string {
   const maxId = students.reduce((max, s) => {
@@ -206,17 +196,27 @@ export interface AddStudentData {
   email?: string;
   phone: string;
   shift: Shift;
-  seatNumber: string; // Seat number is now required for adding a student
-  idCardFileName?: string; // Optional, if ID card upload is part of initial registration
+  seatNumber: string;
+  idCardFileName?: string;
 }
 
 export function addStudent(studentData: AddStudentData): Promise<Student> {
   return new Promise((resolve, reject) => {
     setTimeout(() => {
-      processStudentsForUpdates([...students]); 
+      processStudentsForUpdates([...students]);
 
-      if (students.some(s => s.seatNumber === studentData.seatNumber && s.activityStatus === "Active")) {
-        reject(new Error("Selected seat is already taken by an active student."));
+      const isSeatTakenForShift = students.some(s =>
+        s.activityStatus === "Active" &&
+        s.seatNumber === studentData.seatNumber &&
+        (
+          s.shift === "fullday" || // A fullday student occupies the seat for all shifts
+          studentData.shift === "fullday" || // A new fullday student conflicts with any shift
+          s.shift === studentData.shift // Same shift conflict
+        )
+      );
+
+      if (isSeatTakenForShift) {
+        reject(new Error(`Seat ${studentData.seatNumber} is not available for the ${studentData.shift} shift.`));
         return;
       }
       if (!ALL_SEAT_NUMBERS.includes(studentData.seatNumber)) {
@@ -226,20 +226,20 @@ export function addStudent(studentData: AddStudentData): Promise<Student> {
 
       const today = new Date();
       const newStudent: Student = {
-        ...studentData, 
+        ...studentData,
         studentId: getNextStudentId(),
         feeStatus: "Due",
         activityStatus: "Active",
         registrationDate: format(today, 'yyyy-MM-dd'),
         amountDue: studentData.shift === "fullday" ? "₹1200" : "₹700",
         nextDueDate: format(addMonths(today, 1), 'yyyy-MM-dd'),
-        profilePictureUrl: "https://placehold.co/200x200.png", 
+        profilePictureUrl: "https://placehold.co/200x200.png",
         paymentHistory: [],
-        email: studentData.email || undefined, 
+        email: studentData.email || undefined,
         idCardFileName: studentData.idCardFileName || undefined,
       };
       students.push(newStudent);
-      resolve({...newStudent}); 
+      resolve({...newStudent});
     }, 50);
   });
 }
@@ -247,7 +247,7 @@ export function addStudent(studentData: AddStudentData): Promise<Student> {
 export function updateStudent(studentId: string, studentUpdateData: Partial<Omit<Student, 'studentId'>>): Promise<Student | undefined> {
   return new Promise((resolve, reject) => {
     setTimeout(() => {
-      processStudentsForUpdates([...students]); 
+      processStudentsForUpdates([...students]);
       const studentIndex = students.findIndex(s => s.studentId === studentId);
       if (studentIndex === -1) {
         reject(new Error("Student not found."));
@@ -255,20 +255,32 @@ export function updateStudent(studentId: string, studentUpdateData: Partial<Omit
       }
 
       const currentStudent = students[studentIndex];
-      
-      if (studentUpdateData.seatNumber && 
-          studentUpdateData.seatNumber !== currentStudent.seatNumber && 
-          (studentUpdateData.activityStatus === 'Active' || (studentUpdateData.activityStatus === undefined && currentStudent.activityStatus === 'Active'))) {
-        if (students.some(s => s.seatNumber === studentUpdateData.seatNumber && s.studentId !== studentId && s.activityStatus === 'Active')) {
-          reject(new Error("New seat number is already taken by an active student."));
+      const newShift = studentUpdateData.shift || currentStudent.shift;
+      const newSeatNumber = studentUpdateData.seatNumber !== undefined ? studentUpdateData.seatNumber : currentStudent.seatNumber;
+
+      // Check for seat conflict only if seat or shift is changing, or if re-activating
+      if (newSeatNumber && (newSeatNumber !== currentStudent.seatNumber || newShift !== currentStudent.shift || (studentUpdateData.activityStatus === 'Active' && currentStudent.activityStatus === 'Left'))) {
+        const isSeatTakenForShift = students.some(s =>
+          s.studentId !== studentId && // Exclude the current student from the check
+          s.activityStatus === "Active" &&
+          s.seatNumber === newSeatNumber &&
+          (
+            s.shift === "fullday" ||
+            newShift === "fullday" ||
+            s.shift === newShift
+          )
+        );
+
+        if (isSeatTakenForShift) {
+          reject(new Error(`Seat ${newSeatNumber} is not available for the ${newShift} shift.`));
           return;
         }
-         if (!ALL_SEAT_NUMBERS.includes(studentUpdateData.seatNumber)) {
+        if (newSeatNumber && !ALL_SEAT_NUMBERS.includes(newSeatNumber)) {
             reject(new Error("Invalid new seat number selected."));
             return;
         }
       }
-      
+
       let updatedStudentData = { ...currentStudent, ...studentUpdateData };
 
       if (studentUpdateData.activityStatus === 'Left') {
@@ -278,47 +290,45 @@ export function updateStudent(studentId: string, studentUpdateData: Partial<Omit
         updatedStudentData.lastPaymentDate = undefined;
         updatedStudentData.nextDueDate = undefined;
       } else if (studentUpdateData.activityStatus === 'Active' && currentStudent.activityStatus === 'Left') {
-        // Re-activating student specific logic (like fee status reset) is handled in the component calling this
-        // but ensure the seat number is valid if one is being assigned.
         if (!updatedStudentData.seatNumber || !ALL_SEAT_NUMBERS.includes(updatedStudentData.seatNumber)) {
             reject(new Error("A valid seat must be selected to re-activate a student."));
             return;
         }
+        // Fee status, amountDue, nextDueDate should be set by the caller for re-activation
       }
-      
+
       students[studentIndex] = updatedStudentData;
-      resolve({...students[studentIndex]}); 
+      resolve({...students[studentIndex]});
     }, 50);
   });
 }
 
-export function getAvailableSeats(): Promise<string[]> {
+export function getAvailableSeats(shiftToConsider: Shift): Promise<string[]> {
   return new Promise((resolve) => {
     setTimeout(() => {
-      processStudentsForUpdates([...students]); 
-      const takenSeats = students
-        .filter(s => s.activityStatus === 'Active' && s.seatNumber !== null)
-        .map(s => s.seatNumber as string);
-      const available = ALL_SEAT_NUMBERS.filter(seat => !takenSeats.includes(seat));
-      resolve(available.sort((a, b) => parseInt(a) - parseInt(b))); 
+      processStudentsForUpdates([...students]);
+      const available: string[] = [];
+      for (const seat of ALL_SEAT_NUMBERS) {
+        const isSeatTaken = students.some(s =>
+          s.activityStatus === "Active" &&
+          s.seatNumber === seat &&
+          (
+            s.shift === "fullday" || // A fullday student occupies the seat for all shifts
+            shiftToConsider === "fullday" || // If we're checking for fullday availability, any occupancy is a conflict
+            s.shift === shiftToConsider // Same shift conflict
+          )
+        );
+        if (!isSeatTaken) {
+          available.push(seat);
+        }
+      }
+      resolve(available.sort((a, b) => parseInt(a) - parseInt(b)));
     }, 50);
   });
 }
 
-export function getTakenSeats(): Promise<string[]> {
-   return new Promise((resolve) => {
-    setTimeout(() => {
-      processStudentsForUpdates([...students]); 
-      const takenSeats = students
-        .filter(s => s.activityStatus === 'Active' && s.seatNumber !== null)
-        .map(s => s.seatNumber as string);
-      resolve(takenSeats.sort((a, b) => parseInt(a) - parseInt(b))); 
-    }, 50);
-  });
-}
 
 // --- Attendance Service Functions ---
-
 export function getActiveCheckIn(studentId: string): Promise<AttendanceRecord | undefined> {
   return new Promise((resolve) => {
     setTimeout(() => {
@@ -361,13 +371,13 @@ export function addCheckOut(recordId: string): Promise<AttendanceRecord | undefi
   });
 }
 
-export function getAttendanceForDate(studentId: string, date: string): Promise<AttendanceRecord[]> { 
+export function getAttendanceForDate(studentId: string, date: string): Promise<AttendanceRecord[]> {
   return new Promise((resolve) => {
     setTimeout(() => {
       resolve(
         attendanceRecords
           .filter(ar => ar.studentId === studentId && ar.date === date)
-          .map(ar => ({...ar})) 
+          .map(ar => ({...ar}))
           .sort((a,b) => parseISO(a.checkInTime).getTime() - parseISO(b.checkInTime).getTime())
       );
     }, 50);
@@ -377,7 +387,7 @@ export function getAttendanceForDate(studentId: string, date: string): Promise<A
 export function getAllAttendanceRecords(): Promise<AttendanceRecord[]> {
   return new Promise((resolve) => {
     setTimeout(() => {
-      resolve(attendanceRecords.map(ar => ({...ar}))); 
+      resolve(attendanceRecords.map(ar => ({...ar})));
     }, 50);
   });
 }
@@ -388,10 +398,8 @@ export function getAttendanceRecordsByStudentId(studentId: string): Promise<Atte
       resolve(
         attendanceRecords
           .filter(ar => ar.studentId === studentId)
-          .map(ar => ({...ar})) 
+          .map(ar => ({...ar}))
       );
     }, 50);
   });
 }
-
-    
