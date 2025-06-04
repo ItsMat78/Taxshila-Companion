@@ -12,6 +12,7 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle as ShadcnDialogTitle,
+  DialogTrigger, // Added missing import
 } from "@/components/ui/dialog";
 import { Alert, AlertDescription, AlertTitle as ShadcnAlertTitle } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
@@ -49,11 +50,11 @@ const DashboardTile: React.FC<DashboardTileProps> = ({ title, description, icon:
           <span className="absolute top-1 right-1 block h-2.5 w-2.5 rounded-full bg-destructive ring-1 ring-white" />
         )}
         <div className={cn(
-           "flex items-center gap-2",
-           !isPrimaryAction && "flex-col text-center" // Centering for square tiles
+          "flex items-center gap-2",
+           isPrimaryAction ? "" : "flex-col text-center"
         )}>
           <Icon className={cn(
-            isPrimaryAction ? "h-6 w-6" : "h-6 w-6 mb-1" // Larger icon for square, mb-1 for spacing if icon above title
+            isPrimaryAction ? "h-6 w-6" : "h-6 w-6 mb-1" 
           )} />
           <ShadcnCardTitle className={cn(
             isPrimaryAction ? 'text-xl font-bold' : 'text-base font-semibold',
@@ -64,7 +65,7 @@ const DashboardTile: React.FC<DashboardTileProps> = ({ title, description, icon:
       </CardHeader>
       <CardContent className={cn(
         "flex-grow",
-        isPrimaryAction ? "p-4 pt-0" : "flex flex-col items-center justify-center p-3 pt-0"
+        isPrimaryAction ? "p-4 pt-2" : "flex flex-col items-center justify-center p-3 pt-1" 
       )}>
         {description && <p className={cn(
           isPrimaryAction ? 'text-sm text-primary-foreground/80' : 'text-xs text-muted-foreground text-center',
