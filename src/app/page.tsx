@@ -3,7 +3,7 @@
 import * as React from 'react';
 import { PageTitle } from '@/components/shared/page-title';
 import { StatCard } from '@/components/shared/stat-card';
-import { Users, Briefcase, WifiOff, CheckSquare, Clock } from 'lucide-react'; 
+import { Users, Briefcase, WifiOff, CheckSquare, Clock, UserCheck } from 'lucide-react'; 
 import {
   Dialog,
   DialogContent,
