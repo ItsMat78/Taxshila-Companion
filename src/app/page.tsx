@@ -16,6 +16,7 @@ import {
   LogIn
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle as ShadcnCardTitle, CardDescription as ShadcnCardDescription } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge'; // Import Badge
 import {
   Dialog,
   DialogContent,
@@ -36,9 +37,12 @@ import { cn } from '@/lib/utils';
 import { getAllStudents, getAvailableSeats, getAllAttendanceRecords, getAllFeedback, calculateMonthlyRevenue } from '@/services/student-service'; 
 import type { Student, Shift, AttendanceRecord } from '@/types/student';
 import type { FeedbackItem } from '@/types/communication'; 
-import { format, parseISO, isToday } from 'date-fns';
+import { format, parseISO, isToday, getHours } from 'date-fns';
 
-type CheckedInStudentInfo = Student & { checkInTime: string };
+type CheckedInStudentInfo = Student & { 
+  checkInTime: string;
+  isOutsideShift?: boolean; 
+};
 
 function AdminDashboardContent() {
   const [isLoadingDashboardStats, setIsLoadingDashboardStats] = React.useState(true);
@@ -108,7 +112,24 @@ function AdminDashboardContent() {
         const checkedInStudentDetails: CheckedInStudentInfo[] = todayCheckedInRecords
           .map(record => {
             const student = allStudentsData.find(s => s.studentId === record.studentId);
-            return student ? { ...student, checkInTime: record.checkInTime } : null;
+            if (!student) return null;
+
+            const checkInDate = parseISO(record.checkInTime);
+            const checkInHour = getHours(checkInDate); // Using date-fns getHours
+            let isStudyingOutsideShift = false;
+
+            if (student.shift === "morning") { // 7 AM (7) to 2 PM (14)
+              if (checkInHour < 7 || checkInHour >= 14) {
+                isStudyingOutsideShift = true;
+              }
+            } else if (student.shift === "evening") { // 3 PM (15) to 10 PM (22)
+              if (checkInHour < 15 || checkInHour >= 22) {
+                isStudyingOutsideShift = true;
+              }
+            }
+            // No check for fullday as they cover the entire operational time.
+
+            return { ...student, checkInTime: record.checkInTime, isOutsideShift: isStudyingOutsideShift };
           })
           .filter((s): s is CheckedInStudentInfo => s !== null)
           .sort((a, b) => parseISO(a.checkInTime).getTime() - parseISO(b.checkInTime).getTime());
@@ -180,7 +201,12 @@ function AdminDashboardContent() {
                   {checkedInStudents.map((student) => (
                     <TableRow key={student.studentId}>
                       <TableCell>{student.studentId}</TableCell>
-                      <TableCell className="font-medium">{student.name}</TableCell>
+                      <TableCell className="font-medium">
+                        {student.name}
+                        {student.isOutsideShift && (
+                            <Badge variant="outline" className="ml-2 border-yellow-500 text-yellow-600 text-xs">Outside Shift</Badge>
+                        )}
+                      </TableCell>
                       <TableCell>{student.seatNumber || 'N/A'}</TableCell>
                       <TableCell>{format(parseISO(student.checkInTime), 'p')}</TableCell>
                     </TableRow>
@@ -335,3 +361,4 @@ export default function MainPage() {
       </div>
   );
 }
+

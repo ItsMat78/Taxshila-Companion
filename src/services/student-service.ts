@@ -1,7 +1,7 @@
 
 import type { Student, Shift, FeeStatus, PaymentRecord, ActivityStatus, AttendanceRecord } from '@/types/student';
 import type { FeedbackItem, FeedbackType, FeedbackStatus, AlertItem } from '@/types/communication';
-import { format, parseISO, differenceInDays, isPast, addMonths, subHours, subMinutes, startOfDay, endOfDay, isValid, differenceInMilliseconds, startOfMonth, endOfMonth, isWithinInterval, subMonths, subDays } from 'date-fns';
+import { format, parseISO, differenceInDays, isPast, addMonths, subHours, subMinutes, startOfDay, endOfDay, isValid, differenceInMilliseconds, startOfMonth, endOfMonth, isWithinInterval, subMonths, subDays, getHours } from 'date-fns';
 
 export const ALL_SEAT_NUMBERS: string[] = [];
 // Populate seats from 1 to 85, EXCLUDING 17
@@ -347,7 +347,7 @@ export async function updateStudent(studentId: string, studentUpdateData: Partia
       let alertSentDueToStatusChange = false;
       if (studentUpdateData.activityStatus === 'Active' && currentStudent.activityStatus === 'Left') {
         try {
-          const alertMessage = `Welcome back, ${newlyUpdatedStudent.name}! Your student account has been re-activated.\nYour current details are:\nName: ${newlyUpdatedStudent.name}\nEmail: ${newlyUpdatedStudent.email || 'N/A'}\nPhone: ${newlyUpdatedStudent.phone}\nShift: ${newlyUpdatedStudent.shift}\nSeat Number: ${newlyUpdatedStudent.seatNumber}\nID Card: ${newlyUpdatedStudent.idCardFileName || 'Not Uploaded'}\n\nYour fee of ${newlyUpdatedStudent.amountDue} is due by ${newlyUpdatedStudent.nextDueDate}.`;
+           const alertMessage = `Welcome back, ${newlyUpdatedStudent.name}! Your student account has been re-activated.\nYour current details are:\nName: ${newlyUpdatedStudent.name}\nEmail: ${newlyUpdatedStudent.email || 'N/A'}\nPhone: ${newlyUpdatedStudent.phone}\nShift: ${newlyUpdatedStudent.shift}\nSeat Number: ${newlyUpdatedStudent.seatNumber}\nID Card: ${newlyUpdatedStudent.idCardFileName || 'Not Uploaded'}\n\nYour fee of ${newlyUpdatedStudent.amountDue} is due by ${newlyUpdatedStudent.nextDueDate}.`;
           await sendAlertToStudent(studentId, "Account Re-activated", alertMessage, "info");
           alertSentDueToStatusChange = true;
         } catch (e) { console.error("Failed to send re-activation alert:", e); }
@@ -358,7 +358,8 @@ export async function updateStudent(studentId: string, studentUpdateData: Partia
         } catch (e) { console.error("Failed to send marked-as-left alert:", e); }
       }
       
-      const isFeeStatusChangeOnlyToPaid = studentUpdateData.feeStatus === 'Paid' && currentStudent.feeStatus !== 'Paid' && Object.keys(studentUpdateData).length === 1;
+      const isFeeStatusChangeOnlyToPaid = studentUpdateData.feeStatus === 'Paid' && currentStudent.feeStatus !== 'Paid' && Object.keys(studentUpdateData).length === 1 && studentUpdateData.lastPaymentDate && studentUpdateData.nextDueDate && studentUpdateData.amountDue === "₹0";
+
 
       if (!alertSentDueToStatusChange && !isFeeStatusChangeOnlyToPaid && newlyUpdatedStudent.activityStatus === 'Active') {
         const nameChanged = studentUpdateData.name && studentUpdateData.name !== currentStudent.name;
@@ -370,7 +371,7 @@ export async function updateStudent(studentId: string, studentUpdateData: Partia
 
         if (nameChanged || emailChanged || phoneChanged || shiftChanged || seatChanged || idCardChanged) {
           try {
-            const alertMessage = `Hi ${newlyUpdatedStudent.name}, your profile details have been updated by an administrator. Your current details are:\nName: ${newlyUpdatedStudent.name}\nEmail: ${newlyUpdatedStudent.email || 'N/A'}\nPhone: ${newlyUpdatedStudent.phone}\nShift: ${newlyUpdatedStudent.shift}\nSeat Number: ${newlyUpdatedStudent.seatNumber}\nID Card: ${newlyUpdatedStudent.idCardFileName || 'Not Uploaded'}\n\nPlease review them in your profile.`;
+            const alertMessage = `Hi ${newlyUpdatedStudent.name}, your profile details have been updated by an administrator. Your current details are:\nName: ${newlyUpdatedStudent.name}\nEmail: ${newlyUpdatedStudent.email || 'N/A'}\nPhone: ${newlyUpdatedStudent.phone}\nShift: ${newlyUpdatedStudent.shift}\nSeat Number: ${newlyUpdatedStudent.seatNumber || 'N/A'}\nID Card: ${newlyUpdatedStudent.idCardFileName || 'Not Uploaded'}\n\nPlease review them in your profile.`;
             await sendAlertToStudent(studentId, "Profile Details Updated", alertMessage, "info");
           } catch (e) { console.error("Failed to send profile update alert:", e); }
         }
@@ -419,9 +420,47 @@ export function getActiveCheckIn(studentId: string): Promise<AttendanceRecord | 
 }
 
 export function addCheckIn(studentId: string): Promise<AttendanceRecord> {
-  return new Promise((resolve) => {
-    setTimeout(() => {
+  return new Promise(async (resolve, reject) => {
+    setTimeout(async () => {
+      const student = students.find(s => s.studentId === studentId);
+      if (!student) {
+        reject(new Error("Student not found for check-in."));
+        return;
+      }
+
       const now = new Date();
+      const currentHour = getHours(now); // Using date-fns getHours
+
+      let outsideShift = false;
+      const shiftName = student.shift;
+      let shiftHoursMessage = "";
+
+      if (student.shift === "morning") { // 7 AM (7) to 2 PM (14)
+        shiftHoursMessage = "7 AM - 2 PM";
+        if (currentHour < 7 || currentHour >= 14) {
+          outsideShift = true;
+        }
+      } else if (student.shift === "evening") { // 3 PM (15) to 10 PM (22)
+        shiftHoursMessage = "3 PM - 10 PM";
+        if (currentHour < 15 || currentHour >= 22) {
+          outsideShift = true;
+        }
+      }
+      // No check for "fullday" as they cover the entire operational time.
+
+      if (outsideShift) {
+        try {
+          await sendAlertToStudent(
+            studentId,
+            "Outside Shift Warning",
+            `Hi ${student.name}, you've checked in outside of your registered ${shiftName} shift (${shiftHoursMessage}). Please ensure you adhere to your allocated timings.`,
+            "warning"
+          );
+        } catch (alertError) {
+          console.error("Failed to send outside shift alert:", alertError);
+        }
+      }
+
       const newRecord: AttendanceRecord = {
         recordId: getNextAttendanceRecordId(),
         studentId,
@@ -429,7 +468,7 @@ export function addCheckIn(studentId: string): Promise<AttendanceRecord> {
         checkInTime: now.toISOString(),
       };
       attendanceRecords.push(newRecord);
-      resolve({...newRecord});
+      resolve({ ...newRecord });
     }, 50);
   });
 }
@@ -789,3 +828,4 @@ export async function calculateMonthlyStudyHours(studentId: string): Promise<num
   });
   return Math.round(totalMilliseconds / (1000 * 60 * 60)); // Convert ms to hours and round
 }
+
