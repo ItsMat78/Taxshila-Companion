@@ -1,6 +1,5 @@
-
 import type { Student, Shift, FeeStatus, PaymentRecord, ActivityStatus, AttendanceRecord } from '@/types/student';
-import type { FeedbackItem, FeedbackType, FeedbackStatus } from '@/types/communication';
+import type { FeedbackItem, FeedbackType, FeedbackStatus, AlertItem } from '@/types/communication';
 import { format, parseISO, differenceInDays, isPast, addMonths, subHours, subMinutes, startOfDay, endOfDay, isValid } from 'date-fns';
 
 export const ALL_SEAT_NUMBERS: string[] = [];
@@ -41,14 +40,14 @@ let students: Student[] = [
     shift: "evening",
     seatNumber: "1", 
     idCardFileName: "priya_id.png",
-    feeStatus: "Paid", // Updated from previous successful payment test
+    feeStatus: "Paid", 
     activityStatus: "Active",
     registrationDate: "2024-02-20",
-    lastPaymentDate: format(new Date(), 'yyyy-MM-dd'), // Updated from previous successful payment test
-    nextDueDate: format(addMonths(new Date(), 1), 'yyyy-MM-dd'), // Updated from previous successful payment test
-    amountDue: "₹0", // Updated from previous successful payment test
+    lastPaymentDate: format(new Date(), 'yyyy-MM-dd'), 
+    nextDueDate: format(addMonths(new Date(), 1), 'yyyy-MM-dd'), 
+    amountDue: "₹0", 
     paymentHistory: [
-      { paymentId: "AUTOGEN_PAYID_PREVIOUS", date: format(new Date(), 'yyyy-MM-dd'), amount: "₹700", transactionId: "AUTOGEN_TXNID_PREVIOUS", method: "UPI" },
+      { paymentId: "PAYMENT_PRIYA_PREV", date: format(new Date(), 'yyyy-MM-dd'), amount: "₹700", transactionId: "TXN_PRIYA_PREV", method: "UPI" },
     ],
   },
   {
@@ -84,6 +83,15 @@ let attendanceRecords: AttendanceRecord[] = [
 let feedbackItems: FeedbackItem[] = [
     { id: "FB001", studentId: "TS002", studentName: "Priya Patel", dateSubmitted: "2024-06-28", type: "Complaint", message: "The AC in the evening shift section is not working properly. It gets very warm.", status: "Open" },
     { id: "FB002", studentId: "TS005", studentName: "Neha Reddy", dateSubmitted: "2024-06-27", type: "Suggestion", message: "Could we have more charging points available near the window seats?", status: "Open" },
+    { id: "FB003", studentId: "TS001", studentName: "Aarav Sharma", dateSubmitted: "2024-06-26", type: "Compliment", message: "The library is always clean and quiet. Great job!", status: "Resolved" },
+];
+
+// Placeholder for AlertItem store
+let alertItems: AlertItem[] = [
+  // These are general alerts initially present for members to see
+  { id: "ALERT001", title: "Library Closure Notification", message: "The library will be closed on July 4th for Independence Day. We will reopen on July 5th.", dateSent: "2024-06-28", type: "closure" },
+  { id: "ALERT002", title: "New Quiet Study Zone", message: "We've opened a new dedicated quiet study zone on the 2nd floor. Please maintain silence.", dateSent: "2024-06-25", type: "info" },
+  { id: "ALERT003", title: "Maintenance Scheduled", message: "Network maintenance is scheduled for this Sunday from 2 AM to 4 AM. Internet services might be intermittent.", dateSent: "2024-06-20", type: "warning" },
 ];
 
 
@@ -135,7 +143,7 @@ function processStudentsForUpdates(studentArray: Student[]): Student[] {
             try {
                 const dueDate = parseISO(currentStudentState.nextDueDate);
                 const today = new Date();
-                if (isValid(dueDate) && isPast(dueDate)) {
+                if (isValid(dueDate) && isPast(dueDate) && currentStudentState.feeStatus !== 'Overdue') { // Only update to Overdue if not already
                     currentStudentState.feeStatus = 'Overdue';
                 }
             } catch (e) {
@@ -190,7 +198,7 @@ export function getStudentById(studentId: string): Promise<Student | undefined> 
 export function getStudentByEmail(email: string): Promise<Student | undefined> {
   return new Promise((resolve) => {
     setTimeout(() => {
-      const studentIdx = students.findIndex(s => s.email === email); // Check all students, not just active
+      const studentIdx = students.findIndex(s => s.email === email); 
       if (studentIdx !== -1) {
         const student = students[studentIdx];
         const updatedStudent = applyAutomaticStatusUpdates({...student});
@@ -523,7 +531,6 @@ export function submitFeedback(
 export function getAllFeedback(): Promise<FeedbackItem[]> {
   return new Promise((resolve) => {
     setTimeout(() => {
-      // Return sorted by date, newest first
       resolve([...feedbackItems].sort((a, b) => parseISO(b.dateSubmitted).getTime() - parseISO(a.dateSubmitted).getTime()));
     }, 50);
   });
@@ -543,7 +550,76 @@ export function updateFeedbackStatus(feedbackId: string, status: FeedbackStatus)
   });
 }
 
-// Placeholder for AlertItem functions if needed later
-// let alertItems: AlertItem[] = [];
-// export function sendAlert(...) {}
-// export function getAllAlerts(...) {}
+// Alert functions
+function getNextAlertId(): string {
+  const maxId = alertItems.reduce((max, item) => {
+    if (item.id && item.id.startsWith('ALERT')) {
+      const idNum = parseInt(item.id.replace('ALERT', ''), 10);
+      if (!isNaN(idNum)) {
+        return idNum > max ? idNum : max;
+      }
+    }
+    return max;
+  }, 0);
+  return `ALERT${String(maxId + 1).padStart(3, '0')}`;
+}
+
+export function sendGeneralAlert(title: string, message: string, type: AlertItem['type']): Promise<AlertItem> {
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      const newAlert: AlertItem = {
+        id: getNextAlertId(),
+        title,
+        message,
+        type,
+        dateSent: format(new Date(), 'yyyy-MM-dd'),
+        // studentId is undefined for general alerts
+      };
+      alertItems.push(newAlert);
+      resolve({...newAlert});
+    }, 50);
+  });
+}
+
+export function sendAlertToStudent(studentId: string, title: string, message: string, type: AlertItem['type']): Promise<AlertItem> {
+  return new Promise((resolve, reject) => {
+    setTimeout(() => {
+      const studentExists = students.some(s => s.studentId === studentId);
+      if (!studentExists) {
+        reject(new Error(`Student with ID ${studentId} not found.`));
+        return;
+      }
+      const newAlert: AlertItem = {
+        id: getNextAlertId(),
+        studentId,
+        title,
+        message,
+        type,
+        dateSent: format(new Date(), 'yyyy-MM-dd'),
+      };
+      alertItems.push(newAlert);
+      resolve({...newAlert});
+    }, 50);
+  });
+}
+
+export function getAlertsForStudent(studentId: string): Promise<AlertItem[]> {
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      const relevantAlerts = alertItems.filter(alert => 
+        alert.studentId === studentId || !alert.studentId // Targeted to this student OR general alert
+      );
+      resolve([...relevantAlerts].sort((a, b) => parseISO(b.dateSent).getTime() - parseISO(a.dateSent).getTime()));
+    }, 50);
+  });
+}
+
+export function getAllAdminSentAlerts(): Promise<AlertItem[]> { // For admin/alerts/history page
+   return new Promise((resolve) => {
+    setTimeout(() => {
+      // Returns all alerts, as admin sent them all.
+      // Could be filtered later if there were "system" alerts not directly sent by admin.
+      resolve([...alertItems].sort((a, b) => parseISO(b.dateSent).getTime() - parseISO(a.dateSent).getTime()));
+    }, 50);
+  });
+}

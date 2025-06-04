@@ -1,11 +1,9 @@
-
 "use client";
 import * as React from 'react';
 import Link from 'next/link';
 import { PageTitle } from '@/components/shared/page-title';
 import { 
   Users, 
-  Briefcase, 
   Armchair, 
   IndianRupee, 
   Loader2,
@@ -34,8 +32,9 @@ import {
 import { useAuth } from '@/contexts/auth-context';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
-import { getAllStudents, getAvailableSeats, getAllAttendanceRecords } from '@/services/student-service';
+import { getAllStudents, getAvailableSeats, getAllAttendanceRecords, getAllFeedback } from '@/services/student-service'; // Added getAllFeedback
 import type { Student, Shift, AttendanceRecord } from '@/types/student';
+import type { FeedbackItem } from '@/types/communication'; // Added FeedbackItem
 import { format, parseISO, isToday } from 'date-fns';
 
 type CheckedInStudentInfo = Student & { checkInTime: string };
@@ -55,21 +54,31 @@ function AdminDashboardContent() {
 
   const [checkedInStudents, setCheckedInStudents] = React.useState<CheckedInStudentInfo[]>([]);
   const [showCheckedInDialog, setShowCheckedInDialog] = React.useState(false);
+  const [hasOpenFeedback, setHasOpenFeedback] = React.useState(false); // New state for feedback indicator
 
 
   React.useEffect(() => {
-    const fetchDashboardStats = async () => {
+    const fetchDashboardData = async () => {
       setIsLoadingDashboardStats(true);
       setIsLoadingAvailabilityStats(true);
       setIsLoadingCheckedInStudents(true);
+      setHasOpenFeedback(false); // Reset before fetching
 
       try {
-        const [allStudentsData, morningAvail, eveningAvail, fulldayAvail, allAttendance] = await Promise.all([
+        const [
+          allStudentsData,
+          morningAvail,
+          eveningAvail,
+          fulldayAvail,
+          allAttendance,
+          allFeedbackItems, // Fetch feedback
+        ] = await Promise.all([
           getAllStudents(),
           getAvailableSeats('morning'),
           getAvailableSeats('evening'),
           getAvailableSeats('fullday'),
           getAllAttendanceRecords(),
+          getAllFeedback(), // Added feedback fetch
         ]);
 
         // Calculate Total Students stats
@@ -81,13 +90,11 @@ function AdminDashboardContent() {
         setMorningShiftStudentCount(morningRegistered);
         setEveningShiftStudentCount(eveningRegistered);
         setFullDayShiftStudentCount(fulldayRegistered);
-        setIsLoadingDashboardStats(false);
-
+        
         setAvailableMorningSlotsCount(morningAvail.length);
         setAvailableEveningSlotsCount(eveningAvail.length);
         setAvailableFullDaySlotsCount(fulldayAvail.length);
-        setIsLoadingAvailabilityStats(false);
-
+        
         const todayCheckedInRecords = allAttendance.filter(
           (record) => isToday(parseISO(record.checkInTime)) && !record.checkOutTime
         );
@@ -101,7 +108,10 @@ function AdminDashboardContent() {
           .sort((a, b) => parseISO(a.checkInTime).getTime() - parseISO(b.checkInTime).getTime());
         
         setCheckedInStudents(checkedInStudentDetails);
-        setIsLoadingCheckedInStudents(false);
+
+        // Check for open feedback
+        const openFeedbackExists = allFeedbackItems.some(fb => fb.status === "Open");
+        setHasOpenFeedback(openFeedbackExists);
 
       } catch (error) {
         console.error("Failed to load dashboard stats:", error);
@@ -112,12 +122,14 @@ function AdminDashboardContent() {
         setAvailableEveningSlotsCount(0);
         setAvailableFullDaySlotsCount(0);
         setCheckedInStudents([]);
+        setHasOpenFeedback(false);
+      } finally {
         setIsLoadingDashboardStats(false);
         setIsLoadingAvailabilityStats(false);
         setIsLoadingCheckedInStudents(false);
       }
     };
-    fetchDashboardStats();
+    fetchDashboardData();
   }, []);
 
   const adminActionTiles = [
@@ -125,7 +137,7 @@ function AdminDashboardContent() {
     { title: "Register Student", icon: UserPlus, description: "Add new students to system.", href: "/students/register" },
     { title: "Attendance Overview", icon: CalendarDays, description: "Check student attendance logs.", href: "/attendance/calendar" },
     { title: "Send Alert", icon: SendIcon, description: "Broadcast to all members.", href: "/admin/alerts/send" },
-    { title: "View Feedback", icon: Inbox, description: "Review member suggestions.", href: "/admin/feedback", hasNew: true },
+    { title: "View Feedback", icon: Inbox, description: "Review member suggestions.", href: "/admin/feedback", dynamicHasNew: () => hasOpenFeedback }, // Made hasNew dynamic
     { title: "Seat Dashboard", icon: Eye, description: "View current seat status.", href: "/seats/availability" },
   ];
 
@@ -179,7 +191,6 @@ function AdminDashboardContent() {
       </Dialog>
       
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-        {/* Total Students Card */}
         <Link href="/students/list" className="block no-underline focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-lg h-full">
             <Card className="flex flex-col items-center justify-center text-center p-3 w-full h-full shadow-md hover:shadow-lg transition-shadow">
               <Users className="h-6 w-6 mb-1 text-primary" />
@@ -195,7 +206,6 @@ function AdminDashboardContent() {
             </Card>
         </Link>
 
-        {/* Currently In Library Card */}
         <Card 
             className="flex flex-col items-center justify-center text-center p-3 w-full h-full shadow-md hover:shadow-lg transition-shadow cursor-pointer"
             onClick={() => setShowCheckedInDialog(true)}
@@ -210,7 +220,6 @@ function AdminDashboardContent() {
             <p className="text-xs text-muted-foreground">Active check-ins right now</p>
         </Card>
 
-        {/* Available Booking Slots Card */}
         <Link href="/seats/availability" className="block no-underline focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-lg h-full">
           <Card className="flex flex-col items-center justify-center text-center p-3 w-full h-full shadow-md hover:shadow-lg transition-shadow">
             <Armchair className="h-6 w-6 mb-1 text-primary" />
@@ -227,7 +236,6 @@ function AdminDashboardContent() {
           </Card>
         </Link>
         
-        {/* Revenue Card (Placeholder) */}
         <Link href="/admin/fees/payments-history" className="block no-underline focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-lg h-full">
              <Card className="flex flex-col items-center justify-center text-center p-3 w-full h-full shadow-md hover:shadow-lg transition-shadow">
                 <IndianRupee className="h-6 w-6 mb-1 text-primary" />
@@ -243,14 +251,16 @@ function AdminDashboardContent() {
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
         {adminActionTiles.map((tile) => {
           const Icon = tile.icon;
+          // Use the dynamicHasNew function if it exists, otherwise default to false or tile.hasNew
+          const currentHasNew = tile.dynamicHasNew ? tile.dynamicHasNew() : (tile as any).hasNew; 
           return (
             <Link href={tile.href} key={tile.title} className="block no-underline focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-lg h-full">
               <Card className={cn(
                 "shadow-md hover:shadow-lg transition-shadow h-full flex flex-col aspect-square",
-                tile.hasNew && "border-destructive ring-2 ring-destructive/50"
+                currentHasNew && "border-destructive ring-2 ring-destructive/50"
               )}>
                 <CardHeader className="p-3 pb-1 relative">
-                   {tile.hasNew && (
+                   {currentHasNew && (
                      <span className="absolute top-1 right-1 block h-2.5 w-2.5 rounded-full bg-destructive ring-1 ring-white" />
                    )}
                   <div className="flex items-center gap-2">
@@ -313,4 +323,3 @@ export default function MainPage() {
       </div>
   );
 }
-    
