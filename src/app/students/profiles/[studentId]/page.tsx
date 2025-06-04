@@ -18,8 +18,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { getStudentById } from '@/services/student-service';
-import type { Student, PaymentRecord } from '@/types/student';
+import { getStudentById, getAttendanceRecordsByStudentId } from '@/services/student-service';
+import type { Student, PaymentRecord, AttendanceRecord } from '@/types/student';
 import { format, parseISO, isValid } from 'date-fns';
 
 const DEFAULT_PROFILE_PLACEHOLDER = "https://placehold.co/100x100.png";
@@ -30,17 +30,34 @@ export default function StudentDetailPage() {
 
   const [student, setStudent] = React.useState<Student | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
+  const [attendanceRecords, setAttendanceRecords] = React.useState<AttendanceRecord[]>([]);
+  const [isLoadingAttendance, setIsLoadingAttendance] = React.useState(true);
 
   React.useEffect(() => {
     if (studentId) {
       const fetchStudentData = async () => {
         setIsLoading(true);
+        setIsLoadingAttendance(true); // Start loading attendance as well
         try {
           const fetchedStudent = await getStudentById(studentId);
           setStudent(fetchedStudent || null);
+          if (fetchedStudent) {
+            try {
+              const records = await getAttendanceRecordsByStudentId(studentId);
+              setAttendanceRecords(records.sort((a,b) => parseISO(b.date).getTime() - parseISO(a.date).getTime() || parseISO(b.checkInTime).getTime() - parseISO(a.checkInTime).getTime()));
+            } catch (attendanceError) {
+              console.error("Failed to fetch attendance records:", attendanceError);
+              setAttendanceRecords([]); // Set to empty on error
+            } finally {
+              setIsLoadingAttendance(false);
+            }
+          } else {
+            setIsLoadingAttendance(false); // No student, so no attendance to load
+          }
         } catch (error) {
           console.error("Failed to fetch student:", error);
           setStudent(null);
+          setIsLoadingAttendance(false); // Error fetching student, stop attendance loading
         } finally {
           setIsLoading(false);
         }
@@ -124,7 +141,7 @@ export default function StudentDetailPage() {
         <Card className="shadow-md">
           <CardHeader className="flex flex-row items-start gap-4">
             <Avatar className="h-20 w-20 border">
-              <AvatarImage src={student.profilePictureUrl || DEFAULT_PROFILE_PLACEHOLDER} alt={student.name} data-ai-hint="profile person" />
+              <AvatarImage src={student.profilePictureUrl || DEFAULT_PROFILE_PLACEHOLDER} alt={student.name} data-ai-hint="profile person"/>
               <AvatarFallback>{getInitials(student.name)}</AvatarFallback>
             </Avatar>
             <div className="flex-1">
@@ -210,14 +227,39 @@ export default function StudentDetailPage() {
             <Briefcase className="mr-2 h-5 w-5" />
             Attendance Overview
           </CardTitle>
-          <CardDescription>Student's attendance calendar and summary will be displayed here.</CardDescription>
+          <CardDescription>Student's check-in and check-out history.</CardDescription>
         </CardHeader>
         <CardContent>
-          <p className="text-muted-foreground">
-            Full attendance calendar and statistics for this student are coming soon.
-          </p>
+          {isLoadingAttendance ? (
+            <div className="flex items-center justify-center py-6">
+              <Loader2 className="h-6 w-6 animate-spin text-primary" />
+              <p className="ml-2 text-muted-foreground">Loading attendance...</p>
+            </div>
+          ) : attendanceRecords.length > 0 ? (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Check-in</TableHead>
+                  <TableHead>Check-out</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {attendanceRecords.map((record) => (
+                  <TableRow key={record.recordId}>
+                    <TableCell>{isValid(parseISO(record.date)) ? format(parseISO(record.date), 'PP') : 'Invalid Date'}</TableCell>
+                    <TableCell>{isValid(parseISO(record.checkInTime)) ? format(parseISO(record.checkInTime), 'p') : 'N/A'}</TableCell>
+                    <TableCell>{record.checkOutTime && isValid(parseISO(record.checkOutTime)) ? format(parseISO(record.checkOutTime), 'p') : (record.checkInTime && !record.checkOutTime ? <Badge variant="outline" className="bg-yellow-100 text-yellow-700">Checked In</Badge> : 'N/A')}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          ) : (
+            <p className="text-muted-foreground">No attendance records found for this student.</p>
+          )}
         </CardContent>
       </Card>
     </>
   );
 }
+
