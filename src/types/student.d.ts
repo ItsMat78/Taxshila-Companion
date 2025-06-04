@@ -28,3 +28,11 @@ export interface PaymentRecord {
   transactionId: string;
   method: "UPI" | "Cash" | "Card" | "Online"; // Add more as needed
 }
+
+export interface AttendanceRecord {
+  recordId: string;
+  studentId: string;
+  date: string; // YYYY-MM-DD
+  checkInTime: string; // ISO string
+  checkOutTime?: string; // ISO string, optional
+}
