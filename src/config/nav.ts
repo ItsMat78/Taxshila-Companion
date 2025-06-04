@@ -8,7 +8,7 @@ import {
   ListChecks,
   UserPlus,
   Eye,
-  Database, // Added Database icon
+  Database, 
   type Icon as LucideIcon,
 } from 'lucide-react';
 import type { UserRole } from '@/types/auth';
@@ -62,12 +62,6 @@ export const mainNav: NavItem[] = [
         icon: Eye,
         roles: ['admin'],
       },
-      {
-        title: 'Seat Release AI',
-        href: '/booking/seat-release',
-        icon: Bot,
-        roles: ['admin'],
-      },
     ]
   },
   {
@@ -77,7 +71,7 @@ export const mainNav: NavItem[] = [
     roles: ['member', 'admin'],
   },
   {
-    title: 'Data Management', // New Item
+    title: 'Data Management', 
     href: '/admin/data-management',
     icon: Database,
     roles: ['admin'],

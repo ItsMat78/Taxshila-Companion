@@ -1,4 +1,5 @@
 import { config } from 'dotenv';
 config();
 
-import '@/ai/flows/seat-release-recommendation.ts';
+// The seat-release-recommendation.ts flow has been removed.
+// import '@/ai/flows/seat-release-recommendation.ts';
