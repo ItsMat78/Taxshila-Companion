@@ -26,13 +26,13 @@ import { Armchair, Briefcase, UserCheck, Clock, AlertTriangle } from 'lucide-rea
 const totalSeats = 100;
 
 
-// Placeholder data for active students (same as dashboard) - now includes shift and overstayed status
+// Placeholder data for active students (same as dashboard) - now includes shift, overstayed status, seatNumber, and phone
 const placeholderActiveStudents = [
-  { id: "TS001", name: "Aarav Sharma", timeIn: "2 hours 30 minutes", shift: "morning", hasOverstayed: false },
-  { id: "TS002", name: "Priya Patel", timeIn: "7 hours 15 minutes", shift: "morning", hasOverstayed: true }, // Overstayed example
-  { id: "TS004", name: "Vikram Singh", timeIn: "4 hours 5 minutes", shift: "evening", hasOverstayed: false },
-  { id: "TS005", name: "Neha Reddy", timeIn: "0 hours 45 minutes", shift: "fullday", hasOverstayed: false },
-  { id: "TS008", name: "Kavita Singh", timeIn: "8 hours 0 minutes", shift: "morning", hasOverstayed: true }, // Another overstayed example
+  { id: "TS001", name: "Aarav Sharma", timeIn: "2 hours 30 minutes", shift: "morning", hasOverstayed: false, seatNumber: "A01", phone: "9876543210" },
+  { id: "TS002", name: "Priya Patel", timeIn: "7 hours 15 minutes", shift: "morning", hasOverstayed: true, seatNumber: "B03", phone: "9876543211" },
+  { id: "TS004", name: "Vikram Singh", timeIn: "4 hours 5 minutes", shift: "evening", hasOverstayed: false, seatNumber: "C02", phone: "9876543213" },
+  { id: "TS005", name: "Neha Reddy", timeIn: "0 hours 45 minutes", shift: "fullday", hasOverstayed: false, seatNumber: "D05", phone: "9876543214" },
+  { id: "TS008", name: "Kavita Singh", timeIn: "8 hours 0 minutes", shift: "morning", hasOverstayed: true, seatNumber: "A12", phone: "9876543217" },
 ];
 const occupiedSeatsCount = placeholderActiveStudents.length;
 const availableSeatsCount = totalSeats - occupiedSeatsCount;
@@ -80,7 +80,7 @@ export default function SeatAvailabilityPage() {
               </CardContent>
             </Card>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[625px]">
+          <DialogContent className="sm:max-w-[725px]">
             <DialogHeader>
               <DialogTitle className="flex items-center"><UserCheck className="mr-2 h-5 w-5" /> Active Students in Library</DialogTitle>
               <DialogDescription>
@@ -93,6 +93,8 @@ export default function SeatAvailabilityPage() {
                   <TableRow>
                     <TableHead>Student ID</TableHead>
                     <TableHead>Name</TableHead>
+                    <TableHead>Phone</TableHead>
+                    <TableHead>Seat</TableHead>
                     <TableHead className="flex items-center"><Clock className="mr-1 h-4 w-4"/>Time In Library</TableHead>
                     <TableHead>Status</TableHead>
                   </TableRow>
@@ -102,6 +104,8 @@ export default function SeatAvailabilityPage() {
                     <TableRow key={student.id} className={student.hasOverstayed ? "bg-destructive/10" : ""}>
                       <TableCell>{student.id}</TableCell>
                       <TableCell className="font-medium">{student.name}</TableCell>
+                      <TableCell>{student.phone}</TableCell>
+                      <TableCell>{student.seatNumber}</TableCell>
                       <TableCell>{student.timeIn}</TableCell>
                       <TableCell>
                         {student.hasOverstayed && (
@@ -112,7 +116,7 @@ export default function SeatAvailabilityPage() {
                   ))}
                   {placeholderActiveStudents.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={4} className="text-center text-muted-foreground">
+                        <TableCell colSpan={6} className="text-center text-muted-foreground">
                           No students currently active in the library.
                         </TableCell>
                       </TableRow>
