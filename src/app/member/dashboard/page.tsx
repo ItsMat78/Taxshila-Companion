@@ -43,29 +43,27 @@ const DashboardTile: React.FC<DashboardTileProps> = ({ title, description, icon:
       }
     )}>
       <CardHeader className={cn(
-        "relative",
+        "relative", // For the dot
         isPrimaryAction ? "p-4 pb-2" : "p-3 pb-1"
       )}>
-        {hasNew && !isPrimaryAction && (
+        {hasNew && !isPrimaryAction && ( // The dot
           <span className="absolute top-1 right-1 block h-2.5 w-2.5 rounded-full bg-destructive ring-1 ring-white" />
         )}
-        <div className={cn(isPrimaryAction ? "" : "flex flex-col items-center text-center")}>
-          <Icon className={cn(
-            isPrimaryAction ? "h-6 w-6 mb-1" : "h-6 w-6 mb-1"
-          )} />
-          <ShadcnCardTitle className={cn(
-            isPrimaryAction ? 'text-xl font-bold' : 'text-base font-semibold',
-          )}>
-            {title}
-          </ShadcnCardTitle>
-        </div>
+        <Icon className={cn(
+          isPrimaryAction ? "h-6 w-6 mb-1" : "h-5 w-5 mb-1"
+        )} />
+        <ShadcnCardTitle className={cn(
+          isPrimaryAction ? 'text-xl font-semibold' : 'text-lg font-semibold',
+        )}>
+          {title}
+        </ShadcnCardTitle>
       </CardHeader>
       <CardContent className={cn(
-        "flex-grow flex",
-         isPrimaryAction ? "p-4 pt-0" : "flex-col items-center justify-center p-3 pt-0"
+        "flex-grow", 
+         isPrimaryAction ? "p-4 pt-2" : "p-3 pt-1"
         )}>
         {description && <p className={cn(
-          isPrimaryAction ? 'text-sm text-primary-foreground/80' : 'text-xs text-muted-foreground text-center',
+          isPrimaryAction ? 'text-sm text-primary-foreground/80' : 'text-xs text-muted-foreground',
         )}>{description}</p>}
       </CardContent>
     </Card>
