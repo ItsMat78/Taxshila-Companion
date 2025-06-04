@@ -3,7 +3,6 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { PageTitle } from '@/components/shared/page-title';
-import { StatCard } from '@/components/shared/stat-card';
 import { 
   Users, 
   Briefcase, 
@@ -23,7 +22,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle as ShadcnDialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
   Table,
@@ -40,20 +38,6 @@ import { getAllStudents, getAvailableSeats, getAllAttendanceRecords } from '@/se
 import type { Student, Shift, AttendanceRecord } from '@/types/student';
 import { format, parseISO, isToday } from 'date-fns';
 
-type StatItemConfig = {
-  title: string;
-  icon: React.ElementType;
-  href?: string;
-  // For standard StatCard
-  value?: string | number;
-  description?: string;
-  // For custom cards
-  isCustom?: boolean; 
-  // For dialog trigger
-  dialogContent?: React.ReactNode;
-  onCardClick?: () => void;
-};
-
 type CheckedInStudentInfo = Student & { checkInTime: string };
 
 function AdminDashboardContent() {
@@ -61,18 +45,15 @@ function AdminDashboardContent() {
   const [isLoadingAvailabilityStats, setIsLoadingAvailabilityStats] = React.useState(true);
   const [isLoadingCheckedInStudents, setIsLoadingCheckedInStudents] = React.useState(true);
   
-  // State for "Total Students"
-  const [totalActiveStudents, setTotalActiveStudents] = React.useState(0);
+  const [totalRegisteredStudents, setTotalRegisteredStudents] = React.useState(0);
   const [morningShiftStudentCount, setMorningShiftStudentCount] = React.useState(0);
   const [eveningShiftStudentCount, setEveningShiftStudentCount] = React.useState(0);
   const [fullDayShiftStudentCount, setFullDayShiftStudentCount] = React.useState(0);
 
-  // State for "Available Booking Slots" breakdown
   const [availableMorningSlotsCount, setAvailableMorningSlotsCount] = React.useState(0);
   const [availableEveningSlotsCount, setAvailableEveningSlotsCount] = React.useState(0);
   const [availableFullDaySlotsCount, setAvailableFullDaySlotsCount] = React.useState(0);
 
-  // State for "Currently In Library"
   const [checkedInStudents, setCheckedInStudents] = React.useState<CheckedInStudentInfo[]>([]);
   const [showCheckedInDialog, setShowCheckedInDialog] = React.useState(false);
 
@@ -101,16 +82,14 @@ function AdminDashboardContent() {
         setMorningShiftStudentCount(morningRegistered);
         setEveningShiftStudentCount(eveningRegistered);
         setFullDayShiftStudentCount(fulldayRegistered);
-        setTotalActiveStudents(morningRegistered + eveningRegistered + fulldayRegistered);
+        setTotalRegisteredStudents(morningRegistered + eveningRegistered + fulldayRegistered);
         setIsLoadingDashboardStats(false);
 
-        // Calculate Available Booking Slots stats
         setAvailableMorningSlotsCount(morningAvail.length);
         setAvailableEveningSlotsCount(eveningAvail.length);
         setAvailableFullDaySlotsCount(fulldayAvail.length);
         setIsLoadingAvailabilityStats(false);
 
-        // Calculate Currently In Library stats
         const todayCheckedInRecords = allAttendance.filter(
           (record) => isToday(parseISO(record.checkInTime)) && !record.checkOutTime
         );
@@ -128,7 +107,7 @@ function AdminDashboardContent() {
 
       } catch (error) {
         console.error("Failed to load dashboard stats:", error);
-        setTotalActiveStudents(0);
+        setTotalRegisteredStudents(0);
         setMorningShiftStudentCount(0);
         setEveningShiftStudentCount(0);
         setFullDayShiftStudentCount(0);
@@ -143,30 +122,6 @@ function AdminDashboardContent() {
     };
     fetchDashboardStats();
   }, []);
-
-  const statsConfig: StatItemConfig[] = [
-    { 
-      title: "Total Students", 
-      value: isLoadingDashboardStats ? <Loader2 className="h-5 w-5 animate-spin" /> : totalActiveStudents, 
-      icon: Users, 
-      description: isLoadingDashboardStats ? "Loading..." : `M: ${morningShiftStudentCount}, E: ${eveningShiftStudentCount}, FD: ${fullDayShiftStudentCount} active`,
-      href: "/students/list" 
-    },
-    { 
-      title: "Currently In Library", 
-      value: isLoadingCheckedInStudents ? <Loader2 className="h-5 w-5 animate-spin" /> : checkedInStudents.length,
-      icon: LogIn, 
-      description: "Active check-ins right now",
-      onCardClick: () => setShowCheckedInDialog(true),
-    },
-    { 
-      title: "Available Booking Slots", 
-      icon: Armchair, 
-      href: "/seats/availability",
-      isCustom: true, // To render specific content structure
-    },
-    { title: "Revenue", value: "₹15,670", icon: IndianRupee, description: "This month (est.)", href: "/admin/fees/payments-history" },
-  ];
 
   const adminActionTiles = [
     { title: "Manage Students", icon: Users, description: "View, edit student details.", href: "/students/list" },
@@ -225,46 +180,64 @@ function AdminDashboardContent() {
         </DialogContent>
       </Dialog>
       
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {statsConfig.map((stat) => {
-          const cardContent = (
-            <Card className={cn(
-                "flex flex-col items-center justify-center text-center p-3 w-full h-full shadow-md hover:shadow-lg transition-shadow",
-                stat.onCardClick && "cursor-pointer"
-              )}
-              onClick={stat.onCardClick}
-            >
-              {stat.icon && <stat.icon className="h-6 w-6 mb-1 text-primary" />}
-              <ShadcnCardTitle className="text-sm font-semibold text-card-foreground mb-1">{stat.title}</ShadcnCardTitle>
-              
-              {stat.isCustom && stat.title === "Available Booking Slots" ? (
-                <CardContent className="p-0 text-xs space-y-0.5 text-muted-foreground w-full">
-                  {isLoadingAvailabilityStats ? <Loader2 className="h-5 w-5 animate-spin my-2 mx-auto" /> : (
-                    <>
-                      <div className="flex justify-between px-2"><span>Morning Slots:</span> <span className="font-semibold text-foreground">{availableMorningSlotsCount}</span></div>
-                      <div className="flex justify-between px-2"><span>Evening Slots:</span> <span className="font-semibold text-foreground">{availableEveningSlotsCount}</span></div>
-                      <div className="flex justify-between px-2"><span>Full Day Slots:</span> <span className="font-semibold text-foreground">{availableFullDaySlotsCount}</span></div>
-                    </>
-                  )}
-                </CardContent>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        {/* Total Students Card */}
+        <Link href="/students/list" className="block no-underline focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-lg h-full">
+            <Card className="flex flex-col items-center justify-center text-center p-3 w-full h-full shadow-md hover:shadow-lg transition-shadow">
+              <Users className="h-6 w-6 mb-1 text-primary" />
+              <ShadcnCardTitle className="text-sm font-semibold text-card-foreground mb-1">Total Students</ShadcnCardTitle>
+              {isLoadingDashboardStats ? (
+                <Loader2 className="h-5 w-5 animate-spin my-1" />
               ) : (
+                <div className="text-2xl font-bold text-foreground mb-1">{totalRegisteredStudents}</div>
+              )}
+              <p className="text-xs text-muted-foreground">
+                {isLoadingDashboardStats ? "Loading..." : `M: ${morningShiftStudentCount}, E: ${eveningShiftStudentCount}, FD: ${fullDayShiftStudentCount} active`}
+              </p>
+            </Card>
+        </Link>
+
+        {/* Currently In Library Card */}
+        <Card 
+            className="flex flex-col items-center justify-center text-center p-3 w-full h-full shadow-md hover:shadow-lg transition-shadow cursor-pointer"
+            onClick={() => setShowCheckedInDialog(true)}
+        >
+            <LogIn className="h-6 w-6 mb-1 text-primary" />
+            <ShadcnCardTitle className="text-sm font-semibold text-card-foreground mb-1">Currently In Library</ShadcnCardTitle>
+             {isLoadingCheckedInStudents ? (
+                <Loader2 className="h-5 w-5 animate-spin my-1" />
+              ) : (
+                <div className="text-2xl font-bold text-foreground mb-1">{checkedInStudents.length}</div>
+              )}
+            <p className="text-xs text-muted-foreground">Active check-ins right now</p>
+        </Card>
+
+        {/* Available Booking Slots Card */}
+        <Link href="/seats/availability" className="block no-underline focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-lg h-full">
+          <Card className="flex flex-col items-center justify-center text-center p-3 w-full h-full shadow-md hover:shadow-lg transition-shadow">
+            <Armchair className="h-6 w-6 mb-1 text-primary" />
+            <ShadcnCardTitle className="text-sm font-semibold text-card-foreground mb-1">Available Booking Slots</ShadcnCardTitle>
+            <CardContent className="p-0 text-xs space-y-0.5 text-muted-foreground w-full mt-1">
+              {isLoadingAvailabilityStats ? <Loader2 className="h-5 w-5 animate-spin my-2 mx-auto" /> : (
                 <>
-                  <div className="text-2xl font-bold text-foreground mb-1">{stat.value}</div>
-                  {stat.description && <p className="text-xs text-muted-foreground">{stat.description}</p>}
+                  <div className="flex justify-between px-2"><span>Morning Slots:</span> <span className="font-semibold text-foreground">{availableMorningSlotsCount}</span></div>
+                  <div className="flex justify-between px-2"><span>Evening Slots:</span> <span className="font-semibold text-foreground">{availableEveningSlotsCount}</span></div>
+                  <div className="flex justify-between px-2"><span>Full Day Slots:</span> <span className="font-semibold text-foreground">{availableFullDaySlotsCount}</span></div>
                 </>
               )}
+            </CardContent>
+          </Card>
+        </Link>
+        
+        {/* Revenue Card (Placeholder) */}
+        <Link href="/admin/fees/payments-history" className="block no-underline focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-lg h-full">
+             <Card className="flex flex-col items-center justify-center text-center p-3 w-full h-full shadow-md hover:shadow-lg transition-shadow">
+                <IndianRupee className="h-6 w-6 mb-1 text-primary" />
+                <ShadcnCardTitle className="text-sm font-semibold text-card-foreground mb-1">Revenue</ShadcnCardTitle>
+                <div className="text-2xl font-bold text-foreground mb-1">₹15,670</div>
+                <p className="text-xs text-muted-foreground">This month (est.)</p>
             </Card>
-          );
-
-          if (stat.href) {
-            return (
-              <Link href={stat.href} key={stat.title} className="block no-underline focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-lg h-full">
-                {cardContent}
-              </Link>
-            );
-          }
-          return <div key={stat.title} className="h-full">{cardContent}</div>;
-        })}
+        </Link>
       </div>
 
       <div className="my-8 border-t border-border"></div>
