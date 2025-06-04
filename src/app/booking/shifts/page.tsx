@@ -1,3 +1,7 @@
+// This page is no longer in use as shift selection has been moved to student registration.
+// This file remains temporarily to prevent build/runtime errors until it can be fully deleted.
+// It exports a minimal component to satisfy Next.js.
 
-// This file is no longer needed as shift selection is part of student registration.
-// It will be removed.
+export default function BookingShiftsPagePlaceholder() {
+  return null;
+}
