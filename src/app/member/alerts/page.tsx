@@ -10,9 +10,9 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { AlertCircle, Info, Megaphone } from 'lucide-react';
+import { AlertTriangle, Info, Megaphone } from 'lucide-react'; // AlertTriangle for consistency
 
-// Placeholder data for alerts
+// Placeholder data for alerts - ensure types match what admin can send
 const placeholderAlerts = [
   { id: "1", title: "Library Closure Notification", message: "The library will be closed on July 4th for Independence Day. We will reopen on July 5th.", date: "2024-06-28", type: "closure" },
   { id: "2", title: "New Quiet Study Zone", message: "We've opened a new dedicated quiet study zone on the 2nd floor. Please maintain silence.", date: "2024-06-25", type: "info" },
@@ -21,12 +21,13 @@ const placeholderAlerts = [
 
 const getAlertIcon = (type: string) => {
   switch (type) {
-    case 'closure':
-      return <Info className="h-5 w-5 text-blue-500" />;
-    case 'warning':
-      return <AlertCircle className="h-5 w-5 text-yellow-500" />;
+    case 'closure': // For "Closure / Important Notice"
+      return <Info className="h-5 w-5 text-blue-500" />; // Or a more "important" icon if desired
+    case 'warning': // For "Warning / Maintenance"
+      return <AlertTriangle className="h-5 w-5 text-yellow-500" />; // Consistent with admin options
+    case 'info': // For "General Info / Update"
     default:
-      return <Megaphone className="h-5 w-5 text-primary" />;
+      return <Megaphone className="h-5 w-5 text-primary" />; // Default/general info
   }
 };
 
@@ -53,7 +54,7 @@ export default function MemberAlertsPage() {
                 </div>
                 <div>
                   <CardTitle className="text-lg">{alert.title}</CardTitle>
-                  <CardDescription className="text-xs">Posted on: {alert.date}</CardDescription>
+                  <CardDescription className="text-xs">Posted on: {alert.date} (Type: {alert.type})</CardDescription>
                 </div>
               </div>
             </CardHeader>
