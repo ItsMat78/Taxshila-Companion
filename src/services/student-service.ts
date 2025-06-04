@@ -30,6 +30,7 @@ let students: Student[] = [
     amountDue: "₹0",
     profilePictureUrl: "https://placehold.co/200x200.png?text=AS",
     paymentHistory: [
+        { paymentId: "PAY_TS001_CURRENT", date: format(new Date(), 'yyyy-MM-dd'), amount: "₹700", transactionId: "TXN_TS001_CURRENT", method: "UPI" },
         { paymentId: "PAY001", date: "2024-06-01", amount: "₹700", transactionId: "TXN12345601", method: "UPI" },
         { paymentId: "PAY001B", date: format(subMonths(new Date(),1), 'yyyy-MM-dd'), amount: "₹700", transactionId: "TXN12345PREV", method: "UPI" },
     ]
@@ -40,7 +41,7 @@ let students: Student[] = [
     email: "priya.patel@example.com",
     phone: "9876543211",
     shift: "evening",
-    seatNumber: "2", // Seat changed to avoid conflict with TS001 if TS001 was fullday
+    seatNumber: "2",
     idCardFileName: "priya_id.png",
     feeStatus: "Paid",
     activityStatus: "Active",
@@ -83,9 +84,9 @@ let attendanceRecords: AttendanceRecord[] = [
   { recordId: "AR001B", studentId: "TS001", date: format(new Date(), 'yyyy-MM-dd'), checkInTime: subMinutes(new Date(), 45).toISOString() /* Currently checked in */ },
   { recordId: "AR002", studentId: "TS002", date: format(new Date(), 'yyyy-MM-dd'), checkInTime: subHours(new Date(), 1).toISOString(), checkOutTime: subMinutes(new Date(), 15).toISOString() },
   { recordId: "AR003", studentId: "TS001", date: format(subHours(new Date(), 25), 'yyyy-MM-dd'), checkInTime: subHours(new Date(), 25).toISOString(), checkOutTime: subHours(new Date(), 20).toISOString() },
-  // Add more records for TS001 for testing monthly hour calculation
-  { recordId: "AR004", studentId: "TS001", date: format(subDays(new Date(), 1), 'yyyy-MM-dd'), checkInTime: subDays(subHours(new Date(), 5), 1).toISOString(), checkOutTime: subDays(subHours(new Date(), 2),1).toISOString() }, // 3 hours yesterday
-  { recordId: "AR005", studentId: "TS001", date: format(subDays(new Date(), 2), 'yyyy-MM-dd'), checkInTime: subDays(subHours(new Date(), 6), 2).toISOString(), checkOutTime: subDays(subHours(new Date(), 1),2).toISOString() }, // 5 hours day before
+  { recordId: "AR004", studentId: "TS001", date: format(subDays(new Date(), 1), 'yyyy-MM-dd'), checkInTime: subDays(subHours(new Date(), 5), 1).toISOString(), checkOutTime: subDays(subHours(new Date(), 2),1).toISOString() },
+  { recordId: "AR005", studentId: "TS001", date: format(subDays(new Date(), 2), 'yyyy-MM-dd'), checkInTime: subDays(subHours(new Date(), 6), 2).toISOString(), checkOutTime: subDays(subHours(new Date(), 1),2).toISOString() },
+  { recordId: "AR_TS001_TODAY_COMPLETED", studentId: "TS001", date: format(new Date(), 'yyyy-MM-dd'), checkInTime: subHours(new Date(), 5).toISOString(), checkOutTime: subHours(new Date(), 2).toISOString() }, // 3 hours completed today for TS001
 ];
 
 let feedbackItems: FeedbackItem[] = [
@@ -151,14 +152,14 @@ function processStudentsForUpdates(studentArray: Student[]): Student[] {
             try {
                 const dueDate = parseISO(currentStudentState.nextDueDate);
                 const today = new Date();
-                if (isValid(dueDate) && isPast(dueDate) && currentStudentState.feeStatus !== 'Overdue') { 
+                if (isValid(dueDate) && isPast(dueDate) && currentStudentState.feeStatus !== 'Overdue') {
                     currentStudentState.feeStatus = 'Overdue';
                 }
             } catch (e) {
                 console.error(`Error processing fee status for student ${currentStudentState.studentId}: ${currentStudentState.nextDueDate}`, e);
             }
         }
-        
+
         const updatedStudent = applyAutomaticStatusUpdates(currentStudentState);
         const indexInMainArray = students.findIndex(orig => orig.studentId === updatedStudent.studentId);
         if (indexInMainArray !== -1) {
@@ -299,7 +300,7 @@ export async function updateStudent(studentId: string, studentUpdateData: Partia
         return;
       }
 
-      const currentStudent = { ...students[studentIndex] }; 
+      const currentStudent = { ...students[studentIndex] };
 
       const newShift = studentUpdateData.shift || currentStudent.shift;
       const newSeatNumber = studentUpdateData.seatNumber !== undefined ? studentUpdateData.seatNumber : currentStudent.seatNumber;
@@ -347,7 +348,7 @@ export async function updateStudent(studentId: string, studentUpdateData: Partia
       let alertSentDueToStatusChange = false;
       if (studentUpdateData.activityStatus === 'Active' && currentStudent.activityStatus === 'Left') {
         try {
-           const alertMessage = `Welcome back, ${newlyUpdatedStudent.name}! Your student account has been re-activated.\nYour current details are:\nName: ${newlyUpdatedStudent.name}\nEmail: ${newlyUpdatedStudent.email || 'N/A'}\nPhone: ${newlyUpdatedStudent.phone}\nShift: ${newlyUpdatedStudent.shift}\nSeat Number: ${newlyUpdatedStudent.seatNumber}\nID Card: ${newlyUpdatedStudent.idCardFileName || 'Not Uploaded'}\n\nYour fee of ${newlyUpdatedStudent.amountDue} is due by ${newlyUpdatedStudent.nextDueDate}.`;
+           const alertMessage = `Welcome back, ${newlyUpdatedStudent.name}! Your student account has been re-activated.\nYour current details are:\nName: ${newlyUpdatedStudent.name}\nEmail: ${newlyUpdatedStudent.email || 'N/A'}\nPhone: ${newlyUpdatedStudent.phone}\nShift: ${newlyUpdatedStudent.shift}\nSeat Number: ${newlyUpdatedStudent.seatNumber}\nID Card File: ${newlyUpdatedStudent.idCardFileName || 'Not Uploaded'}\n\nYour fee of ${newlyUpdatedStudent.amountDue} is due by ${newlyUpdatedStudent.nextDueDate}.`;
           await sendAlertToStudent(studentId, "Account Re-activated", alertMessage, "info");
           alertSentDueToStatusChange = true;
         } catch (e) { console.error("Failed to send re-activation alert:", e); }
@@ -357,7 +358,7 @@ export async function updateStudent(studentId: string, studentUpdateData: Partia
           alertSentDueToStatusChange = true;
         } catch (e) { console.error("Failed to send marked-as-left alert:", e); }
       }
-      
+
       const isFeeStatusChangeOnlyToPaid = studentUpdateData.feeStatus === 'Paid' && currentStudent.feeStatus !== 'Paid' && Object.keys(studentUpdateData).length === 1 && studentUpdateData.lastPaymentDate && studentUpdateData.nextDueDate && studentUpdateData.amountDue === "₹0";
 
 
@@ -366,12 +367,12 @@ export async function updateStudent(studentId: string, studentUpdateData: Partia
         const emailChanged = studentUpdateData.email !== undefined && studentUpdateData.email !== currentStudent.email;
         const phoneChanged = studentUpdateData.phone && studentUpdateData.phone !== currentStudent.phone;
         const shiftChanged = studentUpdateData.shift && studentUpdateData.shift !== currentStudent.shift;
-        const seatChanged = studentUpdateData.seatNumber !== undefined && studentUpdateData.seatNumber !== currentStudent.seatNumber;
+        const seatChanged = studentUpdateData.seatNumber !== undefined && studentUpdateData.seatNumber !== currentStudent.seatNumber && studentUpdateData.seatNumber !== null;
         const idCardChanged = studentUpdateData.idCardFileName !== undefined && studentUpdateData.idCardFileName !== currentStudent.idCardFileName;
 
         if (nameChanged || emailChanged || phoneChanged || shiftChanged || seatChanged || idCardChanged) {
           try {
-            const alertMessage = `Hi ${newlyUpdatedStudent.name}, your profile details have been updated by an administrator. Your current details are:\nName: ${newlyUpdatedStudent.name}\nEmail: ${newlyUpdatedStudent.email || 'N/A'}\nPhone: ${newlyUpdatedStudent.phone}\nShift: ${newlyUpdatedStudent.shift}\nSeat Number: ${newlyUpdatedStudent.seatNumber || 'N/A'}\nID Card: ${newlyUpdatedStudent.idCardFileName || 'Not Uploaded'}\n\nPlease review them in your profile.`;
+            const alertMessage = `Hi ${newlyUpdatedStudent.name}, your profile details have been updated by an administrator. Your current details are:\nName: ${newlyUpdatedStudent.name}\nEmail: ${newlyUpdatedStudent.email || 'N/A'}\nPhone: ${newlyUpdatedStudent.phone}\nShift: ${newlyUpdatedStudent.shift}\nSeat Number: ${newlyUpdatedStudent.seatNumber || 'N/A'}\nID Card File: ${newlyUpdatedStudent.idCardFileName || 'Not Uploaded'}\n\nPlease review them in your profile.`;
             await sendAlertToStudent(studentId, "Profile Details Updated", alertMessage, "info");
           } catch (e) { console.error("Failed to send profile update alert:", e); }
         }
@@ -429,24 +430,24 @@ export function addCheckIn(studentId: string): Promise<AttendanceRecord> {
       }
 
       const now = new Date();
-      const currentHour = getHours(now); // Using date-fns getHours
+      const currentHour = getHours(now);
 
       let outsideShift = false;
       const shiftName = student.shift;
       let shiftHoursMessage = "";
 
-      if (student.shift === "morning") { // 7 AM (7) to 2 PM (14)
+      if (student.shift === "morning") {
         shiftHoursMessage = "7 AM - 2 PM";
         if (currentHour < 7 || currentHour >= 14) {
           outsideShift = true;
         }
-      } else if (student.shift === "evening") { // 3 PM (15) to 10 PM (22)
+      } else if (student.shift === "evening") {
         shiftHoursMessage = "3 PM - 10 PM";
         if (currentHour < 15 || currentHour >= 22) {
           outsideShift = true;
         }
       }
-      // No check for "fullday" as they cover the entire operational time.
+
 
       if (outsideShift) {
         try {
@@ -538,7 +539,7 @@ export async function recordStudentPayment(
         reject(new Error("Cannot record payment for a student who has left."));
         return;
       }
-      
+
       const today = new Date();
       const newPaymentId = `PAY${String(Date.now()).slice(-6)}${String(Math.floor(Math.random() * 100)).padStart(2,'0')}`;
       const newTransactionId = `TXN${paymentMethod === "Admin Recorded" ? "ADMIN" : "MEM"}${String(Date.now()).slice(-7)}`;
@@ -546,10 +547,10 @@ export async function recordStudentPayment(
       let actualPaymentAmount = paymentAmountInput;
       if (paymentAmountInput === "FULL_DUE" && student.amountDue && student.amountDue !== "N/A" && student.amountDue !== "₹0") {
         actualPaymentAmount = student.amountDue;
-      } else if (paymentAmountInput === "FULL_DUE") { 
+      } else if (paymentAmountInput === "FULL_DUE") {
         actualPaymentAmount = student.shift === "fullday" ? "₹1200" : "₹700";
       }
-      
+
       const newPaymentRecord: PaymentRecord = {
         paymentId: newPaymentId,
         date: format(today, 'yyyy-MM-dd'),
@@ -668,7 +669,7 @@ export function sendGeneralAlert(title: string, message: string, type: AlertItem
         message,
         type,
         dateSent: new Date().toISOString(),
-        isRead: false, 
+        isRead: false,
       };
       alertItems.push(newAlert);
       resolve({...newAlert});
@@ -687,7 +688,7 @@ export async function sendAlertToStudent(
   return new Promise((resolve, reject) => {
     setTimeout(() => {
       const studentExists = students.some(s => s.studentId === studentId);
-      if (!studentExists) { 
+      if (!studentExists) {
         console.warn(`Attempted to send targeted alert to non-existent student ID: ${studentId} for title: "${title}"`);
         if (type === 'feedback_response') {
              reject(new Error(`Student with ID ${studentId} not found for feedback response.`));
@@ -707,7 +708,7 @@ export async function sendAlertToStudent(
       };
       alertItems.push(newAlert);
       resolve({...newAlert});
-    }, 20); 
+    }, 20);
   });
 }
 
@@ -777,7 +778,7 @@ export function markAlertAsRead(alertId: string, studentId: string): Promise<Ale
 
 // New function for calculating monthly revenue
 export async function calculateMonthlyRevenue(): Promise<string> {
-  const allStudentsData = await getAllStudents(); // Ensure this processes updates if needed
+  const allStudentsData = await getAllStudents();
   let totalRevenue = 0;
   const now = new Date();
   const currentMonthStart = startOfMonth(now);
@@ -818,7 +819,9 @@ export async function calculateMonthlyStudyHours(studentId: string): Promise<num
         if (record.checkOutTime) {
           const checkOutDate = parseISO(record.checkOutTime);
           if (isValid(checkOutDate)) {
-            totalMilliseconds += differenceInMilliseconds(checkOutDate, checkInDate);
+             if (checkOutDate.getTime() > checkInDate.getTime()) {
+                totalMilliseconds += differenceInMilliseconds(checkOutDate, checkInDate);
+            }
           }
         }
       }
@@ -826,6 +829,5 @@ export async function calculateMonthlyStudyHours(studentId: string): Promise<num
       console.error("Error processing attendance record for hour calculation:", record, e);
     }
   });
-  return Math.round(totalMilliseconds / (1000 * 60 * 60)); // Convert ms to hours and round
+  return Math.round(totalMilliseconds / (1000 * 60 * 60));
 }
-
