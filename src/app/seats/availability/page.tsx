@@ -16,7 +16,6 @@ import {
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -29,7 +28,7 @@ import type { Student, Shift } from '@/types/student';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
-type ShiftView = Shift | 'fullday_occupied'; 
+type ShiftView = Shift | 'fullday_occupied'; // fullday_occupied to specifically list seats for full day booking
 
 export default function SeatAvailabilityPage() {
   const { toast } = useToast();
@@ -37,58 +36,103 @@ export default function SeatAvailabilityPage() {
   const [isLoading, setIsLoading] = React.useState(true);
   const [selectedShiftView, setSelectedShiftView] = React.useState<ShiftView>('morning');
   
+  // State for overall stat cards
+  const [overallPhysicallyOccupiedSeats, setOverallPhysicallyOccupiedSeats] = React.useState(0);
+  const [morningShiftStudentCount, setMorningShiftStudentCount] = React.useState(0);
+  const [eveningShiftStudentCount, setEveningShiftStudentCount] = React.useState(0);
+  const [fullDayShiftStudentCount, setFullDayShiftStudentCount] = React.useState(0);
+  
+  const [overallUniqueSeatsWithAvailableSlots, setOverallUniqueSeatsWithAvailableSlots] = React.useState(0);
+  const [availableMorningSlotsCount, setAvailableMorningSlotsCount] = React.useState(0);
+  const [availableEveningSlotsCount, setAvailableEveningSlotsCount] = React.useState(0);
+  const [availableFullDaySlotsCount, setAvailableFullDaySlotsCount] = React.useState(0);
+  const [isLoadingOverallAvailableStats, setIsLoadingOverallAvailableStats] = React.useState(true);
+
+  // State for dialogs (can be filtered by selectedShiftView)
   const [showOccupiedSeatsDialog, setShowOccupiedSeatsDialog] = React.useState(false);
   const [showAvailableSeatsDialog, setShowAvailableSeatsDialog] = React.useState(false);
-  const [dialogSeatList, setDialogSeatList] = React.useState<string[]>([]);
+  const [dialogOccupiedStudentList, setDialogOccupiedStudentList] = React.useState<Student[]>([]);
+  const [dialogAvailableSeatList, setDialogAvailableSeatList] = React.useState<string[]>([]);
   const [isLoadingDialogSeats, setIsLoadingDialogSeats] = React.useState(false);
-  const [availableForFullDayBookingCount, setAvailableForFullDayBookingCount] = React.useState(0);
+
+  const activeStudents = React.useMemo(() => allStudents.filter(s => s.activityStatus === "Active"), [allStudents]);
 
   React.useEffect(() => {
     const fetchData = async () => {
       setIsLoading(true);
+      setIsLoadingOverallAvailableStats(true);
       try {
-        const students = await getAllStudents();
-        setAllStudents(students);
-        // Pre-fetch available for full day count for initial display if needed, or do it on view change
-        const fullDayAvailable = await getAvailableSeats('fullday');
-        setAvailableForFullDayBookingCount(fullDayAvailable.length);
+        const studentsData = await getAllStudents();
+        setAllStudents(studentsData);
+
+        // Calculate Occupied Stats
+        const activeSeatHolders = studentsData.filter(s => s.activityStatus === "Active" && s.seatNumber);
+        setMorningShiftStudentCount(activeSeatHolders.filter(s => s.shift === 'morning').length);
+        setEveningShiftStudentCount(activeSeatHolders.filter(s => s.shift === 'evening').length);
+        setFullDayShiftStudentCount(activeSeatHolders.filter(s => s.shift === 'fullday').length);
+        const uniqueOccupiedSeats = new Set(activeSeatHolders.map(s => s.seatNumber!));
+        setOverallPhysicallyOccupiedSeats(uniqueOccupiedSeats.size);
+
+        // Calculate Available Slots Stats
+        const [morningAvail, eveningAvail, fulldayAvail] = await Promise.all([
+          getAvailableSeats('morning'),
+          getAvailableSeats('evening'),
+          getAvailableSeats('fullday')
+        ]);
+        setAvailableMorningSlotsCount(morningAvail.length);
+        setAvailableEveningSlotsCount(eveningAvail.length);
+        setAvailableFullDaySlotsCount(fulldayAvail.length);
+        
+        const uniqueAvailablePhysicalSeats = new Set([...morningAvail, ...eveningAvail]);
+        setOverallUniqueSeatsWithAvailableSlots(uniqueAvailablePhysicalSeats.size);
 
       } catch (error) {
-        console.error("Failed to fetch students:", error);
+        console.error("Failed to fetch initial data:", error);
         toast({
           title: "Error",
-          description: "Could not load student data.",
+          description: "Could not load initial seat and student data.",
           variant: "destructive",
         });
       } finally {
         setIsLoading(false);
+        setIsLoadingOverallAvailableStats(false);
       }
     };
     fetchData();
   }, [toast]);
 
-  React.useEffect(() => {
-    const fetchFullDayAvailableIfNeeded = async () => {
-      if (selectedShiftView === 'fullday_occupied' && !isLoading) { // only if not already loading initial data
-        setIsLoadingDialogSeats(true); // Can reuse this for the stat card update
-        try {
-          const seats = await getAvailableSeats('fullday');
-          setAvailableForFullDayBookingCount(seats.length);
-        } catch (e) {
-          toast({ title: "Error", description: "Could not load available seats for full day.", variant: "destructive"});
-          setAvailableForFullDayBookingCount(0);
-        } finally {
-          setIsLoadingDialogSeats(false);
-        }
-      }
-    };
-    fetchFullDayAvailableIfNeeded();
-  }, [selectedShiftView, isLoading, toast]);
+  const handleOpenOccupiedSeatsDialog = () => {
+    let studentsToList: Student[];
+    if (selectedShiftView === 'morning') {
+      studentsToList = activeStudents.filter(s => s.seatNumber && (s.shift === 'morning' || s.shift === 'fullday'));
+    } else if (selectedShiftView === 'evening') {
+      studentsToList = activeStudents.filter(s => s.seatNumber && (s.shift === 'evening' || s.shift === 'fullday'));
+    } else { // fullday_occupied or for the main tile click before selection
+      studentsToList = activeStudents.filter(s => s.seatNumber && s.shift === 'fullday');
+    }
+    // If triggering from the main tile (not after a shift selection for layout), show ALL occupied
+    // For simplicity, we'll use the selectedShiftView to filter dialogs for now.
+    // The card click can have specific behavior if needed later.
+    setDialogOccupiedStudentList(studentsToList.sort((a,b) => parseInt(a.seatNumber!) - parseInt(b.seatNumber!)));
+    setShowOccupiedSeatsDialog(true);
+  };
+  
+  const handleOpenAvailableSeatsDialog = async () => {
+    setIsLoadingDialogSeats(true);
+    setShowAvailableSeatsDialog(true);
+    try {
+      const targetShift = selectedShiftView === 'fullday_occupied' ? 'fullday' : selectedShiftView;
+      const seats = await getAvailableSeats(targetShift);
+      setDialogAvailableSeatList(seats);
+    } catch (e) {
+      toast({ title: "Error", description: `Could not load available seats.`, variant: "destructive"});
+      setDialogAvailableSeatList([]);
+    } finally {
+      setIsLoadingDialogSeats(false);
+    }
+  };
 
-
-  const activeStudents = allStudents.filter(s => s.activityStatus === "Active");
-
-  const getSeatStatusForView = (seatNumber: string, view: ShiftView): { student?: Student, isAvailable: boolean, colorClass: string, shiftIcon?: React.ElementType } => {
+  const getSeatStatusForLayout = (seatNumber: string, view: ShiftView): { student?: Student, isAvailable: boolean, colorClass: string, shiftIcon?: React.ElementType } => {
     let studentOnSeat: Student | undefined;
     let isAvailable = true;
     let colorClass = 'bg-sky-200 border-sky-300 text-sky-800 hover:bg-sky-300'; 
@@ -100,90 +144,47 @@ export default function SeatAvailabilityPage() {
 
     if (view === 'morning') {
       if (studentFullDay) {
-        studentOnSeat = studentFullDay;
-        isAvailable = false;
-        colorClass = 'bg-yellow-200 border-yellow-300 text-yellow-800 hover:bg-yellow-300';
-        shiftIcon = Sun;
+        studentOnSeat = studentFullDay; isAvailable = false; colorClass = 'bg-yellow-200 border-yellow-300 text-yellow-800 hover:bg-yellow-300'; shiftIcon = Sun;
       } else if (studentMorning) {
-        studentOnSeat = studentMorning;
-        isAvailable = false;
-        colorClass = 'bg-orange-200 border-orange-300 text-orange-800 hover:bg-orange-300';
-        shiftIcon = Sunrise;
+        studentOnSeat = studentMorning; isAvailable = false; colorClass = 'bg-orange-200 border-orange-300 text-orange-800 hover:bg-orange-300'; shiftIcon = Sunrise;
       }
     } else if (view === 'evening') {
       if (studentFullDay) {
-        studentOnSeat = studentFullDay;
-        isAvailable = false;
-        colorClass = 'bg-yellow-200 border-yellow-300 text-yellow-800 hover:bg-yellow-300';
-        shiftIcon = Sun;
+        studentOnSeat = studentFullDay; isAvailable = false; colorClass = 'bg-yellow-200 border-yellow-300 text-yellow-800 hover:bg-yellow-300'; shiftIcon = Sun;
       } else if (studentEvening) {
-        studentOnSeat = studentEvening;
-        isAvailable = false;
-        colorClass = 'bg-purple-200 border-purple-300 text-purple-800 hover:bg-purple-300';
-        shiftIcon = Sunset;
+        studentOnSeat = studentEvening; isAvailable = false; colorClass = 'bg-purple-200 border-purple-300 text-purple-800 hover:bg-purple-300'; shiftIcon = Sunset;
       }
-    } else if (view === 'fullday_occupied') {
+    } else if (view === 'fullday_occupied') { // This view specifically highlights full-day occupied seats
       if (studentFullDay) {
-        studentOnSeat = studentFullDay;
-        isAvailable = false; 
-        colorClass = 'bg-yellow-200 border-yellow-300 text-yellow-800 hover:bg-yellow-300';
-        shiftIcon = Sun;
-      } else {
-        // In "Full Day Occupancy" view, if not taken by a fullday student, it's "available" in terms of not being fullday-occupied.
-        // Its actual availability for booking depends on morning/evening shifts.
+        studentOnSeat = studentFullDay; isAvailable = false; colorClass = 'bg-yellow-200 border-yellow-300 text-yellow-800 hover:bg-yellow-300'; shiftIcon = Sun;
+      } else { // For this view, if not fullday occupied, it's "available" in terms of this specific filter
         isAvailable = true; 
+        // colorClass = 'bg-gray-100 border-gray-200 text-gray-500 hover:bg-gray-200'; // Could be different color for "not FD occupied"
       }
     }
     return { student: studentOnSeat, isAvailable, colorClass, shiftIcon };
   };
   
-  let studentsForDialog = activeStudents;
-  let occupiedCountForView = 0;
-  let availableCountForView = 0;
-  let occupiedTitleSuffix = "Students";
-  let availableTitleSuffix = "View";
-
-  if (selectedShiftView === 'morning') {
-    studentsForDialog = activeStudents.filter(s => s.shift === 'morning' || s.shift === 'fullday');
-    occupiedCountForView = studentsForDialog.length;
-    availableCountForView = serviceAllSeats.filter(seatNum => getSeatStatusForView(seatNum, 'morning').isAvailable).length;
-    occupiedTitleSuffix = "Morning View";
-    availableTitleSuffix = "Morning View";
-  } else if (selectedShiftView === 'evening') {
-    studentsForDialog = activeStudents.filter(s => s.shift === 'evening' || s.shift === 'fullday');
-    occupiedCountForView = studentsForDialog.length;
-    availableCountForView = serviceAllSeats.filter(seatNum => getSeatStatusForView(seatNum, 'evening').isAvailable).length;
-    occupiedTitleSuffix = "Evening View";
-    availableTitleSuffix = "Evening View";
-  } else if (selectedShiftView === 'fullday_occupied') {
-    studentsForDialog = activeStudents.filter(s => s.shift === 'fullday');
-    occupiedCountForView = studentsForDialog.length;
-    availableCountForView = availableForFullDayBookingCount; // Use the specifically fetched count
-    occupiedTitleSuffix = "Full Day Students";
-    availableTitleSuffix = "Full Day Booking";
-  }
-
   const totalSeatsInLayout = serviceAllSeats.length;
   
-  const handleOpenAvailableSeatsDialog = async () => {
-    setIsLoadingDialogSeats(true);
-    setShowAvailableSeatsDialog(true);
-    try {
-      const targetShift = selectedShiftView === 'fullday_occupied' ? 'fullday' : selectedShiftView;
-      const seats = await getAvailableSeats(targetShift);
-      setDialogSeatList(seats);
-    } catch (e) {
-      toast({ title: "Error", description: `Could not load available seats.`, variant: "destructive"});
-      setDialogSeatList([]);
-    } finally {
-      setIsLoadingDialogSeats(false);
-    }
-  };
+  const occupiedDialogTitle = React.useMemo(() => {
+    if (selectedShiftView === 'morning') return "Students (Morning View)";
+    if (selectedShiftView === 'evening') return "Students (Evening View)";
+    if (selectedShiftView === 'fullday_occupied') return "Students (Full Day)";
+    return "Occupied By";
+  }, [selectedShiftView]);
+
+  const availableDialogTitle = React.useMemo(() => {
+    if (selectedShiftView === 'morning') return "Available Seats (Morning Shift)";
+    if (selectedShiftView === 'evening') return "Available Seats (Evening Shift)";
+    if (selectedShiftView === 'fullday_occupied') return "Available Seats (Full Day Booking)";
+    return "Available Seats";
+  }, [selectedShiftView]);
 
 
   return (
     <>
-      <PageTitle title="Seat Availability & Occupancy" description="View seat status based on selected shift." />
+      <PageTitle title="Seat Availability & Occupancy" description="Overall hall status and shift-specific seat layout." />
       
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mb-6">
         <Card className="shadow-md">
@@ -192,28 +193,30 @@ export default function SeatAvailabilityPage() {
           </CardHeader>
           <CardContent>
             <p className="text-3xl font-bold">{totalSeatsInLayout}</p>
-            <p className="text-xs text-muted-foreground pt-1">Capacity of study hall</p>
+            <p className="text-xs text-muted-foreground pt-1">Total physical seats in the hall.</p>
           </CardContent>
         </Card>
 
         <Dialog open={showOccupiedSeatsDialog} onOpenChange={setShowOccupiedSeatsDialog}>
           <DialogTrigger asChild>
-            <Card className="cursor-pointer hover:shadow-lg transition-shadow shadow-md">
+            <Card className="cursor-pointer hover:shadow-lg transition-shadow shadow-md" onClick={handleOpenOccupiedSeatsDialog}>
               <CardHeader className="pb-2">
                 <CardTitle className="text-lg flex items-center">
                   <Users className="mr-2 h-4 w-4" />
-                  Occupied for {occupiedTitleSuffix}
+                  Physically Occupied
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-3xl font-bold text-destructive">{occupiedCountForView}</p>
-                 <p className="text-xs text-muted-foreground pt-1">Students in selected view</p>
+                <p className="text-3xl font-bold text-destructive">{isLoading ? <Loader2 className="h-7 w-7 animate-spin inline-block" /> : overallPhysicallyOccupiedSeats}</p>
+                 <p className="text-xs text-muted-foreground pt-1">
+                  {isLoading ? "Loading..." : `M: ${morningShiftStudentCount}, E: ${eveningShiftStudentCount}, F: ${fullDayShiftStudentCount} students`}
+                 </p>
               </CardContent>
             </Card>
           </DialogTrigger>
           <DialogContent className="sm:max-w-[725px]">
             <DialogHeader>
-              <DialogTitle className="flex items-center"><UserCheck className="mr-2 h-5 w-5" /> Students for {occupiedTitleSuffix}</DialogTitle>
+              <DialogTitle className="flex items-center"><UserCheck className="mr-2 h-5 w-5" />{occupiedDialogTitle}</DialogTitle>
             </DialogHeader>
             <div className="max-h-[60vh] overflow-y-auto">
               <Table>
@@ -227,7 +230,7 @@ export default function SeatAvailabilityPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {studentsForDialog.map((student) => (
+                  {dialogOccupiedStudentList.map((student) => (
                     <TableRow key={student.studentId} className={student.feeStatus === 'Overdue' ? "bg-destructive/5" : ""}>
                       <TableCell>{student.studentId}</TableCell>
                       <TableCell className="font-medium">{student.name}</TableCell>
@@ -236,7 +239,7 @@ export default function SeatAvailabilityPage() {
                       <TableCell className="capitalize">{student.shift}</TableCell>
                     </TableRow>
                   ))}
-                  {studentsForDialog.length === 0 && (
+                  {dialogOccupiedStudentList.length === 0 && (
                       <TableRow>
                         <TableCell colSpan={5} className="text-center text-muted-foreground">
                           No students occupying seats for this view.
@@ -255,15 +258,15 @@ export default function SeatAvailabilityPage() {
               <CardHeader className="pb-2">
                 <CardTitle className="text-lg flex items-center">
                   <Armchair className="mr-2 h-4 w-4" />
-                  Available for {availableTitleSuffix}
+                  Seats with Available Slots
                   </CardTitle>
               </CardHeader>
               <CardContent>
                  <p className="text-3xl font-bold text-green-600">
-                   {isLoadingDialogSeats && selectedShiftView === 'fullday_occupied' ? <Loader2 className="h-7 w-7 animate-spin inline-block" /> : availableCountForView}
+                   {isLoadingOverallAvailableStats ? <Loader2 className="h-7 w-7 animate-spin inline-block" /> : overallUniqueSeatsWithAvailableSlots}
                  </p>
                  <p className="text-xs text-muted-foreground pt-1">
-                    {selectedShiftView === 'fullday_occupied' ? 'Seats available for full day booking' : `Seats available in ${selectedShiftView} shift`}
+                    {isLoadingOverallAvailableStats ? "Loading..." : `M: ${availableMorningSlotsCount}, E: ${availableEveningSlotsCount}, FD: ${availableFullDaySlotsCount} slots`}
                  </p>
               </CardContent>
             </Card>
@@ -271,7 +274,7 @@ export default function SeatAvailabilityPage() {
           <DialogContent className="sm:max-w-[425px]">
             <DialogHeader>
                <DialogTitle className="flex items-center"><Armchair className="mr-2 h-5 w-5" />
-                 Available Seats for {availableTitleSuffix}
+                 {availableDialogTitle}
                </DialogTitle>
             </DialogHeader>
             <div className="max-h-[60vh] overflow-y-auto">
@@ -281,10 +284,10 @@ export default function SeatAvailabilityPage() {
                   <TableRow><TableHead>Seat Number</TableHead></TableRow>
                 </TableHeader>
                 <TableBody>
-                  {dialogSeatList.map((seat) => (
+                  {dialogAvailableSeatList.map((seat) => (
                     <TableRow key={seat}><TableCell className="font-medium">{seat}</TableCell></TableRow>
                   ))}
-                  {dialogSeatList.length === 0 && (
+                  {dialogAvailableSeatList.length === 0 && (
                       <TableRow><TableCell className="text-center text-muted-foreground">No seats available for this view.</TableCell></TableRow>
                   )}
                 </TableBody>
@@ -294,11 +297,11 @@ export default function SeatAvailabilityPage() {
           </DialogContent>
         </Dialog>
       </div>
-      
+
       <Card className="mb-6 shadow-md">
         <CardHeader>
           <CardTitle>Shift View Selector</CardTitle>
-          <CardDescription>Select a shift to see its specific occupancy and availability.</CardDescription>
+          <CardDescription>Select a shift to see its specific occupancy in the layout below. Dialogs will also reflect this selection.</CardDescription>
         </CardHeader>
         <CardContent>
           <RadioGroup
@@ -321,7 +324,7 @@ export default function SeatAvailabilityPage() {
           </RadioGroup>
         </CardContent>
       </Card>
-
+      
       {isLoading ? (
         <div className="flex items-center justify-center py-10">
           <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -358,18 +361,20 @@ export default function SeatAvailabilityPage() {
               </div>
               <div className="grid grid-cols-10 gap-2 sm:gap-3 md:grid-cols-12 lg:grid-cols-15 xl:grid-cols-17">
                 {serviceAllSeats.map((seatNum) => {
-                  const { student, colorClass } = getSeatStatusForView(seatNum, selectedShiftView);
+                  const { student, colorClass } = getSeatStatusForLayout(seatNum, selectedShiftView);
+                  const ShiftIcon = getSeatStatusForLayout(seatNum, selectedShiftView).shiftIcon;
                   return (
                     <Badge
                       key={seatNum}
                       variant="outline"
                       className={cn(
-                        "flex items-center justify-center h-10 w-10 sm:h-12 sm:w-12 text-xs sm:text-sm rounded-md transition-colors font-medium",
+                        "relative flex items-center justify-center h-10 w-10 sm:h-12 sm:w-12 text-xs sm:text-sm rounded-md transition-colors font-medium",
                         colorClass,
                         "cursor-default" 
                       )}
                       title={student ? `${seatNum} - ${student.name} (${student.shift})` : `${seatNum} - Available for ${selectedShiftView.replace('_occupied','')} view`}
                     >
+                      {ShiftIcon && <ShiftIcon className="absolute top-1 right-1 h-3 w-3" />}
                       {seatNum}
                     </Badge>
                   );
