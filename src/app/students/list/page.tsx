@@ -20,19 +20,19 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, Edit } from 'lucide-react'; // Added Edit icon
 
-// Placeholder type for student data - ensure this matches the registration form structure
+// Placeholder type for student data
 type StudentData = {
   studentId: string;
   name: string;
   email: string;
   phone?: string;
   shift: "morning" | "evening" | "fullday";
-  seatNumber?: string; // Added seatNumber
+  seatNumber?: string;
 };
 
-// Placeholder data for existing students - this would come from an API or state management in a real app
+// Placeholder data for existing students
 const placeholderStudents: StudentData[] = [
   { studentId: "TS001", name: "Aarav Sharma", email: "aarav.sharma@example.com", phone: "9876543210", shift: "morning", seatNumber: "A101" },
   { studentId: "TS002", name: "Priya Patel", email: "priya.patel@example.com", phone: "9876543211", shift: "evening", seatNumber: "B203" },
@@ -41,9 +41,6 @@ const placeholderStudents: StudentData[] = [
 
 export default function StudentListPage() {
   const [students, setStudents] = React.useState<StudentData[]>(placeholderStudents);
-
-  // In a real app, you'd fetch students or manage them via a global state/context.
-  // For now, we use placeholder data. If registration adds to a shared list, this page would update.
 
   return (
     <>
@@ -62,7 +59,7 @@ export default function StudentListPage() {
                 <TableHead>Email</TableHead>
                 <TableHead>Shift</TableHead>
                 <TableHead>Seat Number</TableHead>
-                <TableHead>Details</TableHead>
+                <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -77,10 +74,15 @@ export default function StudentListPage() {
                   <TableCell>{student.email}</TableCell>
                   <TableCell className="capitalize">{student.shift}</TableCell>
                   <TableCell>{student.seatNumber || 'N/A'}</TableCell>
-                  <TableCell>
+                  <TableCell className="space-x-2">
                     <Link href={`/students/profiles/${student.studentId}`} passHref legacyBehavior>
-                      <Button variant="outline" size="sm">
-                        View <ArrowRight className="ml-2 h-4 w-4" />
+                      <Button variant="outline" size="sm" title="View Profile">
+                        <ArrowRight className="h-4 w-4" />
+                      </Button>
+                    </Link>
+                    <Link href={`/admin/students/edit/${student.studentId}`} passHref legacyBehavior>
+                      <Button variant="outline" size="sm" title="Edit Student">
+                        <Edit className="h-4 w-4" />
                       </Button>
                     </Link>
                   </TableCell>
