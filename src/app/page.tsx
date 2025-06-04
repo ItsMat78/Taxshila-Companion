@@ -4,7 +4,21 @@ import * as React from 'react';
 import Link from 'next/link';
 import { PageTitle } from '@/components/shared/page-title';
 import { StatCard } from '@/components/shared/stat-card';
-import { Users, Briefcase, Armchair, IndianRupee, AlertTriangle, UserCheck, Clock, Loader2 } from 'lucide-react';
+import { 
+  Users, 
+  Briefcase, 
+  Armchair, 
+  IndianRupee, 
+  AlertTriangle, 
+  UserCheck, 
+  Clock, 
+  Loader2,
+  UserPlus,
+  CalendarDays,
+  Send as SendIcon, // Renamed to avoid conflict with Send component if any
+  Inbox,
+  Database as DatabaseIcon // Renamed to avoid conflict
+} from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -21,25 +35,27 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Card, CardContent, CardHeader, CardTitle as ShadcnCardTitle, CardDescription as ShadcnCardDescription } from '@/components/ui/card';
 import { useAuth } from '@/contexts/auth-context';
 import { useRouter } from 'next/navigation';
+import { cn } from '@/lib/utils';
 
 // Placeholder data for active students - now includes shift and overstayed status
 const placeholderActiveStudents = [
-  { id: "TS001", name: "Aarav Sharma", timeIn: "2 hours 30 minutes", shift: "morning", hasOverstayed: false },
-  { id: "TS002", name: "Priya Patel", timeIn: "7 hours 15 minutes", shift: "morning", hasOverstayed: true },
-  { id: "TS004", name: "Vikram Singh", timeIn: "4 hours 5 minutes", shift: "evening", hasOverstayed: false },
-  { id: "TS005", name: "Neha Reddy", timeIn: "0 hours 45 minutes", shift: "fullday", hasOverstayed: false },
-  { id: "TS008", name: "Kavita Singh", timeIn: "8 hours 0 minutes", shift: "morning", hasOverstayed: true },
+  { id: "TS001", name: "Aarav Sharma", timeIn: "2 hours 30 minutes", shift: "morning", hasOverstayed: false, seatNumber: "A01" },
+  { id: "TS002", name: "Priya Patel", timeIn: "7 hours 15 minutes", shift: "morning", hasOverstayed: true, seatNumber: "B03" },
+  { id: "TS004", name: "Vikram Singh", timeIn: "4 hours 5 minutes", shift: "evening", hasOverstayed: false, seatNumber: "C02" },
+  { id: "TS005", name: "Neha Reddy", timeIn: "0 hours 45 minutes", shift: "fullday", hasOverstayed: false, seatNumber: "D05" },
+  { id: "TS008", name: "Kavita Singh", timeIn: "8 hours 0 minutes", shift: "morning", hasOverstayed: true, seatNumber: "A12" },
 ];
 
 // Placeholder data for available seats
 const placeholderAvailableSeats = [
-  { seatNumber: "A102" },
-  { seatNumber: "B204" },
-  { seatNumber: "C008" },
-  { seatNumber: "D110" },
-  { seatNumber: "E055" },
+  { seatNumber: "A10" },
+  { seatNumber: "B20" },
+  { seatNumber: "C08" },
+  { seatNumber: "D11" },
+  { seatNumber: "E05" },
 ];
 
 type StatItem = {
@@ -51,6 +67,13 @@ type StatItem = {
   action?: () => void;
 };
 
+type ActionTileItem = {
+  title: string;
+  description: string;
+  icon: React.ElementType;
+  href: string;
+};
+
 function AdminDashboardContent() {
   const [showActiveStudentsDialog, setShowActiveStudentsDialog] = React.useState(false);
   const [showAvailableSeatsDialog, setShowAvailableSeatsDialog] = React.useState(false);
@@ -59,8 +82,18 @@ function AdminDashboardContent() {
     { title: "Total Students", value: 125, icon: Users, description: "+5 since last month", href: "/students/list" },
     { title: "Occupied Seats", value: placeholderActiveStudents.length, icon: Briefcase, description: "Currently in use. Click to view.", action: () => setShowActiveStudentsDialog(true) },
     { title: "Available Seats", value: placeholderAvailableSeats.length, icon: Armchair, description: "Ready for booking. Click to view.", action: () => setShowAvailableSeatsDialog(true) },
-    { title: "Total Revenue", value: "₹5,670", icon: IndianRupee, description: "This month (placeholder)", href: "/admin/fees/due" },
+    { title: "Fees Requiring Attention", value: "₹5,670", icon: IndianRupee, description: "Outstanding payments (placeholder)", href: "/admin/fees/due" },
   ];
+
+  const adminActionTiles: ActionTileItem[] = [
+    { title: "Manage Students", icon: Users, description: "View, edit student details.", href: "/students/list" },
+    { title: "Register Student", icon: UserPlus, description: "Add new students to system.", href: "/students/register" },
+    { title: "Attendance Overview", icon: CalendarDays, description: "Check student attendance logs.", href: "/attendance/calendar" },
+    { title: "Send Alert", icon: SendIcon, description: "Broadcast to all members.", href: "/admin/alerts/send" },
+    { title: "View Feedback", icon: Inbox, description: "Review member suggestions.", href: "/admin/feedback" },
+    { title: "Data Management", icon: DatabaseIcon, description: "Import/Export data.", href: "/admin/data-management" },
+  ];
+
 
   return (
     <>
@@ -109,6 +142,7 @@ function AdminDashboardContent() {
                           <TableRow>
                             <TableHead>Student ID</TableHead>
                             <TableHead>Name</TableHead>
+                            <TableHead>Seat</TableHead>
                             <TableHead className="flex items-center"><Clock className="mr-1 h-4 w-4"/>Time In Library</TableHead>
                             <TableHead>Status</TableHead>
                           </TableRow>
@@ -118,6 +152,7 @@ function AdminDashboardContent() {
                             <TableRow key={student.id} className={student.hasOverstayed ? "bg-destructive/10" : ""}>
                               <TableCell>{student.id}</TableCell>
                               <TableCell className="font-medium">{student.name}</TableCell>
+                              <TableCell>{student.seatNumber}</TableCell>
                               <TableCell>{student.timeIn}</TableCell>
                               <TableCell>
                                 {student.hasOverstayed && (
@@ -128,7 +163,7 @@ function AdminDashboardContent() {
                           ))}
                           {placeholderActiveStudents.length === 0 && (
                              <TableRow>
-                               <TableCell colSpan={4} className="text-center text-muted-foreground">
+                               <TableCell colSpan={5} className="text-center text-muted-foreground">
                                  No students currently active in the library.
                                </TableCell>
                              </TableRow>
@@ -178,6 +213,29 @@ function AdminDashboardContent() {
           }
         })}
       </div>
+
+      <div className="my-8 border-t border-border"></div>
+      <h2 className="text-lg font-headline font-semibold tracking-tight mb-4">Quick Actions</h2>
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+        {adminActionTiles.map((tile) => {
+          const Icon = tile.icon;
+          return (
+            <Link href={tile.href} key={tile.title} passHref legacyBehavior>
+              <a className="block no-underline focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-lg">
+                <Card className="shadow-md hover:shadow-lg transition-shadow h-full flex flex-col aspect-square">
+                  <CardHeader className="p-3 pb-1 items-center text-center"> {/* Centering content */}
+                    <Icon className="h-6 w-6 mb-1 text-primary" /> {/* Slightly larger icon and margin */}
+                    <ShadcnCardTitle className="text-base font-semibold">{tile.title}</ShadcnCardTitle>
+                  </CardHeader>
+                  <CardContent className="p-3 pt-0 text-center flex-grow flex items-center justify-center"> {/* Centering description */}
+                    <ShadcnCardDescription className="text-xs text-muted-foreground">{tile.description}</ShadcnCardDescription>
+                  </CardContent>
+                </Card>
+              </a>
+            </Link>
+          );
+        })}
+      </div>
     </>
   );
 }
@@ -215,3 +273,5 @@ export default function MainPage() {
       </div>
   );
 }
+
+    
