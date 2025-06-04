@@ -1,10 +1,10 @@
 
 "use client";
 import * as React from 'react';
-import Link from 'next/link'; // Added Link import
+import Link from 'next/link';
 import { PageTitle } from '@/components/shared/page-title';
 import { StatCard } from '@/components/shared/stat-card';
-import { Users, Briefcase, Armchair, Clock, UserCheck, DollarSign } from 'lucide-react'; 
+import { Users, Briefcase, Armchair, Clock, UserCheck, DollarSign, AlertTriangle } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -22,12 +22,13 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-// Placeholder data for active students
+// Placeholder data for active students - now includes shift and overstayed status
 const placeholderActiveStudents = [
-  { id: "TS001", name: "Aarav Sharma", timeIn: "2 hours 30 minutes" },
-  { id: "TS002", name: "Priya Patel", timeIn: "1 hour 15 minutes" },
-  { id: "TS004", name: "Vikram Singh", timeIn: "4 hours 5 minutes" },
-  { id: "TS005", name: "Neha Reddy", timeIn: "0 hours 45 minutes" },
+  { id: "TS001", name: "Aarav Sharma", timeIn: "2 hours 30 minutes", shift: "morning", hasOverstayed: false },
+  { id: "TS002", name: "Priya Patel", timeIn: "7 hours 15 minutes", shift: "morning", hasOverstayed: true }, // Overstayed example
+  { id: "TS004", name: "Vikram Singh", timeIn: "4 hours 5 minutes", shift: "evening", hasOverstayed: false },
+  { id: "TS005", name: "Neha Reddy", timeIn: "0 hours 45 minutes", shift: "fullday", hasOverstayed: false },
+  { id: "TS008", name: "Kavita Singh", timeIn: "8 hours 0 minutes", shift: "morning", hasOverstayed: true }, // Another overstayed example
 ];
 
 // Placeholder data for available seats
@@ -56,8 +57,8 @@ export default function AdminDashboardPage() {
 
   const stats: StatItem[] = [
     { title: "Total Students", value: 125, icon: Users, description: "+5 since last month", href: "/students/list" },
-    { title: "Occupied Seats", value: 80, icon: Briefcase, description: "Currently in use", action: () => setShowActiveStudentsDialog(true) },
-    { title: "Available Seats", value: 20, icon: Armchair, description: "Ready for booking", action: () => setShowAvailableSeatsDialog(true) },
+    { title: "Occupied Seats", value: placeholderActiveStudents.length, icon: Briefcase, description: "Currently in use. Click to view.", action: () => setShowActiveStudentsDialog(true) },
+    { title: "Available Seats", value: placeholderAvailableSeats.length, icon: Armchair, description: "Ready for booking. Click to view.", action: () => setShowAvailableSeatsDialog(true) },
     { title: "Total Revenue", value: "₹5,670", icon: DollarSign, description: "This month (placeholder)", href: "/admin/fees/due" },
   ];
 
@@ -99,7 +100,7 @@ export default function AdminDashboardPage() {
                     <DialogHeader>
                       <DialogTitle className="flex items-center"><UserCheck className="mr-2 h-5 w-5" /> Active Students in Library</DialogTitle>
                       <DialogDescription>
-                        List of students currently checked in and their time spent.
+                        List of students currently checked in. Overstayed students are highlighted.
                       </DialogDescription>
                     </DialogHeader>
                     <div className="max-h-[60vh] overflow-y-auto">
@@ -109,19 +110,25 @@ export default function AdminDashboardPage() {
                             <TableHead>Student ID</TableHead>
                             <TableHead>Name</TableHead>
                             <TableHead className="flex items-center"><Clock className="mr-1 h-4 w-4"/>Time In Library</TableHead>
+                            <TableHead>Status</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
                           {placeholderActiveStudents.map((student) => (
-                            <TableRow key={student.id}>
+                            <TableRow key={student.id} className={student.hasOverstayed ? "bg-destructive/10" : ""}>
                               <TableCell>{student.id}</TableCell>
                               <TableCell className="font-medium">{student.name}</TableCell>
                               <TableCell>{student.timeIn}</TableCell>
+                              <TableCell>
+                                {student.hasOverstayed && (
+                                  <AlertTriangle className="h-5 w-5 text-destructive" />
+                                )}
+                              </TableCell>
                             </TableRow>
                           ))}
                           {placeholderActiveStudents.length === 0 && (
                              <TableRow>
-                               <TableCell colSpan={3} className="text-center text-muted-foreground">
+                               <TableCell colSpan={4} className="text-center text-muted-foreground">
                                  No students currently active in the library.
                                </TableCell>
                              </TableRow>

@@ -20,20 +20,23 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Armchair, Briefcase, UserCheck, Clock } from 'lucide-react'; // Added Briefcase, UserCheck, Clock
+import { Armchair, Briefcase, UserCheck, Clock, AlertTriangle } from 'lucide-react';
 
 // Placeholder data for seat status
 const totalSeats = 100;
-const occupiedSeatsCount = 75; // This would come from a real-time data source
+
+
+// Placeholder data for active students (same as dashboard) - now includes shift and overstayed status
+const placeholderActiveStudents = [
+  { id: "TS001", name: "Aarav Sharma", timeIn: "2 hours 30 minutes", shift: "morning", hasOverstayed: false },
+  { id: "TS002", name: "Priya Patel", timeIn: "7 hours 15 minutes", shift: "morning", hasOverstayed: true }, // Overstayed example
+  { id: "TS004", name: "Vikram Singh", timeIn: "4 hours 5 minutes", shift: "evening", hasOverstayed: false },
+  { id: "TS005", name: "Neha Reddy", timeIn: "0 hours 45 minutes", shift: "fullday", hasOverstayed: false },
+  { id: "TS008", name: "Kavita Singh", timeIn: "8 hours 0 minutes", shift: "morning", hasOverstayed: true }, // Another overstayed example
+];
+const occupiedSeatsCount = placeholderActiveStudents.length;
 const availableSeatsCount = totalSeats - occupiedSeatsCount;
 
-// Placeholder data for active students (same as dashboard)
-const placeholderActiveStudents = [
-  { id: "TS001", name: "Aarav Sharma", timeIn: "2 hours 30 minutes" },
-  { id: "TS002", name: "Priya Patel", timeIn: "1 hour 15 minutes" },
-  { id: "TS004", name: "Vikram Singh", timeIn: "4 hours 5 minutes" },
-  { id: "TS005", name: "Neha Reddy", timeIn: "0 hours 45 minutes" },
-];
 
 // Placeholder data for available seats (same as dashboard)
 const placeholderAvailableSeats = [
@@ -81,7 +84,7 @@ export default function SeatAvailabilityPage() {
             <DialogHeader>
               <DialogTitle className="flex items-center"><UserCheck className="mr-2 h-5 w-5" /> Active Students in Library</DialogTitle>
               <DialogDescription>
-                List of students currently checked in and their time spent.
+                List of students currently checked in. Overstayed students are highlighted.
               </DialogDescription>
             </DialogHeader>
             <div className="max-h-[60vh] overflow-y-auto">
@@ -91,19 +94,25 @@ export default function SeatAvailabilityPage() {
                     <TableHead>Student ID</TableHead>
                     <TableHead>Name</TableHead>
                     <TableHead className="flex items-center"><Clock className="mr-1 h-4 w-4"/>Time In Library</TableHead>
+                    <TableHead>Status</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {placeholderActiveStudents.map((student) => (
-                    <TableRow key={student.id}>
+                    <TableRow key={student.id} className={student.hasOverstayed ? "bg-destructive/10" : ""}>
                       <TableCell>{student.id}</TableCell>
                       <TableCell className="font-medium">{student.name}</TableCell>
                       <TableCell>{student.timeIn}</TableCell>
+                      <TableCell>
+                        {student.hasOverstayed && (
+                          <AlertTriangle className="h-5 w-5 text-destructive" />
+                        )}
+                      </TableCell>
                     </TableRow>
                   ))}
                   {placeholderActiveStudents.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={3} className="text-center text-muted-foreground">
+                        <TableCell colSpan={4} className="text-center text-muted-foreground">
                           No students currently active in the library.
                         </TableCell>
                       </TableRow>
