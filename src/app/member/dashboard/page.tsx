@@ -12,13 +12,15 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle as ShadcnDialogTitle,
-  DialogTrigger, // Added missing import
+  DialogTrigger, 
 } from "@/components/ui/dialog";
 import { Alert, AlertDescription, AlertTitle as ShadcnAlertTitle } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/auth-context';
 import { Camera, QrCode, Receipt, IndianRupee, MessageSquare, Bell, ScrollText, Star, Loader2, XCircle, Home } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { getStudentByEmail, getAlertsForStudent } from '@/services/student-service'; // Added getAlertsForStudent
+import type { AlertItem } from '@/types/communication'; // Added AlertItem
 
 type DashboardTileProps = {
   title: string;
@@ -38,7 +40,7 @@ const DashboardTile: React.FC<DashboardTileProps> = ({ title, description, icon:
       "shadow-lg hover:shadow-xl transition-shadow h-full flex flex-col",
       isPrimaryAction ? 'bg-primary text-primary-foreground hover:bg-primary/90' : 'hover:bg-muted/50',
       className,
-      {
+      { // Apply destructive border/ring only if hasNew is true AND it's NOT a primary action tile
         'border-destructive ring-2 ring-destructive/50': hasNew && !isPrimaryAction,
       }
     )}>
@@ -46,7 +48,7 @@ const DashboardTile: React.FC<DashboardTileProps> = ({ title, description, icon:
         "relative",
         isPrimaryAction ? "p-4 pb-2" : "p-3 pb-1"
       )}>
-        {hasNew && !isPrimaryAction && (
+        {hasNew && !isPrimaryAction && ( // Show dot only if hasNew and not primary action
           <span className="absolute top-1 right-1 block h-2.5 w-2.5 rounded-full bg-destructive ring-1 ring-white" />
         )}
         <div className={cn(
@@ -105,6 +107,38 @@ export default function MemberDashboardPage() {
   const videoRef = React.useRef<HTMLVideoElement | null>(null);
   const [isProcessingQr, setIsProcessingQr] = React.useState(false);
   const streamRef = React.useRef<MediaStream | null>(null);
+
+  const [studentId, setStudentId] = React.useState<string | null>(null);
+  const [hasUnreadAlerts, setHasUnreadAlerts] = React.useState(false);
+  const [isLoadingAlertStatus, setIsLoadingAlertStatus] = React.useState(true);
+
+  React.useEffect(() => {
+    if (user?.email) {
+      setIsLoadingAlertStatus(true);
+      getStudentByEmail(user.email)
+        .then(student => {
+          if (student) {
+            setStudentId(student.studentId);
+            return getAlertsForStudent(student.studentId);
+          }
+          setIsLoadingAlertStatus(false);
+          return Promise.resolve([]); // No student, no alerts
+        })
+        .then((alerts: AlertItem[]) => {
+          setHasUnreadAlerts(alerts.some(alert => !alert.isRead));
+        })
+        .catch(error => {
+          console.error("Error fetching student data or alerts for dashboard:", error);
+          toast({ title: "Error", description: "Could not load alert status.", variant: "destructive" });
+        })
+        .finally(() => {
+          setIsLoadingAlertStatus(false);
+        });
+    } else {
+      setIsLoadingAlertStatus(false);
+    }
+  }, [user, toast]);
+
 
   React.useEffect(() => {
     const getCameraPermission = async () => {
@@ -167,7 +201,7 @@ export default function MemberDashboardPage() {
   };
 
   const coreActionTiles: DashboardTileProps[] = [
-    { title: "View Alerts", description: "Catch up on announcements.", icon: Bell, href: "/member/alerts", hasNew: true },
+    { title: "View Alerts", description: "Catch up on announcements.", icon: Bell, href: "/member/alerts", hasNew: isLoadingAlertStatus ? false : hasUnreadAlerts },
     { title: "My Fees", description: "Check fee status & history.", icon: Receipt, href: "/member/fees" },
     { title: "Pay Fees", description: "Settle your outstanding dues.", icon: IndianRupee, href: "/member/pay" },
     { title: "Submit Feedback", description: "Share suggestions or issues.", icon: MessageSquare, href: "/member/feedback" },
@@ -255,3 +289,4 @@ export default function MemberDashboardPage() {
     </>
   );
 }
+

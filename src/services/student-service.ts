@@ -1,4 +1,3 @@
-
 import type { Student, Shift, FeeStatus, PaymentRecord, ActivityStatus, AttendanceRecord } from '@/types/student';
 import type { FeedbackItem, FeedbackType, FeedbackStatus, AlertItem } from '@/types/communication';
 import { format, parseISO, differenceInDays, isPast, addMonths, subHours, subMinutes, startOfDay, endOfDay, isValid } from 'date-fns';
@@ -92,6 +91,8 @@ let alertItems: AlertItem[] = [
   { id: "ALERT002", title: "New Quiet Study Zone", message: "We've opened a new dedicated quiet study zone on the 2nd floor. Please maintain silence.", dateSent: "2024-06-25", type: "info", isRead: false },
   { id: "ALERT003", title: "Maintenance Scheduled", message: "Network maintenance is scheduled for this Sunday from 2 AM to 4 AM. Internet services might be intermittent.", dateSent: "2024-06-20", type: "warning", isRead: false },
 ];
+
+let studentReadGeneralAlerts: Map<string, Set<string>> = new Map();
 
 
 function getNextAttendanceRecordId(): string {
@@ -518,7 +519,7 @@ export function submitFeedback(
         studentName,
         message,
         type,
-        dateSubmitted: format(new Date(), 'yyyy-MM-dd'), // Changed to current date for new feedback
+        dateSubmitted: new Date().toISOString(),
         status: "Open",
       };
       feedbackItems.push(newFeedback);
@@ -572,7 +573,7 @@ export function sendGeneralAlert(title: string, message: string, type: AlertItem
         message,
         type,
         dateSent: new Date().toISOString(),
-        isRead: false,
+        isRead: false, // General alerts start as unread for everyone conceptually
       };
       alertItems.push(newAlert);
       resolve({...newAlert});
@@ -591,18 +592,18 @@ export function sendAlertToStudent(
   return new Promise((resolve, reject) => {
     setTimeout(() => {
       const studentExists = students.some(s => s.studentId === studentId);
-      if (!studentExists && type === 'feedback_response') { // Only reject if it's a feedback response for a non-existent student
+      if (!studentExists && type === 'feedback_response') {
         reject(new Error(`Student with ID ${studentId} not found for feedback response.`));
         return;
       }
       const newAlert: AlertItem = {
         id: getNextAlertId(),
-        studentId,
+        studentId, // Mark as targeted
         title,
         message,
         type,
         dateSent: new Date().toISOString(),
-        isRead: false,
+        isRead: false, // Targeted alerts start as unread for the target student
         originalFeedbackId,
         originalFeedbackMessageSnippet,
       };
@@ -615,10 +616,26 @@ export function sendAlertToStudent(
 export function getAlertsForStudent(studentId: string): Promise<AlertItem[]> {
   return new Promise((resolve) => {
     setTimeout(() => {
-      const relevantAlerts = alertItems.filter(alert => 
-        alert.studentId === studentId || (!alert.studentId && alert.type !== 'feedback_response') // Targeted OR general (but not feedback responses for OTHERS)
-      );
-      resolve([...relevantAlerts].sort((a, b) => parseISO(b.dateSent).getTime() - parseISO(a.dateSent).getTime()));
+      const studentSpecificReadGeneral = studentReadGeneralAlerts.get(studentId) || new Set<string>();
+      
+      const contextualizedAlerts = alertItems
+        .filter(alert => 
+          alert.studentId === studentId || // Targeted to this student
+          (!alert.studentId && alert.type !== 'feedback_response') // General (and not a feedback response for someone else)
+        )
+        .map(originalAlert => {
+          const contextualAlert = { ...originalAlert }; // Create a copy
+          if (!originalAlert.studentId) { // General alert
+            contextualAlert.isRead = studentSpecificReadGeneral.has(originalAlert.id);
+          } else if (originalAlert.studentId === studentId) { // Targeted alert for this student
+            // The isRead on the originalAlert item is authoritative here
+            contextualAlert.isRead = originalAlert.isRead;
+          }
+          // For alerts targeted to *other* students, they are already filtered out.
+          return contextualAlert;
+        });
+      
+      resolve(contextualizedAlerts.sort((a, b) => parseISO(b.dateSent).getTime() - parseISO(a.dateSent).getTime()));
     }, 50);
   });
 }
@@ -626,18 +643,41 @@ export function getAlertsForStudent(studentId: string): Promise<AlertItem[]> {
 export function getAllAdminSentAlerts(): Promise<AlertItem[]> { 
    return new Promise((resolve) => {
     setTimeout(() => {
+      // For admin view, isRead status might not be relevant or could be a summary
+      // For now, return the raw isRead status from the global list.
       resolve([...alertItems].sort((a, b) => parseISO(b.dateSent).getTime() - parseISO(a.dateSent).getTime()));
     }, 50);
   });
 }
 
-export function markAlertAsRead(alertId: string): Promise<AlertItem | undefined> {
+export function markAlertAsRead(alertId: string, studentId: string): Promise<AlertItem | undefined> {
   return new Promise((resolve, reject) => {
     setTimeout(() => {
       const alertIndex = alertItems.findIndex(alert => alert.id === alertId);
       if (alertIndex !== -1) {
-        alertItems[alertIndex].isRead = true;
-        resolve({...alertItems[alertIndex]});
+        const alertToUpdate = alertItems[alertIndex];
+        if (alertToUpdate.studentId === studentId) { // Targeted alert for this student
+          alertToUpdate.isRead = true;
+        } else if (!alertToUpdate.studentId) { // General alert
+          if (!studentReadGeneralAlerts.has(studentId)) {
+            studentReadGeneralAlerts.set(studentId, new Set<string>());
+          }
+          studentReadGeneralAlerts.get(studentId)!.add(alertId);
+        } else {
+          // This case (alert is targeted to someone else but this student is trying to mark it) 
+          // shouldn't happen if getAlertsForStudent is filtering correctly,
+          // but as a safeguard, we don't modify it.
+          reject(new Error("Alert not found for this student or permission denied."));
+          return;
+        }
+        
+        // Return a contextualized alert for the student who marked it read
+        const contextualAlert = { ...alertToUpdate };
+        if (!contextualAlert.studentId) {
+            contextualAlert.isRead = studentReadGeneralAlerts.get(studentId)?.has(alertId) || false;
+        }
+        resolve(contextualAlert);
+
       } else {
         reject(new Error("Alert not found."));
       }

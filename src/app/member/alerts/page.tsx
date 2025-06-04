@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from 'react';
@@ -19,7 +18,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from '@/components/ui/button';
-import { AlertTriangle, Info, Megaphone, Loader2, MailWarning, Circle, CheckCircle2 } from 'lucide-react';
+import { AlertTriangle, Info, Megaphone, Loader2, MailWarning, CheckCircle2 } from 'lucide-react'; // Removed Circle
 import { useAuth } from '@/contexts/auth-context';
 import { getStudentByEmail, getAlertsForStudent, markAlertAsRead } from '@/services/student-service';
 import type { AlertItem } from '@/types/communication';
@@ -92,26 +91,25 @@ export default function MemberAlertsPage() {
   const [isAlertDetailsOpen, setIsAlertDetailsOpen] = React.useState(false);
   const [currentAlertInModal, setCurrentAlertInModal] = React.useState<AlertItem | null>(null);
 
-  // Effect to get studentId based on user
   React.useEffect(() => {
     if (user?.email) {
-      setIsLoading(true); // Indicate start of loading sequence
-      setStudentId(null); // Reset studentId if user changes, to trigger alert fetch
-      setAlertsList([]);  // Clear previous alerts
+      setIsLoading(true); 
+      setStudentId(null); 
+      setAlertsList([]);  
       getStudentByEmail(user.email)
         .then(student => {
           if (student) {
-            setStudentId(student.studentId); // This will trigger the next useEffect
+            setStudentId(student.studentId); 
           } else {
             toast({ title: "Error", description: "Could not find your student record.", variant: "destructive" });
-            setIsLoading(false); // End loading if no student found
+            setIsLoading(false); 
           }
         })
         .catch(error => {
           toast({ title: "Error", description: "Failed to fetch your details.", variant: "destructive" });
-          setIsLoading(false); // End loading on error
+          setIsLoading(false); 
         });
-    } else if (!user) { // No user logged in
+    } else if (!user) { 
       setStudentId(null);
       setAlertsList([]);
       setIsLoading(false);
@@ -119,41 +117,32 @@ export default function MemberAlertsPage() {
   }, [user, toast]);
 
 
-  // Callback to fetch alerts, independent of isLoading state
   const fetchAlerts = React.useCallback(async (currentStudentId: string) => {
-    // This function should not set global isLoading. It just fetches.
     try {
       const fetchedAlerts = await getAlertsForStudent(currentStudentId);
       setAlertsList(fetchedAlerts);
     } catch (error) {
       toast({ title: "Error", description: "Could not load alerts.", variant: "destructive" });
-      setAlertsList([]); // Clear alerts on error
+      setAlertsList([]); 
     }
-  }, [toast]); // Depends only on toast
+  }, [toast]); 
 
-  // Effect to fetch alerts when studentId is set (and marks end of initial load)
   React.useEffect(() => {
     if (studentId) {
-      // If setIsLoading(true) was called by the previous effect,
-      // this fetch completes the loading sequence.
       fetchAlerts(studentId).finally(() => {
-          setIsLoading(false); // End of initial loading sequence
+          setIsLoading(false); 
       });
     }
-    // If studentId becomes null (e.g., user logs out while on page),
-    // and isLoading was true, this path might not set it to false.
-    // But the first useEffect handles !user case.
   }, [studentId, fetchAlerts]);
 
 
   const handleOpenAlertDetails = async (alertItem: AlertItem) => {
     setCurrentAlertInModal(alertItem);
     setIsAlertDetailsOpen(true);
-    if (!alertItem.isRead && studentId) { // Ensure studentId is available
+    if (!alertItem.isRead && studentId) { 
       try {
-        await markAlertAsRead(alertItem.id);
-        // Refresh alerts. isLoading state is not changed here.
-        fetchAlerts(studentId); // studentId here should be the one from state
+        await markAlertAsRead(alertItem.id, studentId); // Pass studentId here
+        fetchAlerts(studentId); 
       } catch (error) {
         toast({ title: "Error", description: "Could not mark alert as read.", variant: "destructive" });
       }
