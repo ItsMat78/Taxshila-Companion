@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { ArrowLeft, CreditCard, CalendarDays, Receipt, Loader2, UserCircle, Briefcase, History as HistoryIcon } from 'lucide-react';
+import { ArrowLeft, CreditCard, CalendarDays, Receipt, Loader2, UserCircle, Briefcase, History as HistoryIcon, LogIn, LogOut, Clock } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -18,53 +18,67 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { getStudentById, getAttendanceRecordsByStudentId } from '@/services/student-service';
+import { Calendar } from "@/components/ui/calendar"; // Import Calendar
+import { getStudentById, getAttendanceForDate } from '@/services/student-service'; // Updated import
 import type { Student, PaymentRecord, AttendanceRecord } from '@/types/student';
 import { format, parseISO, isValid } from 'date-fns';
+import { useToast } from '@/hooks/use-toast';
 
 const DEFAULT_PROFILE_PLACEHOLDER = "https://placehold.co/100x100.png";
 
 export default function StudentDetailPage() {
   const paramsHook = useParams();
   const studentId = paramsHook.studentId as string;
+  const { toast } = useToast();
 
   const [student, setStudent] = React.useState<Student | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
-  const [attendanceRecords, setAttendanceRecords] = React.useState<AttendanceRecord[]>([]);
-  const [isLoadingAttendance, setIsLoadingAttendance] = React.useState(true);
+
+  // State for interactive calendar
+  const [selectedCalendarDate, setSelectedCalendarDate] = React.useState<Date | undefined>(new Date());
+  const [dailyAttendanceRecords, setDailyAttendanceRecords] = React.useState<AttendanceRecord[]>([]);
+  const [isLoadingDailyAttendance, setIsLoadingDailyAttendance] = React.useState(false);
 
   React.useEffect(() => {
     if (studentId) {
       const fetchStudentData = async () => {
         setIsLoading(true);
-        setIsLoadingAttendance(true); // Start loading attendance as well
         try {
           const fetchedStudent = await getStudentById(studentId);
           setStudent(fetchedStudent || null);
-          if (fetchedStudent) {
-            try {
-              const records = await getAttendanceRecordsByStudentId(studentId);
-              setAttendanceRecords(records.sort((a,b) => parseISO(b.date).getTime() - parseISO(a.date).getTime() || parseISO(b.checkInTime).getTime() - parseISO(a.checkInTime).getTime()));
-            } catch (attendanceError) {
-              console.error("Failed to fetch attendance records:", attendanceError);
-              setAttendanceRecords([]); // Set to empty on error
-            } finally {
-              setIsLoadingAttendance(false);
-            }
-          } else {
-            setIsLoadingAttendance(false); // No student, so no attendance to load
-          }
         } catch (error) {
           console.error("Failed to fetch student:", error);
+          toast({ title: "Error", description: "Could not load student details.", variant: "destructive" });
           setStudent(null);
-          setIsLoadingAttendance(false); // Error fetching student, stop attendance loading
         } finally {
           setIsLoading(false);
         }
       };
       fetchStudentData();
     }
-  }, [studentId]);
+  }, [studentId, toast]);
+
+  // Effect to fetch daily attendance when selectedCalendarDate or studentId changes
+  React.useEffect(() => {
+    if (studentId && selectedCalendarDate) {
+      const fetchDailyData = async () => {
+        setIsLoadingDailyAttendance(true);
+        setDailyAttendanceRecords([]); // Clear previous records
+        try {
+          const records = await getAttendanceForDate(studentId, format(selectedCalendarDate, 'yyyy-MM-dd'));
+          setDailyAttendanceRecords(records.sort((a,b) => parseISO(a.checkInTime).getTime() - parseISO(b.checkInTime).getTime()));
+        } catch (error) {
+          console.error("Failed to fetch daily attendance records:", error);
+          toast({ title: "Error", description: "Could not load attendance for selected date.", variant: "destructive" });
+          setDailyAttendanceRecords([]);
+        } finally {
+          setIsLoadingDailyAttendance(false);
+        }
+      };
+      fetchDailyData();
+    }
+  }, [studentId, selectedCalendarDate, toast]);
+
 
   const getFeeStatusBadge = (studentData: Student) => {
     if (studentData.activityStatus === 'Left') {
@@ -87,7 +101,7 @@ export default function StudentDetailPage() {
     return name.split(' ').map(n => n[0]).join('').substring(0,2).toUpperCase();
   }
 
-  if (isLoading) {
+  if (isLoading && !student) { // Combined isLoading and !student for initial full page load
     return (
       <div className="flex flex-col items-center justify-center h-full py-10">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -205,7 +219,7 @@ export default function StudentDetailPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {student.paymentHistory.slice().reverse().map((payment: PaymentRecord) => ( // Displaying recent first
+                {student.paymentHistory.slice().reverse().map((payment: PaymentRecord) => (
                   <TableRow key={payment.paymentId}>
                     <TableCell>{payment.date && isValid(parseISO(payment.date)) ? format(parseISO(payment.date), 'PP') : 'N/A'}</TableCell>
                     <TableCell>{payment.amount}</TableCell>
@@ -227,39 +241,68 @@ export default function StudentDetailPage() {
             <Briefcase className="mr-2 h-5 w-5" />
             Attendance Overview
           </CardTitle>
-          <CardDescription>Student's check-in and check-out history.</CardDescription>
+          <CardDescription>
+            Monthly attendance for {student.name}. Select a date to view details.
+          </CardDescription>
         </CardHeader>
-        <CardContent>
-          {isLoadingAttendance ? (
-            <div className="flex items-center justify-center py-6">
-              <Loader2 className="h-6 w-6 animate-spin text-primary" />
-              <p className="ml-2 text-muted-foreground">Loading attendance...</p>
-            </div>
-          ) : attendanceRecords.length > 0 ? (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Check-in</TableHead>
-                  <TableHead>Check-out</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {attendanceRecords.map((record) => (
-                  <TableRow key={record.recordId}>
-                    <TableCell>{isValid(parseISO(record.date)) ? format(parseISO(record.date), 'PP') : 'Invalid Date'}</TableCell>
-                    <TableCell>{isValid(parseISO(record.checkInTime)) ? format(parseISO(record.checkInTime), 'p') : 'N/A'}</TableCell>
-                    <TableCell>{record.checkOutTime && isValid(parseISO(record.checkOutTime)) ? format(parseISO(record.checkOutTime), 'p') : (record.checkInTime && !record.checkOutTime ? <Badge variant="outline" className="bg-yellow-100 text-yellow-700">Checked In</Badge> : 'N/A')}</TableCell>
-                  </TableRow>
+        <CardContent className="flex flex-col items-center gap-4 md:flex-row md:items-start">
+          <Calendar
+            mode="single"
+            selected={selectedCalendarDate}
+            onSelect={setSelectedCalendarDate}
+            className="rounded-md border shadow-inner"
+            modifiers={{ today: new Date() }}
+            modifiersStyles={{ today: { color: 'hsl(var(--accent-foreground))', backgroundColor: 'hsl(var(--accent))' } }}
+          />
+          <div className="flex-1 w-full md:w-auto">
+            <h4 className="text-md font-semibold mb-2">
+              Details for {selectedCalendarDate ? format(selectedCalendarDate, 'PPP') : 'selected date'}:
+            </h4>
+            {isLoadingDailyAttendance ? (
+              <div className="flex items-center justify-center text-muted-foreground py-4">
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading details...
+              </div>
+            ) : dailyAttendanceRecords.length === 0 ? (
+              <p className="text-muted-foreground py-4">No attendance records found for this day.</p>
+            ) : (
+              <ul className="space-y-3">
+                {dailyAttendanceRecords.map(record => (
+                  <li key={record.recordId} className="p-3 border rounded-md bg-muted/30">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center">
+                         <LogIn className="mr-2 h-4 w-4 text-green-600" />
+                         <span className="font-medium">Checked In:</span>
+                      </div>
+                      <span className="text-sm">
+                        {record.checkInTime && isValid(parseISO(record.checkInTime)) ? format(parseISO(record.checkInTime), 'p') : 'N/A'}
+                      </span>
+                    </div>
+                    {record.checkOutTime ? (
+                       <div className="flex items-center justify-between mt-1">
+                         <div className="flex items-center">
+                            <LogOut className="mr-2 h-4 w-4 text-red-600" />
+                            <span className="font-medium">Checked Out:</span>
+                         </div>
+                         <span className="text-sm">
+                           {isValid(parseISO(record.checkOutTime)) ? format(parseISO(record.checkOutTime), 'p') : 'N/A'}
+                          </span>
+                       </div>
+                    ) : (
+                      <div className="flex items-center justify-between mt-1">
+                         <div className="flex items-center">
+                            <Clock className="mr-2 h-4 w-4 text-yellow-500" />
+                            <span className="font-medium">Status:</span>
+                         </div>
+                         <span className="text-sm text-yellow-600">Currently Checked In</span>
+                       </div>
+                    )}
+                  </li>
                 ))}
-              </TableBody>
-            </Table>
-          ) : (
-            <p className="text-muted-foreground">No attendance records found for this student.</p>
-          )}
+              </ul>
+            )}
+          </div>
         </CardContent>
       </Card>
     </>
   );
 }
-
