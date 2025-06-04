@@ -38,10 +38,11 @@ import { getAllStudents, getAvailableSeats, getAllAttendanceRecords, getAllFeedb
 import type { Student, Shift, AttendanceRecord } from '@/types/student';
 import type { FeedbackItem } from '@/types/communication'; 
 import { format, parseISO, isToday, getHours } from 'date-fns';
+import { useNotificationCounts } from '@/hooks/use-notification-counts'; // Import the hook
 
 type CheckedInStudentInfo = Student & { 
   checkInTime: string;
-  isOutsideShift?: boolean; // Restored this property
+  isOutsideShift?: boolean;
 };
 
 function AdminDashboardContent() {
@@ -60,8 +61,10 @@ function AdminDashboardContent() {
 
   const [checkedInStudents, setCheckedInStudents] = React.useState<CheckedInStudentInfo[]>([]);
   const [showCheckedInDialog, setShowCheckedInDialog] = React.useState(false);
-  const [hasOpenFeedback, setHasOpenFeedback] = React.useState(false); 
+  // const [hasOpenFeedback, setHasOpenFeedback] = React.useState(false); // This will now be derived from useNotificationCounts
   const [monthlyRevenue, setMonthlyRevenue] = React.useState<string | null>(null);
+
+  const { count: openFeedbackCount, isLoadingCount: isLoadingFeedbackCount } = useNotificationCounts();
 
 
   React.useEffect(() => {
@@ -70,7 +73,7 @@ function AdminDashboardContent() {
       setIsLoadingAvailabilityStats(true);
       setIsLoadingCheckedInStudents(true);
       setIsLoadingRevenue(true);
-      setHasOpenFeedback(false); 
+      // setHasOpenFeedback(false); // No longer needed directly, will use openFeedbackCount
 
       try {
         const [
@@ -79,7 +82,7 @@ function AdminDashboardContent() {
           eveningAvail,
           fulldayAvail,
           allAttendance,
-          allFeedbackItems, 
+          // allFeedbackItems, // No longer fetching feedback items directly here for the tile
           currentMonthRevenue,
         ] = await Promise.all([
           getAllStudents(),
@@ -87,7 +90,7 @@ function AdminDashboardContent() {
           getAvailableSeats('evening'),
           getAvailableSeats('fullday'),
           getAllAttendanceRecords(),
-          getAllFeedback(), 
+          // getAllFeedback(), // We use useNotificationCounts now
           calculateMonthlyRevenue(),
         ]);
 
@@ -113,7 +116,6 @@ function AdminDashboardContent() {
             const student = allStudentsData.find(s => s.studentId === record.studentId);
             if (!student) return null;
 
-            // Logic to determine if outside shift (restored)
             let isOutside = false;
             const checkInHour = getHours(parseISO(record.checkInTime));
             if (student.shift === "morning" && (checkInHour < 7 || checkInHour >= 14)) {
@@ -130,8 +132,8 @@ function AdminDashboardContent() {
         setCheckedInStudents(checkedInStudentDetails);
         setMonthlyRevenue(currentMonthRevenue);
 
-        const openFeedbackExists = allFeedbackItems.some(fb => fb.status === "Open");
-        setHasOpenFeedback(openFeedbackExists);
+        // const openFeedbackExists = allFeedbackItems.some(fb => fb.status === "Open");
+        // setHasOpenFeedback(openFeedbackExists); // No longer directly setting this for the tile
 
       } catch (error) {
         console.error("Failed to load dashboard stats:", error);
@@ -143,7 +145,7 @@ function AdminDashboardContent() {
         setAvailableFullDaySlotsCount(0);
         setCheckedInStudents([]);
         setMonthlyRevenue("₹0");
-        setHasOpenFeedback(false);
+        // setHasOpenFeedback(false);
       } finally {
         setIsLoadingDashboardStats(false);
         setIsLoadingAvailabilityStats(false);
@@ -159,7 +161,14 @@ function AdminDashboardContent() {
     { title: "Register Student", icon: UserPlus, description: "Add new students to system.", href: "/students/register" },
     { title: "Attendance Overview", icon: CalendarDays, description: "Check student attendance logs.", href: "/attendance/calendar" },
     { title: "Send Alert", icon: SendIcon, description: "Broadcast to all members.", href: "/admin/alerts/send" },
-    { title: "View Feedback", icon: Inbox, description: "Review member suggestions.", href: "/admin/feedback", dynamicHasNew: () => hasOpenFeedback }, 
+    { 
+      title: "View Feedback", 
+      icon: Inbox, 
+      description: "Review member suggestions.", 
+      href: "/admin/feedback",
+      // dynamicHasNew will be handled in the mapping logic below
+      // The raw title is just "View Feedback", we'll append count dynamically
+    }, 
     { title: "Seat Dashboard", icon: Eye, description: "View current seat status.", href: "/seats/availability" },
   ];
 
@@ -284,7 +293,23 @@ function AdminDashboardContent() {
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
         {adminActionTiles.map((tile) => {
           const Icon = tile.icon;
-          const currentHasNew = tile.dynamicHasNew ? tile.dynamicHasNew() : (tile as any).hasNew; 
+          
+          let tileTitle = tile.title;
+          let currentHasNew = false;
+
+          if (tile.href === "/admin/feedback") {
+            if (isLoadingFeedbackCount) {
+              tileTitle = "View Feedback"; // Or "View Feedback (Loading...)"
+            } else if (openFeedbackCount > 0) {
+              tileTitle = `View Feedback (${openFeedbackCount} Open)`;
+              currentHasNew = true;
+            } else {
+              tileTitle = "View Feedback";
+            }
+          } else {
+            currentHasNew = (tile as any).dynamicHasNew ? (tile as any).dynamicHasNew() : (tile as any).hasNew;
+          }
+          
           return (
             <Link href={tile.href} key={tile.title} className="block no-underline focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-lg h-full">
               <Card className={cn(
@@ -297,7 +322,7 @@ function AdminDashboardContent() {
                    )}
                   <div className="flex items-center gap-2">
                     <Icon className="h-6 w-6 text-primary" /> 
-                    <ShadcnCardTitle className="text-base font-semibold">{tile.title}</ShadcnCardTitle>
+                    <ShadcnCardTitle className="text-base font-semibold">{tileTitle}</ShadcnCardTitle>
                   </div>
                 </CardHeader>
                 <CardContent className="p-3 pt-0 flex-grow flex flex-col items-center justify-center">
