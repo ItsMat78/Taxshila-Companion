@@ -71,7 +71,7 @@ let students: Student[] = [
 
 // In-memory store for attendance records
 let attendanceRecords: AttendanceRecord[] = [
-  { recordId: "AR001", studentId: "TS001", date: format(new Date(), 'yyyy-MM-dd'), checkInTime: subHours(new Date(), 2).toISOString() },
+  { recordId: "AR001", studentId: "TS001", date: format(new Date(), 'yyyy-MM-dd'), checkInTime: subHours(new Date(), 2).toISOString(), checkOutTime: subHours(new Date(), 1).toISOString() },
   { recordId: "AR002", studentId: "TS002", date: format(new Date(), 'yyyy-MM-dd'), checkInTime: subHours(new Date(), 1).toISOString(), checkOutTime: subMinutes(new Date(), 15).toISOString() },
   { recordId: "AR003", studentId: "TS001", date: format(subHours(new Date(), 25), 'yyyy-MM-dd'), checkInTime: subHours(new Date(), 25).toISOString(), checkOutTime: subHours(new Date(), 20).toISOString() },
 ];
@@ -375,3 +375,6 @@ export function getAttendanceRecordsByStudentId(studentId: string): Promise<Atte
     }, 50);
   });
 }
+
+
+    
