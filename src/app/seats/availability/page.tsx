@@ -1,6 +1,7 @@
 
 "use client";
 
+import * as React from 'react';
 import { PageTitle } from '@/components/shared/page-title';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -11,25 +12,43 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Armchair } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Armchair, Briefcase, UserCheck, Clock } from 'lucide-react'; // Added Briefcase, UserCheck, Clock
 
 // Placeholder data for seat status
 const totalSeats = 100;
-const occupiedSeats = 75; // This would come from a real-time data source
-const availableSeatsCount = totalSeats - occupiedSeats;
+const occupiedSeatsCount = 75; // This would come from a real-time data source
+const availableSeatsCount = totalSeats - occupiedSeatsCount;
 
-// Placeholder data for available seats (same as dashboard for now)
+// Placeholder data for active students (same as dashboard)
+const placeholderActiveStudents = [
+  { id: "TS001", name: "Aarav Sharma", timeIn: "2 hours 30 minutes" },
+  { id: "TS002", name: "Priya Patel", timeIn: "1 hour 15 minutes" },
+  { id: "TS004", name: "Vikram Singh", timeIn: "4 hours 5 minutes" },
+  { id: "TS005", name: "Neha Reddy", timeIn: "0 hours 45 minutes" },
+];
+
+// Placeholder data for available seats (same as dashboard)
 const placeholderAvailableSeats = [
   { seatNumber: "A102" },
   { seatNumber: "B204" },
   { seatNumber: "C008" },
   { seatNumber: "D110" },
   { seatNumber: "E055" },
-  // Add more or fetch dynamically later
 ];
 
 
 export default function SeatAvailabilityPage() {
+  const [showOccupiedSeatsDialog, setShowOccupiedSeatsDialog] = React.useState(false);
+  const [showAvailableSeatsDialog, setShowAvailableSeatsDialog] = React.useState(false);
+
   return (
     <>
       <PageTitle title="Seat Availability" description="Check the current status of seat occupancy and available seats." />
@@ -43,35 +62,80 @@ export default function SeatAvailabilityPage() {
             <p className="text-3xl font-bold">{totalSeats}</p>
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>Occupied Seats</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold text-destructive">{occupiedSeats}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>Available Seats</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold text-green-600">{availableSeatsCount}</p>
-          </CardContent>
-        </Card>
-      </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center">
-            <Armchair className="mr-2 h-5 w-5" />
-            List of Available Seats
-            </CardTitle>
-          <CardDescription>The following seats are currently available for booking or assignment.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {placeholderAvailableSeats.length > 0 ? (
-            <div className="max-h-[400px] overflow-y-auto border rounded-md">
+        <Dialog open={showOccupiedSeatsDialog} onOpenChange={setShowOccupiedSeatsDialog}>
+          <DialogTrigger asChild>
+            <Card className="cursor-pointer hover:shadow-md transition-shadow">
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <Briefcase className="mr-2 h-4 w-4" />
+                  Occupied Seats
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-3xl font-bold text-destructive">{occupiedSeatsCount}</p>
+              </CardContent>
+            </Card>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-[625px]">
+            <DialogHeader>
+              <DialogTitle className="flex items-center"><UserCheck className="mr-2 h-5 w-5" /> Active Students in Library</DialogTitle>
+              <DialogDescription>
+                List of students currently checked in and their time spent.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="max-h-[60vh] overflow-y-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Student ID</TableHead>
+                    <TableHead>Name</TableHead>
+                    <TableHead className="flex items-center"><Clock className="mr-1 h-4 w-4"/>Time In Library</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {placeholderActiveStudents.map((student) => (
+                    <TableRow key={student.id}>
+                      <TableCell>{student.id}</TableCell>
+                      <TableCell className="font-medium">{student.name}</TableCell>
+                      <TableCell>{student.timeIn}</TableCell>
+                    </TableRow>
+                  ))}
+                  {placeholderActiveStudents.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={3} className="text-center text-muted-foreground">
+                          No students currently active in the library.
+                        </TableCell>
+                      </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={showAvailableSeatsDialog} onOpenChange={setShowAvailableSeatsDialog}>
+          <DialogTrigger asChild>
+            <Card className="cursor-pointer hover:shadow-md transition-shadow">
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <Armchair className="mr-2 h-4 w-4" />
+                  Available Seats
+                  </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-3xl font-bold text-green-600">{availableSeatsCount}</p>
+              </CardContent>
+            </Card>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle className="flex items-center"><Armchair className="mr-2 h-5 w-5" /> Available Seats</DialogTitle>
+              <DialogDescription>
+                List of currently available seat numbers.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="max-h-[60vh] overflow-y-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -84,16 +148,19 @@ export default function SeatAvailabilityPage() {
                       <TableCell className="font-medium">{seat.seatNumber}</TableCell>
                     </TableRow>
                   ))}
+                  {placeholderAvailableSeats.length === 0 && (
+                      <TableRow>
+                        <TableCell className="text-center text-muted-foreground">
+                          No seats currently available.
+                        </TableCell>
+                      </TableRow>
+                  )}
                 </TableBody>
               </Table>
             </div>
-          ) : (
-            <div className="min-h-[200px] flex items-center justify-center bg-muted rounded-md">
-              <p className="text-muted-foreground">No seats currently available.</p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+          </DialogContent>
+        </Dialog>
+      </div>
 
       <Card className="mt-6">
         <CardHeader>
@@ -109,4 +176,3 @@ export default function SeatAvailabilityPage() {
     </>
   );
 }
-
