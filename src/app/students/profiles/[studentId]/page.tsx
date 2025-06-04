@@ -6,7 +6,7 @@ import { PageTitle } from '@/components/shared/page-title';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { ArrowLeft, CreditCard, CalendarDays, Receipt, Loader2 } from 'lucide-react';
+import { ArrowLeft, CreditCard, CalendarDays, Receipt, Loader2, UserCircle, Briefcase } from 'lucide-react'; // Added UserCircle, Briefcase
 import { Badge } from '@/components/ui/badge';
 import { getStudentById } from '@/services/student-service';
 import type { Student } from '@/types/student';
@@ -28,7 +28,7 @@ export default function StudentDetailPage({ params }: StudentDetailPageProps) {
         setIsLoading(true);
         try {
           const fetchedStudent = await getStudentById(studentId);
-          setStudent(fetchedStudent || null); // Set to null if undefined
+          setStudent(fetchedStudent || null); 
         } catch (error) {
           console.error("Failed to fetch student:", error);
           setStudent(null);
@@ -39,6 +39,22 @@ export default function StudentDetailPage({ params }: StudentDetailPageProps) {
       fetchStudentData();
     }
   }, [studentId]);
+
+  const getFeeStatusBadge = (student: Student) => {
+    if (student.activityStatus === 'Left') {
+      return <Badge variant="secondary" className="bg-gray-100 text-gray-700 border-gray-300">N/A (Left)</Badge>;
+    }
+    switch (student.feeStatus) {
+      case 'Overdue':
+        return <Badge variant="destructive">Overdue</Badge>;
+      case 'Due':
+        return <Badge className="bg-yellow-100 text-yellow-700 border-yellow-300">Due</Badge>;
+      case 'Paid':
+        return <Badge className="bg-green-100 text-green-700 border-green-300">Paid</Badge>;
+      default:
+        return <Badge variant="outline">{student.feeStatus}</Badge>;
+    }
+  };
 
   if (isLoading) {
     return (
@@ -85,7 +101,10 @@ export default function StudentDetailPage({ params }: StudentDetailPageProps) {
       <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-2">
         <Card className="shadow-md">
           <CardHeader>
-            <CardTitle>Student Information</CardTitle>
+            <CardTitle className="flex items-center">
+              <UserCircle className="mr-2 h-5 w-5"/>
+              Student Information
+            </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             <p><strong>Name:</strong> {student.name}</p>
@@ -94,6 +113,14 @@ export default function StudentDetailPage({ params }: StudentDetailPageProps) {
             <p><strong>Shift:</strong> <span className="capitalize">{student.shift}</span></p>
             <p><strong>Seat Number:</strong> {student.seatNumber || 'N/A'}</p>
             <p><strong>Registration Date:</strong> {student.registrationDate}</p>
+            <p><strong>Activity Status:</strong> 
+                <Badge 
+                    variant={student.activityStatus === "Active" ? "default" : "secondary"}
+                    className={student.activityStatus === "Active" ? "ml-2 bg-green-100 text-green-700" : "ml-2 bg-gray-100 text-gray-700"}
+                >
+                    {student.activityStatus}
+                </Badge>
+            </p>
           </CardContent>
         </Card>
 
@@ -105,21 +132,10 @@ export default function StudentDetailPage({ params }: StudentDetailPageProps) {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            <p><strong>Status:</strong> 
-              <Badge 
-                variant={student.feeStatus === "Paid" ? "default" : student.feeStatus === "Due" ? "secondary" : "destructive"} 
-                className={
-                  student.feeStatus === "Paid" ? "bg-green-100 text-green-700" : 
-                  student.feeStatus === "Due" ? "bg-yellow-100 text-yellow-700" : 
-                  student.feeStatus === "Overdue" ? "bg-red-100 text-red-700" : "" + " px-2 py-1 text-xs"
-                }
-              > 
-                {student.feeStatus} 
-              </Badge> 
-            </p>
-            <p><strong>Amount Due:</strong> {student.amountDue || "₹0"}</p>
-            <p><strong>Last Paid On:</strong> {student.lastPaymentDate || 'N/A'}</p>
-            <p><strong>Next Due Date:</strong> {student.nextDueDate || 'N/A'}</p>
+            <p><strong>Status:</strong> {getFeeStatusBadge(student)}</p>
+            <p><strong>Amount Due:</strong> {student.activityStatus === 'Left' ? 'N/A' : (student.amountDue || "₹0")}</p>
+            <p><strong>Last Paid On:</strong> {student.activityStatus === 'Left' ? 'N/A' : (student.lastPaymentDate || 'N/A')}</p>
+            <p><strong>Next Due Date:</strong> {student.activityStatus === 'Left' ? 'N/A' : (student.nextDueDate || 'N/A')}</p>
              <Button variant="outline" size="sm" className="mt-2" disabled>
                 <Receipt className="mr-2 h-4 w-4" /> View Payment History (Placeholder)
             </Button>
@@ -130,7 +146,7 @@ export default function StudentDetailPage({ params }: StudentDetailPageProps) {
       <Card className="mt-6 shadow-md">
         <CardHeader>
           <CardTitle className="flex items-center">
-            <CalendarDays className="mr-2 h-5 w-5" />
+            <Briefcase className="mr-2 h-5 w-5" />
             Attendance Overview
           </CardTitle>
           <CardDescription>Student's attendance calendar and summary will be displayed here.</CardDescription>

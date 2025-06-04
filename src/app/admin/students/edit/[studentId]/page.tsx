@@ -34,7 +34,7 @@ import {
   FormDescription,
 } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Save, ClipboardCheck, Info as InfoIcon, Loader2 } from 'lucide-react';
+import { ArrowLeft, Save, ClipboardCheck, Info as InfoIcon, Loader2, UserX } from 'lucide-react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { getStudentById, updateStudent, getAvailableSeats } from '@/services/student-service';
@@ -47,7 +47,7 @@ const studentEditFormSchema = z.object({
   email: z.string().email({ message: "Invalid email address." }).optional().or(z.literal('')),
   phone: z.string().min(10, { message: "Phone number must be at least 10 digits." }),
   shift: z.enum(["morning", "evening", "fullday"], { required_error: "Shift selection is required." }),
-  seatNumber: z.string().min(1, "Seat selection is required."),
+  seatNumber: z.string().min(1, "Seat selection is required.").nullable(), // Allow null for "Left" students
 });
 
 type StudentEditFormValues = z.infer<typeof studentEditFormSchema>;
@@ -76,7 +76,7 @@ export default function EditStudentPage() {
       email: "",
       phone: "",
       shift: undefined,
-      seatNumber: "",
+      seatNumber: null,
     },
   });
 
@@ -100,14 +100,14 @@ export default function EditStudentPage() {
           const seats = await getAvailableSeats();
           const currentStudentSeat = student.seatNumber;
           const seatOptionsSet = new Set(seats);
-          if (currentStudentSeat) {
+          if (currentStudentSeat && student.activityStatus === 'Active') { // Only add current seat if student is active
             seatOptionsSet.add(currentStudentSeat);
           }
           setAvailableSeatOptions(Array.from(seatOptionsSet).sort());
 
         } else {
           toast({ title: "Error", description: "Student not found.", variant: "destructive" });
-          setStudentData(null); // Explicitly set to null if not found
+          setStudentData(null);
         }
       } catch (error) {
         console.error("Failed to fetch student data:", error);
@@ -121,7 +121,7 @@ export default function EditStudentPage() {
 
 
   async function onSaveChanges(data: StudentEditFormValues) {
-    if (!studentId || !studentData) return;
+    if (!studentId || !studentData || studentData.activityStatus === 'Left') return;
     setIsSaving(true);
     try {
       const updatedStudent = await updateStudent(studentId, {
@@ -129,15 +129,30 @@ export default function EditStudentPage() {
         email: data.email,
         phone: data.phone,
         shift: data.shift,
-        seatNumber: data.seatNumber,
+        seatNumber: data.seatNumber, // seatNumber can be null if student is left, but form validation requires it if active
       });
       if (updatedStudent) {
-        setStudentData(updatedStudent); // Update local state with the response
-        form.reset(updatedStudent); // Re-sync form with potentially modified data from backend
+        setStudentData(updatedStudent); 
+        form.reset({
+            name: updatedStudent.name,
+            email: updatedStudent.email || "",
+            phone: updatedStudent.phone,
+            shift: updatedStudent.shift,
+            seatNumber: updatedStudent.seatNumber,
+        });
         toast({
           title: "Changes Saved",
           description: `${updatedStudent.name}'s details have been updated.`,
         });
+         // Re-fetch available seats if seat was part of the update and student is active
+        if (data.seatNumber !== studentData.seatNumber && updatedStudent.activityStatus === 'Active') {
+            const seats = await getAvailableSeats();
+            const seatOptionsSet = new Set(seats);
+            if (updatedStudent.seatNumber) {
+              seatOptionsSet.add(updatedStudent.seatNumber);
+            }
+            setAvailableSeatOptions(Array.from(seatOptionsSet).sort());
+        }
       } else {
          toast({ title: "Error", description: "Failed to save changes.", variant: "destructive"});
       }
@@ -153,7 +168,7 @@ export default function EditStudentPage() {
   }
 
   async function handleMarkPaymentPaid() {
-    if (!studentId || !studentData) return;
+    if (!studentId || !studentData || studentData.activityStatus === 'Left') return;
     setIsSaving(true);
     const today = new Date();
     const paymentUpdatePayload: Partial<Student> = {
@@ -183,6 +198,43 @@ export default function EditStudentPage() {
       setIsSaving(false);
     }
   }
+
+  async function handleMarkAsLeft() {
+    if (!studentId || !studentData || studentData.activityStatus === 'Left') return;
+    setIsSaving(true);
+    try {
+      const updatedStudent = await updateStudent(studentId, { activityStatus: 'Left', seatNumber: null, feeStatus: 'N/A', amountDue: 'N/A' });
+      if (updatedStudent) {
+        setStudentData(updatedStudent);
+        form.reset({ // Reset form reflecting "Left" status
+            name: updatedStudent.name,
+            email: updatedStudent.email || "",
+            phone: updatedStudent.phone,
+            shift: updatedStudent.shift,
+            seatNumber: null, // No seat for "Left" student
+        });
+        toast({
+          title: "Student Marked as Left",
+          description: `${updatedStudent.name} is now marked as Left. Their seat is available.`,
+        });
+        // Re-fetch available seats as one just became available
+        const seats = await getAvailableSeats();
+        setAvailableSeatOptions(seats.sort());
+
+      } else {
+        toast({ title: "Error", description: "Failed to mark student as Left.", variant: "destructive"});
+      }
+    } catch (error: any) {
+      toast({
+        title: "Update Failed",
+        description: error.message || "An unexpected error occurred.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
 
   if (isLoading) {
     return (
@@ -218,6 +270,8 @@ export default function EditStudentPage() {
       </div>
     );
   }
+  
+  const isStudentLeft = studentData.activityStatus === 'Left';
 
   return (
     <>
@@ -232,7 +286,10 @@ export default function EditStudentPage() {
       <Card className="w-full md:max-w-2xl mx-auto shadow-lg">
         <CardHeader>
           <CardTitle>Edit Student Details</CardTitle>
-          <CardDescription>Update the information below. Current Fee Status: <span className="font-semibold">{studentData.feeStatus}</span></CardDescription>
+          <CardDescription>
+            Update the information below. Current Fee Status: <span className="font-semibold">{studentData.feeStatus}</span>.
+            Activity Status: <span className={`font-semibold ${isStudentLeft ? 'text-destructive' : 'text-green-600'}`}>{studentData.activityStatus}</span>.
+          </CardDescription>
         </CardHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSaveChanges)}>
@@ -244,21 +301,21 @@ export default function EditStudentPage() {
                 </FormControl>
               </FormItem>
               <FormField control={form.control} name="name" render={({ field }) => (
-                <FormItem><FormLabel>Full Name</FormLabel><FormControl><Input placeholder="Enter student's full name" {...field} disabled={isSaving} /></FormControl><FormMessage /></FormItem>
+                <FormItem><FormLabel>Full Name</FormLabel><FormControl><Input placeholder="Enter student's full name" {...field} disabled={isSaving || isStudentLeft} /></FormControl><FormMessage /></FormItem>
               )} />
               <FormField control={form.control} name="email" render={({ field }) => (
-                <FormItem><FormLabel>Email Address (Optional)</FormLabel><FormControl><Input type="email" placeholder="student@example.com" {...field} disabled={isSaving} /></FormControl><FormMessage /></FormItem>
+                <FormItem><FormLabel>Email Address (Optional)</FormLabel><FormControl><Input type="email" placeholder="student@example.com" {...field} disabled={isSaving || isStudentLeft} /></FormControl><FormMessage /></FormItem>
               )} />
               <FormField control={form.control} name="phone" render={({ field }) => (
-                <FormItem><FormLabel>Phone Number</FormLabel><FormControl><Input type="tel" placeholder="Enter 10-digit phone number" {...field} disabled={isSaving} /></FormControl><FormMessage /></FormItem>
+                <FormItem><FormLabel>Phone Number</FormLabel><FormControl><Input type="tel" placeholder="Enter 10-digit phone number" {...field} disabled={isSaving || isStudentLeft} /></FormControl><FormMessage /></FormItem>
               )} />
               <FormField control={form.control} name="shift" render={({ field }) => (
                 <FormItem className="space-y-3"><FormLabel>Shift Selection</FormLabel>
                   <FormControl>
-                    <RadioGroup onValueChange={field.onChange} value={field.value} className="flex flex-col space-y-2" disabled={isSaving}>
+                    <RadioGroup onValueChange={field.onChange} value={field.value} className="flex flex-col space-y-2" disabled={isSaving || isStudentLeft}>
                       {shiftOptions.map(option => (
                         <FormItem key={option.value} className="flex items-center space-x-3 space-y-0">
-                          <FormControl><RadioGroupItem value={option.value} disabled={isSaving} /></FormControl>
+                          <FormControl><RadioGroupItem value={option.value} disabled={isSaving || isStudentLeft} /></FormControl>
                           <FormLabel className="font-normal">{option.label}</FormLabel>
                         </FormItem>
                       ))}
@@ -272,23 +329,31 @@ export default function EditStudentPage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Seat Number</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value || ""} disabled={isSaving}>
+                    <Select 
+                        onValueChange={field.onChange} 
+                        value={field.value || ""} 
+                        disabled={isSaving || isStudentLeft}
+                    >
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="Select a seat" />
+                          <SelectValue placeholder={isStudentLeft ? "N/A (Student Left)" : "Select a seat"} />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {availableSeatOptions.map(seat => (
+                        {!isStudentLeft && availableSeatOptions.map(seat => (
                           <SelectItem key={seat} value={seat}>
-                            {seat}{seat === studentData.seatNumber ? " (Current)" : ""}
+                            {seat}{seat === studentData.seatNumber && studentData.activityStatus === 'Active' ? " (Current)" : ""}
                           </SelectItem>
                         ))}
-                        {availableSeatOptions.length === 0 && (
+                        {!isStudentLeft && availableSeatOptions.length === 0 && (
                            <p className="p-2 text-xs text-muted-foreground">No seats currently available.</p>
+                        )}
+                         {isStudentLeft && (
+                           <p className="p-2 text-xs text-muted-foreground">Student has left, no seat assigned.</p>
                         )}
                       </SelectContent>
                     </Select>
+                     {isStudentLeft && <FormDescription>Student has left the study hall.</FormDescription>}
                     <FormMessage />
                   </FormItem>
                 )}
@@ -303,15 +368,21 @@ export default function EditStudentPage() {
                 </div>
               </FormItem>
             </CardContent>
-            <CardFooter className="flex flex-col sm:flex-row justify-between items-center gap-4">
-              <Button type="button" variant="outline" onClick={handleMarkPaymentPaid} disabled={isSaving || studentData.feeStatus === "Paid"}>
-                {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ClipboardCheck className="mr-2 h-4 w-4" />}
-                Mark Payment as Paid
+            <CardFooter className="flex flex-col sm:flex-row justify-between items-start gap-4">
+              <Button type="button" variant="outline" onClick={handleMarkAsLeft} disabled={isSaving || isStudentLeft}>
+                {isSaving && !isStudentLeft ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UserX className="mr-2 h-4 w-4" />}
+                {isStudentLeft ? "Student Marked as Left" : "Mark as Left"}
               </Button>
-              <Button type="submit" disabled={isSaving}>
-                {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                Save Changes
-              </Button>
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 w-full sm:w-auto justify-end">
+                <Button type="button" variant="outline" onClick={handleMarkPaymentPaid} disabled={isSaving || studentData.feeStatus === "Paid" || isStudentLeft}>
+                  {isSaving && !isStudentLeft ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ClipboardCheck className="mr-2 h-4 w-4" />}
+                  Mark Payment as Paid
+                </Button>
+                <Button type="submit" disabled={isSaving || isStudentLeft}>
+                  {isSaving && !isStudentLeft ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                  Save Changes
+                </Button>
+              </div>
             </CardFooter>
           </form>
         </Form>
@@ -319,5 +390,3 @@ export default function EditStudentPage() {
     </>
   );
 }
-
-    

@@ -20,9 +20,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ArrowRight, Edit, Loader2 } from 'lucide-react'; // Added Edit icon and Loader2
+import { Badge } from '@/components/ui/badge';
+import { ArrowRight, Edit, Loader2 } from 'lucide-react';
 import { getAllStudents } from '@/services/student-service';
-import type { Student as StudentData } from '@/types/student'; // Renamed for consistency with existing component
+import type { Student as StudentData } from '@/types/student'; 
 
 export default function StudentListPage() {
   const [students, setStudents] = React.useState<StudentData[]>([]);
@@ -36,13 +37,29 @@ export default function StudentListPage() {
         setStudents(fetchedStudents);
       } catch (error) {
         console.error("Failed to fetch students:", error);
-        // Optionally, set an error state and display an error message
       } finally {
         setIsLoading(false);
       }
     };
     fetchStudents();
   }, []);
+
+  const getStatusBadge = (student: StudentData) => {
+    if (student.activityStatus === 'Left') {
+      return <Badge variant="secondary" className="bg-gray-100 text-gray-700 border-gray-300 hover:bg-gray-200">Left</Badge>;
+    }
+    switch (student.feeStatus) {
+      case 'Overdue':
+        return <Badge variant="destructive">Overdue</Badge>;
+      case 'Due':
+        return <Badge className="bg-yellow-100 text-yellow-700 border-yellow-300 hover:bg-yellow-200">Due</Badge>;
+      case 'Paid':
+        return <Badge className="bg-green-100 text-green-700 border-green-300 hover:bg-green-200">Paid</Badge>;
+      default:
+        return <Badge variant="outline">{student.feeStatus}</Badge>;
+    }
+  };
+
 
   return (
     <>
@@ -67,6 +84,7 @@ export default function StudentListPage() {
                   <TableHead>Email</TableHead>
                   <TableHead>Shift</TableHead>
                   <TableHead>Seat Number</TableHead>
+                  <TableHead>Status</TableHead>
                   <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -82,6 +100,7 @@ export default function StudentListPage() {
                     <TableCell>{student.email || 'N/A'}</TableCell>
                     <TableCell className="capitalize">{student.shift}</TableCell>
                     <TableCell>{student.seatNumber || 'N/A'}</TableCell>
+                    <TableCell>{getStatusBadge(student)}</TableCell>
                     <TableCell className="space-x-2">
                       <Link href={`/students/profiles/${student.studentId}`} passHref legacyBehavior>
                         <Button variant="outline" size="sm" title="View Profile">
@@ -98,7 +117,7 @@ export default function StudentListPage() {
                 ))}
                 {students.length === 0 && !isLoading && (
                   <TableRow>
-                    <TableCell colSpan={6} className="py-4 text-center text-muted-foreground">
+                    <TableCell colSpan={7} className="py-4 text-center text-muted-foreground">
                       No students registered yet.
                     </TableCell>
                   </TableRow>
