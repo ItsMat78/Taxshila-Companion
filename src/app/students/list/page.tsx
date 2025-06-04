@@ -21,7 +21,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from '@/components/ui/badge';
-import { ArrowRight, Edit, Loader2, Users, UserX } from 'lucide-react';
+import { ArrowRight, Edit, Loader2, Users, UserX, UserCheck } from 'lucide-react';
 import { getAllStudents } from '@/services/student-service';
 import type { Student as StudentData } from '@/types/student'; 
 
@@ -63,7 +63,7 @@ export default function StudentListPage() {
     }
   };
 
-  const renderStudentTable = (studentsToRender: StudentData[], tableTitle: string, tableDescription: string, icon: React.ReactNode, emptyMessage: string) => (
+  const renderStudentTable = (studentsToRender: StudentData[], tableTitle: string, tableDescription: string, icon: React.ReactNode, emptyMessage: string, isLeftTable: boolean = false) => (
     <Card className="mt-6">
       <CardHeader>
         <CardTitle className="flex items-center">
@@ -84,8 +84,8 @@ export default function StudentListPage() {
               <TableRow>
                 <TableHead>Student ID</TableHead>
                 <TableHead>Name</TableHead>
-                <TableHead>Email</TableHead>
                 <TableHead>Phone</TableHead>
+                <TableHead>Email</TableHead>
                 <TableHead>Shift</TableHead>
                 <TableHead>Seat Number</TableHead>
                 <TableHead>Status</TableHead>
@@ -101,8 +101,8 @@ export default function StudentListPage() {
                       {student.name}
                     </Link>
                   </TableCell>
-                  <TableCell>{student.email || 'N/A'}</TableCell>
                   <TableCell>{student.phone}</TableCell>
+                  <TableCell>{student.email || 'N/A'}</TableCell>
                   <TableCell className="capitalize">{student.shift}</TableCell>
                   <TableCell>{student.seatNumber || 'N/A'}</TableCell>
                   <TableCell>{getStatusBadge(student)}</TableCell>
@@ -112,11 +112,19 @@ export default function StudentListPage() {
                         <ArrowRight className="h-4 w-4" />
                       </Button>
                     </Link>
-                    <Link href={`/admin/students/edit/${student.studentId}`} passHref legacyBehavior>
-                      <Button variant="outline" size="sm" title="Edit Student" disabled={student.activityStatus === 'Left'}>
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                    </Link>
+                    {isLeftTable ? (
+                       <Link href={`/admin/students/edit/${student.studentId}`} passHref legacyBehavior>
+                        <Button variant="outline" size="sm" title="Re-activate Student">
+                          <UserCheck className="h-4 w-4" />
+                        </Button>
+                      </Link>
+                    ) : (
+                      <Link href={`/admin/students/edit/${student.studentId}`} passHref legacyBehavior>
+                        <Button variant="outline" size="sm" title="Edit Student">
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                      </Link>
+                    )}
                   </TableCell>
                 </TableRow>
               ))}
@@ -149,9 +157,10 @@ export default function StudentListPage() {
       {renderStudentTable(
         leftStudents, 
         "Students Who Have Left", 
-        "A list of students who are no longer active.",
+        "A list of students who are no longer active. Click re-activate icon to manage their details and re-assign a seat.",
         <UserX className="h-5 w-5" />,
-        "No students have left the study hall."
+        "No students have left the study hall.",
+        true // isLeftTable
       )}
     </>
   );

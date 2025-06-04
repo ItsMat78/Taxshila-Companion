@@ -34,7 +34,7 @@ import {
   FormDescription,
 } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Save, ClipboardCheck, Info as InfoIcon, Loader2, UserX } from 'lucide-react';
+import { ArrowLeft, Save, ClipboardCheck, Info as InfoIcon, Loader2, UserX, UserCheck } from 'lucide-react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { getStudentById, updateStudent, getAvailableSeats } from '@/services/student-service';
@@ -47,7 +47,7 @@ const studentEditFormSchema = z.object({
   email: z.string().email({ message: "Invalid email address." }).optional().or(z.literal('')),
   phone: z.string().min(10, { message: "Phone number must be at least 10 digits." }),
   shift: z.enum(["morning", "evening", "fullday"], { required_error: "Shift selection is required." }),
-  seatNumber: z.string().min(1, "Seat selection is required.").nullable(), // Allow null for "Left" students
+  seatNumber: z.string().min(1, "Seat selection is required.").nullable(),
 });
 
 type StudentEditFormValues = z.infer<typeof studentEditFormSchema>;
@@ -80,60 +80,97 @@ export default function EditStudentPage() {
     },
   });
 
-  React.useEffect(() => {
-    if (!studentId) return;
+  const fetchStudentAndSeats = React.useCallback(async (currentStudentId: string) => {
+    setIsLoading(true);
+    try {
+      const student = await getStudentById(currentStudentId);
+      const seats = await getAvailableSeats();
+      
+      if (student) {
+        setStudentData(student);
+        form.reset({
+          name: student.name,
+          email: student.email || "",
+          phone: student.phone,
+          shift: student.shift,
+          seatNumber: student.seatNumber,
+        });
 
-    const fetchData = async () => {
-      setIsLoading(true);
-      try {
-        const student = await getStudentById(studentId);
-        if (student) {
-          setStudentData(student);
-          form.reset({
-            name: student.name,
-            email: student.email || "",
-            phone: student.phone,
-            shift: student.shift,
-            seatNumber: student.seatNumber,
-          });
-
-          const seats = await getAvailableSeats();
-          const currentStudentSeat = student.seatNumber;
-          const seatOptionsSet = new Set(seats);
-          if (currentStudentSeat && student.activityStatus === 'Active') { // Only add current seat if student is active
-            seatOptionsSet.add(currentStudentSeat);
-          }
-          setAvailableSeatOptions(Array.from(seatOptionsSet).sort());
-
-        } else {
-          toast({ title: "Error", description: "Student not found.", variant: "destructive" });
-          setStudentData(null);
+        const seatOptionsSet = new Set(seats);
+        // If student is active and has a seat, ensure it's in the options
+        if (student.seatNumber && student.activityStatus === 'Active') {
+          seatOptionsSet.add(student.seatNumber);
         }
-      } catch (error) {
-        console.error("Failed to fetch student data:", error);
-        toast({ title: "Error", description: "Failed to load student data.", variant: "destructive" });
-      } finally {
-        setIsLoading(false);
+        setAvailableSeatOptions(Array.from(seatOptionsSet).sort());
+
+      } else {
+        toast({ title: "Error", description: "Student not found.", variant: "destructive" });
+        setStudentData(null);
+        setAvailableSeatOptions(seats.sort()); // Still set available seats
       }
-    };
-    fetchData();
-  }, [studentId, form, toast]);
+    } catch (error) {
+      console.error("Failed to fetch student data or seats:", error);
+      toast({ title: "Error", description: "Failed to load student data or seats.", variant: "destructive" });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [form, toast]);
+
+  React.useEffect(() => {
+    if (studentId) {
+      fetchStudentAndSeats(studentId);
+    }
+  }, [studentId, fetchStudentAndSeats]);
 
 
   async function onSaveChanges(data: StudentEditFormValues) {
-    if (!studentId || !studentData || studentData.activityStatus === 'Left') return;
+    if (!studentId || !studentData) return;
     setIsSaving(true);
-    try {
-      const updatedStudent = await updateStudent(studentId, {
+
+    let payload: Partial<Student>;
+    let successMessage: string;
+
+    if (studentData.activityStatus === 'Left') { // Re-activation logic
+      if (!data.seatNumber) {
+        toast({
+            title: "Re-activation Failed",
+            description: "A seat must be selected to re-activate a student.",
+            variant: "destructive",
+        });
+        setIsSaving(false);
+        return;
+      }
+      payload = {
         name: data.name,
         email: data.email,
         phone: data.phone,
         shift: data.shift,
-        seatNumber: data.seatNumber, // seatNumber can be null if student is left, but form validation requires it if active
-      });
+        seatNumber: data.seatNumber,
+        activityStatus: 'Active',
+        feeStatus: 'Due',
+        amountDue: data.shift === "fullday" ? "₹1200" : "₹700",
+        lastPaymentDate: undefined,
+        nextDueDate: format(addMonths(new Date(), 1), 'yyyy-MM-dd'),
+        registrationDate: studentData.registrationDate, // Keep original registration date
+      };
+      successMessage = `${data.name} has been re-activated.`;
+
+    } else { // Standard edit logic
+      payload = {
+        name: data.name,
+        email: data.email,
+        phone: data.phone,
+        shift: data.shift,
+        seatNumber: data.seatNumber,
+      };
+      successMessage = `${data.name}'s details have been updated.`;
+    }
+
+    try {
+      const updatedStudent = await updateStudent(studentId, payload);
       if (updatedStudent) {
         setStudentData(updatedStudent); 
-        form.reset({
+        form.reset({ // Re-populate form with potentially updated data from service
             name: updatedStudent.name,
             email: updatedStudent.email || "",
             phone: updatedStudent.phone,
@@ -141,18 +178,16 @@ export default function EditStudentPage() {
             seatNumber: updatedStudent.seatNumber,
         });
         toast({
-          title: "Changes Saved",
-          description: `${updatedStudent.name}'s details have been updated.`,
+          title: studentData.activityStatus === 'Left' ? "Student Re-activated" : "Changes Saved",
+          description: successMessage,
         });
-         // Re-fetch available seats if seat was part of the update and student is active
-        if (data.seatNumber !== studentData.seatNumber && updatedStudent.activityStatus === 'Active') {
-            const seats = await getAvailableSeats();
-            const seatOptionsSet = new Set(seats);
-            if (updatedStudent.seatNumber) {
-              seatOptionsSet.add(updatedStudent.seatNumber);
-            }
-            setAvailableSeatOptions(Array.from(seatOptionsSet).sort());
+        // Re-fetch available seats
+        const seats = await getAvailableSeats();
+        const seatOptionsSet = new Set(seats);
+        if (updatedStudent.seatNumber && updatedStudent.activityStatus === 'Active') {
+          seatOptionsSet.add(updatedStudent.seatNumber);
         }
+        setAvailableSeatOptions(Array.from(seatOptionsSet).sort());
       } else {
          toast({ title: "Error", description: "Failed to save changes.", variant: "destructive"});
       }
@@ -203,24 +238,29 @@ export default function EditStudentPage() {
     if (!studentId || !studentData || studentData.activityStatus === 'Left') return;
     setIsSaving(true);
     try {
-      const updatedStudent = await updateStudent(studentId, { activityStatus: 'Left', seatNumber: null, feeStatus: 'N/A', amountDue: 'N/A' });
+      const updatedStudent = await updateStudent(studentId, { 
+        activityStatus: 'Left', 
+        seatNumber: null, 
+        feeStatus: 'N/A', 
+        amountDue: 'N/A',
+        lastPaymentDate: undefined,
+        nextDueDate: undefined,
+      });
       if (updatedStudent) {
         setStudentData(updatedStudent);
-        form.reset({ // Reset form reflecting "Left" status
+        form.reset({ 
             name: updatedStudent.name,
             email: updatedStudent.email || "",
             phone: updatedStudent.phone,
             shift: updatedStudent.shift,
-            seatNumber: null, // No seat for "Left" student
+            seatNumber: null,
         });
         toast({
           title: "Student Marked as Left",
           description: `${updatedStudent.name} is now marked as Left. Their seat is available.`,
         });
-        // Re-fetch available seats as one just became available
         const seats = await getAvailableSeats();
         setAvailableSeatOptions(seats.sort());
-
       } else {
         toast({ title: "Error", description: "Failed to mark student as Left.", variant: "destructive"});
       }
@@ -287,8 +327,9 @@ export default function EditStudentPage() {
         <CardHeader>
           <CardTitle>Edit Student Details</CardTitle>
           <CardDescription>
-            Update the information below. Current Fee Status: <span className="font-semibold">{studentData.feeStatus}</span>.
+            Current Fee Status: <span className="font-semibold">{studentData.feeStatus}</span>.
             Activity Status: <span className={`font-semibold ${isStudentLeft ? 'text-destructive' : 'text-green-600'}`}>{studentData.activityStatus}</span>.
+            {isStudentLeft && " Update details and select a seat to re-activate."}
           </CardDescription>
         </CardHeader>
         <Form {...form}>
@@ -301,21 +342,21 @@ export default function EditStudentPage() {
                 </FormControl>
               </FormItem>
               <FormField control={form.control} name="name" render={({ field }) => (
-                <FormItem><FormLabel>Full Name</FormLabel><FormControl><Input placeholder="Enter student's full name" {...field} disabled={isSaving || isStudentLeft} /></FormControl><FormMessage /></FormItem>
+                <FormItem><FormLabel>Full Name</FormLabel><FormControl><Input placeholder="Enter student's full name" {...field} disabled={isSaving} /></FormControl><FormMessage /></FormItem>
               )} />
               <FormField control={form.control} name="email" render={({ field }) => (
-                <FormItem><FormLabel>Email Address (Optional)</FormLabel><FormControl><Input type="email" placeholder="student@example.com" {...field} disabled={isSaving || isStudentLeft} /></FormControl><FormMessage /></FormItem>
+                <FormItem><FormLabel>Email Address (Optional)</FormLabel><FormControl><Input type="email" placeholder="student@example.com" {...field} disabled={isSaving} /></FormControl><FormMessage /></FormItem>
               )} />
               <FormField control={form.control} name="phone" render={({ field }) => (
-                <FormItem><FormLabel>Phone Number</FormLabel><FormControl><Input type="tel" placeholder="Enter 10-digit phone number" {...field} disabled={isSaving || isStudentLeft} /></FormControl><FormMessage /></FormItem>
+                <FormItem><FormLabel>Phone Number</FormLabel><FormControl><Input type="tel" placeholder="Enter 10-digit phone number" {...field} disabled={isSaving} /></FormControl><FormMessage /></FormItem>
               )} />
               <FormField control={form.control} name="shift" render={({ field }) => (
                 <FormItem className="space-y-3"><FormLabel>Shift Selection</FormLabel>
                   <FormControl>
-                    <RadioGroup onValueChange={field.onChange} value={field.value} className="flex flex-col space-y-2" disabled={isSaving || isStudentLeft}>
+                    <RadioGroup onValueChange={field.onChange} value={field.value} className="flex flex-col space-y-2" disabled={isSaving}>
                       {shiftOptions.map(option => (
                         <FormItem key={option.value} className="flex items-center space-x-3 space-y-0">
-                          <FormControl><RadioGroupItem value={option.value} disabled={isSaving || isStudentLeft} /></FormControl>
+                          <FormControl><RadioGroupItem value={option.value} disabled={isSaving} /></FormControl>
                           <FormLabel className="font-normal">{option.label}</FormLabel>
                         </FormItem>
                       ))}
@@ -332,28 +373,28 @@ export default function EditStudentPage() {
                     <Select 
                         onValueChange={field.onChange} 
                         value={field.value || ""} 
-                        disabled={isSaving || isStudentLeft}
+                        disabled={isSaving}
                     >
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder={isStudentLeft ? "N/A (Student Left)" : "Select a seat"} />
+                          <SelectValue placeholder={isStudentLeft ? "Select a new seat to re-activate" : "Select a seat"} />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {!isStudentLeft && availableSeatOptions.map(seat => (
+                        {availableSeatOptions.map(seat => (
                           <SelectItem key={seat} value={seat}>
-                            {seat}{seat === studentData.seatNumber && studentData.activityStatus === 'Active' ? " (Current)" : ""}
+                            {seat}{seat === studentData.seatNumber && !isStudentLeft ? " (Current)" : ""}
                           </SelectItem>
                         ))}
-                        {!isStudentLeft && availableSeatOptions.length === 0 && (
+                        {availableSeatOptions.length === 0 && !isStudentLeft && ( // Only show if not left and no seats
                            <p className="p-2 text-xs text-muted-foreground">No seats currently available.</p>
                         )}
-                         {isStudentLeft && (
-                           <p className="p-2 text-xs text-muted-foreground">Student has left, no seat assigned.</p>
+                         {availableSeatOptions.length === 0 && isStudentLeft && ( // Show if left and no seats to pick
+                           <p className="p-2 text-xs text-muted-foreground">No seats currently available to assign.</p>
                         )}
                       </SelectContent>
                     </Select>
-                     {isStudentLeft && <FormDescription>Student has left the study hall.</FormDescription>}
+                    {isStudentLeft && <FormDescription>Student is currently Left. Selecting a seat is required to re-activate.</FormDescription>}
                     <FormMessage />
                   </FormItem>
                 )}
@@ -369,18 +410,24 @@ export default function EditStudentPage() {
               </FormItem>
             </CardContent>
             <CardFooter className="flex flex-col sm:flex-row justify-between items-start gap-4">
-              <Button type="button" variant="outline" onClick={handleMarkAsLeft} disabled={isSaving || isStudentLeft}>
-                {isSaving && !isStudentLeft ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UserX className="mr-2 h-4 w-4" />}
-                {isStudentLeft ? "Student Marked as Left" : "Mark as Left"}
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={handleMarkAsLeft} 
+                disabled={isSaving || isStudentLeft}
+                className={isStudentLeft ? "hidden" : ""} 
+              >
+                {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UserX className="mr-2 h-4 w-4" />}
+                 Mark as Left
               </Button>
               <div className="flex flex-col sm:flex-row sm:items-center gap-2 w-full sm:w-auto justify-end">
                 <Button type="button" variant="outline" onClick={handleMarkPaymentPaid} disabled={isSaving || studentData.feeStatus === "Paid" || isStudentLeft}>
-                  {isSaving && !isStudentLeft ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ClipboardCheck className="mr-2 h-4 w-4" />}
+                  {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ClipboardCheck className="mr-2 h-4 w-4" />}
                   Mark Payment as Paid
                 </Button>
-                <Button type="submit" disabled={isSaving || isStudentLeft}>
-                  {isSaving && !isStudentLeft ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                  Save Changes
+                <Button type="submit" disabled={isSaving}>
+                  {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : (isStudentLeft ? <UserCheck className="mr-2 h-4 w-4" /> : <Save className="mr-2 h-4 w-4" />)}
+                  {isStudentLeft ? "Save and Re-activate" : "Save Changes"}
                 </Button>
               </div>
             </CardFooter>
