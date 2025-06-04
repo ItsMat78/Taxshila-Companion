@@ -19,14 +19,15 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from '@/components/ui/button';
-import { AlertTriangle, Info, Megaphone, Loader2, MailWarning, CheckCircle2 } from 'lucide-react'; // Removed Circle
+import { Badge } from '@/components/ui/badge'; // Import Badge
+import { AlertTriangle, Info, Megaphone, Loader2, MailWarning, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
 import { getStudentByEmail, getAlertsForStudent, markAlertAsRead } from '@/services/student-service';
 import type { AlertItem } from '@/types/communication';
 import { useToast } from '@/hooks/use-toast';
 import { format, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
-import { useNotificationContext } from '@/contexts/notification-context'; // Import context hook
+import { useNotificationContext } from '@/contexts/notification-context';
 
 interface AlertDetailsDialogProps {
   isOpen: boolean;
@@ -86,7 +87,7 @@ function AlertDetailsDialog({ isOpen, onClose, alertItem }: AlertDetailsDialogPr
 export default function MemberAlertsPage() {
   const { user } = useAuth();
   const { toast } = useToast();
-  const { refreshNotifications } = useNotificationContext(); // Consume refresh function
+  const { refreshNotifications } = useNotificationContext();
   const [alertsList, setAlertsList] = React.useState<AlertItem[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [studentId, setStudentId] = React.useState<string | null>(null);
@@ -145,19 +146,31 @@ export default function MemberAlertsPage() {
     if (!alertItem.isRead && studentId) { 
       try {
         await markAlertAsRead(alertItem.id, studentId); 
-        await fetchAlerts(studentId); // Re-fetch alerts for this page
-        refreshNotifications(); // Trigger notification count refresh for header
+        await fetchAlerts(studentId); 
+        refreshNotifications(); 
       } catch (error) {
         toast({ title: "Error", description: "Could not mark alert as read.", variant: "destructive" });
       }
     }
   };
 
-  const getAlertIconAndStyle = (alert: AlertItem) => {
-    const baseClasses = "mr-2 h-5 w-5";
-    let icon;
+  const getAlertInfo = (alert: AlertItem): {
+    mainIcon: JSX.Element;
+    cardClasses: string;
+    titleClasses: string;
+    badgeColorClass: string;
+    badgeLabel: string;
+    badgeIconElement: JSX.Element;
+  } => {
     let cardClasses = "shadow-md hover:shadow-lg transition-shadow cursor-pointer";
     let titleClasses = "text-lg";
+    let mainIcon: JSX.Element;
+    let badgeIconElement: JSX.Element;
+    let badgeColorClass: string;
+    let badgeLabel: string;
+
+    const mainIconBaseClasses = "h-5 w-5"; // Removed mr-2, handle spacing in JSX
+    const badgeIconBaseClasses = "h-3 w-3"; // Removed mr-1
 
     if (!alert.isRead) {
       cardClasses += " border-primary/50 ring-1 ring-primary/30";
@@ -168,20 +181,32 @@ export default function MemberAlertsPage() {
 
     switch (alert.type) {
       case 'closure':
-        icon = <Info className={cn(baseClasses, alert.isRead ? "text-blue-400" : "text-blue-500")} />;
+        mainIcon = <Info className={cn(mainIconBaseClasses, alert.isRead ? "text-blue-400" : "text-blue-500")} />;
+        badgeIconElement = <Info className={cn(badgeIconBaseClasses, "text-blue-500")} />;
+        badgeColorClass = "text-blue-700 bg-blue-100";
+        badgeLabel = "Closure";
         break;
       case 'warning':
-        icon = <AlertTriangle className={cn(baseClasses, alert.isRead ? "text-yellow-400" : "text-yellow-500")} />;
+        mainIcon = <AlertTriangle className={cn(mainIconBaseClasses, alert.isRead ? "text-yellow-400" : "text-yellow-500")} />;
+        badgeIconElement = <AlertTriangle className={cn(badgeIconBaseClasses, "text-yellow-500")} />;
+        badgeColorClass = "text-yellow-700 bg-yellow-100";
+        badgeLabel = "Warning";
         break;
       case 'feedback_response':
-        icon = <CheckCircle2 className={cn(baseClasses, alert.isRead ? "text-green-400" : "text-green-600")} />;
+        mainIcon = <CheckCircle2 className={cn(mainIconBaseClasses, alert.isRead ? "text-green-400" : "text-green-600")} />;
+        badgeIconElement = <CheckCircle2 className={cn(badgeIconBaseClasses, "text-green-600")} />;
+        badgeColorClass = "text-green-700 bg-green-100";
+        badgeLabel = "Feedback Response";
         break;
       case 'info':
       default:
-        icon = <Megaphone className={cn(baseClasses, alert.isRead ? "text-primary/70" : "text-primary")} />;
+        mainIcon = <Megaphone className={cn(mainIconBaseClasses, alert.isRead ? "text-primary/70" : "text-primary")} />;
+        badgeIconElement = <Megaphone className={cn(badgeIconBaseClasses, "text-primary")} />;
+        badgeColorClass = "text-primary bg-primary/10";
+        badgeLabel = "Info / General";
         break;
     }
-    return { icon, cardClasses, titleClasses };
+    return { mainIcon, cardClasses, titleClasses, badgeColorClass, badgeLabel, badgeIconElement };
   };
 
 
@@ -212,7 +237,7 @@ export default function MemberAlertsPage() {
       ) : (
         <div className="space-y-4">
           {alertsList.map((alert) => {
-            const { icon, cardClasses, titleClasses } = getAlertIconAndStyle(alert);
+            const { mainIcon, cardClasses, titleClasses, badgeColorClass, badgeLabel, badgeIconElement } = getAlertInfo(alert);
             return (
               <Card 
                 key={alert.id} 
@@ -220,19 +245,25 @@ export default function MemberAlertsPage() {
                 onClick={() => handleOpenAlertDetails(alert)}
               >
                 <CardHeader className="pb-3">
-                  <div className="flex items-start space-x-3">
-                    <div className="flex-shrink-0 pt-1 relative">
-                      {icon}
-                      {!alert.isRead && (
-                        <span className="absolute -top-0.5 -right-0.5 block h-2 w-2 rounded-full bg-accent ring-1 ring-background" />
-                      )}
+                  <div className="flex items-start justify-between"> {/* Flex container for title area and badge */}
+                    <div className="flex items-start space-x-3"> {/* Existing title and icon area */}
+                      <div className="flex-shrink-0 pt-1 relative">
+                        {React.cloneElement(mainIcon, { className: cn(mainIcon.props.className, "mr-2")})}
+                        {!alert.isRead && (
+                          <span className="absolute -top-0.5 -right-0.5 block h-2 w-2 rounded-full bg-accent ring-1 ring-background" />
+                        )}
+                      </div>
+                      <div>
+                        <CardTitle className={titleClasses}>{alert.title}</CardTitle>
+                        <CardDescription className="text-xs">
+                          Received: {format(parseISO(alert.dateSent), 'MMM d, yyyy, p')}
+                        </CardDescription>
+                      </div>
                     </div>
-                    <div>
-                      <CardTitle className={titleClasses}>{alert.title}</CardTitle>
-                      <CardDescription className="text-xs">
-                        Received: {format(parseISO(alert.dateSent), 'MMM d, yyyy, p')}
-                      </CardDescription>
-                    </div>
+                    <Badge variant="outline" className={cn("capitalize border-opacity-50 text-xs shrink-0", badgeColorClass)}>
+                      {React.cloneElement(badgeIconElement, {className: cn(badgeIconElement.props.className, "mr-1")})}
+                      {badgeLabel}
+                    </Badge>
                   </div>
                 </CardHeader>
                 <CardContent>
@@ -256,3 +287,4 @@ export default function MemberAlertsPage() {
     </>
   );
 }
+
