@@ -61,7 +61,7 @@ export default function StudentListPage() {
                 <TableHead>Name</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>Shift</TableHead>
-                <TableHead>Seat Number</TableHead> {/* New Column */}
+                <TableHead>Seat Number</TableHead>
                 <TableHead>Details</TableHead>
               </TableRow>
             </TableHeader>
@@ -76,7 +76,7 @@ export default function StudentListPage() {
                   </TableCell>
                   <TableCell>{student.email}</TableCell>
                   <TableCell className="capitalize">{student.shift}</TableCell>
-                  <TableCell>{student.seatNumber || 'N/A'}</TableCell> {/* Display Seat Number */}
+                  <TableCell>{student.seatNumber || 'N/A'}</TableCell>
                   <TableCell>
                     <Link href={`/students/profiles/${student.studentId}`} passHref legacyBehavior>
                       <Button variant="outline" size="sm">
