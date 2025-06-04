@@ -21,12 +21,12 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from '@/components/ui/badge';
-import { ArrowRight, Edit, Loader2 } from 'lucide-react';
+import { ArrowRight, Edit, Loader2, Users, UserX } from 'lucide-react';
 import { getAllStudents } from '@/services/student-service';
 import type { Student as StudentData } from '@/types/student'; 
 
 export default function StudentListPage() {
-  const [students, setStudents] = React.useState<StudentData[]>([]);
+  const [allStudents, setAllStudents] = React.useState<StudentData[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
 
   React.useEffect(() => {
@@ -34,7 +34,7 @@ export default function StudentListPage() {
       try {
         setIsLoading(true);
         const fetchedStudents = await getAllStudents();
-        setStudents(fetchedStudents);
+        setAllStudents(fetchedStudents);
       } catch (error) {
         console.error("Failed to fetch students:", error);
       } finally {
@@ -43,6 +43,9 @@ export default function StudentListPage() {
     };
     fetchStudents();
   }, []);
+
+  const activeStudents = allStudents.filter(student => student.activityStatus === 'Active');
+  const leftStudents = allStudents.filter(student => student.activityStatus === 'Left');
 
   const getStatusBadge = (student: StudentData) => {
     if (student.activityStatus === 'Left') {
@@ -60,73 +63,96 @@ export default function StudentListPage() {
     }
   };
 
+  const renderStudentTable = (studentsToRender: StudentData[], tableTitle: string, tableDescription: string, icon: React.ReactNode, emptyMessage: string) => (
+    <Card className="mt-6">
+      <CardHeader>
+        <CardTitle className="flex items-center">
+          {icon}
+          <span className="ml-2">{tableTitle}</span>
+        </CardTitle>
+        <CardDescription>{tableDescription}</CardDescription>
+      </CardHeader>
+      <CardContent>
+        {isLoading ? (
+          <div className="flex items-center justify-center py-10">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <p className="ml-2 text-muted-foreground">Loading students...</p>
+          </div>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Student ID</TableHead>
+                <TableHead>Name</TableHead>
+                <TableHead>Email</TableHead>
+                <TableHead>Phone</TableHead>
+                <TableHead>Shift</TableHead>
+                <TableHead>Seat Number</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {studentsToRender.map((student) => (
+                <TableRow key={student.studentId}>
+                  <TableCell>{student.studentId}</TableCell>
+                  <TableCell className="font-medium">
+                    <Link href={`/students/profiles/${student.studentId}`} className="hover:underline text-primary">
+                      {student.name}
+                    </Link>
+                  </TableCell>
+                  <TableCell>{student.email || 'N/A'}</TableCell>
+                  <TableCell>{student.phone}</TableCell>
+                  <TableCell className="capitalize">{student.shift}</TableCell>
+                  <TableCell>{student.seatNumber || 'N/A'}</TableCell>
+                  <TableCell>{getStatusBadge(student)}</TableCell>
+                  <TableCell className="space-x-2">
+                    <Link href={`/students/profiles/${student.studentId}`} passHref legacyBehavior>
+                      <Button variant="outline" size="sm" title="View Profile">
+                        <ArrowRight className="h-4 w-4" />
+                      </Button>
+                    </Link>
+                    <Link href={`/admin/students/edit/${student.studentId}`} passHref legacyBehavior>
+                      <Button variant="outline" size="sm" title="Edit Student" disabled={student.activityStatus === 'Left'}>
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                    </Link>
+                  </TableCell>
+                </TableRow>
+              ))}
+              {studentsToRender.length === 0 && !isLoading && (
+                <TableRow>
+                  <TableCell colSpan={8} className="py-4 text-center text-muted-foreground">
+                    {emptyMessage}
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        )}
+      </CardContent>
+    </Card>
+  );
 
   return (
     <>
-      <PageTitle title="Student List" description="View and manage registered students." />
-      <Card>
-        <CardHeader>
-          <CardTitle>Registered Students</CardTitle>
-          <CardDescription>A list of all students currently in the system.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="flex items-center justify-center py-10">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
-              <p className="ml-2 text-muted-foreground">Loading students...</p>
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Student ID</TableHead>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Shift</TableHead>
-                  <TableHead>Seat Number</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {students.map((student) => (
-                  <TableRow key={student.studentId}>
-                    <TableCell>{student.studentId}</TableCell>
-                    <TableCell className="font-medium">
-                      <Link href={`/students/profiles/${student.studentId}`} className="hover:underline text-primary">
-                        {student.name}
-                      </Link>
-                    </TableCell>
-                    <TableCell>{student.email || 'N/A'}</TableCell>
-                    <TableCell className="capitalize">{student.shift}</TableCell>
-                    <TableCell>{student.seatNumber || 'N/A'}</TableCell>
-                    <TableCell>{getStatusBadge(student)}</TableCell>
-                    <TableCell className="space-x-2">
-                      <Link href={`/students/profiles/${student.studentId}`} passHref legacyBehavior>
-                        <Button variant="outline" size="sm" title="View Profile">
-                          <ArrowRight className="h-4 w-4" />
-                        </Button>
-                      </Link>
-                      <Link href={`/admin/students/edit/${student.studentId}`} passHref legacyBehavior>
-                        <Button variant="outline" size="sm" title="Edit Student">
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                      </Link>
-                    </TableCell>
-                  </TableRow>
-                ))}
-                {students.length === 0 && !isLoading && (
-                  <TableRow>
-                    <TableCell colSpan={7} className="py-4 text-center text-muted-foreground">
-                      No students registered yet.
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+      <PageTitle title="Student Management" description="View and manage all registered students." />
+      
+      {renderStudentTable(
+        activeStudents, 
+        "Active Students", 
+        "A list of all students currently active in the system.",
+        <Users className="h-5 w-5" />,
+        "No active students found."
+      )}
+
+      {renderStudentTable(
+        leftStudents, 
+        "Students Who Have Left", 
+        "A list of students who are no longer active.",
+        <UserX className="h-5 w-5" />,
+        "No students have left the study hall."
+      )}
     </>
   );
 }
