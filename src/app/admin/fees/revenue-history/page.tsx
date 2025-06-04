@@ -28,7 +28,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip,
 import { Loader2, TrendingUp, History } from 'lucide-react';
 import { getMonthlyRevenueHistory, type MonthlyRevenueData } from '@/services/student-service';
 import { useToast } from '@/hooks/use-toast';
-import { format, parseISO } from 'date-fns'; // Added parseISO for potential future use, format for month name
+import { format, parseISO } from 'date-fns';
 
 const revenueChartConfig = {
   revenue: {
@@ -39,25 +39,49 @@ const revenueChartConfig = {
 
 export default function RevenueHistoryPage() {
   const { toast } = useToast();
-  const [revenueHistory, setRevenueHistory] = React.useState<MonthlyRevenueData[]>([]);
+  const [allRevenueHistory, setAllRevenueHistory] = React.useState<MonthlyRevenueData[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
 
   React.useEffect(() => {
     const fetchHistory = async () => {
       setIsLoading(true);
       try {
-        const historyData = await getMonthlyRevenueHistory(12); // Fetch for last 12 months
-        setRevenueHistory(historyData);
+        const historyData = await getMonthlyRevenueHistory(); // Fetches all history, sorted descending
+        setAllRevenueHistory(historyData);
       } catch (error) {
         console.error("Failed to fetch revenue history:", error);
         toast({ title: "Error", description: "Could not load revenue history.", variant: "destructive" });
-        setRevenueHistory([]);
+        setAllRevenueHistory([]);
       } finally {
         setIsLoading(false);
       }
     };
     fetchHistory();
   }, [toast]);
+
+  const graphData = React.useMemo(() => {
+    if (isLoading || allRevenueHistory.length === 0) {
+      return [];
+    }
+    // Take the latest 6 months (first 6 from descending list), then reverse for chart (ascending)
+    return allRevenueHistory
+      .slice(0, 6)
+      .reverse() 
+      .map(item => ({
+        month: format(item.monthDate, 'MMM'), // Short month name for X-axis
+        revenue: item.revenue,
+      }));
+  }, [allRevenueHistory, isLoading]);
+
+  const tableData = React.useMemo(() => {
+    if (isLoading || allRevenueHistory.length === 0) {
+      return [];
+    }
+    const october2024EndDate = new Date(2024, 9, 31); // Month is 0-indexed (9 = October)
+    return allRevenueHistory.filter(item => item.monthDate <= october2024EndDate);
+    // Data is already sorted descending by monthDate from the service
+  }, [allRevenueHistory, isLoading]);
+
 
   return (
     <>
@@ -67,7 +91,7 @@ export default function RevenueHistoryPage() {
         <CardHeader>
           <CardTitle className="flex items-center">
             <TrendingUp className="mr-2 h-5 w-5" />
-            Revenue Graph (Last 12 Months)
+            Revenue Graph (Last 6 Months)
           </CardTitle>
           <CardDescription>Visual comparison of monthly revenue.</CardDescription>
         </CardHeader>
@@ -76,10 +100,10 @@ export default function RevenueHistoryPage() {
             <div className="flex items-center justify-center h-[300px]">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
-          ) : revenueHistory.length > 0 ? (
+          ) : graphData.length > 0 ? (
             <ChartContainer config={revenueChartConfig} className="min-h-[200px] w-full aspect-video">
               <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={revenueHistory} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
+                <BarChart data={graphData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} />
                   <XAxis dataKey="month" tickLine={false} axisLine={false} tickMargin={8} />
                   <YAxis
@@ -98,7 +122,7 @@ export default function RevenueHistoryPage() {
               </ResponsiveContainer>
             </ChartContainer>
           ) : (
-            <p className="text-center text-muted-foreground py-10">No revenue history data available to display.</p>
+            <p className="text-center text-muted-foreground py-10">No revenue history data available to display for the graph.</p>
           )}
         </CardContent>
       </Card>
@@ -107,9 +131,9 @@ export default function RevenueHistoryPage() {
         <CardHeader>
           <CardTitle className="flex items-center">
             <History className="mr-2 h-5 w-5" />
-            Revenue Data (Last 12 Months)
+            Revenue Data (Up to Oct 2024)
           </CardTitle>
-          <CardDescription>Tabular view of monthly revenue from received payments.</CardDescription>
+          <CardDescription>Tabular view of monthly revenue, latest first.</CardDescription>
         </CardHeader>
         <CardContent>
           {isLoading ? (
@@ -125,13 +149,13 @@ export default function RevenueHistoryPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {revenueHistory.map((item) => (
-                  <TableRow key={item.month}>
-                    <TableCell className="font-medium">{item.month}</TableCell>
+                {tableData.map((item) => (
+                  <TableRow key={item.monthDisplay}>
+                    <TableCell className="font-medium">{item.monthDisplay}</TableCell>
                     <TableCell className="text-right">₹{item.revenue.toLocaleString('en-IN')}</TableCell>
                   </TableRow>
                 ))}
-                {revenueHistory.length === 0 && !isLoading && (
+                {tableData.length === 0 && !isLoading && (
                   <TableRow>
                     <TableCell colSpan={2} className="text-center text-muted-foreground py-6">
                       No revenue data found.

@@ -1,7 +1,7 @@
 
 import type { Student, Shift, FeeStatus, PaymentRecord, ActivityStatus, AttendanceRecord } from '@/types/student';
 import type { FeedbackItem, FeedbackType, FeedbackStatus, AlertItem } from '@/types/communication';
-import { format, parseISO, differenceInDays, isPast, addMonths, subHours, subMinutes, startOfDay, endOfDay, isValid, differenceInMilliseconds, startOfMonth, endOfMonth, isWithinInterval, subMonths, subDays, getHours } from 'date-fns';
+import { format, parseISO, differenceInDays, isPast, addMonths, subHours, subMinutes, startOfDay, endOfDay, isValid, differenceInMilliseconds, startOfMonth, endOfMonth, isWithinInterval, subMonths, subDays, getHours, getYear, getMonth, eachMonthOfInterval, compareDesc } from 'date-fns';
 
 export const ALL_SEAT_NUMBERS: string[] = [];
 // Populate seats from 1 to 85, EXCLUDING 17
@@ -34,6 +34,11 @@ let students: Student[] = [
         { paymentId: "PAY001", date: "2024-06-01", amount: "₹700", transactionId: "TXN12345601", method: "UPI" },
         { paymentId: "PAY001B", date: format(subMonths(new Date(),1), 'yyyy-MM-dd'), amount: "₹700", transactionId: "TXN12345PREV", method: "UPI" },
         { paymentId: "PAY_TS001_2MONTHS_AGO", date: format(subMonths(new Date(),2), 'yyyy-MM-dd'), amount: "₹700", transactionId: "TXN_TS001_2MAGO", method: "Cash" },
+        { paymentId: "PAY_TS001_3MONTHS_AGO", date: format(subMonths(new Date(),3), 'yyyy-MM-dd'), amount: "₹650", transactionId: "TXN_TS001_3MAGO", method: "Card" },
+        { paymentId: "PAY_TS001_4MONTHS_AGO", date: format(subMonths(new Date(),4), 'yyyy-MM-dd'), amount: "₹700", transactionId: "TXN_TS001_4MAGO", method: "UPI" },
+        { paymentId: "PAY_TS001_5MONTHS_AGO", date: format(subMonths(new Date(),5), 'yyyy-MM-dd'), amount: "₹700", transactionId: "TXN_TS001_5MAGO", method: "Cash" },
+        { paymentId: "PAY_TS001_6MONTHS_AGO", date: format(subMonths(new Date(),6), 'yyyy-MM-dd'), amount: "₹700", transactionId: "TXN_TS001_6MAGO", method: "Card" },
+        { paymentId: "PAY_TS001_7MONTHS_AGO", date: format(subMonths(new Date(),7), 'yyyy-MM-dd'), amount: "₹700", transactionId: "TXN_TS001_7MAGO", method: "UPI" },
     ]
   },
   {
@@ -784,7 +789,6 @@ export function markAlertAsRead(alertId: string, studentId: string): Promise<Ale
   });
 }
 
-// New function for calculating monthly revenue
 export async function calculateMonthlyRevenue(): Promise<string> {
   const allStudentsData = await getAllStudents();
   let totalRevenue = 0;
@@ -813,46 +817,47 @@ export async function calculateMonthlyRevenue(): Promise<string> {
 }
 
 export type MonthlyRevenueData = {
-  month: string; // e.g., "Jan", "Feb"
+  monthDate: Date; // Store the actual date (e.g., first of the month) for sorting
+  monthDisplay: string; // e.g., "Jun" or "June 2024"
   revenue: number;
 };
 
-export async function getMonthlyRevenueHistory(numberOfMonths: number): Promise<MonthlyRevenueData[]> {
-  const allStudentsData = await getAllStudents(); // Fetch once
-  const history: MonthlyRevenueData[] = [];
-  const today = new Date();
+export async function getMonthlyRevenueHistory(): Promise<MonthlyRevenueData[]> {
+  const allStudentsData = await getAllStudents();
+  const monthlyRevenueMap: Record<string, number> = {}; // Key: "YYYY-MM"
 
-  for (let i = 0; i < numberOfMonths; i++) {
-    const targetMonthDate = subMonths(today, i);
-    const monthStart = startOfMonth(targetMonthDate);
-    const monthEnd = endOfMonth(targetMonthDate);
-    let monthRevenue = 0;
-
-    allStudentsData.forEach(student => {
-      if (student.paymentHistory) {
-        student.paymentHistory.forEach(payment => {
-          try {
-            const paymentDate = parseISO(payment.date);
-            if (isValid(paymentDate) && isWithinInterval(paymentDate, { start: monthStart, end: monthEnd })) {
-              const amountValue = parseInt(payment.amount.replace('₹', ''), 10);
-              if (!isNaN(amountValue)) {
-                monthRevenue += amountValue;
-              }
+  allStudentsData.forEach(student => {
+    if (student.paymentHistory) {
+      student.paymentHistory.forEach(payment => {
+        try {
+          const paymentDate = parseISO(payment.date);
+          if (isValid(paymentDate)) {
+            const monthKey = format(paymentDate, 'yyyy-MM');
+            const amountValue = parseInt(payment.amount.replace('₹', ''), 10);
+            if (!isNaN(amountValue)) {
+              monthlyRevenueMap[monthKey] = (monthlyRevenueMap[monthKey] || 0) + amountValue;
             }
-          } catch (e) {
-            console.error(`Error processing payment ${payment.paymentId} for revenue history:`, e);
           }
-        });
-      }
-    });
+        } catch (e) {
+          console.error(`Error processing payment ${payment.paymentId} for revenue history:`, e);
+        }
+      });
+    }
+  });
 
-    history.push({
-      month: format(targetMonthDate, 'MMM'), // Short month name e.g., "Jun"
-      revenue: monthRevenue,
-    });
-  }
+  const history: MonthlyRevenueData[] = Object.entries(monthlyRevenueMap)
+    .map(([monthKey, revenue]) => {
+      const [year, monthNum] = monthKey.split('-').map(Number);
+      const monthDate = new Date(year, monthNum - 1, 1); // Month is 0-indexed for Date constructor
+      return {
+        monthDate: monthDate,
+        monthDisplay: format(monthDate, 'MMM yyyy'), // For table: "Jun 2024"
+        revenue: revenue,
+      };
+    })
+    .sort((a, b) => compareDesc(a.monthDate, b.monthDate)); // Sort descending by date
 
-  return history.reverse(); // To have oldest month first for the chart
+  return history;
 }
 
 
