@@ -17,7 +17,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Camera, Loader2, XCircle, BarChart3, Clock, LogIn, LogOut } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
-import { getStudentByEmail, getActiveCheckIn, addCheckIn, addCheckOut, getAttendanceForDate } from '@/services/student-service';
+import { getStudentByEmail, getActiveCheckIn, addCheckIn, addCheckOut, getAttendanceForDate, calculateMonthlyStudyHours } from '@/services/student-service';
 import type { AttendanceRecord } from '@/types/student';
 import { format, parseISO } from 'date-fns';
 
@@ -34,14 +34,19 @@ export default function MemberAttendancePage() {
   const [currentStudentId, setCurrentStudentId] = React.useState<string | null>(null);
   const [attendanceForDay, setAttendanceForDay] = React.useState<AttendanceRecord[]>([]);
   const [isLoadingDetails, setIsLoadingDetails] = React.useState(false);
+  const [monthlyStudyHours, setMonthlyStudyHours] = React.useState<number | null>(null);
+  const [isLoadingStudyHours, setIsLoadingStudyHours] = React.useState(true);
 
   React.useEffect(() => {
     if (user?.email) {
-      const fetchStudent = async () => {
+      const fetchStudentAndHours = async () => {
+        setIsLoadingStudyHours(true);
         try {
           const student = await getStudentByEmail(user.email);
           if (student) {
             setCurrentStudentId(student.studentId);
+            const hours = await calculateMonthlyStudyHours(student.studentId);
+            setMonthlyStudyHours(hours);
           } else {
             toast({
               title: "Student Record Not Found",
@@ -49,17 +54,23 @@ export default function MemberAttendancePage() {
               variant: "destructive",
             });
             setCurrentStudentId(null);
+            setMonthlyStudyHours(0);
           }
         } catch (error) {
           toast({
             title: "Error",
-            description: "Failed to fetch student details.",
+            description: "Failed to fetch student details or study hours.",
             variant: "destructive",
           });
           setCurrentStudentId(null);
+          setMonthlyStudyHours(0);
+        } finally {
+          setIsLoadingStudyHours(false);
         }
       };
-      fetchStudent();
+      fetchStudentAndHours();
+    } else {
+      setIsLoadingStudyHours(false);
     }
   }, [user, toast]);
 
@@ -72,7 +83,7 @@ export default function MemberAttendancePage() {
           setHasCameraPermission(true);
           if (videoRef.current) {
             videoRef.current.srcObject = stream;
-            videoRef.current.playsInline = true; // For better mobile compatibility
+            videoRef.current.playsInline = true; 
           }
         } catch (error) {
           console.error('Error accessing camera:', error);
@@ -164,7 +175,14 @@ export default function MemberAttendancePage() {
           description: `Successfully checked in at ${new Date().toLocaleTimeString()}.`,
         });
       }
-      await fetchAttendanceForSelectedDate(); // Refresh daily attendance
+      await fetchAttendanceForSelectedDate(); 
+      // Re-fetch monthly hours after check-in/out
+      if(currentStudentId) {
+        setIsLoadingStudyHours(true);
+        const hours = await calculateMonthlyStudyHours(currentStudentId);
+        setMonthlyStudyHours(hours);
+        setIsLoadingStudyHours(false);
+      }
     } catch (error) {
       toast({
         title: "Scan Error",
@@ -252,8 +270,19 @@ export default function MemberAttendancePage() {
             <CardDescription>Your study performance this month.</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="text-4xl font-bold">42 <span className="text-lg font-normal text-muted-foreground">hours</span></div>
-            <p className="text-sm text-muted-foreground mt-1">Total hours studied this month (placeholder).</p>
+            {isLoadingStudyHours ? (
+                <div className="flex items-center justify-center">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                </div>
+            ) : (
+                <div className="text-4xl font-bold">
+                    {monthlyStudyHours !== null ? monthlyStudyHours : 'N/A'}
+                    <span className="text-lg font-normal text-muted-foreground"> hours</span>
+                </div>
+            )}
+            <p className="text-sm text-muted-foreground mt-1">
+                Total hours studied this month.
+            </p>
           </CardContent>
         </Card>
       </div>
@@ -274,10 +303,11 @@ export default function MemberAttendancePage() {
             className="rounded-md border shadow-inner"
             modifiers={{ today: new Date() }}
             modifiersStyles={{ today: { color: 'hsl(var(--accent-foreground))', backgroundColor: 'hsl(var(--accent))' } }}
+            disabled={!currentStudentId}
           />
         </CardContent>
       </Card>
-      {date && (
+      {date && currentStudentId && (
         <Card className="mt-6 shadow-lg">
           <CardHeader>
             <CardTitle>Details for {format(date, 'PPP')}</CardTitle>

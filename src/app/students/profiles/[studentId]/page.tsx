@@ -2,12 +2,13 @@
 "use client";
 
 import * as React from 'react';
+import Image from 'next/image'; 
 import { PageTitle } from '@/components/shared/page-title';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { ArrowLeft, CreditCard, CalendarDays, Receipt, Loader2, UserCircle, Briefcase, History as HistoryIcon, LogIn, LogOut, Clock } from 'lucide-react';
+import { ArrowLeft, CreditCard, CalendarDays, Receipt, Loader2, UserCircle, Briefcase, History as HistoryIcon, LogIn, LogOut, Clock, FileText } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -18,13 +19,15 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Calendar } from "@/components/ui/calendar"; // Import Calendar
-import { getStudentById, getAttendanceForDate } from '@/services/student-service'; // Updated import
+import { Calendar } from "@/components/ui/calendar"; 
+import { getStudentById, getAttendanceForDate } from '@/services/student-service'; 
 import type { Student, PaymentRecord, AttendanceRecord } from '@/types/student';
 import { format, parseISO, isValid } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
 
 const DEFAULT_PROFILE_PLACEHOLDER = "https://placehold.co/100x100.png";
+const ID_CARD_PLACEHOLDER = "https://placehold.co/300x200.png?text=ID+Card";
 
 export default function StudentDetailPage() {
   const paramsHook = useParams();
@@ -34,7 +37,6 @@ export default function StudentDetailPage() {
   const [student, setStudent] = React.useState<Student | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
 
-  // State for interactive calendar
   const [selectedCalendarDate, setSelectedCalendarDate] = React.useState<Date | undefined>(new Date());
   const [dailyAttendanceRecords, setDailyAttendanceRecords] = React.useState<AttendanceRecord[]>([]);
   const [isLoadingDailyAttendance, setIsLoadingDailyAttendance] = React.useState(false);
@@ -58,12 +60,11 @@ export default function StudentDetailPage() {
     }
   }, [studentId, toast]);
 
-  // Effect to fetch daily attendance when selectedCalendarDate or studentId changes
   React.useEffect(() => {
     if (studentId && selectedCalendarDate) {
       const fetchDailyData = async () => {
         setIsLoadingDailyAttendance(true);
-        setDailyAttendanceRecords([]); // Clear previous records
+        setDailyAttendanceRecords([]); 
         try {
           const records = await getAttendanceForDate(studentId, format(selectedCalendarDate, 'yyyy-MM-dd'));
           setDailyAttendanceRecords(records.sort((a,b) => parseISO(a.checkInTime).getTime() - parseISO(b.checkInTime).getTime()));
@@ -101,7 +102,7 @@ export default function StudentDetailPage() {
     return name.split(' ').map(n => n[0]).join('').substring(0,2).toUpperCase();
   }
 
-  if (isLoading && !student) { // Combined isLoading and !student for initial full page load
+  if (isLoading && !student) { 
     return (
       <div className="flex flex-col items-center justify-center h-full py-10">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -151,39 +152,46 @@ export default function StudentDetailPage() {
         </div>
       </PageTitle>
 
-      <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-2">
-        <Card className="shadow-md">
-          <CardHeader className="flex flex-row items-start gap-4">
-            <Avatar className="h-20 w-20 border">
+      <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3">
+        <Card className="shadow-md xl:col-span-1">
+          <CardHeader className="flex flex-col items-center gap-4 text-center">
+            <Avatar className="h-24 w-24 border-2 border-primary shadow-md">
               <AvatarImage src={student.profilePictureUrl || DEFAULT_PROFILE_PLACEHOLDER} alt={student.name} data-ai-hint="profile person"/>
-              <AvatarFallback>{getInitials(student.name)}</AvatarFallback>
+              <AvatarFallback className="text-3xl">{getInitials(student.name)}</AvatarFallback>
             </Avatar>
             <div className="flex-1">
-              <CardTitle className="flex items-center text-xl">
-                {student.name}
-              </CardTitle>
+              <CardTitle className="text-xl">{student.name}</CardTitle>
               <CardDescription>Student ID: {student.studentId}</CardDescription>
             </div>
           </CardHeader>
-          <CardContent className="space-y-3 pt-0">
+          <CardContent className="space-y-2 pt-0 text-sm">
             <p><strong>Email:</strong> {student.email || 'N/A'}</p>
             <p><strong>Phone:</strong> {student.phone}</p>
             <p><strong>Shift:</strong> <span className="capitalize">{student.shift}</span></p>
             <p><strong>Seat Number:</strong> {student.seatNumber || 'N/A'}</p>
-            <p><strong>Registration Date:</strong> {student.registrationDate ? format(parseISO(student.registrationDate), 'PP') : 'N/A'}</p>
+            <p><strong>Registered:</strong> {student.registrationDate ? format(parseISO(student.registrationDate), 'PP') : 'N/A'}</p>
             <div className="flex items-center">
-              <strong>Activity Status:</strong>
+              <strong>Activity:</strong>
               <Badge
                   variant={student.activityStatus === "Active" ? "default" : "secondary"}
-                  className={student.activityStatus === "Active" ? "ml-2 bg-green-100 text-green-700" : "ml-2 bg-gray-100 text-gray-700"}
+                  className={cn("ml-2", student.activityStatus === "Active" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-700")}
               >
                   {student.activityStatus}
               </Badge>
             </div>
+            {student.idCardFileName && (
+                <div className="pt-2">
+                    <p className="text-sm font-medium">ID Card:</p>
+                    <div className="mt-1 p-2 border rounded-md bg-muted/50">
+                        <Image src={ID_CARD_PLACEHOLDER} alt="ID Card Preview" width={150} height={100} className="rounded-md" data-ai-hint="document id card" />
+                        <p className="text-xs text-muted-foreground pt-1">{student.idCardFileName} (Preview)</p>
+                    </div>
+                </div>
+            )}
           </CardContent>
         </Card>
 
-        <Card className="shadow-md">
+        <Card className="shadow-md xl:col-span-1">
           <CardHeader>
             <CardTitle className="flex items-center">
               <CreditCard className="mr-2 h-5 w-5" />
@@ -197,43 +205,44 @@ export default function StudentDetailPage() {
             <p><strong>Next Due Date:</strong> {student.activityStatus === 'Left' ? 'N/A' : (student.nextDueDate && isValid(parseISO(student.nextDueDate)) ? format(parseISO(student.nextDueDate), 'PP') : 'N/A')}</p>
           </CardContent>
         </Card>
+        
+        <Card className="shadow-md xl:col-span-1">
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <HistoryIcon className="mr-2 h-5 w-5" />
+              Payment History
+            </CardTitle>
+            <CardDescription>Record of payments.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {(student.paymentHistory && student.paymentHistory.length > 0) ? (
+              <div className="max-h-60 overflow-y-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="text-xs">Date</TableHead>
+                      <TableHead className="text-xs">Amount</TableHead>
+                      <TableHead className="text-xs">Method</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {student.paymentHistory.slice().reverse().map((payment: PaymentRecord) => (
+                      <TableRow key={payment.paymentId}>
+                        <TableCell className="text-xs">{payment.date && isValid(parseISO(payment.date)) ? format(parseISO(payment.date), 'dd-MMM-yy') : 'N/A'}</TableCell>
+                        <TableCell className="text-xs">{payment.amount}</TableCell>
+                        <TableCell className="text-xs capitalize">{payment.method}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            ) : (
+              <p className="text-muted-foreground text-sm">No payment history found.</p>
+            )}
+          </CardContent>
+        </Card>
       </div>
       
-      <Card className="mt-6 shadow-md">
-        <CardHeader>
-          <CardTitle className="flex items-center">
-            <HistoryIcon className="mr-2 h-5 w-5" />
-            Payment History
-          </CardTitle>
-          <CardDescription>Record of payments made by {student.name}.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {(student.paymentHistory && student.paymentHistory.length > 0) ? (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Amount</TableHead>
-                  <TableHead>Method</TableHead>
-                  <TableHead>Transaction ID</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {student.paymentHistory.slice().reverse().map((payment: PaymentRecord) => (
-                  <TableRow key={payment.paymentId}>
-                    <TableCell>{payment.date && isValid(parseISO(payment.date)) ? format(parseISO(payment.date), 'PP') : 'N/A'}</TableCell>
-                    <TableCell>{payment.amount}</TableCell>
-                    <TableCell className="capitalize">{payment.method}</TableCell>
-                    <TableCell>{payment.transactionId}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          ) : (
-            <p className="text-muted-foreground">No payment history found for this student.</p>
-          )}
-        </CardContent>
-      </Card>
 
       <Card className="mt-6 shadow-md">
         <CardHeader>
@@ -265,7 +274,7 @@ export default function StudentDetailPage() {
             ) : dailyAttendanceRecords.length === 0 ? (
               <p className="text-muted-foreground py-4">No attendance records found for this day.</p>
             ) : (
-              <ul className="space-y-3">
+              <ul className="space-y-3 max-h-60 overflow-y-auto">
                 {dailyAttendanceRecords.map(record => (
                   <li key={record.recordId} className="p-3 border rounded-md bg-muted/30">
                     <div className="flex items-center justify-between">

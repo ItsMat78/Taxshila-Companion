@@ -2,6 +2,7 @@
 "use client";
 
 import * as React from 'react';
+import Image from 'next/image';
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
@@ -34,13 +35,15 @@ import {
   FormDescription,
 } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Save, ClipboardCheck, Loader2, UserX, UserCheck } from 'lucide-react';
+import { ArrowLeft, Save, ClipboardCheck, Loader2, UserX, UserCheck, FileText } from 'lucide-react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { getStudentById, updateStudent, getAvailableSeats, recordStudentPayment } from '@/services/student-service';
 import type { Student, Shift } from '@/types/student';
 import { format, addMonths } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
+
+const ID_CARD_PLACEHOLDER_EDIT = "https://placehold.co/150x100.png?text=ID+Preview";
 
 const studentEditFormSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
@@ -86,6 +89,7 @@ export default function EditStudentPage() {
   });
 
   const selectedShift = form.watch("shift");
+  const currentIdCardFilename = form.watch("idCardFileName");
   const isStudentLeft = studentData?.activityStatus === 'Left';
 
   const fetchStudentDetails = React.useCallback(async (currentStudentId: string) => {
@@ -183,8 +187,7 @@ export default function EditStudentPage() {
         phone: data.phone,
         shift: data.shift,
         seatNumber: data.seatNumber,
-        activityStatus: 'Active', // Key change for re-activation
-        // Fee status, amountDue, nextDueDate will be set by updateStudent service
+        activityStatus: 'Active', 
         registrationDate: studentData.registrationDate, 
         idCardFileName: data.idCardFileName,
       };
@@ -448,8 +451,11 @@ export default function EditStudentPage() {
                     disabled={isSaving}
                     className="text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:font-semibold file:bg-primary file:text-primary-foreground hover:file:bg-primary/90"
                   />
-                  {form.getValues("idCardFileName") && (
-                    <FormDescription>Current file: {form.getValues("idCardFileName")}</FormDescription>
+                  {currentIdCardFilename && (
+                    <div className="mt-2 p-2 border rounded-md bg-muted/50 inline-block">
+                        <Image src={ID_CARD_PLACEHOLDER_EDIT} alt="ID Card Preview" width={100} height={67} className="rounded-md" data-ai-hint="document id card" />
+                        <p className="text-xs text-muted-foreground pt-1 truncate max-w-[100px]">{currentIdCardFilename} (Preview)</p>
+                    </div>
                   )}
                    <FormDescription>Editing/re-uploading ID card image not fully supported in demo (filename change only).</FormDescription>
               </FormItem>

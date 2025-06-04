@@ -1,3 +1,4 @@
+
 "use client";
 import * as React from 'react';
 import Link from 'next/link';
@@ -32,9 +33,9 @@ import {
 import { useAuth } from '@/contexts/auth-context';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
-import { getAllStudents, getAvailableSeats, getAllAttendanceRecords, getAllFeedback } from '@/services/student-service'; // Added getAllFeedback
+import { getAllStudents, getAvailableSeats, getAllAttendanceRecords, getAllFeedback, calculateMonthlyRevenue } from '@/services/student-service'; 
 import type { Student, Shift, AttendanceRecord } from '@/types/student';
-import type { FeedbackItem } from '@/types/communication'; // Added FeedbackItem
+import type { FeedbackItem } from '@/types/communication'; 
 import { format, parseISO, isToday } from 'date-fns';
 
 type CheckedInStudentInfo = Student & { checkInTime: string };
@@ -43,6 +44,7 @@ function AdminDashboardContent() {
   const [isLoadingDashboardStats, setIsLoadingDashboardStats] = React.useState(true);
   const [isLoadingAvailabilityStats, setIsLoadingAvailabilityStats] = React.useState(true);
   const [isLoadingCheckedInStudents, setIsLoadingCheckedInStudents] = React.useState(true);
+  const [isLoadingRevenue, setIsLoadingRevenue] = React.useState(true);
   
   const [morningShiftStudentCount, setMorningShiftStudentCount] = React.useState(0);
   const [eveningShiftStudentCount, setEveningShiftStudentCount] = React.useState(0);
@@ -54,7 +56,8 @@ function AdminDashboardContent() {
 
   const [checkedInStudents, setCheckedInStudents] = React.useState<CheckedInStudentInfo[]>([]);
   const [showCheckedInDialog, setShowCheckedInDialog] = React.useState(false);
-  const [hasOpenFeedback, setHasOpenFeedback] = React.useState(false); // New state for feedback indicator
+  const [hasOpenFeedback, setHasOpenFeedback] = React.useState(false); 
+  const [monthlyRevenue, setMonthlyRevenue] = React.useState<string | null>(null);
 
 
   React.useEffect(() => {
@@ -62,7 +65,8 @@ function AdminDashboardContent() {
       setIsLoadingDashboardStats(true);
       setIsLoadingAvailabilityStats(true);
       setIsLoadingCheckedInStudents(true);
-      setHasOpenFeedback(false); // Reset before fetching
+      setIsLoadingRevenue(true);
+      setHasOpenFeedback(false); 
 
       try {
         const [
@@ -71,14 +75,16 @@ function AdminDashboardContent() {
           eveningAvail,
           fulldayAvail,
           allAttendance,
-          allFeedbackItems, // Fetch feedback
+          allFeedbackItems, 
+          currentMonthRevenue,
         ] = await Promise.all([
           getAllStudents(),
           getAvailableSeats('morning'),
           getAvailableSeats('evening'),
           getAvailableSeats('fullday'),
           getAllAttendanceRecords(),
-          getAllFeedback(), // Added feedback fetch
+          getAllFeedback(), 
+          calculateMonthlyRevenue(),
         ]);
 
         // Calculate Total Students stats
@@ -108,6 +114,7 @@ function AdminDashboardContent() {
           .sort((a, b) => parseISO(a.checkInTime).getTime() - parseISO(b.checkInTime).getTime());
         
         setCheckedInStudents(checkedInStudentDetails);
+        setMonthlyRevenue(currentMonthRevenue);
 
         // Check for open feedback
         const openFeedbackExists = allFeedbackItems.some(fb => fb.status === "Open");
@@ -122,11 +129,13 @@ function AdminDashboardContent() {
         setAvailableEveningSlotsCount(0);
         setAvailableFullDaySlotsCount(0);
         setCheckedInStudents([]);
+        setMonthlyRevenue("₹0");
         setHasOpenFeedback(false);
       } finally {
         setIsLoadingDashboardStats(false);
         setIsLoadingAvailabilityStats(false);
         setIsLoadingCheckedInStudents(false);
+        setIsLoadingRevenue(false);
       }
     };
     fetchDashboardData();
@@ -137,7 +146,7 @@ function AdminDashboardContent() {
     { title: "Register Student", icon: UserPlus, description: "Add new students to system.", href: "/students/register" },
     { title: "Attendance Overview", icon: CalendarDays, description: "Check student attendance logs.", href: "/attendance/calendar" },
     { title: "Send Alert", icon: SendIcon, description: "Broadcast to all members.", href: "/admin/alerts/send" },
-    { title: "View Feedback", icon: Inbox, description: "Review member suggestions.", href: "/admin/feedback", dynamicHasNew: () => hasOpenFeedback }, // Made hasNew dynamic
+    { title: "View Feedback", icon: Inbox, description: "Review member suggestions.", href: "/admin/feedback", dynamicHasNew: () => hasOpenFeedback }, 
     { title: "Seat Dashboard", icon: Eye, description: "View current seat status.", href: "/seats/availability" },
   ];
 
@@ -239,9 +248,13 @@ function AdminDashboardContent() {
         <Link href="/admin/fees/payments-history" className="block no-underline focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-lg h-full">
              <Card className="flex flex-col items-center justify-center text-center p-3 w-full h-full shadow-md hover:shadow-lg transition-shadow">
                 <IndianRupee className="h-6 w-6 mb-1 text-primary" />
-                <ShadcnCardTitle className="text-sm font-semibold text-card-foreground mb-1">Revenue</ShadcnCardTitle>
-                <div className="text-2xl font-bold text-foreground mb-1">₹15,670</div>
-                <p className="text-xs text-muted-foreground">This month (est.)</p>
+                <ShadcnCardTitle className="text-sm font-semibold text-card-foreground mb-1">Revenue (This Month)</ShadcnCardTitle>
+                {isLoadingRevenue ? (
+                     <Loader2 className="h-5 w-5 animate-spin my-1" />
+                ) : (
+                    <div className="text-2xl font-bold text-foreground mb-1">{monthlyRevenue || "₹0"}</div>
+                )}
+                <p className="text-xs text-muted-foreground">Est. from current data</p>
             </Card>
         </Link>
       </div>
@@ -251,7 +264,6 @@ function AdminDashboardContent() {
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
         {adminActionTiles.map((tile) => {
           const Icon = tile.icon;
-          // Use the dynamicHasNew function if it exists, otherwise default to false or tile.hasNew
           const currentHasNew = tile.dynamicHasNew ? tile.dynamicHasNew() : (tile as any).hasNew; 
           return (
             <Link href={tile.href} key={tile.title} className="block no-underline focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-lg h-full">

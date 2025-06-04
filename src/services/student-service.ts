@@ -1,7 +1,7 @@
 
 import type { Student, Shift, FeeStatus, PaymentRecord, ActivityStatus, AttendanceRecord } from '@/types/student';
 import type { FeedbackItem, FeedbackType, FeedbackStatus, AlertItem } from '@/types/communication';
-import { format, parseISO, differenceInDays, isPast, addMonths, subHours, subMinutes, startOfDay, endOfDay, isValid } from 'date-fns';
+import { format, parseISO, differenceInDays, isPast, addMonths, subHours, subMinutes, startOfDay, endOfDay, isValid, differenceInMilliseconds, startOfMonth, endOfMonth, isWithinInterval, subMonths, subDays } from 'date-fns';
 
 export const ALL_SEAT_NUMBERS: string[] = [];
 // Populate seats from 1 to 85, EXCLUDING 17
@@ -28,9 +28,10 @@ let students: Student[] = [
     lastPaymentDate: "2024-06-01",
     nextDueDate: "2024-07-01",
     amountDue: "₹0",
-    profilePictureUrl: "https://placehold.co/200x200.png",
+    profilePictureUrl: "https://placehold.co/200x200.png?text=AS",
     paymentHistory: [
         { paymentId: "PAY001", date: "2024-06-01", amount: "₹700", transactionId: "TXN12345601", method: "UPI" },
+        { paymentId: "PAY001B", date: format(subMonths(new Date(),1), 'yyyy-MM-dd'), amount: "₹700", transactionId: "TXN12345PREV", method: "UPI" },
     ]
   },
   {
@@ -39,7 +40,7 @@ let students: Student[] = [
     email: "priya.patel@example.com",
     phone: "9876543211",
     shift: "evening",
-    seatNumber: "1",
+    seatNumber: "2", // Seat changed to avoid conflict with TS001 if TS001 was fullday
     idCardFileName: "priya_id.png",
     feeStatus: "Paid",
     activityStatus: "Active",
@@ -50,6 +51,7 @@ let students: Student[] = [
     paymentHistory: [
       { paymentId: "PAYMENT_PRIYA_PREV", date: format(new Date(), 'yyyy-MM-dd'), amount: "₹700", transactionId: "TXN_PRIYA_PREV", method: "UPI" },
     ],
+    profilePictureUrl: "https://placehold.co/200x200.png?text=PP",
   },
   {
     studentId: "TS003",
@@ -66,9 +68,10 @@ let students: Student[] = [
     nextDueDate: format(addMonths(new Date(), -2), 'yyyy-MM-dd'),
     amountDue: "₹1200",
     paymentHistory: [],
+    profilePictureUrl: "https://placehold.co/200x200.png?text=RM",
   },
-   { studentId: "TS004", name: "Vikram Singh", email: "vikram.singh@example.com", phone: "9876543213", shift: "evening", seatNumber: "40", feeStatus: "Paid", activityStatus: "Active", registrationDate: "2024-04-01", lastPaymentDate: "2024-06-03", nextDueDate: "2024-07-03", amountDue: "₹0", paymentHistory: [] },
-   { studentId: "TS005", name: "Neha Reddy", email: "neha.reddy@example.com", phone: "9876543214", shift: "fullday", seatNumber: "50", feeStatus: "Paid", activityStatus: "Active", registrationDate: "2024-04-05", lastPaymentDate: "2024-06-01", nextDueDate: "2024-07-01", amountDue: "₹0", paymentHistory: [] },
+   { studentId: "TS004", name: "Vikram Singh", email: "vikram.singh@example.com", phone: "9876543213", shift: "evening", seatNumber: "40", feeStatus: "Paid", activityStatus: "Active", registrationDate: "2024-04-01", lastPaymentDate: "2024-06-03", nextDueDate: "2024-07-03", amountDue: "₹0", paymentHistory: [], profilePictureUrl: "https://placehold.co/200x200.png?text=VS" },
+   { studentId: "TS005", name: "Neha Reddy", email: "neha.reddy@example.com", phone: "9876543214", shift: "fullday", seatNumber: "50", feeStatus: "Paid", activityStatus: "Active", registrationDate: "2024-04-05", lastPaymentDate: "2024-06-01", nextDueDate: "2024-07-01", amountDue: "₹0", paymentHistory: [], profilePictureUrl: "https://placehold.co/200x200.png?text=NR" },
    { studentId: "TS006", name: "Old Overdue For Auto-Left", email: "old.overdue@example.com", phone: "9876543215", shift: "morning", seatNumber: "6", feeStatus: "Overdue", activityStatus: "Active", registrationDate: "2024-01-01", lastPaymentDate: "2024-02-01", nextDueDate: format(addMonths(new Date(), -3), 'yyyy-MM-dd'), amountDue: "₹700", paymentHistory: [] },
    { studentId: "TS007", name: "Sanya Gupta Due", email: "sanya.gupta@example.com", phone: "9876543216", shift: "morning", seatNumber: "8", feeStatus: "Due", activityStatus: "Active", registrationDate: "2024-05-01", lastPaymentDate: "2024-05-10", nextDueDate: "2024-06-10", amountDue: "₹700", paymentHistory: [] },
    { studentId: "TS008", name: "Kavita Singh Paid", email: "kavita.singh@example.com", phone: "9876543217", shift: "morning", seatNumber: "10", feeStatus: "Paid", activityStatus: "Active", registrationDate: "2024-05-10", lastPaymentDate: "2024-06-01", nextDueDate: "2024-07-01", amountDue: "₹0", paymentHistory: [] },
@@ -77,8 +80,12 @@ let students: Student[] = [
 
 let attendanceRecords: AttendanceRecord[] = [
   { recordId: "AR001", studentId: "TS001", date: format(new Date(), 'yyyy-MM-dd'), checkInTime: subHours(new Date(), 2).toISOString(), checkOutTime: subHours(new Date(), 1).toISOString() },
+  { recordId: "AR001B", studentId: "TS001", date: format(new Date(), 'yyyy-MM-dd'), checkInTime: subMinutes(new Date(), 45).toISOString() /* Currently checked in */ },
   { recordId: "AR002", studentId: "TS002", date: format(new Date(), 'yyyy-MM-dd'), checkInTime: subHours(new Date(), 1).toISOString(), checkOutTime: subMinutes(new Date(), 15).toISOString() },
   { recordId: "AR003", studentId: "TS001", date: format(subHours(new Date(), 25), 'yyyy-MM-dd'), checkInTime: subHours(new Date(), 25).toISOString(), checkOutTime: subHours(new Date(), 20).toISOString() },
+  // Add more records for TS001 for testing monthly hour calculation
+  { recordId: "AR004", studentId: "TS001", date: format(subDays(new Date(), 1), 'yyyy-MM-dd'), checkInTime: subDays(subHours(new Date(), 5), 1).toISOString(), checkOutTime: subDays(subHours(new Date(), 2),1).toISOString() }, // 3 hours yesterday
+  { recordId: "AR005", studentId: "TS001", date: format(subDays(new Date(), 2), 'yyyy-MM-dd'), checkInTime: subDays(subHours(new Date(), 6), 2).toISOString(), checkOutTime: subDays(subHours(new Date(), 1),2).toISOString() }, // 5 hours day before
 ];
 
 let feedbackItems: FeedbackItem[] = [
@@ -144,7 +151,7 @@ function processStudentsForUpdates(studentArray: Student[]): Student[] {
             try {
                 const dueDate = parseISO(currentStudentState.nextDueDate);
                 const today = new Date();
-                if (isValid(dueDate) && isPast(dueDate) && currentStudentState.feeStatus !== 'Overdue') { // Only update to Overdue if not already
+                if (isValid(dueDate) && isPast(dueDate) && currentStudentState.feeStatus !== 'Overdue') { 
                     currentStudentState.feeStatus = 'Overdue';
                 }
             } catch (e) {
@@ -292,7 +299,7 @@ export async function updateStudent(studentId: string, studentUpdateData: Partia
         return;
       }
 
-      const currentStudent = { ...students[studentIndex] }; // State before this specific update
+      const currentStudent = { ...students[studentIndex] }; 
 
       const newShift = studentUpdateData.shift || currentStudent.shift;
       const newSeatNumber = studentUpdateData.seatNumber !== undefined ? studentUpdateData.seatNumber : currentStudent.seatNumber;
@@ -500,7 +507,7 @@ export async function recordStudentPayment(
       let actualPaymentAmount = paymentAmountInput;
       if (paymentAmountInput === "FULL_DUE" && student.amountDue && student.amountDue !== "N/A" && student.amountDue !== "₹0") {
         actualPaymentAmount = student.amountDue;
-      } else if (paymentAmountInput === "FULL_DUE") { // Fallback if amountDue is not set or ₹0
+      } else if (paymentAmountInput === "FULL_DUE") { 
         actualPaymentAmount = student.shift === "fullday" ? "₹1200" : "₹700";
       }
       
@@ -622,7 +629,7 @@ export function sendGeneralAlert(title: string, message: string, type: AlertItem
         message,
         type,
         dateSent: new Date().toISOString(),
-        isRead: false, // General alerts start as unread for everyone conceptually
+        isRead: false, 
       };
       alertItems.push(newAlert);
       resolve({...newAlert});
@@ -661,7 +668,7 @@ export async function sendAlertToStudent(
       };
       alertItems.push(newAlert);
       resolve({...newAlert});
-    }, 20); // Short delay for alerts
+    }, 20); 
   });
 }
 
@@ -729,3 +736,56 @@ export function markAlertAsRead(alertId: string, studentId: string): Promise<Ale
   });
 }
 
+// New function for calculating monthly revenue
+export async function calculateMonthlyRevenue(): Promise<string> {
+  const allStudentsData = await getAllStudents(); // Ensure this processes updates if needed
+  let totalRevenue = 0;
+  const now = new Date();
+  const currentMonthStart = startOfMonth(now);
+  const currentMonthEnd = endOfMonth(now);
+
+  allStudentsData.forEach(student => {
+    if (student.paymentHistory) {
+      student.paymentHistory.forEach(payment => {
+        try {
+          const paymentDate = parseISO(payment.date);
+          if (isValid(paymentDate) && isWithinInterval(paymentDate, { start: currentMonthStart, end: currentMonthEnd })) {
+            const amountValue = parseInt(payment.amount.replace('₹', ''), 10);
+            if (!isNaN(amountValue)) {
+              totalRevenue += amountValue;
+            }
+          }
+        } catch (e) {
+          console.error("Error parsing payment date or amount:", payment.date, payment.amount, e);
+        }
+      });
+    }
+  });
+  return `₹${totalRevenue.toLocaleString()}`;
+}
+
+// New function for calculating monthly study hours for a student
+export async function calculateMonthlyStudyHours(studentId: string): Promise<number> {
+  const records = await getAttendanceRecordsByStudentId(studentId);
+  let totalMilliseconds = 0;
+  const now = new Date();
+  const currentMonthStart = startOfMonth(now);
+  const currentMonthEnd = endOfMonth(now);
+
+  records.forEach(record => {
+    try {
+      const checkInDate = parseISO(record.checkInTime);
+      if (isValid(checkInDate) && isWithinInterval(checkInDate, { start: currentMonthStart, end: currentMonthEnd })) {
+        if (record.checkOutTime) {
+          const checkOutDate = parseISO(record.checkOutTime);
+          if (isValid(checkOutDate)) {
+            totalMilliseconds += differenceInMilliseconds(checkOutDate, checkInDate);
+          }
+        }
+      }
+    } catch (e) {
+      console.error("Error processing attendance record for hour calculation:", record, e);
+    }
+  });
+  return Math.round(totalMilliseconds / (1000 * 60 * 60)); // Convert ms to hours and round
+}
