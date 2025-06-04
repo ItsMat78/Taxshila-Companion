@@ -83,7 +83,7 @@ export default function RevenueHistoryPage() {
                   <CartesianGrid strokeDasharray="3 3" vertical={false} />
                   <XAxis dataKey="month" tickLine={false} axisLine={false} tickMargin={8} />
                   <YAxis
-                    tickFormatter={(value) => `₹${value / 1000}k`}
+                    tickFormatter={(value) => `₹${(Number(value) / 1000).toLocaleString('en-IN')}k`}
                     tickLine={false}
                     axisLine={false}
                     tickMargin={8}
@@ -91,7 +91,7 @@ export default function RevenueHistoryPage() {
                   />
                   <RechartsTooltip
                     cursor={{ fill: 'hsl(var(--muted))', radius: 4 }}
-                    content={<ChartTooltipContent indicator="dot" formatter={(value) => `₹${Number(value).toLocaleString()}`} />}
+                    content={<ChartTooltipContent indicator="dot" formatter={(value) => `₹${Number(value).toLocaleString('en-IN')}`} />}
                   />
                   <Bar dataKey="revenue" fill="var(--color-revenue)" radius={4} />
                 </BarChart>
@@ -128,7 +128,7 @@ export default function RevenueHistoryPage() {
                 {revenueHistory.map((item) => (
                   <TableRow key={item.month}>
                     <TableCell className="font-medium">{item.month}</TableCell>
-                    <TableCell className="text-right">₹{item.revenue.toLocaleString()}</TableCell>
+                    <TableCell className="text-right">₹{item.revenue.toLocaleString('en-IN')}</TableCell>
                   </TableRow>
                 ))}
                 {revenueHistory.length === 0 && !isLoading && (

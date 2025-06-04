@@ -809,7 +809,7 @@ export async function calculateMonthlyRevenue(): Promise<string> {
       });
     }
   });
-  return `₹${totalRevenue.toLocaleString()}`;
+  return `₹${totalRevenue.toLocaleString('en-IN')}`;
 }
 
 export type MonthlyRevenueData = {
@@ -890,3 +890,4 @@ export async function calculateMonthlyStudyHours(studentId: string): Promise<num
   });
   return Math.round(totalMilliseconds / (1000 * 60 * 60)); // Convert ms to hours
 }
+
