@@ -4,7 +4,7 @@ import * as React from 'react';
 import Link from 'next/link';
 import { PageTitle } from '@/components/shared/page-title';
 import { StatCard } from '@/components/shared/stat-card';
-import { Users, Briefcase, Armchair, Clock, UserCheck, IndianRupee, AlertTriangle } from 'lucide-react'; // Changed DollarSign to IndianRupee
+import { Users, Briefcase, Armchair, IndianRupee, AlertTriangle, UserCheck, Clock, Loader2 } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -21,14 +21,16 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useAuth } from '@/contexts/auth-context';
+import { useRouter } from 'next/navigation';
 
 // Placeholder data for active students - now includes shift and overstayed status
 const placeholderActiveStudents = [
   { id: "TS001", name: "Aarav Sharma", timeIn: "2 hours 30 minutes", shift: "morning", hasOverstayed: false },
-  { id: "TS002", name: "Priya Patel", timeIn: "7 hours 15 minutes", shift: "morning", hasOverstayed: true }, // Overstayed example
+  { id: "TS002", name: "Priya Patel", timeIn: "7 hours 15 minutes", shift: "morning", hasOverstayed: true },
   { id: "TS004", name: "Vikram Singh", timeIn: "4 hours 5 minutes", shift: "evening", hasOverstayed: false },
   { id: "TS005", name: "Neha Reddy", timeIn: "0 hours 45 minutes", shift: "fullday", hasOverstayed: false },
-  { id: "TS008", name: "Kavita Singh", timeIn: "8 hours 0 minutes", shift: "morning", hasOverstayed: true }, // Another overstayed example
+  { id: "TS008", name: "Kavita Singh", timeIn: "8 hours 0 minutes", shift: "morning", hasOverstayed: true },
 ];
 
 // Placeholder data for available seats
@@ -40,18 +42,16 @@ const placeholderAvailableSeats = [
   { seatNumber: "E055" },
 ];
 
-// Define a type for stat items for clarity
 type StatItem = {
   title: string;
   value: string | number;
-  icon: React.ElementType; // LucideIcon type
+  icon: React.ElementType;
   description: string;
-  href?: string; // Optional: for navigation
-  action?: () => void; // Optional: for dialogs
+  href?: string;
+  action?: () => void;
 };
 
-
-export default function AdminDashboardPage() {
+function AdminDashboardContent() {
   const [showActiveStudentsDialog, setShowActiveStudentsDialog] = React.useState(false);
   const [showAvailableSeatsDialog, setShowAvailableSeatsDialog] = React.useState(false);
 
@@ -59,7 +59,7 @@ export default function AdminDashboardPage() {
     { title: "Total Students", value: 125, icon: Users, description: "+5 since last month", href: "/students/list" },
     { title: "Occupied Seats", value: placeholderActiveStudents.length, icon: Briefcase, description: "Currently in use. Click to view.", action: () => setShowActiveStudentsDialog(true) },
     { title: "Available Seats", value: placeholderAvailableSeats.length, icon: Armchair, description: "Ready for booking. Click to view.", action: () => setShowAvailableSeatsDialog(true) },
-    { title: "Total Revenue", value: "₹5,670", icon: IndianRupee, description: "This month (placeholder)", href: "/admin/fees/due" }, // Changed DollarSign to IndianRupee
+    { title: "Total Revenue", value: "₹5,670", icon: IndianRupee, description: "This month (placeholder)", href: "/admin/fees/due" },
   ];
 
   return (
@@ -174,10 +174,44 @@ export default function AdminDashboardPage() {
               </Dialog>
             );
           } else {
-            return <div key={stat.title}>{statCardElement}</div>; // Fallback for static cards if any
+            return <div key={stat.title}>{statCardElement}</div>;
           }
         })}
       </div>
     </>
+  );
+}
+
+export default function MainPage() {
+  const { user, isLoading } = useAuth();
+  const router = useRouter();
+
+  React.useEffect(() => {
+    if (!isLoading && user) {
+      if (user.role === 'member') {
+        router.replace('/member/dashboard');
+      }
+    }
+  }, [user, isLoading, router]);
+
+  if (isLoading || (user && user.role === 'member')) {
+    return (
+      <div className="flex min-h-screen w-full flex-col items-center justify-center bg-background">
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+        <p className="mt-4 text-muted-foreground">Loading dashboard...</p>
+      </div>
+    );
+  }
+
+  if (user && user.role === 'admin') {
+    return <AdminDashboardContent />;
+  }
+
+  // This case should ideally be handled by AppLayout redirecting to /login if !user
+  return (
+     <div className="flex min-h-screen w-full flex-col items-center justify-center bg-background">
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+        <p className="mt-4 text-muted-foreground">Redirecting...</p>
+      </div>
   );
 }

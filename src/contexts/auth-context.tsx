@@ -36,9 +36,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => clearTimeout(mockSessionCheck);
   }, []);
 
+  // This effect handles redirection IF NOT on a login page and user state changes or loads
   React.useEffect(() => {
     if (!isLoading && !user && !pathname.startsWith('/login')) {
-      router.push('/login');
+      router.replace('/login');
     }
   }, [user, isLoading, pathname, router]);
 
@@ -46,11 +47,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const userData = { email, role };
     setUser(userData);
     sessionStorage.setItem('taxshilaUser', JSON.stringify(userData));
-    setIsLoading(false);
+    setIsLoading(false); // Ensure loading is false after login attempt
     if (role === 'admin') {
-      router.push('/');
+      router.push('/'); // Admin dashboard
     } else {
-      router.push('/member/attendance'); // Updated redirect for members
+      router.push('/member/dashboard'); // Member dashboard
     }
   };
 
@@ -74,4 +75,3 @@ export function useAuth() {
   }
   return context;
 }
-

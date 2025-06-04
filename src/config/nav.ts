@@ -11,7 +11,7 @@ import {
   Database,
   CreditCard,
   Receipt,
-  IndianRupee, // Changed from DollarSign
+  IndianRupee, 
   BarChart3,
   History,
   QrCode,
@@ -23,8 +23,9 @@ import {
   Send,
   Edit,
   ClipboardCheck,
-  Landmark, // Added for Financials as an alternative if IndianRupee felt too specific for a category
+  Landmark, 
   type Icon as LucideIcon,
+  Home // Added Home for Member Dashboard
 } from 'lucide-react';
 import type { UserRole } from '@/types/auth';
 
@@ -36,7 +37,7 @@ export type NavItem = {
   label?: string;
   items?: NavItem[];
   roles?: UserRole[];
-  external?: boolean; // To indicate external links
+  external?: boolean; 
 };
 
 export const mainNav: NavItem[] = [
@@ -90,7 +91,7 @@ export const mainNav: NavItem[] = [
   {
     title: 'Financials',
     href: '#', 
-    icon: IndianRupee, // Changed from DollarSign to IndianRupee
+    icon: IndianRupee, 
     roles: ['admin'],
     items: [
       {
@@ -142,7 +143,13 @@ export const mainNav: NavItem[] = [
 
   // Member Routes
   {
-    title: 'My Attendance',
+    title: 'Dashboard', // New Member Dashboard
+    href: '/member/dashboard',
+    icon: Home, 
+    roles: ['member'],
+  },
+  {
+    title: 'My Attendance', // Calendar and summary view
     href: '/member/attendance',
     icon: BarChart3, 
     roles: ['member'],
