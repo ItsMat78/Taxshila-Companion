@@ -14,8 +14,8 @@ import {
   Inbox,
   Eye,
   LogIn,
-  BarChart3, // Added for new chart
-  TrendingUp // Added for new chart
+  // BarChart3, // Removed as graph is moving
+  // TrendingUp // Removed as graph is moving
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle as ShadcnCardTitle, CardDescription as ShadcnCardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -33,17 +33,18 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-  type ChartConfig, // Import ChartConfig
-} from "@/components/ui/chart"; // Import ChartContainer and ChartTooltipContent
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Legend } from 'recharts'; // Import Recharts components
+// Removed chart imports as graph is moving
+// import {
+//   ChartContainer,
+//   ChartTooltip,
+//   ChartTooltipContent,
+//   type ChartConfig, 
+// } from "@/components/ui/chart"; 
+// import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Legend } from 'recharts'; 
 import { useAuth } from '@/contexts/auth-context';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
-import { getAllStudents, getAvailableSeats, getAllAttendanceRecords, calculateMonthlyRevenue, getMonthlyRevenueHistory, type MonthlyRevenueData } from '@/services/student-service'; 
+import { getAllStudents, getAvailableSeats, getAllAttendanceRecords, calculateMonthlyRevenue, type MonthlyRevenueData } from '@/services/student-service'; // Removed getMonthlyRevenueHistory
 import type { Student, Shift, AttendanceRecord } from '@/types/student';
 import type { FeedbackItem } from '@/types/communication'; 
 import { format, parseISO, isToday, getHours } from 'date-fns';
@@ -75,15 +76,12 @@ function AdminDashboardContent() {
 
   const { count: openFeedbackCount, isLoadingCount: isLoadingFeedbackCount } = useNotificationCounts();
 
-  const [revenueHistoryData, setRevenueHistoryData] = React.useState<MonthlyRevenueData[]>([]);
-  const [isLoadingRevenueHistory, setIsLoadingRevenueHistory] = React.useState(true);
+  // Removed revenue history state as graph is moving
+  // const [revenueHistoryData, setRevenueHistoryData] = React.useState<MonthlyRevenueData[]>([]);
+  // const [isLoadingRevenueHistory, setIsLoadingRevenueHistory] = React.useState(true);
 
-  const revenueChartConfig = {
-    revenue: {
-      label: "Revenue (₹)",
-      color: "hsl(var(--chart-1))",
-    },
-  } satisfies ChartConfig;
+  // Removed revenueChartConfig as graph is moving
+  // const revenueChartConfig = { /* ... */ } satisfies ChartConfig;
 
 
   React.useEffect(() => {
@@ -92,7 +90,7 @@ function AdminDashboardContent() {
       setIsLoadingAvailabilityStats(true);
       setIsLoadingCheckedInStudents(true);
       setIsLoadingRevenue(true);
-      setIsLoadingRevenueHistory(true);
+      // setIsLoadingRevenueHistory(true); // Removed
 
       try {
         const [
@@ -102,7 +100,7 @@ function AdminDashboardContent() {
           fulldayAvail,
           allAttendance,
           currentMonthRevenue,
-          revenueHistData,
+          // revenueHistData, // Removed
         ] = await Promise.all([
           getAllStudents(),
           getAvailableSeats('morning'),
@@ -110,7 +108,7 @@ function AdminDashboardContent() {
           getAvailableSeats('fullday'),
           getAllAttendanceRecords(),
           calculateMonthlyRevenue(),
-          getMonthlyRevenueHistory(6), // Fetch for last 6 months
+          // getMonthlyRevenueHistory(6), // Removed
         ]);
 
         const activeStudentsWithSeats = allStudentsData.filter(s => s.activityStatus === "Active" && s.seatNumber);
@@ -151,7 +149,7 @@ function AdminDashboardContent() {
         setCheckedInStudents(checkedInStudentDetails);
         setMonthlyRevenue(currentMonthRevenue);
         setCurrentMonthName(format(new Date(), 'MMMM'));
-        setRevenueHistoryData(revenueHistData);
+        // setRevenueHistoryData(revenueHistData); // Removed
 
       } catch (error) {
         console.error("Failed to load dashboard stats:", error);
@@ -163,13 +161,13 @@ function AdminDashboardContent() {
         setAvailableFullDaySlotsCount(0);
         setCheckedInStudents([]);
         setMonthlyRevenue("₹0");
-        setRevenueHistoryData([]);
+        // setRevenueHistoryData([]); // Removed
       } finally {
         setIsLoadingDashboardStats(false);
         setIsLoadingAvailabilityStats(false);
         setIsLoadingCheckedInStudents(false);
         setIsLoadingRevenue(false);
-        setIsLoadingRevenueHistory(false);
+        // setIsLoadingRevenueHistory(false); // Removed
       }
     };
     fetchDashboardData();
@@ -307,46 +305,7 @@ function AdminDashboardContent() {
 
       <div className="my-8 border-t border-border"></div>
 
-      <Card className="mb-8 shadow-lg">
-        <CardHeader>
-          <ShadcnCardTitle className="flex items-center">
-            <TrendingUp className="mr-2 h-5 w-5" />
-            Monthly Revenue History (Last 6 Months)
-          </ShadcnCardTitle>
-          <ShadcnCardDescription>Comparison of revenue from received payments over the past months.</ShadcnCardDescription>
-        </CardHeader>
-        <CardContent>
-          {isLoadingRevenueHistory ? (
-            <div className="flex items-center justify-center h-[300px]">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            </div>
-          ) : revenueHistoryData.length > 0 ? (
-            <ChartContainer config={revenueChartConfig} className="min-h-[200px] w-full aspect-video">
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={revenueHistoryData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                  <XAxis dataKey="month" tickLine={false} axisLine={false} tickMargin={8} />
-                  <YAxis 
-                    tickFormatter={(value) => `₹${value/1000}k`} 
-                    tickLine={false} 
-                    axisLine={false} 
-                    tickMargin={8} 
-                    width={40}
-                  />
-                  <RechartsTooltip
-                    cursor={{ fill: 'hsl(var(--muted))', radius: 4 }}
-                    content={<ChartTooltipContent indicator="dot" formatter={(value) => `₹${Number(value).toLocaleString()}`} />}
-                  />
-                  <Bar dataKey="revenue" fill="var(--color-revenue)" radius={4} />
-                </BarChart>
-              </ResponsiveContainer>
-            </ChartContainer>
-          ) : (
-            <p className="text-center text-muted-foreground py-10">No revenue history data available to display.</p>
-          )}
-        </CardContent>
-      </Card>
-
+      {/* Revenue History Graph Card Removed from here */}
 
       <h2 className="text-lg font-headline font-semibold tracking-tight mb-4">Quick Actions</h2>
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">

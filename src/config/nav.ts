@@ -26,7 +26,8 @@ import {
   Landmark, 
   type Icon as LucideIcon,
   Home,
-  UserCircle // Added UserCircle
+  UserCircle,
+  TrendingUp // Added TrendingUp
 } from 'lucide-react';
 import type { UserRole } from '@/types/auth';
 
@@ -105,6 +106,12 @@ export const mainNav: NavItem[] = [
         title: 'Payment History',
         href: '/admin/fees/payments-history',
         icon: History,
+        roles: ['admin'],
+      },
+      {
+        title: 'Revenue History',
+        href: '/admin/fees/revenue-history',
+        icon: TrendingUp, 
         roles: ['admin'],
       },
     ]
