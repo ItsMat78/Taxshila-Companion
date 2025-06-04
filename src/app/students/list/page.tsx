@@ -20,27 +20,29 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ArrowRight, Edit } from 'lucide-react'; // Added Edit icon
-
-// Placeholder type for student data
-type StudentData = {
-  studentId: string;
-  name: string;
-  email: string;
-  phone?: string;
-  shift: "morning" | "evening" | "fullday";
-  seatNumber?: string;
-};
-
-// Placeholder data for existing students
-const placeholderStudents: StudentData[] = [
-  { studentId: "TS001", name: "Aarav Sharma", email: "aarav.sharma@example.com", phone: "9876543210", shift: "morning", seatNumber: "A101" },
-  { studentId: "TS002", name: "Priya Patel", email: "priya.patel@example.com", phone: "9876543211", shift: "evening", seatNumber: "B203" },
-  { studentId: "TS003", name: "Rohan Mehta", email: "rohan.mehta@example.com", phone: "9876543212", shift: "fullday", seatNumber: "C007" },
-];
+import { ArrowRight, Edit, Loader2 } from 'lucide-react'; // Added Edit icon and Loader2
+import { getAllStudents } from '@/services/student-service';
+import type { Student as StudentData } from '@/types/student'; // Renamed for consistency with existing component
 
 export default function StudentListPage() {
-  const [students, setStudents] = React.useState<StudentData[]>(placeholderStudents);
+  const [students, setStudents] = React.useState<StudentData[]>([]);
+  const [isLoading, setIsLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    const fetchStudents = async () => {
+      try {
+        setIsLoading(true);
+        const fetchedStudents = await getAllStudents();
+        setStudents(fetchedStudents);
+      } catch (error) {
+        console.error("Failed to fetch students:", error);
+        // Optionally, set an error state and display an error message
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchStudents();
+  }, []);
 
   return (
     <>
@@ -51,47 +53,58 @@ export default function StudentListPage() {
           <CardDescription>A list of all students currently in the system.</CardDescription>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Student ID</TableHead>
-                <TableHead>Name</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Shift</TableHead>
-                <TableHead>Seat Number</TableHead>
-                <TableHead>Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {students.map((student) => (
-                <TableRow key={student.studentId}>
-                  <TableCell>{student.studentId}</TableCell>
-                  <TableCell className="font-medium">
-                    <Link href={`/students/profiles/${student.studentId}`} className="hover:underline text-primary">
-                      {student.name}
-                    </Link>
-                  </TableCell>
-                  <TableCell>{student.email}</TableCell>
-                  <TableCell className="capitalize">{student.shift}</TableCell>
-                  <TableCell>{student.seatNumber || 'N/A'}</TableCell>
-                  <TableCell className="space-x-2">
-                    <Link href={`/students/profiles/${student.studentId}`} passHref legacyBehavior>
-                      <Button variant="outline" size="sm" title="View Profile">
-                        <ArrowRight className="h-4 w-4" />
-                      </Button>
-                    </Link>
-                    <Link href={`/admin/students/edit/${student.studentId}`} passHref legacyBehavior>
-                      <Button variant="outline" size="sm" title="Edit Student">
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                    </Link>
-                  </TableCell>
+          {isLoading ? (
+            <div className="flex items-center justify-center py-10">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <p className="ml-2 text-muted-foreground">Loading students...</p>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Student ID</TableHead>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Shift</TableHead>
+                  <TableHead>Seat Number</TableHead>
+                  <TableHead>Actions</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-          {students.length === 0 && (
-            <p className="py-4 text-center text-muted-foreground">No students registered yet.</p>
+              </TableHeader>
+              <TableBody>
+                {students.map((student) => (
+                  <TableRow key={student.studentId}>
+                    <TableCell>{student.studentId}</TableCell>
+                    <TableCell className="font-medium">
+                      <Link href={`/students/profiles/${student.studentId}`} className="hover:underline text-primary">
+                        {student.name}
+                      </Link>
+                    </TableCell>
+                    <TableCell>{student.email || 'N/A'}</TableCell>
+                    <TableCell className="capitalize">{student.shift}</TableCell>
+                    <TableCell>{student.seatNumber || 'N/A'}</TableCell>
+                    <TableCell className="space-x-2">
+                      <Link href={`/students/profiles/${student.studentId}`} passHref legacyBehavior>
+                        <Button variant="outline" size="sm" title="View Profile">
+                          <ArrowRight className="h-4 w-4" />
+                        </Button>
+                      </Link>
+                      <Link href={`/admin/students/edit/${student.studentId}`} passHref legacyBehavior>
+                        <Button variant="outline" size="sm" title="Edit Student">
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                      </Link>
+                    </TableCell>
+                  </TableRow>
+                ))}
+                {students.length === 0 && !isLoading && (
+                  <TableRow>
+                    <TableCell colSpan={6} className="py-4 text-center text-muted-foreground">
+                      No students registered yet.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
           )}
         </CardContent>
       </Card>
