@@ -2,6 +2,7 @@
 "use client";
 
 import * as React from 'react';
+import Link from 'next/link';
 import { PageTitle } from '@/components/shared/page-title';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -19,9 +20,15 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Button } from '@/components/ui/button';
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
-import { Armchair, Users, UserCheck, Loader2, Circle, Sunrise, Sunset, Sun, Briefcase } from 'lucide-react';
+import { Armchair, Users, UserCheck, Loader2, Circle, Sunrise, Sunset, Sun, Briefcase, Edit, UserCircle as UserProfileIcon, PhoneIcon } from 'lucide-react';
 import { getAllStudents, ALL_SEAT_NUMBERS as serviceAllSeats, getAvailableSeats } from '@/services/student-service';
 import type { Student, Shift } from '@/types/student';
 import { useToast } from '@/hooks/use-toast';
@@ -167,6 +174,15 @@ export default function SeatAvailabilityPage() {
     return "Available Seats";
   }, [selectedShiftView]);
 
+  const getShiftViewLabel = (view: ShiftView) => {
+    switch(view) {
+      case 'morning': return 'Morning Shift';
+      case 'evening': return 'Evening Shift';
+      case 'fullday_occupied': return 'Full Day Bookings';
+      default: return 'Selected View';
+    }
+  };
+
   return (
     <>
       <PageTitle title="Seat Availability & Occupancy" description="Overall hall status and shift-specific seat layout." />
@@ -193,6 +209,7 @@ export default function SeatAvailabilityPage() {
                   <Users className="mr-2 h-4 w-4" />
                   Occupied Slots
                 </CardTitle>
+                <CardDescription className="text-xs">Click to view details for '{getShiftViewLabel(selectedShiftView)}'</CardDescription>
               </CardHeader>
               <CardContent className="text-sm space-y-1 pt-2">
                 {isLoading ? <div className="flex justify-center py-1"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div> : (
@@ -250,7 +267,8 @@ export default function SeatAvailabilityPage() {
                 <CardTitle className="text-lg flex items-center">
                   <Armchair className="mr-2 h-4 w-4" />
                   Available Booking Slots
-                  </CardTitle>
+                </CardTitle>
+                <CardDescription className="text-xs">Click to view details for '{getShiftViewLabel(selectedShiftView)}'</CardDescription>
               </CardHeader>
               <CardContent className="text-sm space-y-1 pt-2">
                  {isLoadingOverallAvailableStats ? <div className="flex justify-center py-1"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div> : (
@@ -326,8 +344,8 @@ export default function SeatAvailabilityPage() {
         <>
           <Card className="mt-6 shadow-lg">
             <CardHeader>
-              <CardTitle>Seat Layout ({selectedShiftView.replace('_occupied', '').replace(/^\w/, c => c.toUpperCase())} View)</CardTitle>
-              <CardDescription>Visual representation of seat occupancy for the selected view.</CardDescription>
+              <CardTitle>Seat Layout ({getShiftViewLabel(selectedShiftView)})</CardTitle>
+              <CardDescription>Visual representation of seat occupancy for the selected view. Click a seat for more details.</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="flex flex-wrap items-center space-x-4 mb-4 text-xs sm:text-sm">
@@ -353,21 +371,60 @@ export default function SeatAvailabilityPage() {
               </div>
               <div className="grid grid-cols-[repeat(auto-fill,minmax(2.75rem,1fr))] sm:grid-cols-[repeat(auto-fill,minmax(3.25rem,1fr))] gap-1 sm:gap-1.5">
                 {serviceAllSeats.map((seatNum) => {
-                  const { student, colorClass } = getSeatStatusForLayout(seatNum, selectedShiftView);
+                  const { colorClass } = getSeatStatusForLayout(seatNum, selectedShiftView);
                   const ShiftIcon = getSeatStatusForLayout(seatNum, selectedShiftView).shiftIcon;
+                  
+                  const studentsOnThisSeat = activeStudents.filter(s => s.seatNumber === seatNum);
+
                   return (
-                    <div
-                      key={seatNum}
-                      className={cn(
-                        "relative flex items-center justify-center h-10 w-10 sm:h-12 sm:w-12 text-xs sm:text-sm rounded-md border transition-colors font-medium",
-                        colorClass,
-                        "cursor-default" 
-                      )}
-                      title={student ? `${seatNum} - ${student.name} (${student.shift})` : `${seatNum} - Available for ${selectedShiftView.replace('_occupied','')} view`}
-                    >
-                      {ShiftIcon && <ShiftIcon className="absolute top-1 right-1 h-3 w-3" />}
-                      {seatNum}
-                    </div>
+                    <Popover key={seatNum}>
+                      <PopoverTrigger asChild>
+                        <div
+                          className={cn(
+                            "relative flex items-center justify-center h-10 w-10 sm:h-12 sm:w-12 text-xs sm:text-sm rounded-md border transition-colors font-medium cursor-pointer",
+                            colorClass
+                          )}
+                          title={studentsOnThisSeat.length > 0 ? `Seat ${seatNum} - Click for details` : `Seat ${seatNum} - Available`}
+                        >
+                          {ShiftIcon && <ShiftIcon className="absolute top-1 right-1 h-3 w-3" />}
+                          {seatNum}
+                        </div>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-4" side="top" align="center">
+                        <div className="space-y-3">
+                          <h4 className="font-semibold text-md">Seat {seatNum}</h4>
+                          {studentsOnThisSeat.length > 0 ? (
+                            studentsOnThisSeat.map(student => (
+                              <div key={student.studentId} className="border-b pb-2 last:border-b-0 last:pb-0">
+                                <p className="text-sm font-medium">{student.name}</p>
+                                <p className="text-xs text-muted-foreground capitalize">
+                                  Shift: {student.shift}
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                  Phone: {student.phone}
+                                </p>
+                                <div className="mt-2 flex space-x-2">
+                                  <Link href={`/students/profiles/${student.studentId}`} passHref legacyBehavior>
+                                    <Button variant="outline" size="sm">
+                                      <UserProfileIcon className="mr-1 h-3 w-3" /> Profile
+                                    </Button>
+                                  </Link>
+                                  <Link href={`/admin/students/edit/${student.studentId}`} passHref legacyBehavior>
+                                    <Button variant="outline" size="sm">
+                                      <Edit className="mr-1 h-3 w-3" /> Edit
+                                    </Button>
+                                  </Link>
+                                </div>
+                              </div>
+                            ))
+                          ) : (
+                            <p className="text-sm text-muted-foreground">
+                              This seat is currently unassigned and fully available.
+                            </p>
+                          )}
+                        </div>
+                      </PopoverContent>
+                    </Popover>
                   );
                 })}
               </div>
