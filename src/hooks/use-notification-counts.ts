@@ -6,11 +6,13 @@ import { useAuth } from '@/contexts/auth-context';
 import { getAllFeedback, getAlertsForStudent, getStudentByEmail } from '@/services/student-service';
 import type { FeedbackItem } from '@/types/communication';
 import type { AlertItem } from '@/types/communication';
+import { useNotificationContext } from '@/contexts/notification-context'; // Import context hook
 
 export function useNotificationCounts() {
   const { user } = useAuth();
+  const { refreshKey } = useNotificationContext(); // Consume refreshKey from context
   const [count, setCount] = React.useState(0);
-  const [isLoadingCount, setIsLoadingCount] = React.useState(false);
+  const [isLoadingCount, setIsLoadingCount] = React.useState(true); // Default to true
 
   const fetchCounts = React.useCallback(async () => {
     if (!user) {
@@ -32,7 +34,7 @@ export function useNotificationCounts() {
           const unreadAlertsCount = alerts.filter(alert => !alert.isRead).length;
           setCount(unreadAlertsCount);
         } else {
-          setCount(0); // Student not found or no studentId
+          setCount(0); 
         }
       } else {
         setCount(0);
@@ -47,10 +49,7 @@ export function useNotificationCounts() {
 
   React.useEffect(() => {
     fetchCounts();
-  }, [fetchCounts]);
-
-  // Optional: Refetch counts periodically or on specific events if needed
-  // For now, it refetches when the user object changes (e.g., login/logout)
+  }, [fetchCounts, refreshKey]); // Add refreshKey as a dependency
 
   return { count, isLoadingCount };
 }

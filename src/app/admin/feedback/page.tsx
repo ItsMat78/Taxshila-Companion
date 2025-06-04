@@ -35,6 +35,7 @@ import {
 } from "@/components/ui/dialog";
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from "@/components/ui/label";
+import { useNotificationContext } from '@/contexts/notification-context'; // Import context hook
 
 interface FeedbackResponseDialogProps {
   feedbackItem: FeedbackItem | null;
@@ -57,7 +58,6 @@ function FeedbackResponseDialog({ feedbackItem, isOpen, onClose, onSendResponse 
 
   const handleSubmitResponse = async () => {
     if (!responseMessage.trim()) {
-      // Optionally show a toast or error message for empty response
       return;
     }
     setIsSending(true);
@@ -112,6 +112,7 @@ function FeedbackResponseDialog({ feedbackItem, isOpen, onClose, onSendResponse 
 
 export default function AdminFeedbackPage() {
   const { toast } = useToast();
+  const { refreshNotifications } = useNotificationContext(); // Consume refresh function
   const [feedbackList, setFeedbackList] = React.useState<FeedbackItem[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [updatingFeedbackId, setUpdatingFeedbackId] = React.useState<string | null>(null);
@@ -145,20 +146,21 @@ export default function AdminFeedbackPage() {
           selectedFeedbackForResponse.studentId,
           `Response to your feedback: "${snippet}"`,
           responseMessage,
-          "feedback_response", // New alert type
-          selectedFeedbackForResponse.id, // originalFeedbackId
-          snippet // originalFeedbackMessageSnippet
+          "feedback_response", 
+          selectedFeedbackForResponse.id, 
+          snippet 
         );
         toast({ title: "Response Sent", description: `Alert sent to ${selectedFeedbackForResponse.studentName || 'student'} and feedback marked as Resolved.` });
-      } else if (status !== "Resolved") { // Only toast for Archive if not part of resolve flow
+      } else if (status !== "Resolved") { 
         toast({ title: "Feedback Updated", description: `Status changed to ${status}.` });
       }
       await fetchFeedback(); 
+      refreshNotifications(); // Trigger notification count refresh
     } catch (error: any) {
       toast({ title: "Update Failed", description: error.message || "Could not update feedback status.", variant: "destructive" });
     } finally {
       setUpdatingFeedbackId(null);
-      setSelectedFeedbackForResponse(null); // Clear selection after any update
+      setSelectedFeedbackForResponse(null); 
     }
   };
 
@@ -251,7 +253,7 @@ export default function AdminFeedbackPage() {
                     <TableCell className="text-sm">{item.message}</TableCell>
                     <TableCell>{getFeedbackStatusBadge(item.status)}</TableCell>
                     <TableCell className="text-right space-x-1">
-                      {item.status === "Open" && item.studentId && ( // Only allow resolve if studentId is present
+                      {item.status === "Open" && item.studentId && ( 
                         <Button
                           variant="outline"
                           size="sm"
@@ -295,7 +297,7 @@ export default function AdminFeedbackPage() {
         isOpen={isResponseDialogOpen}
         onClose={() => {
             setIsResponseDialogOpen(false);
-            setSelectedFeedbackForResponse(null); // Ensure selection is cleared
+            setSelectedFeedbackForResponse(null); 
         }}
         onSendResponse={handleSendAndResolve}
       />

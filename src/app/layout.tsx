@@ -4,6 +4,7 @@ import './globals.css';
 import { AppLayout } from '@/components/layout/app-layout';
 import { Toaster } from "@/components/ui/toaster";
 import { AuthProvider } from '@/contexts/auth-context';
+import { NotificationProvider } from '@/contexts/notification-context'; // Import NotificationProvider
 
 export const metadata: Metadata = {
   title: 'Taxshila Companion',
@@ -25,10 +26,12 @@ export default function RootLayout({
       </head>
       <body className="font-body antialiased">
         <AuthProvider>
-          <AppLayout>
-            {children}
-          </AppLayout>
-          <Toaster />
+          <NotificationProvider> {/* Wrap AppLayout with NotificationProvider */}
+            <AppLayout>
+              {children}
+            </AppLayout>
+            <Toaster />
+          </NotificationProvider>
         </AuthProvider>
       </body>
     </html>
