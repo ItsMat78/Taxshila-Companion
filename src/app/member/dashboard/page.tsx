@@ -4,17 +4,17 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { PageTitle } from '@/components/shared/page-title';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription as ShadcnCardDescription } from '@/components/ui/card'; // Aliased CardDescription to avoid conflict
+import { Card, CardContent, CardHeader, CardTitle as ShadcnCardTitle, CardDescription as ShadcnCardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
-  DialogTitle as ShadcnDialogTitle, // Aliased to avoid conflict with CardTitle if any confusion
+  DialogTitle as ShadcnDialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Alert, AlertDescription, AlertTitle as ShadcnAlertTitle } from '@/components/ui/alert'; // Aliased
+import { Alert, AlertDescription, AlertTitle as ShadcnAlertTitle } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/auth-context';
 import { Camera, QrCode, Receipt, IndianRupee, MessageSquare, Bell, ScrollText, Star, Loader2, XCircle, Home } from 'lucide-react';
@@ -29,33 +29,37 @@ type DashboardTileProps = {
   className?: string;
   isPrimaryAction?: boolean;
   external?: boolean;
-  hasNew?: boolean; 
+  hasNew?: boolean;
 };
 
 const DashboardTile: React.FC<DashboardTileProps> = ({ title, description, icon: Icon, href, action, className = "", isPrimaryAction = false, external = false, hasNew = false }) => {
   const content = (
     <Card className={cn(
-      "shadow-lg hover:shadow-xl transition-shadow h-full flex flex-col", 
+      "shadow-lg hover:shadow-xl transition-shadow h-full flex flex-col",
       isPrimaryAction ? 'bg-primary text-primary-foreground hover:bg-primary/90' : 'hover:bg-muted/50',
       className,
       {
-        'border-destructive ring-2 ring-destructive animate-pulse': hasNew && !isPrimaryAction,
+        'border-destructive ring-2 ring-destructive/50': hasNew && !isPrimaryAction,
       }
     )}>
       <CardHeader className={cn(
-        isPrimaryAction ? "p-4 pb-2" : "p-3 pb-1" 
+        isPrimaryAction ? "p-3 pb-1" : "p-3 pb-1", // Reduced padding for primary action tile header
+        "relative" // Added relative for dot positioning
       )}>
-        <CardTitle className={cn(
+        {hasNew && !isPrimaryAction && (
+          <span className="absolute top-1 right-1 block h-2.5 w-2.5 rounded-full bg-destructive ring-1 ring-white" />
+        )}
+        <ShadcnCardTitle className={cn(
           "flex items-center",
-          isPrimaryAction ? 'text-lg font-semibold' : 'text-base font-semibold', 
+          isPrimaryAction ? 'text-lg font-semibold' : 'text-base font-semibold',
         )}>
-          <Icon className={cn("mr-3", isPrimaryAction ? "h-5 w-5" : "h-4 w-4")} /> 
+          <Icon className={cn("mr-3", isPrimaryAction ? "h-5 w-5" : "h-4 w-4")} />
           {title}
-        </CardTitle>
+        </ShadcnCardTitle>
       </CardHeader>
       <CardContent className={cn(
         "flex-grow",
-         isPrimaryAction ? "pt-0 pb-3 px-4" : "p-3 pt-0" 
+         isPrimaryAction ? "pt-0 pb-2 px-3" : "p-3 pt-0" // Reduced padding for primary action tile content
         )}>
         {description && <p className={cn(
           isPrimaryAction ? 'text-sm text-primary-foreground/80' : 'text-xs text-muted-foreground',
@@ -64,22 +68,23 @@ const DashboardTile: React.FC<DashboardTileProps> = ({ title, description, icon:
     </Card>
   );
 
+  const linkClasses = "block h-full no-underline focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-lg";
+
   if (href) {
     return (
       <Link
         href={href}
         target={external ? '_blank' : undefined}
         rel={external ? 'noopener noreferrer' : undefined}
-        className={cn("block h-full no-underline focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-lg", className)}
+        className={cn(linkClasses, className)}
       >
         {content}
       </Link>
     );
   }
 
-
   if (action) {
-    return <button onClick={action} className={cn("block w-full h-full text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-lg", className)}>{content}</button>;
+    return <button onClick={action} className={cn("block w-full h-full text-left", linkClasses, className)}>{content}</button>;
   }
 
   return <div className={className}>{content}</div>;
@@ -146,17 +151,17 @@ export default function MemberDashboardPage() {
 
   const simulateQrScan = async () => {
     setIsProcessingQr(true);
-    await new Promise(resolve => setTimeout(resolve, 2000)); 
+    await new Promise(resolve => setTimeout(resolve, 2000));
     setIsProcessingQr(false);
-    setIsScannerOpen(false); 
+    setIsScannerOpen(false);
     toast({
       title: "Attendance Marked!",
       description: `Your attendance has been recorded at ${new Date().toLocaleTimeString()}.`,
     });
   };
-  
+
   const coreActionTiles: DashboardTileProps[] = [
-    { title: "View Alerts", description: "Catch up on announcements.", icon: Bell, href: "/member/alerts", hasNew: true }, 
+    { title: "View Alerts", description: "Catch up on announcements.", icon: Bell, href: "/member/alerts", hasNew: true },
     { title: "My Fees", description: "Check fee status & history.", icon: Receipt, href: "/member/fees" },
     { title: "Pay Fees", description: "Settle your outstanding dues.", icon: IndianRupee, href: "/member/pay" },
     { title: "Submit Feedback", description: "Share suggestions or issues.", icon: MessageSquare, href: "/member/feedback" },
@@ -170,7 +175,7 @@ export default function MemberDashboardPage() {
   return (
     <>
       <PageTitle title={`Welcome, ${user?.email?.split('@')[0] || 'Member'}!`} description="Your Taxshila Companion dashboard." />
-      
+
       <Dialog open={isScannerOpen} onOpenChange={setIsScannerOpen}>
         <DialogTrigger asChild>
           <div className="mb-6 cursor-pointer">
@@ -190,7 +195,7 @@ export default function MemberDashboardPage() {
               Point your camera at the QR code provided at the library desk.
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="space-y-4 my-4">
             {hasCameraPermission === false && (
               <Alert variant="destructive">
@@ -201,11 +206,11 @@ export default function MemberDashboardPage() {
                 </AlertDescription>
               </Alert>
             )}
-            
+
             <div className="w-full aspect-square bg-muted rounded-md overflow-hidden flex items-center justify-center">
                 <video ref={videoRef} className="w-full h-full object-cover" autoPlay muted playsInline />
             </div>
-            
+
             {hasCameraPermission === null && !videoRef.current?.srcObject && (
                  <div className="flex items-center justify-center text-muted-foreground">
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
