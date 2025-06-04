@@ -89,6 +89,12 @@ export const mainNav: NavItem[] = [
         icon: CreditCard, // More relevant icon for dues
         roles: ['admin'],
       },
+      {
+        title: 'Payment History',
+        href: '/admin/fees/payments-history',
+        icon: History,
+        roles: ['admin'],
+      },
     ]
   },
   {
@@ -118,4 +124,3 @@ export const mainNav: NavItem[] = [
     roles: ['member'],
   },
 ];
-
