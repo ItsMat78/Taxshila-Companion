@@ -79,14 +79,19 @@ let students: Student[] = [
    { studentId: "TS012", name: "Karan Verma Long Overdue", email: "karan.verma@example.com", phone: "9876543221", shift: "evening", seatNumber: "15", feeStatus: "Overdue", activityStatus: "Active", registrationDate: "2024-01-01", lastPaymentDate: "2024-01-20", nextDueDate: format(addMonths(new Date(), -4), 'yyyy-MM-dd'), amountDue: "₹700", paymentHistory: [] },
 ];
 
+const todayAtFourPM = new Date();
+todayAtFourPM.setHours(16, 0, 0, 0);
+const todayAtFivePM = new Date();
+todayAtFivePM.setHours(17, 0, 0, 0);
+
 let attendanceRecords: AttendanceRecord[] = [
-  { recordId: "AR001", studentId: "TS001", date: format(new Date(), 'yyyy-MM-dd'), checkInTime: subHours(new Date(), 2).toISOString(), checkOutTime: subHours(new Date(), 1).toISOString() },
-  { recordId: "AR001B", studentId: "TS001", date: format(new Date(), 'yyyy-MM-dd'), checkInTime: subMinutes(new Date(), 45).toISOString() /* Currently checked in */ },
+  // Changed TS001's previously active check-in to a completed one
+  { recordId: "AR001B_COMPLETED_SAMPLE", studentId: "TS001", date: format(new Date(), 'yyyy-MM-dd'), checkInTime: todayAtFourPM.toISOString(), checkOutTime: todayAtFivePM.toISOString() },
   { recordId: "AR002", studentId: "TS002", date: format(new Date(), 'yyyy-MM-dd'), checkInTime: subHours(new Date(), 1).toISOString(), checkOutTime: subMinutes(new Date(), 15).toISOString() },
   { recordId: "AR003", studentId: "TS001", date: format(subHours(new Date(), 25), 'yyyy-MM-dd'), checkInTime: subHours(new Date(), 25).toISOString(), checkOutTime: subHours(new Date(), 20).toISOString() },
   { recordId: "AR004", studentId: "TS001", date: format(subDays(new Date(), 1), 'yyyy-MM-dd'), checkInTime: subDays(subHours(new Date(), 5), 1).toISOString(), checkOutTime: subDays(subHours(new Date(), 2),1).toISOString() },
   { recordId: "AR005", studentId: "TS001", date: format(subDays(new Date(), 2), 'yyyy-MM-dd'), checkInTime: subDays(subHours(new Date(), 6), 2).toISOString(), checkOutTime: subDays(subHours(new Date(), 1),2).toISOString() },
-  { recordId: "AR_TS001_TODAY_COMPLETED", studentId: "TS001", date: format(new Date(), 'yyyy-MM-dd'), checkInTime: subHours(new Date(), 5).toISOString(), checkOutTime: subHours(new Date(), 2).toISOString() }, // 3 hours completed today for TS001
+  { recordId: "AR_TS001_TODAY_COMPLETED", studentId: "TS001", date: format(new Date(), 'yyyy-MM-dd'), checkInTime: subHours(new Date(), 5).toISOString(), checkOutTime: subHours(new Date(), 2).toISOString() },
 ];
 
 let feedbackItems: FeedbackItem[] = [
@@ -815,19 +820,27 @@ export async function calculateMonthlyStudyHours(studentId: string): Promise<num
   records.forEach(record => {
     try {
       const checkInDate = parseISO(record.checkInTime);
+      // Ensure the check-in is within the current month
       if (isValid(checkInDate) && isWithinInterval(checkInDate, { start: currentMonthStart, end: currentMonthEnd })) {
         if (record.checkOutTime) {
           const checkOutDate = parseISO(record.checkOutTime);
+          // Ensure check-out is also valid and within the month (or if it spans, cap it at month end, though less likely for short check-ins)
           if (isValid(checkOutDate)) {
-             if (checkOutDate.getTime() > checkInDate.getTime()) {
+             if (checkOutDate.getTime() > checkInDate.getTime()) { // Basic sanity check
+                // Consider if checkOutDate also needs to be within the current month for this calculation
+                // For simplicity, we are assuming check-ins/outs are generally within the same day or reasonably close.
                 totalMilliseconds += differenceInMilliseconds(checkOutDate, checkInDate);
             }
           }
         }
+        // If student is currently checked in (record.checkOutTime is undefined) and checkInDate is today,
+        // we could calculate hours up to now, but the current logic only sums completed sessions for the month.
+        // For this iteration, we'll stick to completed sessions.
       }
     } catch (e) {
       console.error("Error processing attendance record for hour calculation:", record, e);
     }
   });
-  return Math.round(totalMilliseconds / (1000 * 60 * 60));
+  return Math.round(totalMilliseconds / (1000 * 60 * 60)); // Convert ms to hours
 }
+
