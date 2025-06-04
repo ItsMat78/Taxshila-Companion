@@ -112,7 +112,7 @@ function AdminDashboardContent() {
           if (stat.href) {
             return (
               <Link href={stat.href} key={stat.title} passHref legacyBehavior>
-                <a className="block no-underline cursor-pointer hover:shadow-md transition-shadow duration-150 ease-in-out rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 h-full">
+                <a className="block no-underline cursor-pointer hover:shadow-md transition-shadow duration-150 ease-in-out rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 h-full aspect-square">
                   {statCardElement}
                 </a>
               </Link>
@@ -124,7 +124,7 @@ function AdminDashboardContent() {
             return (
               <Dialog key={stat.title} open={dialogOpenState} onOpenChange={setDialogOpenState}>
                 <DialogTrigger asChild>
-                  <div className="cursor-pointer hover:shadow-md transition-shadow duration-150 ease-in-out rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 h-full" onClick={stat.action}>
+                  <div className="cursor-pointer hover:shadow-md transition-shadow duration-150 ease-in-out rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 h-full aspect-square" onClick={stat.action}>
                     {statCardElement}
                   </div>
                 </DialogTrigger>
@@ -209,8 +209,7 @@ function AdminDashboardContent() {
               </Dialog>
             );
           } else {
-             // Fallback for stat cards that are neither links nor dialog triggers
-            return <div key={stat.title} className="h-full">{statCardElement}</div>;
+            return <div key={stat.title} className="h-full aspect-square">{statCardElement}</div>;
           }
         })}
       </div>
@@ -222,13 +221,13 @@ function AdminDashboardContent() {
           const Icon = tile.icon;
           return (
             <Link href={tile.href} key={tile.title} passHref legacyBehavior>
-              <a className="block no-underline focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-lg h-full"> {/* Added h-full here for consistency if needed */}
+              <a className="block no-underline focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-lg h-full">
                 <Card className="shadow-md hover:shadow-lg transition-shadow h-full flex flex-col aspect-square">
-                  <CardHeader className="p-3 pb-1 items-center text-center flex-grow justify-center"> {/* Centering content */}
+                  <CardHeader className="p-3 pb-1 items-center text-center flex-grow justify-center">
                     <Icon className="h-6 w-6 mb-1 text-primary" /> 
                     <ShadcnCardTitle className="text-base font-semibold">{tile.title}</ShadcnCardTitle>
                   </CardHeader>
-                  <CardContent className="p-3 pt-0 text-center flex items-center justify-center"> {/* Centering description */}
+                  <CardContent className="p-3 pt-0 text-center flex items-center justify-center">
                     <ShadcnCardDescription className="text-xs text-muted-foreground">{tile.description}</ShadcnCardDescription>
                   </CardContent>
                 </Card>
@@ -266,7 +265,6 @@ export default function MainPage() {
     return <AdminDashboardContent />;
   }
 
-  // This case should ideally be handled by AppLayout redirecting to /login if !user
   return (
      <div className="flex min-h-screen w-full flex-col items-center justify-center bg-background">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />

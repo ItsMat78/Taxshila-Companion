@@ -15,7 +15,7 @@ interface StatCardProps {
 export function StatCard({ title, value, icon: Icon, description, className }: StatCardProps) {
   return (
     <Card className={cn(
-      "flex flex-col items-center justify-center text-center p-4 h-full",
+      "flex flex-col items-center justify-center text-center p-3 h-full", // Reduced padding from p-4 to p-3
       className
     )}>
       {Icon && <Icon className="h-7 w-7 mb-2 text-primary" />}
