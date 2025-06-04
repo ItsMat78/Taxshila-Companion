@@ -3,7 +3,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { BookOpenCheck, LogOut } from 'lucide-react';
+import { BookOpenCheck, LogOut, ChevronDown } from 'lucide-react'; // Added ChevronDown
 import * as React from "react";
 
 import { mainNav, type NavItem } from '@/config/nav';
@@ -85,6 +85,12 @@ function NavListItem({ item }: { item: NavItem }) {
             {item.icon && <item.icon className="h-4 w-4" />}
             <span className="truncate">{item.title}</span>
           </span>
+          <ChevronDown
+            className={cn(
+              "ml-auto h-4 w-4 shrink-0 transition-transform duration-200",
+              isSubMenuOpen && "rotate-180"
+            )}
+          />
         </SidebarMenuButton>
         {isSubMenuOpen && (
           <SidebarMenuSub>
