@@ -34,7 +34,9 @@ import {
   FormDescription,
 } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
-import { UploadCloud } from 'lucide-react';
+import { UploadCloud, Loader2 } from 'lucide-react';
+import { addStudent, getAvailableSeats, type AddStudentData } from '@/services/student-service';
+import type { Shift } from '@/types/student';
 
 const studentFormSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
@@ -53,23 +55,33 @@ const shiftOptions = [
   { value: "fullday", label: "Full Day (7 AM - 10 PM)" },
 ];
 
-// Define all seat numbers from 01 to 85
-const ALL_SEAT_NUMBERS = Array.from({ length: 85 }, (_, i) => String(i + 1).padStart(2, '0'));
-
-// Placeholder for existing students to determine taken seats
-// In a real app, this data would come from a state management solution or API
-const MOCK_EXISTING_STUDENTS_FOR_SEAT_CHECK = [
-  { studentId: "TS001", seatNumber: "01" },
-  { studentId: "TS002", seatNumber: "05" },
-  { studentId: "TS003", seatNumber: "85" },
-];
-
 export default function StudentRegisterPage() {
   const { toast } = useToast();
   const idCardImageRef = React.useRef<HTMLInputElement>(null);
+  const [availableSeats, setAvailableSeats] = React.useState<string[]>([]);
+  const [isLoadingSeats, setIsLoadingSeats] = React.useState(true);
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
 
-  const takenSeats = MOCK_EXISTING_STUDENTS_FOR_SEAT_CHECK.map(s => s.seatNumber).filter(Boolean);
-  const availableSeats = ALL_SEAT_NUMBERS.filter(seat => !takenSeats.includes(seat));
+  const fetchSeats = async () => {
+    setIsLoadingSeats(true);
+    try {
+      const seats = await getAvailableSeats();
+      setAvailableSeats(seats);
+    } catch (error) {
+      toast({
+        title: "Error fetching seats",
+        description: "Could not load available seats. Please try again later.",
+        variant: "destructive",
+      });
+      setAvailableSeats([]);
+    } finally {
+      setIsLoadingSeats(false);
+    }
+  };
+
+  React.useEffect(() => {
+    fetchSeats();
+  }, []);
 
   const form = useForm<StudentFormValues>({
     resolver: zodResolver(studentFormSchema),
@@ -79,17 +91,18 @@ export default function StudentRegisterPage() {
       phone: "",
       shift: undefined,
       idCardImage: undefined,
-      seatNumber: undefined, // Will show placeholder "Select a seat or Auto-assign"
+      seatNumber: undefined,
     },
   });
 
-  function onSubmit(data: StudentFormValues) {
-    let idCardFileName = "N/A";
+  async function onSubmit(data: StudentFormValues) {
+    setIsSubmitting(true);
+    let idCardFileName: string | undefined;
     if (data.idCardImage && data.idCardImage.length > 0) {
       idCardFileName = data.idCardImage[0].name;
     }
 
-    let assignedSeatNumber: string | undefined;
+    let assignedSeatNumber: string | undefined = data.seatNumber;
 
     if (data.seatNumber === "AUTO_ASSIGN_SEAT") {
       if (availableSeats.length > 0) {
@@ -100,21 +113,49 @@ export default function StudentRegisterPage() {
           description: "No seats available for auto-assignment. Please check seat availability.",
           variant: "destructive",
         });
-        return; // Stop submission
+        setIsSubmitting(false);
+        return; 
       }
-    } else {
-      assignedSeatNumber = data.seatNumber;
     }
     
-    console.log("New student data:", { ...data, idCardFileName, seatNumber: assignedSeatNumber });
+    if (!assignedSeatNumber) {
+        toast({
+          title: "Registration Failed",
+          description: "Seat number is required.",
+          variant: "destructive",
+        });
+        setIsSubmitting(false);
+        return;
+    }
+
+    const studentPayload: AddStudentData = {
+      name: data.name,
+      email: data.email || undefined,
+      phone: data.phone,
+      shift: data.shift as Shift,
+      seatNumber: assignedSeatNumber,
+      idCardFileName: idCardFileName,
+    };
     
-    toast({
-      title: "Student Registration Submitted (Placeholder)",
-      description: `${data.name} has been submitted. ID card: ${idCardFileName}. Assigned Seat: ${assignedSeatNumber}. Student ID will be auto-generated.`,
-    });
-    form.reset();
-    if (idCardImageRef.current) {
-      idCardImageRef.current.value = ""; 
+    try {
+      const newStudent = await addStudent(studentPayload);
+      toast({
+        title: "Student Registered Successfully",
+        description: `${newStudent.name} (ID: ${newStudent.studentId}) has been registered. Assigned Seat: ${newStudent.seatNumber}.`,
+      });
+      form.reset();
+      if (idCardImageRef.current) {
+        idCardImageRef.current.value = ""; 
+      }
+      await fetchSeats(); // Re-fetch seats to update dropdown
+    } catch (error: any) {
+       toast({
+        title: "Registration Failed",
+        description: error.message || "An unexpected error occurred.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
     }
   }
 
@@ -130,21 +171,21 @@ export default function StudentRegisterPage() {
           <form onSubmit={form.handleSubmit(onSubmit)}>
             <CardContent className="space-y-6">
               <FormField control={form.control} name="name" render={({ field }) => (
-                <FormItem><FormLabel>Full Name</FormLabel><FormControl><Input placeholder="Enter student's full name" {...field} /></FormControl><FormMessage /></FormItem>
+                <FormItem><FormLabel>Full Name</FormLabel><FormControl><Input placeholder="Enter student's full name" {...field} disabled={isSubmitting} /></FormControl><FormMessage /></FormItem>
               )} />
               <FormField control={form.control} name="email" render={({ field }) => (
-                <FormItem><FormLabel>Email Address (Optional)</FormLabel><FormControl><Input type="email" placeholder="student@example.com" {...field} /></FormControl><FormMessage /></FormItem>
+                <FormItem><FormLabel>Email Address (Optional)</FormLabel><FormControl><Input type="email" placeholder="student@example.com" {...field} disabled={isSubmitting} /></FormControl><FormMessage /></FormItem>
               )} />
               <FormField control={form.control} name="phone" render={({ field }) => (
-                <FormItem><FormLabel>Phone Number</FormLabel><FormControl><Input type="tel" placeholder="Enter 10-digit phone number" {...field} /></FormControl><FormMessage /></FormItem>
+                <FormItem><FormLabel>Phone Number</FormLabel><FormControl><Input type="tel" placeholder="Enter 10-digit phone number" {...field} disabled={isSubmitting} /></FormControl><FormMessage /></FormItem>
               )} />
               <FormField control={form.control} name="shift" render={({ field }) => (
                 <FormItem className="space-y-3"><FormLabel>Shift Selection</FormLabel>
                   <FormControl>
-                    <RadioGroup onValueChange={field.onChange} defaultValue={field.value} className="flex flex-col space-y-2">
+                    <RadioGroup onValueChange={field.onChange} defaultValue={field.value} className="flex flex-col space-y-2" disabled={isSubmitting}>
                       {shiftOptions.map(option => (
                         <FormItem key={option.value} className="flex items-center space-x-3 space-y-0">
-                          <FormControl><RadioGroupItem value={option.value} /></FormControl>
+                          <FormControl><RadioGroupItem value={option.value} disabled={isSubmitting} /></FormControl>
                           <FormLabel className="font-normal">{option.label}</FormLabel>
                         </FormItem>
                       ))}
@@ -158,21 +199,26 @@ export default function StudentRegisterPage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Seat Number</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value || ""} defaultValue={field.value || ""}>
+                    <Select onValueChange={field.onChange} value={field.value || ""} defaultValue={field.value || ""} disabled={isSubmitting || isLoadingSeats}>
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="Select a seat or Auto-assign" />
+                          <SelectValue placeholder={isLoadingSeats ? "Loading seats..." : "Select a seat or Auto-assign"} />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="AUTO_ASSIGN_SEAT">Auto-assign Seat</SelectItem>
-                        {availableSeats.map(seat => (
+                        {!isLoadingSeats && <SelectItem value="AUTO_ASSIGN_SEAT">Auto-assign Seat</SelectItem>}
+                        {!isLoadingSeats && availableSeats.map(seat => (
                           <SelectItem key={seat} value={seat}>
                             {seat}
                           </SelectItem>
                         ))}
-                        {availableSeats.length === 0 && (
-                           <p className="p-2 text-xs text-muted-foreground">No specific seats currently available for manual selection. Choose Auto-assign.</p>
+                        {!isLoadingSeats && availableSeats.length === 0 && (
+                           <p className="p-2 text-xs text-muted-foreground">No specific seats currently available. Choose Auto-assign if available.</p>
+                        )}
+                         {isLoadingSeats && (
+                           <div className="p-2 text-xs text-muted-foreground flex items-center justify-center">
+                             <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading available seats...
+                           </div>
                         )}
                       </SelectContent>
                     </Select>
@@ -196,6 +242,7 @@ export default function StudentRegisterPage() {
                         onChange={(e) => onChange(e.target.files)}
                         ref={idCardImageRef}
                         className="file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-primary-foreground hover:file:bg-primary/90"
+                        disabled={isSubmitting}
                         {...rest}
                       />
                     </FormControl>
@@ -208,9 +255,9 @@ export default function StudentRegisterPage() {
               />
             </CardContent>
             <CardFooter>
-              <Button type="submit" className="w-full sm:w-auto">
-                <UploadCloud className="mr-2 h-4 w-4" />
-                Register Student
+              <Button type="submit" className="w-full sm:w-auto" disabled={isSubmitting || isLoadingSeats}>
+                {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UploadCloud className="mr-2 h-4 w-4" />}
+                {isSubmitting ? "Registering..." : "Register Student"}
               </Button>
             </CardFooter>
           </form>
@@ -219,3 +266,5 @@ export default function StudentRegisterPage() {
     </>
   );
 }
+
+    
