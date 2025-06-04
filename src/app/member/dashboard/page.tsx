@@ -4,7 +4,7 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { PageTitle } from '@/components/shared/page-title';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription as ShadcnCardDescription } from '@/components/ui/card'; // Aliased CardDescription to avoid conflict
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -17,7 +17,7 @@ import {
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/auth-context';
-import { Camera, QrCode, Receipt, IndianRupee, MessageSquare, Bell, ScrollText, Star, Loader2, XCircle, LogIn, Home } from 'lucide-react';
+import { Camera, QrCode, Receipt, IndianRupee, MessageSquare, Bell, ScrollText, Star, Loader2, XCircle, Home } from 'lucide-react';
 
 type DashboardTileProps = {
   title: string;
@@ -33,13 +33,13 @@ const DashboardTile: React.FC<DashboardTileProps> = ({ title, description, icon:
   const tileContent = (
     <Card className={`shadow-lg hover:shadow-xl transition-shadow h-full flex flex-col ${isPrimaryAction ? 'bg-primary text-primary-foreground hover:bg-primary/90' : 'hover:bg-muted/50'} ${className}`}>
       <CardHeader className="pb-2">
-        <CardTitle className={`flex items-center ${isPrimaryAction ? 'text-primary-foreground' : ''}`}>
-          <Icon className="mr-3 h-6 w-6" />
+        <CardTitle className={`flex items-center text-base font-semibold ${isPrimaryAction ? 'text-primary-foreground' : ''}`}>
+          <Icon className="mr-3 h-5 w-5" />
           {title}
         </CardTitle>
       </CardHeader>
       <CardContent className="flex-grow">
-        {description && <p className={`text-sm ${isPrimaryAction ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}>{description}</p>}
+        {description && <p className={`text-xs ${isPrimaryAction ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}>{description}</p>}
       </CardContent>
     </Card>
   );
@@ -51,14 +51,14 @@ const DashboardTile: React.FC<DashboardTileProps> = ({ title, description, icon:
           href={href}
           target="_blank"
           rel="noopener noreferrer"
-          className="block h-full no-underline"
+          className={`block h-full no-underline ${className}`}
         >
           {tileContent}
         </Link>
       );
     } else { // Internal link
       return (
-        <Link href={href} className="block h-full no-underline">
+        <Link href={href} className={`block h-full no-underline ${className}`}>
           {tileContent}
         </Link>
       );
@@ -66,10 +66,10 @@ const DashboardTile: React.FC<DashboardTileProps> = ({ title, description, icon:
   }
 
   if (action) {
-    return <button onClick={action} className="block w-full h-full text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-lg">{tileContent}</button>;
+    return <button onClick={action} className={`block w-full h-full text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-lg ${className}`}>{tileContent}</button>;
   }
 
-  return tileContent;
+  return <div className={className}>{tileContent}</div>;
 };
 
 
@@ -157,8 +157,7 @@ export default function MemberDashboardPage() {
       
       <Dialog open={isScannerOpen} onOpenChange={setIsScannerOpen}>
         <DialogTrigger asChild>
-           {/* The DashboardTile for Mark Attendance is a button, so it's handled by the 'action' prop */}
-          <div className="md:col-span-2"> {/* Ensure this div spans if in a grid for layout consistency */}
+          <div className="md:col-span-2 mb-6"> {/* Added mb-6 for spacing */}
             <DashboardTile
               title="Mark Attendance"
               description="Scan the QR code at the library to check-in/out."
@@ -214,7 +213,7 @@ export default function MemberDashboardPage() {
         </DialogContent>
       </Dialog>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {dashboardTiles.map((tile) => (
           <DashboardTile key={tile.title} {...tile} />
         ))}
