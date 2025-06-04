@@ -12,7 +12,7 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle as ShadcnDialogTitle,
-  DialogTrigger, // Added this import
+  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Alert, AlertDescription, AlertTitle as ShadcnAlertTitle } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
@@ -44,17 +44,17 @@ const DashboardTile: React.FC<DashboardTileProps> = ({ title, description, icon:
     )}>
       <CardHeader className={cn(
         "relative",
-        isPrimaryAction ? "p-3 pb-1" : "p-3 pb-1"
+        isPrimaryAction ? "p-4 pb-2" : "p-3 pb-1"
       )}>
         {hasNew && !isPrimaryAction && (
           <span className="absolute top-1 right-1 block h-2.5 w-2.5 rounded-full bg-destructive ring-1 ring-white" />
         )}
-        <div className="flex flex-col items-center text-center">
+        <div className={cn(isPrimaryAction ? "" : "flex flex-col items-center text-center")}>
           <Icon className={cn(
-            isPrimaryAction ? "h-5 w-5 mb-1" : "h-6 w-6 mb-2" // Larger icon for square tiles
+            isPrimaryAction ? "h-6 w-6 mb-1" : "h-6 w-6 mb-1"
           )} />
           <ShadcnCardTitle className={cn(
-            isPrimaryAction ? 'text-lg font-semibold' : 'text-base font-semibold',
+            isPrimaryAction ? 'text-xl font-bold' : 'text-base font-semibold',
           )}>
             {title}
           </ShadcnCardTitle>
@@ -62,11 +62,10 @@ const DashboardTile: React.FC<DashboardTileProps> = ({ title, description, icon:
       </CardHeader>
       <CardContent className={cn(
         "flex-grow flex",
-         isPrimaryAction ? "items-center justify-center p-2 pt-1" : "flex-col items-center justify-center p-3 pt-1"
+         isPrimaryAction ? "p-4 pt-0" : "flex-col items-center justify-center p-3 pt-0"
         )}>
         {description && <p className={cn(
-          isPrimaryAction ? 'text-sm text-primary-foreground/80' : 'text-xs text-muted-foreground',
-          "text-center"
+          isPrimaryAction ? 'text-sm text-primary-foreground/80' : 'text-xs text-muted-foreground text-center',
         )}>{description}</p>}
       </CardContent>
     </Card>
