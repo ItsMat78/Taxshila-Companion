@@ -240,9 +240,9 @@ export default function EditStudentPage() {
     if (!studentId || !studentData || isStudentLeft) return;
     setIsSaving(true);
     
-    const amountToPay = studentData.amountDue && studentData.amountDue !== "₹0" && studentData.amountDue !== "N/A" 
+    const amountToPay = studentData.amountDue && studentData.amountDue !== "Rs. 0" && studentData.amountDue !== "N/A" 
                        ? studentData.amountDue 
-                       : (studentData.shift === "fullday" ? "₹1200" : "₹700");
+                       : (studentData.shift === "fullday" ? "Rs. 1200" : "Rs. 700");
     try {
       const updatedStudent = await recordStudentPayment(studentId, amountToPay, "Admin Recorded");
       if (updatedStudent) {

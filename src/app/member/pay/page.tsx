@@ -16,8 +16,8 @@ import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Camera, Loader2, XCircle, QrCode, CreditCard, ShieldCheck } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
-import { getStudentByEmail, recordStudentPayment } from '@/services/student-service'; // Added recordStudentPayment
-import type { Student } from '@/types/student'; // Added Student type
+import { getStudentByEmail, recordStudentPayment } from '@/services/student-service'; 
+import type { Student } from '@/types/student'; 
 
 export default function MemberPayFeesPage() {
   const { user } = useAuth();
@@ -133,17 +133,17 @@ export default function MemberPayFeesPage() {
     }
 
     setIsProcessingPayment(true);
-    // Simulate network delay for QR scan/confirmation
+    
     await new Promise(resolve => setTimeout(resolve, 1500)); 
     
     try {
-      // Assume full payment of current amountDue
-      const amountToPay = currentStudent.amountDue || (currentStudent.shift === "fullday" ? "₹1200" : "₹700");
+      
+      const amountToPay = currentStudent.amountDue || (currentStudent.shift === "fullday" ? "Rs. 1200" : "Rs. 700");
       
       const updatedStudent = await recordStudentPayment(currentStudent.studentId, amountToPay, "UPI");
       
       if (updatedStudent) {
-        setCurrentStudent(updatedStudent); // Update local student state
+        setCurrentStudent(updatedStudent); 
         toast({
           title: "Payment Successful!",
           description: `Your fee payment of ${amountToPay} has been recorded. Next due date: ${updatedStudent.nextDueDate}.`,
@@ -183,7 +183,7 @@ export default function MemberPayFeesPage() {
     }
     return (
       <p className="text-sm text-yellow-600 text-center py-2">
-        Your current amount due is {currentStudent.amountDue || (currentStudent.shift === "fullday" ? "₹1200" : "₹700")}.
+        Your current amount due is {currentStudent.amountDue || (currentStudent.shift === "fullday" ? "Rs. 1200" : "Rs. 700")}.
         Next due date was {currentStudent.nextDueDate}.
       </p>
     );

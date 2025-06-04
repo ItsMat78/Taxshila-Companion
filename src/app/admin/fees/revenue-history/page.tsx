@@ -32,7 +32,7 @@ import { format, parseISO } from 'date-fns';
 
 const revenueChartConfig = {
   revenue: {
-    label: "Revenue (₹)",
+    label: "Revenue (Rs.)",
     color: "hsl(var(--chart-1))",
   },
 } satisfies ChartConfig;
@@ -46,7 +46,7 @@ export default function RevenueHistoryPage() {
     const fetchHistory = async () => {
       setIsLoading(true);
       try {
-        const historyData = await getMonthlyRevenueHistory(); // Fetches all history, sorted descending
+        const historyData = await getMonthlyRevenueHistory(); 
         setAllRevenueHistory(historyData);
       } catch (error) {
         console.error("Failed to fetch revenue history:", error);
@@ -63,12 +63,11 @@ export default function RevenueHistoryPage() {
     if (isLoading || allRevenueHistory.length === 0) {
       return [];
     }
-    // Take the latest 6 months (first 6 from descending list), then reverse for chart (ascending)
     return allRevenueHistory
       .slice(0, 6)
       .reverse() 
       .map(item => ({
-        month: format(item.monthDate, 'MMM'), // Short month name for X-axis
+        month: format(item.monthDate, 'MMM'), 
         revenue: item.revenue,
       }));
   }, [allRevenueHistory, isLoading]);
@@ -77,9 +76,8 @@ export default function RevenueHistoryPage() {
     if (isLoading || allRevenueHistory.length === 0) {
       return [];
     }
-    const october2024EndDate = new Date(2024, 9, 31); // Month is 0-indexed (9 = October)
-    return allRevenueHistory.filter(item => item.monthDate <= october2024EndDate);
-    // Data is already sorted descending by monthDate from the service
+    const october2024StartDate = new Date(2024, 9, 1); // Month is 0-indexed (9 = October)
+    return allRevenueHistory.filter(item => item.monthDate >= october2024StartDate);
   }, [allRevenueHistory, isLoading]);
 
 
@@ -107,15 +105,15 @@ export default function RevenueHistoryPage() {
                   <CartesianGrid strokeDasharray="3 3" vertical={false} />
                   <XAxis dataKey="month" tickLine={false} axisLine={false} tickMargin={8} />
                   <YAxis
-                    tickFormatter={(value) => `₹${(Number(value) / 1000).toLocaleString('en-IN')}k`}
+                    tickFormatter={(value) => `Rs. ${(Number(value) / 1000).toLocaleString('en-IN')}k`}
                     tickLine={false}
                     axisLine={false}
                     tickMargin={8}
-                    width={40}
+                    width={50}
                   />
                   <RechartsTooltip
                     cursor={{ fill: 'hsl(var(--muted))', radius: 4 }}
-                    content={<ChartTooltipContent indicator="dot" formatter={(value) => `₹${Number(value).toLocaleString('en-IN')}`} />}
+                    content={<ChartTooltipContent indicator="dot" formatter={(value) => `Rs. ${Number(value).toLocaleString('en-IN')}`} />}
                   />
                   <Bar dataKey="revenue" fill="var(--color-revenue)" radius={4} />
                 </BarChart>
@@ -131,7 +129,7 @@ export default function RevenueHistoryPage() {
         <CardHeader>
           <CardTitle className="flex items-center">
             <History className="mr-2 h-5 w-5" />
-            Revenue Data (Up to Oct 2024)
+            Revenue Data (Since Oct 2024)
           </CardTitle>
           <CardDescription>Tabular view of monthly revenue, latest first.</CardDescription>
         </CardHeader>
@@ -152,13 +150,13 @@ export default function RevenueHistoryPage() {
                 {tableData.map((item) => (
                   <TableRow key={item.monthDisplay}>
                     <TableCell className="font-medium">{item.monthDisplay}</TableCell>
-                    <TableCell className="text-right">₹{item.revenue.toLocaleString('en-IN')}</TableCell>
+                    <TableCell className="text-right">Rs. {item.revenue.toLocaleString('en-IN')}</TableCell>
                   </TableRow>
                 ))}
                 {tableData.length === 0 && !isLoading && (
                   <TableRow>
                     <TableCell colSpan={2} className="text-center text-muted-foreground py-6">
-                      No revenue data found.
+                      No revenue data found for this period.
                     </TableCell>
                   </TableRow>
                 )}

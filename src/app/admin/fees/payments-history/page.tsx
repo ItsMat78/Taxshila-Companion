@@ -54,7 +54,6 @@ export default function PaymentHistoryPage() {
           }
         });
 
-        // Sort by date, most recent first
         aggregatedPayments.sort((a, b) => {
           try {
             const dateA = a.date && isValid(parseISO(a.date)) ? parseISO(a.date) : new Date(0);

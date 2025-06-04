@@ -14,8 +14,6 @@ import {
   Inbox,
   Eye,
   LogIn,
-  // BarChart3, // Removed as graph is moving
-  // TrendingUp // Removed as graph is moving
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle as ShadcnCardTitle, CardDescription as ShadcnCardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -33,18 +31,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-// Removed chart imports as graph is moving
-// import {
-//   ChartContainer,
-//   ChartTooltip,
-//   ChartTooltipContent,
-//   type ChartConfig, 
-// } from "@/components/ui/chart"; 
-// import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Legend } from 'recharts'; 
 import { useAuth } from '@/contexts/auth-context';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
-import { getAllStudents, getAvailableSeats, getAllAttendanceRecords, calculateMonthlyRevenue, type MonthlyRevenueData } from '@/services/student-service'; // Removed getMonthlyRevenueHistory
+import { getAllStudents, getAvailableSeats, getAllAttendanceRecords, calculateMonthlyRevenue } from '@/services/student-service'; 
 import type { Student, Shift, AttendanceRecord } from '@/types/student';
 import type { FeedbackItem } from '@/types/communication'; 
 import { format, parseISO, isToday, getHours } from 'date-fns';
@@ -76,13 +66,6 @@ function AdminDashboardContent() {
 
   const { count: openFeedbackCount, isLoadingCount: isLoadingFeedbackCount } = useNotificationCounts();
 
-  // Removed revenue history state as graph is moving
-  // const [revenueHistoryData, setRevenueHistoryData] = React.useState<MonthlyRevenueData[]>([]);
-  // const [isLoadingRevenueHistory, setIsLoadingRevenueHistory] = React.useState(true);
-
-  // Removed revenueChartConfig as graph is moving
-  // const revenueChartConfig = { /* ... */ } satisfies ChartConfig;
-
 
   React.useEffect(() => {
     const fetchDashboardData = async () => {
@@ -90,7 +73,6 @@ function AdminDashboardContent() {
       setIsLoadingAvailabilityStats(true);
       setIsLoadingCheckedInStudents(true);
       setIsLoadingRevenue(true);
-      // setIsLoadingRevenueHistory(true); // Removed
 
       try {
         const [
@@ -100,7 +82,6 @@ function AdminDashboardContent() {
           fulldayAvail,
           allAttendance,
           currentMonthRevenue,
-          // revenueHistData, // Removed
         ] = await Promise.all([
           getAllStudents(),
           getAvailableSeats('morning'),
@@ -108,7 +89,6 @@ function AdminDashboardContent() {
           getAvailableSeats('fullday'),
           getAllAttendanceRecords(),
           calculateMonthlyRevenue(),
-          // getMonthlyRevenueHistory(6), // Removed
         ]);
 
         const activeStudentsWithSeats = allStudentsData.filter(s => s.activityStatus === "Active" && s.seatNumber);
@@ -149,7 +129,6 @@ function AdminDashboardContent() {
         setCheckedInStudents(checkedInStudentDetails);
         setMonthlyRevenue(currentMonthRevenue);
         setCurrentMonthName(format(new Date(), 'MMMM'));
-        // setRevenueHistoryData(revenueHistData); // Removed
 
       } catch (error) {
         console.error("Failed to load dashboard stats:", error);
@@ -160,14 +139,12 @@ function AdminDashboardContent() {
         setAvailableEveningSlotsCount(0);
         setAvailableFullDaySlotsCount(0);
         setCheckedInStudents([]);
-        setMonthlyRevenue("₹0");
-        // setRevenueHistoryData([]); // Removed
+        setMonthlyRevenue("Rs. 0");
       } finally {
         setIsLoadingDashboardStats(false);
         setIsLoadingAvailabilityStats(false);
         setIsLoadingCheckedInStudents(false);
         setIsLoadingRevenue(false);
-        // setIsLoadingRevenueHistory(false); // Removed
       }
     };
     fetchDashboardData();
@@ -289,14 +266,14 @@ function AdminDashboardContent() {
           </Card>
         </Link>
         
-        <Link href="/admin/fees/payments-history" className="block no-underline focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-lg h-full">
+        <Link href="/admin/fees/revenue-history" className="block no-underline focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-lg h-full">
              <Card className="flex flex-col items-center justify-center text-center p-3 w-full h-full shadow-md hover:shadow-lg transition-shadow">
                 <IndianRupee className="h-6 w-6 mb-1 text-primary" />
                 <ShadcnCardTitle className="text-sm font-semibold text-card-foreground mb-1">Revenue ({currentMonthName})</ShadcnCardTitle>
                 {isLoadingRevenue ? (
                      <Loader2 className="h-5 w-5 animate-spin my-1" />
                 ) : (
-                    <div className="text-2xl font-bold text-foreground mb-1">{monthlyRevenue || "₹0"}</div>
+                    <div className="text-2xl font-bold text-foreground mb-1">{monthlyRevenue || "Rs. 0"}</div>
                 )}
                 <p className="text-xs text-muted-foreground">From received payments this month</p>
             </Card>
@@ -305,24 +282,22 @@ function AdminDashboardContent() {
 
       <div className="my-8 border-t border-border"></div>
 
-      {/* Revenue History Graph Card Removed from here */}
-
       <h2 className="text-lg font-headline font-semibold tracking-tight mb-4">Quick Actions</h2>
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
         {adminActionTiles.map((tile) => {
           const Icon = tile.icon;
           
-          let tileTitle = tile.title;
+          let tileTitleText = tile.title;
           let currentHasNew = false;
 
           if (tile.href === "/admin/feedback") {
             if (isLoadingFeedbackCount) {
-              tileTitle = "View Feedback";
+              tileTitleText = "View Feedback";
             } else if (openFeedbackCount > 0) {
-              tileTitle = `View Feedback (${openFeedbackCount} Open)`;
+              tileTitleText = `View Feedback (${openFeedbackCount} Open)`;
               currentHasNew = true;
             } else {
-              tileTitle = "View Feedback";
+              tileTitleText = "View Feedback";
             }
           }
           
@@ -338,7 +313,7 @@ function AdminDashboardContent() {
                    )}
                   <div className="flex items-center gap-2">
                     <Icon className="h-6 w-6 text-primary" /> 
-                    <ShadcnCardTitle className="text-base font-semibold">{tileTitle}</ShadcnCardTitle>
+                    <ShadcnCardTitle className="text-base font-semibold">{tileTitleText}</ShadcnCardTitle>
                   </div>
                 </CardHeader>
                 <CardContent className="p-3 pt-0 flex-grow flex flex-col items-center justify-center">

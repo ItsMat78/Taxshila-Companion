@@ -27,18 +27,18 @@ let students: Student[] = [
     registrationDate: "2024-01-15",
     lastPaymentDate: "2024-06-01",
     nextDueDate: "2024-07-01",
-    amountDue: "₹0",
+    amountDue: "Rs. 0",
     profilePictureUrl: "https://placehold.co/200x200.png?text=AS",
     paymentHistory: [
-        { paymentId: "PAY_TS001_CURRENT", date: format(new Date(), 'yyyy-MM-dd'), amount: "₹700", transactionId: "TXN_TS001_CURRENT", method: "UPI" },
-        { paymentId: "PAY001", date: "2024-06-01", amount: "₹700", transactionId: "TXN12345601", method: "UPI" },
-        { paymentId: "PAY001B", date: format(subMonths(new Date(),1), 'yyyy-MM-dd'), amount: "₹700", transactionId: "TXN12345PREV", method: "UPI" },
-        { paymentId: "PAY_TS001_2MONTHS_AGO", date: format(subMonths(new Date(),2), 'yyyy-MM-dd'), amount: "₹700", transactionId: "TXN_TS001_2MAGO", method: "Cash" },
-        { paymentId: "PAY_TS001_3MONTHS_AGO", date: format(subMonths(new Date(),3), 'yyyy-MM-dd'), amount: "₹650", transactionId: "TXN_TS001_3MAGO", method: "Card" },
-        { paymentId: "PAY_TS001_4MONTHS_AGO", date: format(subMonths(new Date(),4), 'yyyy-MM-dd'), amount: "₹700", transactionId: "TXN_TS001_4MAGO", method: "UPI" },
-        { paymentId: "PAY_TS001_5MONTHS_AGO", date: format(subMonths(new Date(),5), 'yyyy-MM-dd'), amount: "₹700", transactionId: "TXN_TS001_5MAGO", method: "Cash" },
-        { paymentId: "PAY_TS001_6MONTHS_AGO", date: format(subMonths(new Date(),6), 'yyyy-MM-dd'), amount: "₹700", transactionId: "TXN_TS001_6MAGO", method: "Card" },
-        { paymentId: "PAY_TS001_7MONTHS_AGO", date: format(subMonths(new Date(),7), 'yyyy-MM-dd'), amount: "₹700", transactionId: "TXN_TS001_7MAGO", method: "UPI" },
+        { paymentId: "PAY_TS001_CURRENT", date: format(new Date(), 'yyyy-MM-dd'), amount: "Rs. 700", transactionId: "TXN_TS001_CURRENT", method: "UPI" },
+        { paymentId: "PAY001", date: "2024-06-01", amount: "Rs. 700", transactionId: "TXN12345601", method: "UPI" },
+        { paymentId: "PAY001B", date: format(subMonths(new Date(),1), 'yyyy-MM-dd'), amount: "Rs. 700", transactionId: "TXN12345PREV", method: "UPI" },
+        { paymentId: "PAY_TS001_2MONTHS_AGO", date: format(subMonths(new Date(),2), 'yyyy-MM-dd'), amount: "Rs. 700", transactionId: "TXN_TS001_2MAGO", method: "Cash" },
+        { paymentId: "PAY_TS001_3MONTHS_AGO", date: format(subMonths(new Date(),3), 'yyyy-MM-dd'), amount: "Rs. 650", transactionId: "TXN_TS001_3MAGO", method: "Card" },
+        { paymentId: "PAY_TS001_4MONTHS_AGO", date: format(subMonths(new Date(),4), 'yyyy-MM-dd'), amount: "Rs. 700", transactionId: "TXN_TS001_4MAGO", method: "UPI" },
+        { paymentId: "PAY_TS001_5MONTHS_AGO", date: format(subMonths(new Date(),5), 'yyyy-MM-dd'), amount: "Rs. 700", transactionId: "TXN_TS001_5MAGO", method: "Cash" },
+        { paymentId: "PAY_TS001_6MONTHS_AGO", date: format(subMonths(new Date(),6), 'yyyy-MM-dd'), amount: "Rs. 700", transactionId: "TXN_TS001_6MAGO", method: "Card" },
+        { paymentId: "PAY_TS001_7MONTHS_AGO", date: format(subMonths(new Date(),7), 'yyyy-MM-dd'), amount: "Rs. 700", transactionId: "TXN_TS001_7MAGO", method: "UPI" },
     ]
   },
   {
@@ -54,10 +54,10 @@ let students: Student[] = [
     registrationDate: "2024-02-20",
     lastPaymentDate: format(new Date(), 'yyyy-MM-dd'),
     nextDueDate: format(addMonths(new Date(), 1), 'yyyy-MM-dd'),
-    amountDue: "₹0",
+    amountDue: "Rs. 0",
     paymentHistory: [
-      { paymentId: "PAYMENT_PRIYA_PREV", date: format(new Date(), 'yyyy-MM-dd'), amount: "₹700", transactionId: "TXN_PRIYA_PREV", method: "UPI" },
-      { paymentId: "PAYMENT_PRIYA_2MAGO", date: format(subMonths(new Date(), 2), 'yyyy-MM-dd'), amount: "₹700", transactionId: "TXN_PRIYA_2MAGO", method: "Card" },
+      { paymentId: "PAYMENT_PRIYA_PREV", date: format(new Date(), 'yyyy-MM-dd'), amount: "Rs. 700", transactionId: "TXN_PRIYA_PREV", method: "UPI" },
+      { paymentId: "PAYMENT_PRIYA_2MAGO", date: format(subMonths(new Date(), 2), 'yyyy-MM-dd'), amount: "Rs. 700", transactionId: "TXN_PRIYA_2MAGO", method: "Card" },
     ],
     profilePictureUrl: "https://placehold.co/200x200.png?text=PP",
   },
@@ -74,18 +74,18 @@ let students: Student[] = [
     registrationDate: "2024-03-10",
     lastPaymentDate: "2024-03-15",
     nextDueDate: format(addMonths(new Date(), -2), 'yyyy-MM-dd'),
-    amountDue: "₹1200",
+    amountDue: "Rs. 1200",
     paymentHistory: [
-        { paymentId: "PAY_TS003_1MONTH_AGO", date: format(subMonths(new Date(),1), 'yyyy-MM-dd'), amount: "₹1200", transactionId: "TXN_TS003_1MAGO", method: "UPI" },
+        { paymentId: "PAY_TS003_1MONTH_AGO", date: format(subMonths(new Date(),1), 'yyyy-MM-dd'), amount: "Rs. 1200", transactionId: "TXN_TS003_1MAGO", method: "UPI" },
     ],
     profilePictureUrl: "https://placehold.co/200x200.png?text=RM",
   },
-   { studentId: "TS004", name: "Vikram Singh", email: "vikram.singh@example.com", phone: "9876543213", shift: "evening", seatNumber: "40", feeStatus: "Paid", activityStatus: "Active", registrationDate: "2024-04-01", lastPaymentDate: "2024-06-03", nextDueDate: "2024-07-03", amountDue: "₹0", paymentHistory: [{ paymentId: "PAY_TS004_1MONTH_AGO", date: format(subMonths(new Date(),1), 'yyyy-MM-dd'), amount: "₹700", transactionId: "TXN_TS004_1MAGO", method: "Cash" }], profilePictureUrl: "https://placehold.co/200x200.png?text=VS" },
-   { studentId: "TS005", name: "Neha Reddy", email: "neha.reddy@example.com", phone: "9876543214", shift: "fullday", seatNumber: "50", feeStatus: "Paid", activityStatus: "Active", registrationDate: "2024-04-05", lastPaymentDate: "2024-06-01", nextDueDate: "2024-07-01", amountDue: "₹0", paymentHistory: [{ paymentId: "PAY_TS005_LAST_MONTH", date: format(subMonths(new Date(),1), 'yyyy-MM-dd'), amount: "₹1200", transactionId: "TXN_TS005_LM", method: "Card" }], profilePictureUrl: "https://placehold.co/200x200.png?text=NR" },
-   { studentId: "TS006", name: "Old Overdue For Auto-Left", email: "old.overdue@example.com", phone: "9876543215", shift: "morning", seatNumber: "6", feeStatus: "Overdue", activityStatus: "Active", registrationDate: "2024-01-01", lastPaymentDate: "2024-02-01", nextDueDate: format(addMonths(new Date(), -3), 'yyyy-MM-dd'), amountDue: "₹700", paymentHistory: [] },
-   { studentId: "TS007", name: "Sanya Gupta Due", email: "sanya.gupta@example.com", phone: "9876543216", shift: "morning", seatNumber: "8", feeStatus: "Due", activityStatus: "Active", registrationDate: "2024-05-01", lastPaymentDate: "2024-05-10", nextDueDate: "2024-06-10", amountDue: "₹700", paymentHistory: [] },
-   { studentId: "TS008", name: "Kavita Singh Paid", email: "kavita.singh@example.com", phone: "9876543217", shift: "morning", seatNumber: "10", feeStatus: "Paid", activityStatus: "Active", registrationDate: "2024-05-10", lastPaymentDate: "2024-06-01", nextDueDate: "2024-07-01", amountDue: "₹0", paymentHistory: [] },
-   { studentId: "TS012", name: "Karan Verma Long Overdue", email: "karan.verma@example.com", phone: "9876543221", shift: "evening", seatNumber: "15", feeStatus: "Overdue", activityStatus: "Active", registrationDate: "2024-01-01", lastPaymentDate: "2024-01-20", nextDueDate: format(addMonths(new Date(), -4), 'yyyy-MM-dd'), amountDue: "₹700", paymentHistory: [] },
+   { studentId: "TS004", name: "Vikram Singh", email: "vikram.singh@example.com", phone: "9876543213", shift: "evening", seatNumber: "40", feeStatus: "Paid", activityStatus: "Active", registrationDate: "2024-04-01", lastPaymentDate: "2024-06-03", nextDueDate: "2024-07-03", amountDue: "Rs. 0", paymentHistory: [{ paymentId: "PAY_TS004_1MONTH_AGO", date: format(subMonths(new Date(),1), 'yyyy-MM-dd'), amount: "Rs. 700", transactionId: "TXN_TS004_1MAGO", method: "Cash" }], profilePictureUrl: "https://placehold.co/200x200.png?text=VS" },
+   { studentId: "TS005", name: "Neha Reddy", email: "neha.reddy@example.com", phone: "9876543214", shift: "fullday", seatNumber: "50", feeStatus: "Paid", activityStatus: "Active", registrationDate: "2024-04-05", lastPaymentDate: "2024-06-01", nextDueDate: "2024-07-01", amountDue: "Rs. 0", paymentHistory: [{ paymentId: "PAY_TS005_LAST_MONTH", date: format(subMonths(new Date(),1), 'yyyy-MM-dd'), amount: "Rs. 1200", transactionId: "TXN_TS005_LM", method: "Card" }], profilePictureUrl: "https://placehold.co/200x200.png?text=NR" },
+   { studentId: "TS006", name: "Old Overdue For Auto-Left", email: "old.overdue@example.com", phone: "9876543215", shift: "morning", seatNumber: "6", feeStatus: "Overdue", activityStatus: "Active", registrationDate: "2024-01-01", lastPaymentDate: "2024-02-01", nextDueDate: format(addMonths(new Date(), -3), 'yyyy-MM-dd'), amountDue: "Rs. 700", paymentHistory: [] },
+   { studentId: "TS007", name: "Sanya Gupta Due", email: "sanya.gupta@example.com", phone: "9876543216", shift: "morning", seatNumber: "8", feeStatus: "Due", activityStatus: "Active", registrationDate: "2024-05-01", lastPaymentDate: "2024-05-10", nextDueDate: "2024-06-10", amountDue: "Rs. 700", paymentHistory: [] },
+   { studentId: "TS008", name: "Kavita Singh Paid", email: "kavita.singh@example.com", phone: "9876543217", shift: "morning", seatNumber: "10", feeStatus: "Paid", activityStatus: "Active", registrationDate: "2024-05-10", lastPaymentDate: "2024-06-01", nextDueDate: "2024-07-01", amountDue: "Rs. 0", paymentHistory: [] },
+   { studentId: "TS012", name: "Karan Verma Long Overdue", email: "karan.verma@example.com", phone: "9876543221", shift: "evening", seatNumber: "15", feeStatus: "Overdue", activityStatus: "Active", registrationDate: "2024-01-01", lastPaymentDate: "2024-01-20", nextDueDate: format(addMonths(new Date(), -4), 'yyyy-MM-dd'), amountDue: "Rs. 700", paymentHistory: [] },
 ];
 
 const todayAtFourPM = new Date();
@@ -290,7 +290,7 @@ export function addStudent(studentData: AddStudentData): Promise<Student> {
         feeStatus: "Due",
         activityStatus: "Active",
         registrationDate: format(today, 'yyyy-MM-dd'),
-        amountDue: studentData.shift === "fullday" ? "₹1200" : "₹700",
+        amountDue: studentData.shift === "fullday" ? "Rs. 1200" : "Rs. 700",
         nextDueDate: format(addMonths(today, 1), 'yyyy-MM-dd'),
         profilePictureUrl: "https://placehold.co/200x200.png",
         paymentHistory: [],
@@ -349,7 +349,7 @@ export async function updateStudent(studentId: string, studentUpdateData: Partia
             return;
         }
         tempUpdatedStudentData.feeStatus = 'Due';
-        tempUpdatedStudentData.amountDue = tempUpdatedStudentData.shift === "fullday" ? "₹1200" : "₹700";
+        tempUpdatedStudentData.amountDue = tempUpdatedStudentData.shift === "fullday" ? "Rs. 1200" : "Rs. 700";
         tempUpdatedStudentData.lastPaymentDate = undefined;
         tempUpdatedStudentData.nextDueDate = format(addMonths(new Date(), 1), 'yyyy-MM-dd');
         tempUpdatedStudentData.paymentHistory = [];
@@ -372,7 +372,7 @@ export async function updateStudent(studentId: string, studentUpdateData: Partia
         } catch (e) { console.error("Failed to send marked-as-left alert:", e); }
       }
 
-      const isFeeStatusChangeOnlyToPaid = studentUpdateData.feeStatus === 'Paid' && currentStudent.feeStatus !== 'Paid' && Object.keys(studentUpdateData).length === 1 && studentUpdateData.lastPaymentDate && studentUpdateData.nextDueDate && studentUpdateData.amountDue === "₹0";
+      const isFeeStatusChangeOnlyToPaid = studentUpdateData.feeStatus === 'Paid' && currentStudent.feeStatus !== 'Paid' && Object.keys(studentUpdateData).length === 1 && studentUpdateData.lastPaymentDate && studentUpdateData.nextDueDate && studentUpdateData.amountDue === "Rs. 0";
 
 
       if (!alertSentDueToStatusChange && !isFeeStatusChangeOnlyToPaid && newlyUpdatedStudent.activityStatus === 'Active') {
@@ -558,10 +558,10 @@ export async function recordStudentPayment(
       const newTransactionId = `TXN${paymentMethod === "Admin Recorded" ? "ADMIN" : "MEM"}${String(Date.now()).slice(-7)}`;
 
       let actualPaymentAmount = paymentAmountInput;
-      if (paymentAmountInput === "FULL_DUE" && student.amountDue && student.amountDue !== "N/A" && student.amountDue !== "₹0") {
+      if (paymentAmountInput === "FULL_DUE" && student.amountDue && student.amountDue !== "N/A" && student.amountDue !== "Rs. 0") {
         actualPaymentAmount = student.amountDue;
       } else if (paymentAmountInput === "FULL_DUE") {
-        actualPaymentAmount = student.shift === "fullday" ? "₹1200" : "₹700";
+        actualPaymentAmount = student.shift === "fullday" ? "Rs. 1200" : "Rs. 700";
       }
 
       const newPaymentRecord: PaymentRecord = {
@@ -577,7 +577,7 @@ export async function recordStudentPayment(
         feeStatus: "Paid",
         lastPaymentDate: format(today, 'yyyy-MM-dd'),
         nextDueDate: format(addMonths(today, 1), 'yyyy-MM-dd'),
-        amountDue: "₹0",
+        amountDue: "Rs. 0",
         paymentHistory: [...(student.paymentHistory || []), newPaymentRecord],
       };
 
@@ -802,7 +802,8 @@ export async function calculateMonthlyRevenue(): Promise<string> {
         try {
           const paymentDate = parseISO(payment.date);
           if (isValid(paymentDate) && isWithinInterval(paymentDate, { start: currentMonthStart, end: currentMonthEnd })) {
-            const amountValue = parseInt(payment.amount.replace('₹', ''), 10);
+            const amountString = payment.amount.replace('Rs.', '').trim();
+            const amountValue = parseInt(amountString, 10);
             if (!isNaN(amountValue)) {
               totalRevenue += amountValue;
             }
@@ -813,12 +814,12 @@ export async function calculateMonthlyRevenue(): Promise<string> {
       });
     }
   });
-  return `₹${totalRevenue.toLocaleString('en-IN')}`;
+  return `Rs. ${totalRevenue.toLocaleString('en-IN')}`;
 }
 
 export type MonthlyRevenueData = {
-  monthDate: Date; // Store the actual date (e.g., first of the month) for sorting
-  monthDisplay: string; // e.g., "Jun" or "June 2024"
+  monthDate: Date; 
+  monthDisplay: string; 
   revenue: number;
 };
 
@@ -833,7 +834,8 @@ export async function getMonthlyRevenueHistory(): Promise<MonthlyRevenueData[]> 
           const paymentDate = parseISO(payment.date);
           if (isValid(paymentDate)) {
             const monthKey = format(paymentDate, 'yyyy-MM');
-            const amountValue = parseInt(payment.amount.replace('₹', ''), 10);
+            const amountString = payment.amount.replace('Rs.', '').trim();
+            const amountValue = parseInt(amountString, 10);
             if (!isNaN(amountValue)) {
               monthlyRevenueMap[monthKey] = (monthlyRevenueMap[monthKey] || 0) + amountValue;
             }
@@ -848,20 +850,19 @@ export async function getMonthlyRevenueHistory(): Promise<MonthlyRevenueData[]> 
   const history: MonthlyRevenueData[] = Object.entries(monthlyRevenueMap)
     .map(([monthKey, revenue]) => {
       const [year, monthNum] = monthKey.split('-').map(Number);
-      const monthDate = new Date(year, monthNum - 1, 1); // Month is 0-indexed for Date constructor
+      const monthDate = new Date(year, monthNum - 1, 1); 
       return {
         monthDate: monthDate,
-        monthDisplay: format(monthDate, 'MMM yyyy'), // For table: "Jun 2024"
+        monthDisplay: format(monthDate, 'MMMM yyyy'), 
         revenue: revenue,
       };
     })
-    .sort((a, b) => compareDesc(a.monthDate, b.monthDate)); // Sort descending by date
+    .sort((a, b) => compareDesc(a.monthDate, b.monthDate)); 
 
   return history;
 }
 
 
-// New function for calculating monthly study hours for a student
 export async function calculateMonthlyStudyHours(studentId: string): Promise<number> {
   const records = await getAttendanceRecordsByStudentId(studentId);
   let totalMilliseconds = 0;
@@ -872,27 +873,20 @@ export async function calculateMonthlyStudyHours(studentId: string): Promise<num
   records.forEach(record => {
     try {
       const checkInDate = parseISO(record.checkInTime);
-      // Ensure the check-in is within the current month
       if (isValid(checkInDate) && isWithinInterval(checkInDate, { start: currentMonthStart, end: currentMonthEnd })) {
         if (record.checkOutTime) {
           const checkOutDate = parseISO(record.checkOutTime);
-          // Ensure check-out is also valid and within the month (or if it spans, cap it at month end, though less likely for short check-ins)
           if (isValid(checkOutDate)) {
-             if (checkOutDate.getTime() > checkInDate.getTime()) { // Basic sanity check
-                // Consider if checkOutDate also needs to be within the current month for this calculation
-                // For simplicity, we are assuming check-ins/outs are generally within the same day or reasonably close.
+             if (checkOutDate.getTime() > checkInDate.getTime()) { 
                 totalMilliseconds += differenceInMilliseconds(checkOutDate, checkInDate);
             }
           }
         }
-        // If student is currently checked in (record.checkOutTime is undefined) and checkInDate is today,
-        // we could calculate hours up to now, but the current logic only sums completed sessions for the month.
-        // For this iteration, we'll stick to completed sessions.
       }
     } catch (e) {
       console.error("Error processing attendance record for hour calculation:", record, e);
     }
   });
-  return Math.round(totalMilliseconds / (1000 * 60 * 60)); // Convert ms to hours
+  return Math.round(totalMilliseconds / (1000 * 60 * 60)); 
 }
 

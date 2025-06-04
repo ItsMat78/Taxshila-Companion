@@ -61,7 +61,7 @@ export default function MemberFeesPage() {
       };
       fetchStudentData();
     } else {
-      setIsLoading(false); // No user email, so stop loading
+      setIsLoading(false); 
     }
   }, [user, toast]);
 
@@ -70,9 +70,9 @@ export default function MemberFeesPage() {
     switch (shift) {
       case "morning":
       case "evening":
-        return "₹700";
+        return "Rs. 700";
       case "fullday":
-        return "₹1200";
+        return "Rs. 1200";
       default:
         return "N/A";
     }
@@ -81,8 +81,8 @@ export default function MemberFeesPage() {
   const getFeeStatusBadgeVariant = (status?: Student['feeStatus'], activityStatus?: Student['activityStatus']) => {
     if (activityStatus === 'Left') return "secondary";
     switch (status) {
-      case "Paid": return "default"; // Will be styled with green
-      case "Due": return "default"; // Will be styled with yellow
+      case "Paid": return "default"; 
+      case "Due": return "default"; 
       case "Overdue": return "destructive";
       default: return "outline";
     }
@@ -93,7 +93,7 @@ export default function MemberFeesPage() {
      switch (status) {
       case "Paid": return "bg-green-100 text-green-700";
       case "Due": return "bg-yellow-100 text-yellow-700";
-      case "Overdue": return "bg-red-100 text-red-700"; // Using ShadCN destructive variant handles this
+      case "Overdue": return "bg-red-100 text-red-700"; 
       default: return "";
     }
   }
@@ -160,7 +160,7 @@ export default function MemberFeesPage() {
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Amount Due:</span>
-              <span className="font-medium">{studentData.activityStatus === 'Left' ? 'N/A' : studentData.amountDue || "₹0"}</span>
+              <span className="font-medium">{studentData.activityStatus === 'Left' ? 'N/A' : studentData.amountDue || "Rs. 0"}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Next Due Date:</span>
@@ -197,7 +197,7 @@ export default function MemberFeesPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {paymentHistory.slice().reverse().map((payment: PaymentRecord) => ( // Displaying recent first
+                  {paymentHistory.slice().reverse().map((payment: PaymentRecord) => ( 
                     <TableRow key={payment.paymentId}>
                       <TableCell>{payment.date}</TableCell>
                       <TableCell>{payment.amount}</TableCell>

@@ -40,18 +40,17 @@ export default function FeesDuePage() {
           (student.feeStatus === "Due" || student.feeStatus === "Overdue")
         );
 
-        // Sort: Overdue first, then Due. Within each, sort by nextDueDate (oldest first)
         dueStudents.sort((a, b) => {
           const statusOrder = (status: Student['feeStatus']) => status === "Overdue" ? 0 : 1;
           if (statusOrder(a.feeStatus) !== statusOrder(b.feeStatus)) {
             return statusOrder(a.feeStatus) - statusOrder(b.feeStatus);
           }
           try {
-            const dateA = a.nextDueDate && isValid(parseISO(a.nextDueDate)) ? parseISO(a.nextDueDate) : new Date(0); // Oldest if invalid
+            const dateA = a.nextDueDate && isValid(parseISO(a.nextDueDate)) ? parseISO(a.nextDueDate) : new Date(0); 
             const dateB = b.nextDueDate && isValid(parseISO(b.nextDueDate)) ? parseISO(b.nextDueDate) : new Date(0);
             return dateA.getTime() - dateB.getTime();
           } catch (e) {
-            return 0; // Fallback if date parsing fails critically
+            return 0; 
           }
         });
 
