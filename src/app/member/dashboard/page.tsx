@@ -40,7 +40,7 @@ const DashboardTile: React.FC<DashboardTileProps> = ({ title, description, icon:
       "shadow-lg hover:shadow-xl transition-shadow h-full flex flex-col",
       isPrimaryAction ? 'bg-primary text-primary-foreground hover:bg-primary/90' : 'hover:bg-muted/50',
       className,
-      { // Apply destructive border/ring only if hasNew is true AND it's NOT a primary action tile
+      { 
         'border-destructive ring-2 ring-destructive/50': hasNew && !isPrimaryAction,
       }
     )}>
@@ -48,7 +48,7 @@ const DashboardTile: React.FC<DashboardTileProps> = ({ title, description, icon:
         "relative",
         isPrimaryAction ? "p-4 pb-2" : "p-3 pb-1"
       )}>
-        {hasNew && !isPrimaryAction && ( // Show dot only if hasNew and not primary action
+        {hasNew && !isPrimaryAction && ( 
           <span className="absolute top-1 right-1 block h-2.5 w-2.5 rounded-full bg-destructive ring-1 ring-white" />
         )}
         <div className={cn(
@@ -109,33 +109,37 @@ export default function MemberDashboardPage() {
   const streamRef = React.useRef<MediaStream | null>(null);
 
   const [studentId, setStudentId] = React.useState<string | null>(null);
+  const [studentFirstName, setStudentFirstName] = React.useState<string | null>(null);
   const [hasUnreadAlerts, setHasUnreadAlerts] = React.useState(false);
-  const [isLoadingAlertStatus, setIsLoadingAlertStatus] = React.useState(true);
+  const [isLoadingStudentData, setIsLoadingStudentData] = React.useState(true);
 
   React.useEffect(() => {
     if (user?.email) {
-      setIsLoadingAlertStatus(true);
+      setIsLoadingStudentData(true);
       getStudentByEmail(user.email)
         .then(student => {
           if (student) {
             setStudentId(student.studentId);
+            setStudentFirstName(student.name ? student.name.split(' ')[0] : null);
             return getAlertsForStudent(student.studentId);
           }
-          setIsLoadingAlertStatus(false);
-          return Promise.resolve([]); // No student, no alerts
+          setStudentFirstName(null);
+          return Promise.resolve([]); 
         })
         .then((alerts: AlertItem[]) => {
           setHasUnreadAlerts(alerts.some(alert => !alert.isRead));
         })
         .catch(error => {
           console.error("Error fetching student data or alerts for dashboard:", error);
-          toast({ title: "Error", description: "Could not load alert status.", variant: "destructive" });
+          toast({ title: "Error", description: "Could not load dashboard data.", variant: "destructive" });
+          setStudentFirstName(null);
         })
         .finally(() => {
-          setIsLoadingAlertStatus(false);
+          setIsLoadingStudentData(false);
         });
     } else {
-      setIsLoadingAlertStatus(false);
+      setIsLoadingStudentData(false);
+      setStudentFirstName(null);
     }
   }, [user, toast]);
 
@@ -201,7 +205,7 @@ export default function MemberDashboardPage() {
   };
 
   const coreActionTiles: DashboardTileProps[] = [
-    { title: "View Alerts", description: "Catch up on announcements.", icon: Bell, href: "/member/alerts", hasNew: isLoadingAlertStatus ? false : hasUnreadAlerts },
+    { title: "View Alerts", description: "Catch up on announcements.", icon: Bell, href: "/member/alerts", hasNew: isLoadingStudentData ? false : hasUnreadAlerts },
     { title: "My Fees", description: "Check fee status & history.", icon: Receipt, href: "/member/fees" },
     { title: "Pay Fees", description: "Settle your outstanding dues.", icon: IndianRupee, href: "/member/pay" },
     { title: "Submit Feedback", description: "Share suggestions or issues.", icon: MessageSquare, href: "/member/feedback" },
@@ -211,10 +215,15 @@ export default function MemberDashboardPage() {
     { title: "Library Rules", description: "Familiarize yourself with guidelines.", icon: ScrollText, href: "/member/rules" },
     { title: "Rate Us", description: "Love our space? Let others know!", icon: Star, href: "https://www.google.com/maps/search/?api=1&query=Taxshila+Study+Hall+Pune", external: true },
   ];
+  
+  const defaultWelcomeName = user?.email?.split('@')[0] || 'Member';
+  const pageTitleText = isLoadingStudentData 
+    ? `Welcome, ${defaultWelcomeName}!` 
+    : (studentFirstName ? `Welcome, ${studentFirstName}!` : `Welcome, ${defaultWelcomeName}!`);
 
   return (
     <>
-      <PageTitle title={`Welcome, ${user?.email?.split('@')[0] || 'Member'}!`} description="Your Taxshila Companion dashboard." />
+      <PageTitle title={pageTitleText} description="Your Taxshila Companion dashboard." />
 
       <Dialog open={isScannerOpen} onOpenChange={setIsScannerOpen}>
         <DialogTrigger asChild>
