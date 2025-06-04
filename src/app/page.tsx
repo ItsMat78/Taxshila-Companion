@@ -15,9 +15,9 @@ import {
   Loader2,
   UserPlus,
   CalendarDays,
-  Send as SendIcon, // Renamed to avoid conflict with Send component if any
+  Send as SendIcon,
   Inbox,
-  Database as DatabaseIcon // Renamed to avoid conflict
+  Database as DatabaseIcon
 } from 'lucide-react';
 import {
   Dialog,
@@ -82,7 +82,7 @@ function AdminDashboardContent() {
     { title: "Total Students", value: 125, icon: Users, description: "+5 since last month", href: "/students/list" },
     { title: "Occupied Seats", value: placeholderActiveStudents.length, icon: Briefcase, description: "Currently in use. Click to view.", action: () => setShowActiveStudentsDialog(true) },
     { title: "Available Seats", value: placeholderAvailableSeats.length, icon: Armchair, description: "Ready for booking. Click to view.", action: () => setShowAvailableSeatsDialog(true) },
-    { title: "Fees Requiring Attention", value: "₹5,670", icon: IndianRupee, description: "Outstanding payments (placeholder)", href: "/admin/fees/due" },
+    { title: "Fees Requiring Attention", value: "₹5,670", icon: IndianRupee, description: "Outstanding payments", href: "/admin/fees/due" },
   ];
 
   const adminActionTiles: ActionTileItem[] = [
@@ -112,7 +112,7 @@ function AdminDashboardContent() {
           if (stat.href) {
             return (
               <Link href={stat.href} key={stat.title} passHref legacyBehavior>
-                <a className="block no-underline cursor-pointer hover:shadow-md transition-shadow duration-150 ease-in-out rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+                <a className="block no-underline cursor-pointer hover:shadow-md transition-shadow duration-150 ease-in-out rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 h-full">
                   {statCardElement}
                 </a>
               </Link>
@@ -124,7 +124,7 @@ function AdminDashboardContent() {
             return (
               <Dialog key={stat.title} open={dialogOpenState} onOpenChange={setDialogOpenState}>
                 <DialogTrigger asChild>
-                  <div className="cursor-pointer hover:shadow-md transition-shadow duration-150 ease-in-out rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" onClick={stat.action}>
+                  <div className="cursor-pointer hover:shadow-md transition-shadow duration-150 ease-in-out rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 h-full" onClick={stat.action}>
                     {statCardElement}
                   </div>
                 </DialogTrigger>
@@ -209,7 +209,8 @@ function AdminDashboardContent() {
               </Dialog>
             );
           } else {
-            return <div key={stat.title}>{statCardElement}</div>;
+             // Fallback for stat cards that are neither links nor dialog triggers
+            return <div key={stat.title} className="h-full">{statCardElement}</div>;
           }
         })}
       </div>
@@ -221,13 +222,13 @@ function AdminDashboardContent() {
           const Icon = tile.icon;
           return (
             <Link href={tile.href} key={tile.title} passHref legacyBehavior>
-              <a className="block no-underline focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-lg">
+              <a className="block no-underline focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-lg h-full"> {/* Added h-full here for consistency if needed */}
                 <Card className="shadow-md hover:shadow-lg transition-shadow h-full flex flex-col aspect-square">
-                  <CardHeader className="p-3 pb-1 items-center text-center"> {/* Centering content */}
-                    <Icon className="h-6 w-6 mb-1 text-primary" /> {/* Slightly larger icon and margin */}
+                  <CardHeader className="p-3 pb-1 items-center text-center flex-grow justify-center"> {/* Centering content */}
+                    <Icon className="h-6 w-6 mb-1 text-primary" /> 
                     <ShadcnCardTitle className="text-base font-semibold">{tile.title}</ShadcnCardTitle>
                   </CardHeader>
-                  <CardContent className="p-3 pt-0 text-center flex-grow flex items-center justify-center"> {/* Centering description */}
+                  <CardContent className="p-3 pt-0 text-center flex items-center justify-center"> {/* Centering description */}
                     <ShadcnCardDescription className="text-xs text-muted-foreground">{tile.description}</ShadcnCardDescription>
                   </CardContent>
                 </Card>
@@ -273,5 +274,3 @@ export default function MainPage() {
       </div>
   );
 }
-
-    
