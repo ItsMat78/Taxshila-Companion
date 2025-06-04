@@ -3,7 +3,7 @@
 import * as React from 'react';
 import { PageTitle } from '@/components/shared/page-title';
 import { StatCard } from '@/components/shared/stat-card';
-import { Users, Briefcase, WifiOff, CheckSquare, Clock, UserCheck } from 'lucide-react'; 
+import { Users, Briefcase, WifiOff, CheckSquare, Clock, UserCheck, DollarSign } from 'lucide-react'; 
 import {
   Dialog,
   DialogContent,
@@ -20,8 +20,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Card } from '@/components/ui/card'; // Import Card for consistent styling if needed
-
 
 // Placeholder data for active students
 const placeholderActiveStudents = [
@@ -38,7 +36,7 @@ export default function AdminDashboardPage() {
     { title: "Total Students", value: 125, icon: Users, description: "+5 since last month", isClickable: false },
     { title: "Active Seats", value: 80, icon: Briefcase, description: "Currently occupied", isClickable: true, action: () => setShowActiveStudentsDialog(true) },
     { title: "Inactive Seats", value: 20, icon: WifiOff, description: "Needs attention", isClickable: false },
-    { title: "Total Bookings Today", value: 95, icon: CheckSquare, description: "Across all shifts", isClickable: false },
+    { title: "Total Revenue", value: "₹5,670", icon: DollarSign, description: "This month (placeholder)", isClickable: false },
   ];
 
   return (
@@ -107,17 +105,6 @@ export default function AdminDashboardPage() {
           )
         )}
       </div>
-      {/* Placeholder for future charts or more detailed stats */}
-      {/* <div className="mt-8">
-        <Card>
-          <CardHeader>
-            <CardTitle>Occupancy Trends</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-muted-foreground">Chart placeholder</p>
-          </CardContent>
-        </Card>
-      </div> */}
     </>
   );
 }

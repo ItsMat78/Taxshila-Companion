@@ -48,9 +48,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     sessionStorage.setItem('taxshilaUser', JSON.stringify(userData));
     setIsLoading(false);
     if (role === 'admin') {
-      router.push('/'); 
+      router.push('/');
     } else {
-      router.push('/attendance/calendar'); // Changed redirect for members
+      router.push('/member/attendance'); // Updated redirect for members
     }
   };
 
@@ -74,3 +74,4 @@ export function useAuth() {
   }
   return context;
 }
+

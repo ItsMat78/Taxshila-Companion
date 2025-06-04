@@ -8,7 +8,13 @@ import {
   ListChecks,
   UserPlus,
   Eye,
-  Database, 
+  Database,
+  CreditCard,
+  Receipt,
+  DollarSign,
+  BarChart3,
+  History,
+  QrCode,
   type Icon as LucideIcon,
 } from 'lucide-react';
 import type { UserRole } from '@/types/auth';
@@ -24,6 +30,7 @@ export type NavItem = {
 };
 
 export const mainNav: NavItem[] = [
+  // Admin Routes
   {
     title: 'Dashboard',
     href: '/',
@@ -32,7 +39,7 @@ export const mainNav: NavItem[] = [
   },
   {
     title: 'Students',
-    href: '#',
+    href: '#', // Parent item, no direct link
     icon: Users,
     roles: ['admin'],
     items: [
@@ -52,12 +59,12 @@ export const mainNav: NavItem[] = [
   },
   {
     title: 'Seat Management',
-    href: '#',
+    href: '#', // Parent item
     icon: Armchair,
     roles: ['admin'],
     items: [
       {
-        title: 'Check Seat Availability',
+        title: 'Seat Availability',
         href: '/seats/availability',
         icon: Eye,
         roles: ['admin'],
@@ -65,15 +72,50 @@ export const mainNav: NavItem[] = [
     ]
   },
   {
-    title: 'Attendance Calendar',
+    title: 'Attendance Overview', // Renamed for clarity, admin specific
     href: '/attendance/calendar',
     icon: CalendarDays,
-    roles: ['member', 'admin'],
+    roles: ['admin'],
   },
   {
-    title: 'Data Management', 
+    title: 'Financials',
+    href: '#', // Parent item
+    icon: DollarSign,
+    roles: ['admin'],
+    items: [
+      {
+        title: 'Fees Due List',
+        href: '/admin/fees/due',
+        icon: CreditCard, // More relevant icon for dues
+        roles: ['admin'],
+      },
+    ]
+  },
+  {
+    title: 'Data Management',
     href: '/admin/data-management',
     icon: Database,
     roles: ['admin'],
   },
+
+  // Member Routes
+  {
+    title: 'My Attendance',
+    href: '/member/attendance',
+    icon: BarChart3, // Using a different icon for member's view
+    roles: ['member'],
+  },
+  {
+    title: 'My Fees',
+    href: '/member/fees',
+    icon: Receipt,
+    roles: ['member'],
+  },
+  {
+    title: 'Pay Fees',
+    href: '/member/pay',
+    icon: QrCode, // Icon suggests QR or payment
+    roles: ['member'],
+  },
 ];
+
