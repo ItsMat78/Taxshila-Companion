@@ -25,7 +25,8 @@ import {
   ClipboardCheck,
   Landmark, 
   type Icon as LucideIcon,
-  Home // Added Home for Member Dashboard
+  Home,
+  UserCircle // Added UserCircle
 } from 'lucide-react';
 import type { UserRole } from '@/types/auth';
 
@@ -143,13 +144,19 @@ export const mainNav: NavItem[] = [
 
   // Member Routes
   {
-    title: 'Dashboard', // New Member Dashboard
+    title: 'Dashboard', 
     href: '/member/dashboard',
     icon: Home, 
     roles: ['member'],
   },
   {
-    title: 'My Attendance', // Calendar and summary view
+    title: 'My Profile', // New Profile Page
+    href: '/member/profile',
+    icon: UserCircle,
+    roles: ['member'],
+  },
+  {
+    title: 'My Attendance', 
     href: '/member/attendance',
     icon: BarChart3, 
     roles: ['member'],
