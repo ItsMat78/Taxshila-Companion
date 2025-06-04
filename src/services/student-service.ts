@@ -2,13 +2,15 @@
 import type { Student, Shift, FeeStatus, PaymentRecord, ActivityStatus, AttendanceRecord } from '@/types/student';
 import { format, parseISO, differenceInDays, isPast, addMonths, subHours, subMinutes, startOfDay, endOfDay, isValid } from 'date-fns';
 
-// Define ALL_SEAT_NUMBERS directly in this file
-const ALL_SEAT_NUMBERS: string[] = [];
+// Define ALL_SEAT_NUMBERS directly in this file and export it
+export const ALL_SEAT_NUMBERS: string[] = [];
 for (let i = 1; i <= 85; i++) {
   if (i !== 17) {
     ALL_SEAT_NUMBERS.push(String(i));
   }
 }
+ALL_SEAT_NUMBERS.sort((a, b) => parseInt(a) - parseInt(b));
+
 
 // In-memory store for students
 let students: Student[] = [
@@ -224,7 +226,7 @@ export function addStudent(studentData: AddStudentData): Promise<Student> {
 
       const today = new Date();
       const newStudent: Student = {
-        ...studentData, // Includes name, phone, shift, seatNumber, and optional email/idCardFileName
+        ...studentData, 
         studentId: getNextStudentId(),
         feeStatus: "Due",
         activityStatus: "Active",
@@ -233,7 +235,8 @@ export function addStudent(studentData: AddStudentData): Promise<Student> {
         nextDueDate: format(addMonths(today, 1), 'yyyy-MM-dd'),
         profilePictureUrl: "https://placehold.co/200x200.png", 
         paymentHistory: [],
-        email: studentData.email || undefined, // Ensure email is undefined if empty string was passed
+        email: studentData.email || undefined, 
+        idCardFileName: studentData.idCardFileName || undefined,
       };
       students.push(newStudent);
       resolve({...newStudent}); 
@@ -260,6 +263,10 @@ export function updateStudent(studentId: string, studentUpdateData: Partial<Omit
           reject(new Error("New seat number is already taken by an active student."));
           return;
         }
+         if (!ALL_SEAT_NUMBERS.includes(studentUpdateData.seatNumber)) {
+            reject(new Error("Invalid new seat number selected."));
+            return;
+        }
       }
       
       let updatedStudentData = { ...currentStudent, ...studentUpdateData };
@@ -271,7 +278,12 @@ export function updateStudent(studentId: string, studentUpdateData: Partial<Omit
         updatedStudentData.lastPaymentDate = undefined;
         updatedStudentData.nextDueDate = undefined;
       } else if (studentUpdateData.activityStatus === 'Active' && currentStudent.activityStatus === 'Left') {
-        // Re-activating student specific logic (like fee status reset) should be handled in the component calling this
+        // Re-activating student specific logic (like fee status reset) is handled in the component calling this
+        // but ensure the seat number is valid if one is being assigned.
+        if (!updatedStudentData.seatNumber || !ALL_SEAT_NUMBERS.includes(updatedStudentData.seatNumber)) {
+            reject(new Error("A valid seat must be selected to re-activate a student."));
+            return;
+        }
       }
       
       students[studentIndex] = updatedStudentData;
@@ -381,3 +393,5 @@ export function getAttendanceRecordsByStudentId(studentId: string): Promise<Atte
     }, 50);
   });
 }
+
+    
