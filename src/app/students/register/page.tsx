@@ -90,8 +90,8 @@ export default function StudentRegisterPage() {
     if (data.idCardImage && data.idCardImage.length > 0) {
       idCardFileName = data.idCardImage[0].name;
     }
-    // Handle seatNumber being "" from "None" option, convert to undefined for consistency
-    const finalSeatNumber = data.seatNumber === "" ? undefined : data.seatNumber;
+    // Handle seatNumber from "None" option or empty string, convert to undefined for consistency
+    const finalSeatNumber = data.seatNumber === "NO_SEAT" || data.seatNumber === "" ? undefined : data.seatNumber;
 
     console.log("New student data:", { ...data, idCardFileName, seatNumber: finalSeatNumber });
     
@@ -145,14 +145,14 @@ export default function StudentRegisterPage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Seat Number (Optional)</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value || ""} defaultValue={field.value || ""}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select an available seat" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value=""><em>None</em></SelectItem>
+                        <SelectItem value="NO_SEAT"><em>None</em></SelectItem>
                         {availableSeats.map(seat => (
                           <SelectItem key={seat} value={seat}>
                             {seat}
