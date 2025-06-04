@@ -98,7 +98,7 @@ function AdminDashboardContent() {
   return (
     <>
       <PageTitle title="Admin Dashboard" description="Overview of Taxshila Companion activities." />
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {stats.map((stat) => {
           const statCardElement = (
             <StatCard
@@ -112,7 +112,7 @@ function AdminDashboardContent() {
           if (stat.href) {
             return (
               <Link href={stat.href} key={stat.title} passHref legacyBehavior>
-                <a className="block no-underline cursor-pointer hover:shadow-md transition-shadow duration-150 ease-in-out rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 h-full aspect-square">
+                <a className="block no-underline cursor-pointer hover:shadow-md transition-shadow duration-150 ease-in-out rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 aspect-square">
                   {statCardElement}
                 </a>
               </Link>
@@ -124,7 +124,7 @@ function AdminDashboardContent() {
             return (
               <Dialog key={stat.title} open={dialogOpenState} onOpenChange={setDialogOpenState}>
                 <DialogTrigger asChild>
-                  <div className="cursor-pointer hover:shadow-md transition-shadow duration-150 ease-in-out rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 h-full aspect-square" onClick={stat.action}>
+                  <div className="cursor-pointer hover:shadow-md transition-shadow duration-150 ease-in-out rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 aspect-square" onClick={stat.action}>
                     {statCardElement}
                   </div>
                 </DialogTrigger>
@@ -209,7 +209,7 @@ function AdminDashboardContent() {
               </Dialog>
             );
           } else {
-            return <div key={stat.title} className="h-full aspect-square">{statCardElement}</div>;
+            return <div key={stat.title} className="aspect-square">{statCardElement}</div>;
           }
         })}
       </div>

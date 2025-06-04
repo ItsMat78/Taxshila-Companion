@@ -15,12 +15,12 @@ interface StatCardProps {
 export function StatCard({ title, value, icon: Icon, description, className }: StatCardProps) {
   return (
     <Card className={cn(
-      "flex flex-col items-center justify-center text-center p-3 h-full", // Reduced padding from p-4 to p-3
+      "flex flex-col items-center justify-center text-center p-3 w-full h-full", 
       className
     )}>
-      {Icon && <Icon className="h-7 w-7 mb-2 text-primary" />}
+      {Icon && <Icon className="h-6 w-6 mb-1 text-primary" />}
       <div className="text-sm font-semibold text-card-foreground mb-1">{title}</div>
-      <div className="text-3xl font-bold text-foreground mb-1">{value}</div>
+      <div className="text-2xl font-bold text-foreground mb-1">{value}</div>
       {description && (
         <p className="text-xs text-muted-foreground">{description}</p>
       )}
