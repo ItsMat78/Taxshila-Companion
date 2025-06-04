@@ -3,9 +3,11 @@ import type { Student, Shift, FeeStatus, PaymentRecord, ActivityStatus, Attendan
 import { format, parseISO, differenceInDays, isPast, addMonths, subHours, subMinutes, startOfDay, endOfDay, isValid } from 'date-fns';
 
 export const ALL_SEAT_NUMBERS: string[] = [];
-// Seat 17 is now included
+// Populate seats from 1 to 85, EXCLUDING 17
 for (let i = 1; i <= 85; i++) {
-  ALL_SEAT_NUMBERS.push(String(i));
+  if (i !== 17) {
+    ALL_SEAT_NUMBERS.push(String(i));
+  }
 }
 ALL_SEAT_NUMBERS.sort((a, b) => parseInt(a) - parseInt(b));
 
@@ -66,22 +68,6 @@ let students: Student[] = [
    { studentId: "TS007", name: "Sanya Gupta Due", email: "sanya.gupta@example.com", phone: "9876543216", shift: "morning", seatNumber: "8", feeStatus: "Due", activityStatus: "Active", registrationDate: "2024-05-01", lastPaymentDate: "2024-05-10", nextDueDate: "2024-06-10", amountDue: "₹700" },
    { studentId: "TS008", name: "Kavita Singh Paid", email: "kavita.singh@example.com", phone: "9876543217", shift: "morning", seatNumber: "10", feeStatus: "Paid", activityStatus: "Active", registrationDate: "2024-05-10", lastPaymentDate: "2024-06-01", nextDueDate: "2024-07-01", amountDue: "₹0" },
    { studentId: "TS012", name: "Karan Verma Long Overdue", email: "karan.verma@example.com", phone: "9876543221", shift: "evening", seatNumber: "15", feeStatus: "Overdue", activityStatus: "Active", registrationDate: "2024-01-01", lastPaymentDate: "2024-01-20", nextDueDate: format(addMonths(new Date(), -4), 'yyyy-MM-dd'), amountDue: "₹700" },
-   {
-    studentId: "TS017",
-    name: "Seventeen Seater",
-    email: "seat17.fullday@example.com",
-    phone: "9876543217",
-    shift: "fullday",
-    seatNumber: "17",
-    idCardFileName: "seat17_id.jpg",
-    feeStatus: "Paid",
-    activityStatus: "Active",
-    registrationDate: "2024-06-01",
-    lastPaymentDate: "2024-06-01",
-    nextDueDate: "2024-07-01",
-    amountDue: "₹0",
-    profilePictureUrl: "https://placehold.co/200x200.png",
-  },
 ];
 
 let attendanceRecords: AttendanceRecord[] = [
