@@ -34,24 +34,13 @@ import {
   FormDescription,
 } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Save, ClipboardCheck, Info as InfoIcon } from 'lucide-react';
+import { ArrowLeft, Save, ClipboardCheck, Info as InfoIcon, Loader2 } from 'lucide-react';
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
-
-// Placeholder for existing students to determine taken seats and student data
-// In a real app, this data would come from an API or state management
-const MOCK_STUDENT_DATABASE = {
-  "TS001": { studentId: "TS001", name: "Aarav Sharma", email: "aarav.sharma@example.com", phone: "9876543210", shift: "morning" as const, seatNumber: "A01", idCardFileName: "aarav_id.jpg", feeStatus: "Paid" },
-  "TS002": { studentId: "TS002", name: "Priya Patel", email: "priya.patel@example.com", phone: "9876543211", shift: "evening" as const, seatNumber: "B03", idCardFileName: "priya_id.png", feeStatus: "Due" },
-  "TS003": { studentId: "TS003", name: "Rohan Mehta", email: "rohan.mehta@example.com", phone: "9876543212", shift: "fullday" as const, seatNumber: "C07", idCardFileName: "rohan_aadhar.jpeg", feeStatus: "Overdue" },
-};
-type StudentKey = keyof typeof MOCK_STUDENT_DATABASE;
-
-// Define all seat numbers (e.g., A01-A20, B01-B20, etc.) - simplified for example
-const ALL_SEAT_NUMBERS = Array.from({ length: 20 }, (_, i) => `A${String(i + 1).padStart(2, '0')}`)
-  .concat(Array.from({ length: 20 }, (_, i) => `B${String(i + 1).padStart(2, '0')}`))
-  .concat(Array.from({ length: 5 }, (_, i) => `C${String(i + 1).padStart(2, '0')}`)); // Total 45 seats
-
+import { useParams, useRouter } from 'next/navigation';
+import { getStudentById, updateStudent, getAvailableSeats } from '@/services/student-service';
+import type { Student, Shift } from '@/types/student';
+import { format, addMonths } from 'date-fns';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const studentEditFormSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
@@ -64,87 +53,177 @@ const studentEditFormSchema = z.object({
 type StudentEditFormValues = z.infer<typeof studentEditFormSchema>;
 
 const shiftOptions = [
-  { value: "morning", label: "Morning Shift (7 AM - 2 PM)" },
-  { value: "evening", label: "Evening Shift (3 PM - 10 PM)" },
-  { value: "fullday", label: "Full Day (7 AM - 10 PM)" },
+  { value: "morning" as Shift, label: "Morning Shift (7 AM - 2 PM)" },
+  { value: "evening" as Shift, label: "Evening Shift (3 PM - 10 PM)" },
+  { value: "fullday" as Shift, label: "Full Day (7 AM - 10 PM)" },
 ];
 
 export default function EditStudentPage() {
   const { toast } = useToast();
   const params = useParams();
-  const studentId = params.studentId as StudentKey;
+  const router = useRouter();
+  const studentId = params.studentId as string;
 
-  const [studentData, setStudentData] = React.useState(MOCK_STUDENT_DATABASE[studentId]);
+  const [studentData, setStudentData] = React.useState<Student | null>(null);
+  const [availableSeatOptions, setAvailableSeatOptions] = React.useState<string[]>([]);
+  const [isLoading, setIsLoading] = React.useState(true);
+  const [isSaving, setIsSaving] = React.useState(false);
 
   const form = useForm<StudentEditFormValues>({
     resolver: zodResolver(studentEditFormSchema),
-    defaultValues: studentData ? {
-      name: studentData.name,
-      email: studentData.email,
-      phone: studentData.phone,
-      shift: studentData.shift,
-      seatNumber: studentData.seatNumber,
-    } : {},
+    defaultValues: {
+      name: "",
+      email: "",
+      phone: "",
+      shift: undefined,
+      seatNumber: "",
+    },
   });
-  
-  React.useEffect(() => {
-    // Reset form if studentData changes (e.g. after marking payment)
-     if (studentData) {
-      form.reset({
-        name: studentData.name,
-        email: studentData.email,
-        phone: studentData.phone,
-        shift: studentData.shift,
-        seatNumber: studentData.seatNumber,
-      });
-    }
-  }, [studentData, form]);
 
+  React.useEffect(() => {
+    if (!studentId) return;
+
+    const fetchData = async () => {
+      setIsLoading(true);
+      try {
+        const student = await getStudentById(studentId);
+        if (student) {
+          setStudentData(student);
+          form.reset({
+            name: student.name,
+            email: student.email || "",
+            phone: student.phone,
+            shift: student.shift,
+            seatNumber: student.seatNumber,
+          });
+
+          const seats = await getAvailableSeats();
+          const currentStudentSeat = student.seatNumber;
+          const seatOptionsSet = new Set(seats);
+          if (currentStudentSeat) {
+            seatOptionsSet.add(currentStudentSeat);
+          }
+          setAvailableSeatOptions(Array.from(seatOptionsSet).sort());
+
+        } else {
+          toast({ title: "Error", description: "Student not found.", variant: "destructive" });
+          setStudentData(null); // Explicitly set to null if not found
+        }
+      } catch (error) {
+        console.error("Failed to fetch student data:", error);
+        toast({ title: "Error", description: "Failed to load student data.", variant: "destructive" });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchData();
+  }, [studentId, form, toast]);
+
+
+  async function onSaveChanges(data: StudentEditFormValues) {
+    if (!studentId || !studentData) return;
+    setIsSaving(true);
+    try {
+      const updatedStudent = await updateStudent(studentId, {
+        name: data.name,
+        email: data.email,
+        phone: data.phone,
+        shift: data.shift,
+        seatNumber: data.seatNumber,
+      });
+      if (updatedStudent) {
+        setStudentData(updatedStudent); // Update local state with the response
+        form.reset(updatedStudent); // Re-sync form with potentially modified data from backend
+        toast({
+          title: "Changes Saved",
+          description: `${updatedStudent.name}'s details have been updated.`,
+        });
+      } else {
+         toast({ title: "Error", description: "Failed to save changes.", variant: "destructive"});
+      }
+    } catch (error: any) {
+      toast({
+        title: "Save Failed",
+        description: error.message || "An unexpected error occurred.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  async function handleMarkPaymentPaid() {
+    if (!studentId || !studentData) return;
+    setIsSaving(true);
+    const today = new Date();
+    const paymentUpdatePayload: Partial<Student> = {
+      feeStatus: "Paid",
+      amountDue: "₹0",
+      lastPaymentDate: format(today, 'yyyy-MM-dd'),
+      nextDueDate: format(addMonths(today, 1), 'yyyy-MM-dd'),
+    };
+    try {
+      const updatedStudent = await updateStudent(studentId, paymentUpdatePayload);
+      if (updatedStudent) {
+        setStudentData(updatedStudent);
+         toast({
+          title: "Payment Status Updated",
+          description: `Payment for ${updatedStudent.name} has been marked as Paid.`,
+        });
+      } else {
+        toast({ title: "Error", description: "Failed to update payment status.", variant: "destructive"});
+      }
+    } catch (error: any) {
+       toast({
+        title: "Update Failed",
+        description: error.message || "An unexpected error occurred.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  if (isLoading) {
+    return (
+      <>
+        <PageTitle title="Edit Student: ..." description="Loading student details...">
+         <Skeleton className="h-10 w-36" />
+        </PageTitle>
+        <Card className="w-full md:max-w-2xl mx-auto shadow-lg">
+          <CardHeader>
+            <Skeleton className="h-6 w-48 mb-2" />
+            <Skeleton className="h-4 w-full" />
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}
+          </CardContent>
+          <CardFooter className="flex justify-between">
+            <Skeleton className="h-10 w-40" />
+            <Skeleton className="h-10 w-32" />
+          </CardFooter>
+        </Card>
+      </>
+    );
+  }
 
   if (!studentData) {
     return (
-      <div className="flex items-center justify-center h-full">
-        <p>Student not found or loading...</p>
-        <Link href="/students/list" passHref legacyBehavior>
-          <Button variant="link" className="mt-4">Go back to list</Button>
-        </Link>
+      <div className="flex flex-col items-center justify-center h-full py-10">
+        <PageTitle title="Student Not Found" description={`No student found with ID: ${studentId}`} />
+        <Button onClick={() => router.push('/students/list')} variant="outline">
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Back to Student List
+        </Button>
       </div>
     );
-  }
-  
-  // Simplified seat availability: lists all seats not taken by OTHER students, plus current student's seat
-  const takenSeatsByOthers = Object.values(MOCK_STUDENT_DATABASE)
-    .filter(s => s.studentId !== studentId && s.seatNumber)
-    .map(s => s.seatNumber!);
-  const availableSeatOptions = ALL_SEAT_NUMBERS.filter(seat => !takenSeatsByOthers.includes(seat) || seat === studentData.seatNumber);
-
-
-  function onSaveChanges(data: StudentEditFormValues) {
-    console.log("Updated student data (simulated):", { studentId, ...data });
-    // Simulate update
-    MOCK_STUDENT_DATABASE[studentId] = { ...MOCK_STUDENT_DATABASE[studentId], ...data, feeStatus: studentData.feeStatus, idCardFileName: studentData.idCardFileName };
-    setStudentData(prev => prev ? { ...prev, ...data } : null); // Update local state for UI reflect
-    toast({
-      title: "Changes Saved (Placeholder)",
-      description: `${data.name}'s details have been updated.`,
-    });
-  }
-
-  function handleMarkPaymentPaid() {
-    console.log(`Marking payment as paid for ${studentId} (simulated)`);
-    MOCK_STUDENT_DATABASE[studentId].feeStatus = "Paid"; // Simulate update
-    setStudentData(prev => prev ? { ...prev, feeStatus: "Paid" as const } : null);
-    toast({
-      title: "Payment Status Updated (Placeholder)",
-      description: `Payment for ${studentData.name} has been marked as Paid.`,
-    });
   }
 
   return (
     <>
       <PageTitle title={`Edit Student: ${studentData.name}`} description={`Modifying details for Student ID: ${studentId}`}>
         <Link href="/students/list" passHref legacyBehavior>
-          <Button variant="outline">
+          <Button variant="outline" disabled={isSaving}>
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back to Student List
           </Button>
@@ -165,21 +244,21 @@ export default function EditStudentPage() {
                 </FormControl>
               </FormItem>
               <FormField control={form.control} name="name" render={({ field }) => (
-                <FormItem><FormLabel>Full Name</FormLabel><FormControl><Input placeholder="Enter student's full name" {...field} /></FormControl><FormMessage /></FormItem>
+                <FormItem><FormLabel>Full Name</FormLabel><FormControl><Input placeholder="Enter student's full name" {...field} disabled={isSaving} /></FormControl><FormMessage /></FormItem>
               )} />
               <FormField control={form.control} name="email" render={({ field }) => (
-                <FormItem><FormLabel>Email Address (Optional)</FormLabel><FormControl><Input type="email" placeholder="student@example.com" {...field} /></FormControl><FormMessage /></FormItem>
+                <FormItem><FormLabel>Email Address (Optional)</FormLabel><FormControl><Input type="email" placeholder="student@example.com" {...field} disabled={isSaving} /></FormControl><FormMessage /></FormItem>
               )} />
               <FormField control={form.control} name="phone" render={({ field }) => (
-                <FormItem><FormLabel>Phone Number</FormLabel><FormControl><Input type="tel" placeholder="Enter 10-digit phone number" {...field} /></FormControl><FormMessage /></FormItem>
+                <FormItem><FormLabel>Phone Number</FormLabel><FormControl><Input type="tel" placeholder="Enter 10-digit phone number" {...field} disabled={isSaving} /></FormControl><FormMessage /></FormItem>
               )} />
               <FormField control={form.control} name="shift" render={({ field }) => (
                 <FormItem className="space-y-3"><FormLabel>Shift Selection</FormLabel>
                   <FormControl>
-                    <RadioGroup onValueChange={field.onChange} value={field.value} className="flex flex-col space-y-2">
+                    <RadioGroup onValueChange={field.onChange} value={field.value} className="flex flex-col space-y-2" disabled={isSaving}>
                       {shiftOptions.map(option => (
                         <FormItem key={option.value} className="flex items-center space-x-3 space-y-0">
-                          <FormControl><RadioGroupItem value={option.value} /></FormControl>
+                          <FormControl><RadioGroupItem value={option.value} disabled={isSaving} /></FormControl>
                           <FormLabel className="font-normal">{option.label}</FormLabel>
                         </FormItem>
                       ))}
@@ -193,7 +272,7 @@ export default function EditStudentPage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Seat Number</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value || ""}>
+                    <Select onValueChange={field.onChange} value={field.value || ""} disabled={isSaving}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select a seat" />
@@ -225,12 +304,12 @@ export default function EditStudentPage() {
               </FormItem>
             </CardContent>
             <CardFooter className="flex flex-col sm:flex-row justify-between items-center gap-4">
-              <Button type="button" variant="outline" onClick={handleMarkPaymentPaid} disabled={studentData.feeStatus === "Paid"}>
-                <ClipboardCheck className="mr-2 h-4 w-4" />
+              <Button type="button" variant="outline" onClick={handleMarkPaymentPaid} disabled={isSaving || studentData.feeStatus === "Paid"}>
+                {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ClipboardCheck className="mr-2 h-4 w-4" />}
                 Mark Payment as Paid
               </Button>
-              <Button type="submit">
-                <Save className="mr-2 h-4 w-4" />
+              <Button type="submit" disabled={isSaving}>
+                {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                 Save Changes
               </Button>
             </CardFooter>
@@ -240,3 +319,5 @@ export default function EditStudentPage() {
     </>
   );
 }
+
+    
