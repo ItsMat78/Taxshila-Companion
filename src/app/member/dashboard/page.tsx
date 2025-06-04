@@ -29,25 +29,38 @@ type DashboardTileProps = {
   className?: string;
   isPrimaryAction?: boolean;
   external?: boolean;
+  hasNew?: boolean; // For new alert indicator
 };
 
-const DashboardTile: React.FC<DashboardTileProps> = ({ title, description, icon: Icon, href, action, className = "", isPrimaryAction = false, external = false }) => {
+const DashboardTile: React.FC<DashboardTileProps> = ({ title, description, icon: Icon, href, action, className = "", isPrimaryAction = false, external = false, hasNew = false }) => {
   const tileContent = (
     <Card className={cn(
-      "shadow-lg hover:shadow-xl transition-shadow h-full flex flex-col",
+      "shadow-lg hover:shadow-xl transition-shadow h-full flex flex-col relative", // Added relative for positioning the dot
       isPrimaryAction ? 'bg-primary text-primary-foreground hover:bg-primary/90' : 'hover:bg-muted/50',
-      className // Allows passing aspect-square or other structural classes from outside
+      className
     )}>
-      <CardHeader className={cn("pb-2", isPrimaryAction ? "pt-6 pb-3" : "pt-4")}>
+      <CardHeader className={cn(
+        "pb-2", 
+        isPrimaryAction ? "pt-6 pb-3" : "pt-4 pb-2" // Adjusted padding
+      )}>
+        {hasNew && !isPrimaryAction && (
+          <span className="absolute top-2 right-2 flex h-3 w-3">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-3 w-3 bg-accent"></span>
+          </span>
+        )}
         <CardTitle className={cn(
-          "flex items-center font-semibold",
-          isPrimaryAction ? 'text-xl' : 'text-lg',
+          "flex items-center",
+          isPrimaryAction ? 'text-xl font-semibold' : 'text-lg font-semibold',
         )}>
           <Icon className={cn("mr-3", isPrimaryAction ? "h-6 w-6" : "h-5 w-5")} />
           {title}
         </CardTitle>
       </CardHeader>
-      <CardContent className="flex-grow">
+      <CardContent className={cn(
+        "flex-grow",
+        isPrimaryAction ? "pt-0 pb-4 px-6" : "p-4 pt-0" // Ensured padding for content
+        )}>
         {description && <p className={cn(
           isPrimaryAction ? 'text-sm text-primary-foreground/80' : 'text-xs text-muted-foreground',
         )}>{description}</p>}
@@ -154,10 +167,10 @@ export default function MemberDashboardPage() {
   };
   
   const coreActionTiles: DashboardTileProps[] = [
+    { title: "View Alerts", description: "Catch up on important announcements.", icon: Bell, href: "/member/alerts", hasNew: true }, // Added hasNew placeholder
     { title: "My Fees", description: "View your fee status and history.", icon: Receipt, href: "/member/fees" },
     { title: "Pay Fees", description: "Settle your outstanding dues.", icon: IndianRupee, href: "/member/pay" },
     { title: "Submit Feedback", description: "Share suggestions or report issues.", icon: MessageSquare, href: "/member/feedback" },
-    { title: "View Alerts", description: "Catch up on important announcements.", icon: Bell, href: "/member/alerts" },
   ];
 
   const otherResourcesTiles: DashboardTileProps[] = [
@@ -226,17 +239,14 @@ export default function MemberDashboardPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Core Action Tiles - Square */}
       <div className="grid grid-cols-2 gap-4 sm:gap-6">
         {coreActionTiles.map((tile) => (
           <DashboardTile key={tile.title} {...tile} className="aspect-square" />
         ))}
       </div>
 
-      {/* Separator */}
       <div className="my-8 border-t border-border"></div>
 
-      {/* Other Resources Tiles */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
         {otherResourcesTiles.map((tile) => (
           <DashboardTile key={tile.title} {...tile} />
@@ -245,3 +255,5 @@ export default function MemberDashboardPage() {
     </>
   );
 }
+
+    
