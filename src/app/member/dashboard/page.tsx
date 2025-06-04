@@ -12,7 +12,7 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle as ShadcnDialogTitle, // Aliased to avoid conflict with CardTitle if any confusion
-  DialogTrigger, // Added DialogTrigger
+  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Alert, AlertDescription, AlertTitle as ShadcnAlertTitle } from '@/components/ui/alert'; // Aliased
 import { useToast } from '@/hooks/use-toast';
@@ -35,19 +35,16 @@ type DashboardTileProps = {
 const DashboardTile: React.FC<DashboardTileProps> = ({ title, description, icon: Icon, href, action, className = "", isPrimaryAction = false, external = false, hasNew = false }) => {
   const content = (
     <Card className={cn(
-      "shadow-lg hover:shadow-xl transition-shadow h-full flex flex-col relative", 
+      "shadow-lg hover:shadow-xl transition-shadow h-full flex flex-col", 
       isPrimaryAction ? 'bg-primary text-primary-foreground hover:bg-primary/90' : 'hover:bg-muted/50',
-      className
+      className,
+      {
+        'border-destructive ring-2 ring-destructive animate-pulse': hasNew && !isPrimaryAction,
+      }
     )}>
       <CardHeader className={cn(
         isPrimaryAction ? "p-4 pb-2" : "p-3 pb-1" 
       )}>
-        {hasNew && !isPrimaryAction && (
-          <span className="absolute top-2 right-2 flex h-3 w-3">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-3 w-3 bg-accent"></span>
-          </span>
-        )}
         <CardTitle className={cn(
           "flex items-center",
           isPrimaryAction ? 'text-lg font-semibold' : 'text-base font-semibold', 
@@ -68,15 +65,18 @@ const DashboardTile: React.FC<DashboardTileProps> = ({ title, description, icon:
   );
 
   if (href) {
-    const linkProps = external
-      ? { target: '_blank', rel: 'noopener noreferrer' }
-      : {};
     return (
-      <Link href={href} {...linkProps} className={cn("block h-full no-underline", className)}>
+      <Link
+        href={href}
+        target={external ? '_blank' : undefined}
+        rel={external ? 'noopener noreferrer' : undefined}
+        className={cn("block h-full no-underline focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-lg", className)}
+      >
         {content}
       </Link>
     );
   }
+
 
   if (action) {
     return <button onClick={action} className={cn("block w-full h-full text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-lg", className)}>{content}</button>;
@@ -156,10 +156,10 @@ export default function MemberDashboardPage() {
   };
   
   const coreActionTiles: DashboardTileProps[] = [
-    { title: "View Alerts", description: "Catch up on important announcements.", icon: Bell, href: "/member/alerts", hasNew: true }, 
-    { title: "My Fees", description: "View your fee status and history.", icon: Receipt, href: "/member/fees" },
+    { title: "View Alerts", description: "Catch up on announcements.", icon: Bell, href: "/member/alerts", hasNew: true }, 
+    { title: "My Fees", description: "Check fee status & history.", icon: Receipt, href: "/member/fees" },
     { title: "Pay Fees", description: "Settle your outstanding dues.", icon: IndianRupee, href: "/member/pay" },
-    { title: "Submit Feedback", description: "Share suggestions or report issues.", icon: MessageSquare, href: "/member/feedback" },
+    { title: "Submit Feedback", description: "Share suggestions or issues.", icon: MessageSquare, href: "/member/feedback" },
   ];
 
   const otherResourcesTiles: DashboardTileProps[] = [

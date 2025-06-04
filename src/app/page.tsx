@@ -17,7 +17,8 @@ import {
   CalendarDays,
   Send as SendIcon,
   Inbox,
-  Eye // Added Eye icon
+  Eye,
+  Database 
 } from 'lucide-react';
 import {
   Dialog,
@@ -72,6 +73,7 @@ type ActionTileItem = {
   description: string;
   icon: React.ElementType;
   href: string;
+  hasNew?: boolean;
 };
 
 function AdminDashboardContent() {
@@ -79,10 +81,10 @@ function AdminDashboardContent() {
   const [showAvailableSeatsDialog, setShowAvailableSeatsDialog] = React.useState(false);
 
   const stats: StatItem[] = [
-    { title: "Total Students", value: 125, icon: Users, description: "+5 since last month", href: "/students/list" },
-    { title: "Occupied Seats", value: placeholderActiveStudents.length, icon: Briefcase, description: "Currently in use. Click to view.", action: () => setShowActiveStudentsDialog(true) },
-    { title: "Available Seats", value: placeholderAvailableSeats.length, icon: Armchair, description: "Ready for booking. Click to view.", action: () => setShowAvailableSeatsDialog(true) },
-    { title: "Revenue", value: "₹15,670", icon: IndianRupee, description: "This month. (Placeholder)", href: "/admin/fees/payments-history" }, // Changed title, updated description and href
+    { title: "Total Students", value: 125, icon: Users, description: "+5 last month", href: "/students/list" },
+    { title: "Occupied Seats", value: placeholderActiveStudents.length, icon: Briefcase, description: "Click to view", action: () => setShowActiveStudentsDialog(true) },
+    { title: "Available Seats", value: placeholderAvailableSeats.length, icon: Armchair, description: "Click to view", action: () => setShowAvailableSeatsDialog(true) },
+    { title: "Revenue", value: "₹15,670", icon: IndianRupee, description: "This month (est.)", href: "/admin/fees/payments-history" },
   ];
 
   const adminActionTiles: ActionTileItem[] = [
@@ -90,8 +92,8 @@ function AdminDashboardContent() {
     { title: "Register Student", icon: UserPlus, description: "Add new students to system.", href: "/students/register" },
     { title: "Attendance Overview", icon: CalendarDays, description: "Check student attendance logs.", href: "/attendance/calendar" },
     { title: "Send Alert", icon: SendIcon, description: "Broadcast to all members.", href: "/admin/alerts/send" },
-    { title: "View Feedback", icon: Inbox, description: "Review member suggestions.", href: "/admin/feedback" },
-    { title: "Seat Availability", icon: Eye, description: "View current seat status.", href: "/seats/availability" }, // Replaced Data Management
+    { title: "View Feedback", icon: Inbox, description: "Review member suggestions.", href: "/admin/feedback", hasNew: true },
+    { title: "Seat Availability", icon: Eye, description: "View current seat status.", href: "/seats/availability" },
   ];
 
 
@@ -109,12 +111,12 @@ function AdminDashboardContent() {
             />
           );
 
+          const wrapperClasses = "block no-underline aspect-square focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-lg";
+
           if (stat.href) {
             return (
-              <Link href={stat.href} key={stat.title} passHref legacyBehavior>
-                <a className="block no-underline cursor-pointer hover:shadow-md transition-shadow duration-150 ease-in-out rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 aspect-square">
-                  {statCardElement}
-                </a>
+              <Link href={stat.href} key={stat.title} className={wrapperClasses}>
+                {statCardElement}
               </Link>
             );
           } else if (stat.action) {
@@ -124,7 +126,7 @@ function AdminDashboardContent() {
             return (
               <Dialog key={stat.title} open={dialogOpenState} onOpenChange={setDialogOpenState}>
                 <DialogTrigger asChild>
-                  <div className="cursor-pointer hover:shadow-md transition-shadow duration-150 ease-in-out rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 aspect-square" onClick={stat.action}>
+                  <div className={cn(wrapperClasses, "cursor-pointer")} onClick={stat.action}>
                     {statCardElement}
                   </div>
                 </DialogTrigger>
@@ -209,7 +211,7 @@ function AdminDashboardContent() {
               </Dialog>
             );
           } else {
-            return <div key={stat.title} className="aspect-square">{statCardElement}</div>;
+            return <div key={stat.title} className={wrapperClasses}>{statCardElement}</div>;
           }
         })}
       </div>
@@ -220,18 +222,19 @@ function AdminDashboardContent() {
         {adminActionTiles.map((tile) => {
           const Icon = tile.icon;
           return (
-            <Link href={tile.href} key={tile.title} passHref legacyBehavior>
-              <a className="block no-underline focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-lg h-full">
-                <Card className="shadow-md hover:shadow-lg transition-shadow h-full flex flex-col aspect-square">
-                  <CardHeader className="p-3 pb-1 items-center text-center flex-grow justify-center">
-                    <Icon className="h-6 w-6 mb-1 text-primary" /> 
-                    <ShadcnCardTitle className="text-base font-semibold">{tile.title}</ShadcnCardTitle>
-                  </CardHeader>
-                  <CardContent className="p-3 pt-0 text-center flex items-center justify-center">
-                    <ShadcnCardDescription className="text-xs text-muted-foreground">{tile.description}</ShadcnCardDescription>
-                  </CardContent>
-                </Card>
-              </a>
+            <Link href={tile.href} key={tile.title} className="block no-underline focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-lg h-full">
+              <Card className={cn(
+                "shadow-md hover:shadow-lg transition-shadow h-full flex flex-col aspect-square items-center justify-center",
+                tile.hasNew && "border-destructive ring-2 ring-destructive animate-pulse"
+              )}>
+                <CardHeader className="p-3 pb-1 items-center text-center flex-grow justify-center">
+                  <Icon className="h-6 w-6 mb-2 text-primary" /> 
+                  <ShadcnCardTitle className="text-base font-semibold">{tile.title}</ShadcnCardTitle>
+                </CardHeader>
+                <CardContent className="p-3 pt-0 text-center flex items-center justify-center">
+                  <ShadcnCardDescription className="text-xs text-muted-foreground">{tile.description}</ShadcnCardDescription>
+                </CardContent>
+              </Card>
             </Link>
           );
         })}
@@ -272,5 +275,3 @@ export default function MainPage() {
       </div>
   );
 }
-
-    
