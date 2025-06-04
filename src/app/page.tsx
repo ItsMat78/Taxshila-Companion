@@ -9,91 +9,105 @@ import {
   Briefcase, 
   Armchair, 
   IndianRupee, 
-  AlertTriangle, 
-  UserCheck, 
-  Clock, 
   Loader2,
   UserPlus,
   CalendarDays,
   Send as SendIcon, 
   Inbox,
-  Eye,
-  Database 
+  Eye
 } from 'lucide-react';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle as ShadcnCardTitle, CardDescription as ShadcnCardDescription } from '@/components/ui/card';
 import { useAuth } from '@/contexts/auth-context';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
+import { getAllStudents, getAvailableSeats } from '@/services/student-service';
+import type { Student, Shift } from '@/types/student';
 
-// Placeholder data for active students - now includes shift, overstayed status, seatNumber, and phone
-const placeholderActiveStudents = [
-  { id: "TS001", name: "Aarav Sharma", timeIn: "2 hours 30 minutes", shift: "morning", hasOverstayed: false, seatNumber: "1", phone: "9876543210" },
-  { id: "TS002", name: "Priya Patel", timeIn: "7 hours 15 minutes", shift: "morning", hasOverstayed: true, seatNumber: "20", phone: "9876543211" },
-  { id: "TS004", name: "Vikram Singh", timeIn: "4 hours 5 minutes", shift: "evening", hasOverstayed: false, seatNumber: "40", phone: "9876543213" },
-  { id: "TS005", name: "Neha Reddy", timeIn: "0 hours 45 minutes", shift: "fullday", hasOverstayed: false, seatNumber: "50", phone: "9876543214" },
-  { id: "TS008", name: "Kavita Singh", timeIn: "8 hours 0 minutes", shift: "morning", hasOverstayed: true, seatNumber: "10", phone: "9876543217" },
-];
-
-// Placeholder data for available seats
-const placeholderAvailableSeats = [
-  { seatNumber: "2" },
-  { seatNumber: "22" },
-  { seatNumber: "38" },
-  { seatNumber: "55" },
-  { seatNumber: "70" },
-];
-
-type StatItem = {
+type StatItemConfig = {
   title: string;
-  value: string | number;
   icon: React.ElementType;
-  description: string;
   href?: string;
-  action?: () => void;
+  // For standard StatCard
+  value?: string | number;
+  description?: string;
+  // For custom cards, these specific counts will be used
+  isCustom?: boolean; 
 };
 
-type ActionTileItem = {
-  title: string;
-  description: string;
-  icon: React.ElementType;
-  href: string;
-  hasNew?: boolean;
-};
 
 function AdminDashboardContent() {
-  const [showActiveStudentsDialog, setShowActiveStudentsDialog] = React.useState(false);
-  const [showAvailableSeatsDialog, setShowAvailableSeatsDialog] = React.useState(false);
+  const [isLoadingDashboardStats, setIsLoadingDashboardStats] = React.useState(true);
+  
+  // State for Occupied Slots breakdown
+  const [occupiedMorningStudentsCount, setOccupiedMorningStudentsCount] = React.useState(0);
+  const [occupiedEveningStudentsCount, setOccupiedEveningStudentsCount] = React.useState(0);
+  const [occupiedFullDayStudentsCount, setOccupiedFullDayStudentsCount] = React.useState(0);
 
-  const stats: StatItem[] = [
-    { title: "Total Students", value: 125, icon: Users, description: "+5 last month", href: "/students/list" },
-    { title: "Occupied Seats", value: placeholderActiveStudents.length, icon: Briefcase, description: "Click to view", action: () => setShowActiveStudentsDialog(true) },
-    { title: "Available Seats", value: placeholderAvailableSeats.length, icon: Armchair, description: "Click to view", action: () => setShowAvailableSeatsDialog(true) },
+  // State for Available Slots breakdown
+  const [availableMorningSlotsCount, setAvailableMorningSlotsCount] = React.useState(0);
+  const [availableEveningSlotsCount, setAvailableEveningSlotsCount] = React.useState(0);
+  const [availableFullDaySlotsCount, setAvailableFullDaySlotsCount] = React.useState(0);
+
+  React.useEffect(() => {
+    const fetchDashboardStats = async () => {
+      setIsLoadingDashboardStats(true);
+      try {
+        const [allStudentsData, morningAvail, eveningAvail, fulldayAvail] = await Promise.all([
+          getAllStudents(),
+          getAvailableSeats('morning'),
+          getAvailableSeats('evening'),
+          getAvailableSeats('fullday')
+        ]);
+
+        const activeStudents = allStudentsData.filter(s => s.activityStatus === "Active" && s.seatNumber);
+        setOccupiedMorningStudentsCount(activeStudents.filter(s => s.shift === 'morning').length);
+        setOccupiedEveningStudentsCount(activeStudents.filter(s => s.shift === 'evening').length);
+        setOccupiedFullDayStudentsCount(activeStudents.filter(s => s.shift === 'fullday').length);
+
+        setAvailableMorningSlotsCount(morningAvail.length);
+        setAvailableEveningSlotsCount(eveningAvail.length);
+        setAvailableFullDaySlotsCount(fulldayAvail.length);
+
+      } catch (error) {
+        console.error("Failed to load dashboard stats:", error);
+        // Set counts to 0 or handle error appropriately
+        setOccupiedMorningStudentsCount(0);
+        setOccupiedEveningStudentsCount(0);
+        setOccupiedFullDayStudentsCount(0);
+        setAvailableMorningSlotsCount(0);
+        setAvailableEveningSlotsCount(0);
+        setAvailableFullDaySlotsCount(0);
+      } finally {
+        setIsLoadingDashboardStats(false);
+      }
+    };
+    fetchDashboardStats();
+  }, []);
+
+  const statsConfig: StatItemConfig[] = [
+    { title: "Total Students", value: 125, icon: Users, description: "+5 last month", href: "/students/list" }, // Placeholder value
+    { 
+      title: "Occupied Student Slots", 
+      icon: Briefcase, 
+      href: "/seats/availability",
+      isCustom: true,
+    },
+    { 
+      title: "Available Booking Slots", 
+      icon: Armchair, 
+      href: "/seats/availability",
+      isCustom: true,
+    },
     { title: "Revenue", value: "₹15,670", icon: IndianRupee, description: "This month (est.)", href: "/admin/fees/payments-history" },
   ];
 
-  const adminActionTiles: ActionTileItem[] = [
+  const adminActionTiles = [
     { title: "Manage Students", icon: Users, description: "View, edit student details.", href: "/students/list" },
     { title: "Register Student", icon: UserPlus, description: "Add new students to system.", href: "/students/register" },
     { title: "Attendance Overview", icon: CalendarDays, description: "Check student attendance logs.", href: "/attendance/calendar" },
     { title: "Send Alert", icon: SendIcon, description: "Broadcast to all members.", href: "/admin/alerts/send" },
     { title: "View Feedback", icon: Inbox, description: "Review member suggestions.", href: "/admin/feedback", hasNew: true },
-    { title: "Seat Availability", icon: Eye, description: "View current seat status.", href: "/seats/availability" },
+    { title: "Seat Dashboard", icon: Eye, description: "View current seat status.", href: "/seats/availability" },
   ];
 
 
@@ -101,120 +115,81 @@ function AdminDashboardContent() {
     <>
       <PageTitle title="Admin Dashboard" description="Overview of Taxshila Companion activities." />
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-        {stats.map((stat) => {
-          const statCardElement = (
-            <StatCard
-              title={stat.title}
-              value={stat.value}
-              icon={stat.icon}
-              description={stat.description}
-            />
-          );
+        {statsConfig.map((stat) => {
+          const wrapperClasses = "block no-underline focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-lg h-full";
+          const cardBaseClasses = "flex flex-col items-center justify-center text-center p-3 w-full h-full shadow-md hover:shadow-lg transition-shadow";
+          const Icon = stat.icon;
 
-          const wrapperClasses = "block no-underline aspect-square focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-lg";
+          if (stat.isCustom && stat.href) {
+            if (stat.title === "Occupied Student Slots") {
+              return (
+                <Link href={stat.href} key={stat.title} className={wrapperClasses}>
+                  <Card className={cardBaseClasses}>
+                    <CardHeader className="p-0 pb-2 items-center">
+                      <Icon className="h-6 w-6 mb-1 text-primary" />
+                      <ShadcnCardTitle className="text-sm font-semibold text-card-foreground">{stat.title}</ShadcnCardTitle>
+                    </CardHeader>
+                    <CardContent className="p-0 text-xs space-y-0.5 text-muted-foreground">
+                      {isLoadingDashboardStats ? <Loader2 className="h-5 w-5 animate-spin my-2" /> : (
+                        <>
+                          <p>Morning Students: <span className="font-semibold text-foreground">{occupiedMorningStudentsCount}</span></p>
+                          <p>Evening Students: <span className="font-semibold text-foreground">{occupiedEveningStudentsCount}</span></p>
+                          <p>Full Day Students: <span className="font-semibold text-foreground">{occupiedFullDayStudentsCount}</span></p>
+                        </>
+                      )}
+                    </CardContent>
+                  </Card>
+                </Link>
+              );
+            }
+            if (stat.title === "Available Booking Slots") {
+              return (
+                <Link href={stat.href} key={stat.title} className={wrapperClasses}>
+                  <Card className={cardBaseClasses}>
+                    <CardHeader className="p-0 pb-2 items-center">
+                      <Icon className="h-6 w-6 mb-1 text-primary" />
+                      <ShadcnCardTitle className="text-sm font-semibold text-card-foreground">{stat.title}</ShadcnCardTitle>
+                    </CardHeader>
+                    <CardContent className="p-0 text-xs space-y-0.5 text-muted-foreground">
+                      {isLoadingDashboardStats ? <Loader2 className="h-5 w-5 animate-spin my-2" /> : (
+                        <>
+                          <p>Morning Slots: <span className="font-semibold text-foreground">{availableMorningSlotsCount}</span></p>
+                          <p>Evening Slots: <span className="font-semibold text-foreground">{availableEveningSlotsCount}</span></p>
+                          <p>Full Day Slots: <span className="font-semibold text-foreground">{availableFullDaySlotsCount}</span></p>
+                        </>
+                      )}
+                    </CardContent>
+                  </Card>
+                </Link>
+              );
+            }
+          }
 
+          // Standard StatCard rendering
           if (stat.href) {
             return (
               <Link href={stat.href} key={stat.title} className={wrapperClasses}>
-                {statCardElement}
+                <StatCard
+                  title={stat.title}
+                  value={stat.value!} // Definite assignment for standard cards
+                  icon={stat.icon}
+                  description={stat.description}
+                  className="shadow-md hover:shadow-lg transition-shadow"
+                />
               </Link>
             );
-          } else if (stat.action) {
-            const dialogOpenState = (stat.title === "Occupied Seats" && showActiveStudentsDialog) || (stat.title === "Available Seats" && showAvailableSeatsDialog);
-            const setDialogOpenState = stat.title === "Occupied Seats" ? setShowActiveStudentsDialog : stat.title === "Available Seats" ? setShowAvailableSeatsDialog : undefined;
-            
-            return (
-              <Dialog key={stat.title} open={dialogOpenState} onOpenChange={setDialogOpenState}>
-                <DialogTrigger asChild>
-                  <div className={cn(wrapperClasses, "cursor-pointer")} onClick={stat.action}>
-                    {statCardElement}
-                  </div>
-                </DialogTrigger>
-                {stat.title === "Occupied Seats" && (
-                  <DialogContent className="sm:max-w-[725px]">
-                    <DialogHeader>
-                      <DialogTitle className="flex items-center"><UserCheck className="mr-2 h-5 w-5" /> Active Students in Library</DialogTitle>
-                      <DialogDescription>
-                        List of students currently checked in. Overstayed students are highlighted.
-                      </DialogDescription>
-                    </DialogHeader>
-                    <div className="max-h-[60vh] overflow-y-auto">
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Student ID</TableHead>
-                            <TableHead>Name</TableHead>
-                            <TableHead>Phone</TableHead>
-                            <TableHead>Seat</TableHead>
-                            <TableHead className="flex items-center"><Clock className="mr-1 h-4 w-4"/>Time In Library</TableHead>
-                            <TableHead>Status</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {placeholderActiveStudents.map((student) => (
-                            <TableRow key={student.id} className={student.hasOverstayed ? "bg-destructive/10" : ""}>
-                              <TableCell>{student.id}</TableCell>
-                              <TableCell className="font-medium">{student.name}</TableCell>
-                              <TableCell>{student.phone}</TableCell>
-                              <TableCell>{student.seatNumber}</TableCell>
-                              <TableCell>{student.timeIn}</TableCell>
-                              <TableCell>
-                                {student.hasOverstayed && (
-                                  <AlertTriangle className="h-5 w-5 text-destructive" />
-                                )}
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                          {placeholderActiveStudents.length === 0 && (
-                             <TableRow>
-                               <TableCell colSpan={6} className="text-center text-muted-foreground">
-                                 No students currently active in the library.
-                               </TableCell>
-                             </TableRow>
-                          )}
-                        </TableBody>
-                      </Table>
-                    </div>
-                  </DialogContent>
-                )}
-                 {stat.title === "Available Seats" && (
-                  <DialogContent className="sm:max-w-[425px]">
-                    <DialogHeader>
-                      <DialogTitle className="flex items-center"><Armchair className="mr-2 h-5 w-5" /> Available Seats</DialogTitle>
-                      <DialogDescription>
-                        List of currently available seat numbers.
-                      </DialogDescription>
-                    </DialogHeader>
-                    <div className="max-h-[60vh] overflow-y-auto">
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Seat Number</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {placeholderAvailableSeats.map((seat) => (
-                            <TableRow key={seat.seatNumber}>
-                              <TableCell className="font-medium">{seat.seatNumber}</TableCell>
-                            </TableRow>
-                          ))}
-                          {placeholderAvailableSeats.length === 0 && (
-                             <TableRow>
-                               <TableCell className="text-center text-muted-foreground">
-                                 No seats currently available.
-                               </TableCell>
-                             </TableRow>
-                          )}
-                        </TableBody>
-                      </Table>
-                    </div>
-                  </DialogContent>
-                )}
-              </Dialog>
-            );
-          } else {
-            return <div key={stat.title} className={wrapperClasses}>{statCardElement}</div>;
           }
+          return (
+            <div key={stat.title} className={cn(wrapperClasses, "h-full")}>
+               <StatCard
+                title={stat.title}
+                value={stat.value!}
+                icon={stat.icon}
+                description={stat.description}
+                className="shadow-md hover:shadow-lg transition-shadow"
+              />
+            </div>
+          );
         })}
       </div>
 
@@ -233,7 +208,7 @@ function AdminDashboardContent() {
                    {tile.hasNew && (
                      <span className="absolute top-1 right-1 block h-2.5 w-2.5 rounded-full bg-destructive ring-1 ring-white" />
                    )}
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2"> {/* Changed to always have items-center and gap */}
                     <Icon className="h-6 w-6 text-primary" /> 
                     <ShadcnCardTitle className="text-base font-semibold">{tile.title}</ShadcnCardTitle>
                   </div>
@@ -259,10 +234,13 @@ export default function MainPage() {
       if (user.role === 'member') {
         router.replace('/member/dashboard');
       }
+      // If admin, they stay on this page (implicitly by not redirecting)
+    } else if (!isLoading && !user) {
+       router.replace('/login'); // Redirect to login if not loading and no user
     }
   }, [user, isLoading, router]);
 
-  if (isLoading || (user && user.role === 'member')) {
+  if (isLoading || (!user && !isLoading)) { // Show loader if loading OR if not loading and no user (while redirecting)
     return (
       <div className="flex min-h-screen w-full flex-col items-center justify-center bg-background">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -270,15 +248,27 @@ export default function MainPage() {
       </div>
     );
   }
-
+  
+  // At this point, isLoading is false and user exists
+  if (user && user.role === 'member') { // Should have been caught by useEffect, but as a fallback
+    return (
+      <div className="flex min-h-screen w-full flex-col items-center justify-center bg-background">
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+        <p className="mt-4 text-muted-foreground">Redirecting...</p>
+      </div>
+    );
+  }
+  
   if (user && user.role === 'admin') {
     return <AdminDashboardContent />;
   }
 
+  // Fallback if something unexpected happens (should ideally not be reached)
   return (
      <div className="flex min-h-screen w-full flex-col items-center justify-center bg-background">
-        <Loader2 className="h-12 w-12 animate-spin text-primary" />
-        <p className="mt-4 text-muted-foreground">Redirecting...</p>
+        <p className="text-destructive">An unexpected error occurred.</p>
       </div>
   );
 }
+
+    
