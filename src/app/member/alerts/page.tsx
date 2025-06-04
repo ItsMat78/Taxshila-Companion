@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from 'react';
@@ -25,6 +26,7 @@ import type { AlertItem } from '@/types/communication';
 import { useToast } from '@/hooks/use-toast';
 import { format, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { useNotificationContext } from '@/contexts/notification-context'; // Import context hook
 
 interface AlertDetailsDialogProps {
   isOpen: boolean;
@@ -84,6 +86,7 @@ function AlertDetailsDialog({ isOpen, onClose, alertItem }: AlertDetailsDialogPr
 export default function MemberAlertsPage() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { refreshNotifications } = useNotificationContext(); // Consume refresh function
   const [alertsList, setAlertsList] = React.useState<AlertItem[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [studentId, setStudentId] = React.useState<string | null>(null);
@@ -141,8 +144,9 @@ export default function MemberAlertsPage() {
     setIsAlertDetailsOpen(true);
     if (!alertItem.isRead && studentId) { 
       try {
-        await markAlertAsRead(alertItem.id, studentId); // Pass studentId here
-        fetchAlerts(studentId); 
+        await markAlertAsRead(alertItem.id, studentId); 
+        await fetchAlerts(studentId); // Re-fetch alerts for this page
+        refreshNotifications(); // Trigger notification count refresh for header
       } catch (error) {
         toast({ title: "Error", description: "Could not mark alert as read.", variant: "destructive" });
       }
