@@ -41,6 +41,7 @@ import { format, parseISO, isToday, getHours } from 'date-fns';
 
 type CheckedInStudentInfo = Student & { 
   checkInTime: string;
+  isOutsideShift?: boolean; // Restored this property
 };
 
 function AdminDashboardContent() {
@@ -111,7 +112,17 @@ function AdminDashboardContent() {
           .map(record => {
             const student = allStudentsData.find(s => s.studentId === record.studentId);
             if (!student) return null;
-            return { ...student, checkInTime: record.checkInTime };
+
+            // Logic to determine if outside shift (restored)
+            let isOutside = false;
+            const checkInHour = getHours(parseISO(record.checkInTime));
+            if (student.shift === "morning" && (checkInHour < 7 || checkInHour >= 14)) {
+              isOutside = true;
+            } else if (student.shift === "evening" && (checkInHour < 15 || checkInHour >= 22)) {
+              isOutside = true;
+            }
+
+            return { ...student, checkInTime: record.checkInTime, isOutsideShift: isOutside };
           })
           .filter((s): s is CheckedInStudentInfo => s !== null)
           .sort((a, b) => parseISO(a.checkInTime).getTime() - parseISO(b.checkInTime).getTime());
@@ -182,7 +193,14 @@ function AdminDashboardContent() {
                   {checkedInStudents.map((student) => (
                     <TableRow key={student.studentId}>
                       <TableCell>{student.studentId}</TableCell>
-                      <TableCell className="font-medium">{student.name}</TableCell>
+                      <TableCell className="font-medium flex items-center">
+                        {student.name}
+                        {student.isOutsideShift && (
+                          <Badge variant="outline" className="ml-2 border-yellow-500 text-yellow-600 text-xs">
+                            Outside Shift
+                          </Badge>
+                        )}
+                      </TableCell>
                       <TableCell>{student.seatNumber || 'N/A'}</TableCell>
                       <TableCell>{format(parseISO(student.checkInTime), 'p')}</TableCell>
                     </TableRow>
@@ -337,3 +355,5 @@ export default function MainPage() {
       </div>
   );
 }
+
+    
