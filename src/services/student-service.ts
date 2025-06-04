@@ -1,5 +1,6 @@
 
 import type { Student, Shift, FeeStatus, PaymentRecord, ActivityStatus, AttendanceRecord } from '@/types/student';
+import type { FeedbackItem, FeedbackType, FeedbackStatus } from '@/types/communication';
 import { format, parseISO, differenceInDays, isPast, addMonths, subHours, subMinutes, startOfDay, endOfDay, isValid } from 'date-fns';
 
 export const ALL_SEAT_NUMBERS: string[] = [];
@@ -38,15 +39,17 @@ let students: Student[] = [
     email: "priya.patel@example.com",
     phone: "9876543211",
     shift: "evening",
-    seatNumber: "1", // Now shares seat with Aarav but different shift
+    seatNumber: "1", 
     idCardFileName: "priya_id.png",
-    feeStatus: "Due",
+    feeStatus: "Paid", // Updated from previous successful payment test
     activityStatus: "Active",
     registrationDate: "2024-02-20",
-    lastPaymentDate: "2024-05-05",
-    nextDueDate: "2024-06-05",
-    amountDue: "₹700",
-    paymentHistory: [],
+    lastPaymentDate: format(new Date(), 'yyyy-MM-dd'), // Updated from previous successful payment test
+    nextDueDate: format(addMonths(new Date(), 1), 'yyyy-MM-dd'), // Updated from previous successful payment test
+    amountDue: "₹0", // Updated from previous successful payment test
+    paymentHistory: [
+      { paymentId: "AUTOGEN_PAYID_PREVIOUS", date: format(new Date(), 'yyyy-MM-dd'), amount: "₹700", transactionId: "AUTOGEN_TXNID_PREVIOUS", method: "UPI" },
+    ],
   },
   {
     studentId: "TS003",
@@ -77,6 +80,12 @@ let attendanceRecords: AttendanceRecord[] = [
   { recordId: "AR002", studentId: "TS002", date: format(new Date(), 'yyyy-MM-dd'), checkInTime: subHours(new Date(), 1).toISOString(), checkOutTime: subMinutes(new Date(), 15).toISOString() },
   { recordId: "AR003", studentId: "TS001", date: format(subHours(new Date(), 25), 'yyyy-MM-dd'), checkInTime: subHours(new Date(), 25).toISOString(), checkOutTime: subHours(new Date(), 20).toISOString() },
 ];
+
+let feedbackItems: FeedbackItem[] = [
+    { id: "FB001", studentId: "TS002", studentName: "Priya Patel", dateSubmitted: "2024-06-28", type: "Complaint", message: "The AC in the evening shift section is not working properly. It gets very warm.", status: "Open" },
+    { id: "FB002", studentId: "TS005", studentName: "Neha Reddy", dateSubmitted: "2024-06-27", type: "Suggestion", message: "Could we have more charging points available near the window seats?", status: "Open" },
+];
+
 
 function getNextAttendanceRecordId(): string {
   const maxId = attendanceRecords.reduce((max, ar) => {
@@ -120,19 +129,14 @@ function applyAutomaticStatusUpdates(student: Student): Student {
 
 function processStudentsForUpdates(studentArray: Student[]): Student[] {
     const processedStudents = studentArray.map(s => {
-        let currentStudentState = {...s}; // Work with a copy
+        let currentStudentState = {...s}; 
 
-        // Update fee status based on nextDueDate for active students not already 'Left' or 'Paid'
         if (currentStudentState.activityStatus === 'Active' && currentStudentState.feeStatus !== 'Paid' && currentStudentState.nextDueDate) {
             try {
                 const dueDate = parseISO(currentStudentState.nextDueDate);
                 const today = new Date();
                 if (isValid(dueDate) && isPast(dueDate)) {
                     currentStudentState.feeStatus = 'Overdue';
-                } else if (isValid(dueDate) && !isPast(dueDate) && currentStudentState.feeStatus !== 'Due') {
-                    // This case might be for if a payment was just made but dueDate is future, ensure it's 'Due' or 'Paid'
-                    // For now, if not Paid and not Overdue, it's 'Due' by default if nextDueDate exists
-                    // This part of logic might need refinement based on how 'Due' is triggered initially
                 }
             } catch (e) {
                 console.error(`Error processing fee status for student ${currentStudentState.studentId}: ${currentStudentState.nextDueDate}`, e);
@@ -170,7 +174,6 @@ export function getStudentById(studentId: string): Promise<Student | undefined> 
       if (studentIdx !== -1) {
         const student = students[studentIdx];
         const updatedStudent = applyAutomaticStatusUpdates({...student});
-        // Update the main array if changes occurred
         if (students[studentIdx].activityStatus !== updatedStudent.activityStatus ||
             students[studentIdx].seatNumber !== updatedStudent.seatNumber ||
             students[studentIdx].feeStatus !== updatedStudent.feeStatus) {
@@ -187,11 +190,10 @@ export function getStudentById(studentId: string): Promise<Student | undefined> 
 export function getStudentByEmail(email: string): Promise<Student | undefined> {
   return new Promise((resolve) => {
     setTimeout(() => {
-      const studentIdx = students.findIndex(s => s.email === email && s.activityStatus === 'Active');
+      const studentIdx = students.findIndex(s => s.email === email); // Check all students, not just active
       if (studentIdx !== -1) {
         const student = students[studentIdx];
         const updatedStudent = applyAutomaticStatusUpdates({...student});
-         // Update the main array if changes occurred
         if (students[studentIdx].activityStatus !== updatedStudent.activityStatus ||
             students[studentIdx].seatNumber !== updatedStudent.seatNumber ||
             students[studentIdx].feeStatus !== updatedStudent.feeStatus) {
@@ -199,13 +201,7 @@ export function getStudentByEmail(email: string): Promise<Student | undefined> {
         }
         resolve(students[studentIdx] ? {...students[studentIdx]} : undefined);
       } else {
-        // Check if student exists but is 'Left'
-        const leftStudent = students.find(s => s.email === email && s.activityStatus === 'Left');
-        if (leftStudent) {
-            resolve({...leftStudent}); // Return left student details if needed by pay page
-        } else {
-            resolve(undefined);
-        }
+        resolve(undefined);
       }
     }, 50);
   });
@@ -322,17 +318,15 @@ export function updateStudent(studentId: string, studentUpdateData: Partial<Omit
         updatedStudentData.lastPaymentDate = undefined;
         updatedStudentData.nextDueDate = undefined;
       } else if (studentUpdateData.activityStatus === 'Active' && currentStudent.activityStatus === 'Left') {
-        // When re-activating
         if (!updatedStudentData.seatNumber || !ALL_SEAT_NUMBERS.includes(updatedStudentData.seatNumber)) {
             reject(new Error("A valid seat must be selected to re-activate a student."));
             return;
         }
-        // Reset fee details upon re-activation
         updatedStudentData.feeStatus = 'Due';
         updatedStudentData.amountDue = updatedStudentData.shift === "fullday" ? "₹1200" : "₹700";
-        updatedStudentData.lastPaymentDate = undefined; // Clear last payment
-        updatedStudentData.nextDueDate = format(addMonths(new Date(), 1), 'yyyy-MM-dd'); // Set next due date to 1 month from now
-        updatedStudentData.paymentHistory = []; // Clear previous payment history
+        updatedStudentData.lastPaymentDate = undefined; 
+        updatedStudentData.nextDueDate = format(addMonths(new Date(), 1), 'yyyy-MM-dd'); 
+        updatedStudentData.paymentHistory = []; 
       }
 
 
@@ -442,10 +436,9 @@ export function getAttendanceRecordsByStudentId(studentId: string): Promise<Atte
   });
 }
 
-// New function to record student payment
 export function recordStudentPayment(
   studentId: string,
-  paymentAmount: string, // e.g., "₹700"
+  paymentAmount: string, 
   paymentMethod: "UPI" | "Cash" | "Card" | "Online"
 ): Promise<Student | undefined> {
   return new Promise((resolve, reject) => {
@@ -462,8 +455,6 @@ export function recordStudentPayment(
         return;
       }
       
-      // For simplicity, assume full payment makes status "Paid"
-      // More complex logic could handle partial payments, etc.
       const today = new Date();
       const newPaymentId = `PAY${String(Date.now()).slice(-6)}${String(Math.floor(Math.random() * 100)).padStart(2,'0')}`;
       const newTransactionId = `TXN${String(Date.now()).slice(-8)}`;
@@ -490,3 +481,69 @@ export function recordStudentPayment(
     }, 50);
   });
 }
+
+// Communication Service Functions
+
+function getNextFeedbackId(): string {
+  const maxId = feedbackItems.reduce((max, item) => {
+    if (item.id && item.id.startsWith('FB')) {
+      const idNum = parseInt(item.id.replace('FB', ''), 10);
+      if (!isNaN(idNum)) {
+        return idNum > max ? idNum : max;
+      }
+    }
+    return max;
+  }, 0);
+  return `FB${String(maxId + 1).padStart(3, '0')}`;
+}
+
+export function submitFeedback(
+  studentId: string | undefined,
+  studentName: string | undefined,
+  message: string,
+  type: FeedbackType
+): Promise<FeedbackItem> {
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      const newFeedback: FeedbackItem = {
+        id: getNextFeedbackId(),
+        studentId,
+        studentName,
+        message,
+        type,
+        dateSubmitted: format(new Date(), 'yyyy-MM-dd'),
+        status: "Open",
+      };
+      feedbackItems.push(newFeedback);
+      resolve({...newFeedback});
+    }, 50);
+  });
+}
+
+export function getAllFeedback(): Promise<FeedbackItem[]> {
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      // Return sorted by date, newest first
+      resolve([...feedbackItems].sort((a, b) => parseISO(b.dateSubmitted).getTime() - parseISO(a.dateSubmitted).getTime()));
+    }, 50);
+  });
+}
+
+export function updateFeedbackStatus(feedbackId: string, status: FeedbackStatus): Promise<FeedbackItem | undefined> {
+  return new Promise((resolve, reject) => {
+    setTimeout(() => {
+      const itemIndex = feedbackItems.findIndex(item => item.id === feedbackId);
+      if (itemIndex !== -1) {
+        feedbackItems[itemIndex].status = status;
+        resolve({...feedbackItems[itemIndex]});
+      } else {
+        reject(new Error("Feedback item not found."));
+      }
+    }, 50);
+  });
+}
+
+// Placeholder for AlertItem functions if needed later
+// let alertItems: AlertItem[] = [];
+// export function sendAlert(...) {}
+// export function getAllAlerts(...) {}
