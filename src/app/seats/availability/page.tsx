@@ -23,16 +23,16 @@ import {
 import { Armchair, Briefcase, UserCheck, Clock, AlertTriangle } from 'lucide-react';
 
 // Placeholder data for seat status
-const totalSeats = 100;
+const totalSeats = 84; // 85 total minus the excluded 17 = 84 usable seats
 
 
 // Placeholder data for active students (same as dashboard) - now includes shift, overstayed status, seatNumber, and phone
 const placeholderActiveStudents = [
-  { id: "TS001", name: "Aarav Sharma", timeIn: "2 hours 30 minutes", shift: "morning", hasOverstayed: false, seatNumber: "A01", phone: "9876543210" },
-  { id: "TS002", name: "Priya Patel", timeIn: "7 hours 15 minutes", shift: "morning", hasOverstayed: true, seatNumber: "B03", phone: "9876543211" },
-  { id: "TS004", name: "Vikram Singh", timeIn: "4 hours 5 minutes", shift: "evening", hasOverstayed: false, seatNumber: "C02", phone: "9876543213" },
-  { id: "TS005", name: "Neha Reddy", timeIn: "0 hours 45 minutes", shift: "fullday", hasOverstayed: false, seatNumber: "D05", phone: "9876543214" },
-  { id: "TS008", name: "Kavita Singh", timeIn: "8 hours 0 minutes", shift: "morning", hasOverstayed: true, seatNumber: "A12", phone: "9876543217" },
+  { id: "TS001", name: "Aarav Sharma", timeIn: "2 hours 30 minutes", shift: "morning", hasOverstayed: false, seatNumber: "1", phone: "9876543210" },
+  { id: "TS002", name: "Priya Patel", timeIn: "7 hours 15 minutes", shift: "morning", hasOverstayed: true, seatNumber: "20", phone: "9876543211" },
+  { id: "TS004", name: "Vikram Singh", timeIn: "4 hours 5 minutes", shift: "evening", hasOverstayed: false, seatNumber: "40", phone: "9876543213" },
+  { id: "TS005", name: "Neha Reddy", timeIn: "0 hours 45 minutes", shift: "fullday", hasOverstayed: false, seatNumber: "50", phone: "9876543214" },
+  { id: "TS008", name: "Kavita Singh", timeIn: "8 hours 0 minutes", shift: "morning", hasOverstayed: true, seatNumber: "10", phone: "9876543217" },
 ];
 const occupiedSeatsCount = placeholderActiveStudents.length;
 const availableSeatsCount = totalSeats - occupiedSeatsCount;
@@ -40,11 +40,11 @@ const availableSeatsCount = totalSeats - occupiedSeatsCount;
 
 // Placeholder data for available seats (same as dashboard)
 const placeholderAvailableSeats = [
-  { seatNumber: "A102" },
-  { seatNumber: "B204" },
-  { seatNumber: "C008" },
-  { seatNumber: "D110" },
-  { seatNumber: "E055" },
+  { seatNumber: "2" },
+  { seatNumber: "22" },
+  { seatNumber: "38" },
+  { seatNumber: "55" },
+  { seatNumber: "70" },
 ];
 
 

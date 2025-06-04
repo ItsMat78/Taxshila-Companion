@@ -3,10 +3,12 @@ import type { Student, Shift, FeeStatus, PaymentRecord, ActivityStatus } from '@
 import { format, parseISO, differenceInDays, isPast, addMonths } from 'date-fns';
 
 // Define ALL_SEAT_NUMBERS directly in this file
-const ALL_SEAT_NUMBERS = Array.from({ length: 20 }, (_, i) => `A${String(i + 1).padStart(2, '0')}`)
-  .concat(Array.from({ length: 20 }, (_, i) => `B${String(i + 1).padStart(2, '0')}`))
-  .concat(Array.from({ length: 45 }, (_, i) => `C${String(i + 1).padStart(2, '0')}`));
-
+const ALL_SEAT_NUMBERS: string[] = [];
+for (let i = 1; i <= 85; i++) {
+  if (i !== 17) {
+    ALL_SEAT_NUMBERS.push(String(i));
+  }
+}
 
 // In-memory store for students
 let students: Student[] = [
@@ -16,7 +18,7 @@ let students: Student[] = [
     email: "aarav.sharma@example.com",
     phone: "9876543210",
     shift: "morning",
-    seatNumber: "A01",
+    seatNumber: "1", // Updated seat number
     idCardFileName: "aarav_id.jpg",
     feeStatus: "Paid",
     activityStatus: "Active",
@@ -35,7 +37,7 @@ let students: Student[] = [
     email: "priya.patel@example.com",
     phone: "9876543211",
     shift: "evening",
-    seatNumber: "B03",
+    seatNumber: "20", // Updated seat number
     idCardFileName: "priya_id.png",
     feeStatus: "Due",
     activityStatus: "Active",
@@ -50,7 +52,7 @@ let students: Student[] = [
     email: "rohan.mehta@example.com",
     phone: "9876543212",
     shift: "fullday",
-    seatNumber: "C07",
+    seatNumber: "35", // Updated seat number
     idCardFileName: "rohan_aadhar.jpeg",
     feeStatus: "Overdue", 
     activityStatus: "Active",
@@ -59,12 +61,12 @@ let students: Student[] = [
     nextDueDate: format(addMonths(new Date(), -2), 'yyyy-MM-dd'), // Overdue by 2 months
     amountDue: "₹1200",
   },
-   { studentId: "TS004", name: "Vikram Singh", email: "vikram.singh@example.com", phone: "9876543213", shift: "evening", seatNumber: "C02", feeStatus: "Paid", activityStatus: "Active", registrationDate: "2024-04-01", lastPaymentDate: "2024-06-03", nextDueDate: "2024-07-03", amountDue: "₹0" },
-   { studentId: "TS005", name: "Neha Reddy", email: "neha.reddy@example.com", phone: "9876543214", shift: "fullday", seatNumber: "D05", feeStatus: "Paid", activityStatus: "Active", registrationDate: "2024-04-05", lastPaymentDate: "2024-06-01", nextDueDate: "2024-07-01", amountDue: "₹0" },
-   { studentId: "TS006", name: "Old Overdue For Auto-Left", email: "old.overdue@example.com", phone: "9876543215", shift: "morning", seatNumber: "A04", feeStatus: "Overdue", activityStatus: "Active", registrationDate: "2024-01-01", lastPaymentDate: "2024-02-01", nextDueDate: format(addMonths(new Date(), -3), 'yyyy-MM-dd'), amountDue: "₹700" }, // Overdue by 3 months
-   { studentId: "TS007", name: "Sanya Gupta Due", email: "sanya.gupta@example.com", phone: "9876543216", shift: "morning", seatNumber: "A05", feeStatus: "Due", activityStatus: "Active", registrationDate: "2024-05-01", lastPaymentDate: "2024-05-10", nextDueDate: "2024-06-10", amountDue: "₹700" },
-   { studentId: "TS008", name: "Kavita Singh Paid", email: "kavita.singh@example.com", phone: "9876543217", shift: "morning", seatNumber: "A12", feeStatus: "Paid", activityStatus: "Active", registrationDate: "2024-05-10", lastPaymentDate: "2024-06-01", nextDueDate: "2024-07-01", amountDue: "₹0" },
-   { studentId: "TS012", name: "Karan Verma Long Overdue", email: "karan.verma@example.com", phone: "9876543221", shift: "evening", seatNumber: "B15", feeStatus: "Overdue", activityStatus: "Active", registrationDate: "2024-01-01", lastPaymentDate: "2024-01-20", nextDueDate: format(addMonths(new Date(), -4), 'yyyy-MM-dd'), amountDue: "₹700" }, // Overdue by 4 months
+   { studentId: "TS004", name: "Vikram Singh", email: "vikram.singh@example.com", phone: "9876543213", shift: "evening", seatNumber: "40", feeStatus: "Paid", activityStatus: "Active", registrationDate: "2024-04-01", lastPaymentDate: "2024-06-03", nextDueDate: "2024-07-03", amountDue: "₹0" }, // Updated seat number
+   { studentId: "TS005", name: "Neha Reddy", email: "neha.reddy@example.com", phone: "9876543214", shift: "fullday", seatNumber: "50", feeStatus: "Paid", activityStatus: "Active", registrationDate: "2024-04-05", lastPaymentDate: "2024-06-01", nextDueDate: "2024-07-01", amountDue: "₹0" }, // Updated seat number
+   { studentId: "TS006", name: "Old Overdue For Auto-Left", email: "old.overdue@example.com", phone: "9876543215", shift: "morning", seatNumber: "6", feeStatus: "Overdue", activityStatus: "Active", registrationDate: "2024-01-01", lastPaymentDate: "2024-02-01", nextDueDate: format(addMonths(new Date(), -3), 'yyyy-MM-dd'), amountDue: "₹700" }, // Updated seat number
+   { studentId: "TS007", name: "Sanya Gupta Due", email: "sanya.gupta@example.com", phone: "9876543216", shift: "morning", seatNumber: "8", feeStatus: "Due", activityStatus: "Active", registrationDate: "2024-05-01", lastPaymentDate: "2024-05-10", nextDueDate: "2024-06-10", amountDue: "₹700" }, // Updated seat number
+   { studentId: "TS008", name: "Kavita Singh Paid", email: "kavita.singh@example.com", phone: "9876543217", shift: "morning", seatNumber: "10", feeStatus: "Paid", activityStatus: "Active", registrationDate: "2024-05-10", lastPaymentDate: "2024-06-01", nextDueDate: "2024-07-01", amountDue: "₹0" }, // Updated seat number
+   { studentId: "TS012", name: "Karan Verma Long Overdue", email: "karan.verma@example.com", phone: "9876543221", shift: "evening", seatNumber: "15", feeStatus: "Overdue", activityStatus: "Active", registrationDate: "2024-01-01", lastPaymentDate: "2024-01-20", nextDueDate: format(addMonths(new Date(), -4), 'yyyy-MM-dd'), amountDue: "₹700" }, // Updated seat number
 ];
 
 
@@ -98,13 +100,12 @@ function applyAutomaticStatusUpdates(student: Student): Student {
 
 function processStudentsForUpdates(studentArray: Student[]): Student[] {
     const processedStudents = studentArray.map(s => {
-        const originalStudentData = {...s}; // Keep a copy for comparison if needed, though not used here
-        const updatedStudent = applyAutomaticStatusUpdates(s); // Apply updates to a copy
+        // const originalStudentData = {...s}; 
+        const updatedStudent = applyAutomaticStatusUpdates(s); 
         
         const indexInMainArray = students.findIndex(orig => orig.studentId === updatedStudent.studentId);
 
         if (indexInMainArray !== -1) {
-             // Check if there are actual changes to avoid unnecessary writes
              if (students[indexInMainArray].activityStatus !== updatedStudent.activityStatus ||
                  students[indexInMainArray].seatNumber !== updatedStudent.seatNumber ||
                  students[indexInMainArray].feeStatus !== updatedStudent.feeStatus) {
@@ -112,7 +113,7 @@ function processStudentsForUpdates(studentArray: Student[]): Student[] {
             }
             return students[indexInMainArray];
         }
-        return updatedStudent; // Should only happen if s was not from the global `students` array
+        return updatedStudent; 
     });
     return processedStudents;
 }
@@ -213,7 +214,6 @@ export function updateStudent(studentId: string, studentUpdateData: Partial<Omit
 
       const currentStudent = students[studentIndex];
       
-      // Check if new seat is taken ONLY if seat is changing and student is/will be active
       if (studentUpdateData.seatNumber && 
           studentUpdateData.seatNumber !== currentStudent.seatNumber && 
           (studentUpdateData.activityStatus === 'Active' || (studentUpdateData.activityStatus === undefined && currentStudent.activityStatus === 'Active'))) {
@@ -233,9 +233,6 @@ export function updateStudent(studentId: string, studentUpdateData: Partial<Omit
         updatedStudentData.nextDueDate = undefined;
       }
       
-      // If re-activating, client should send all necessary fee/date fields
-      // The service primarily validates seat availability and updates the record.
-
       students[studentIndex] = updatedStudentData;
       resolve({...students[studentIndex]});
     }, 200);
@@ -250,7 +247,7 @@ export function getAvailableSeats(): Promise<string[]> {
         .filter(s => s.activityStatus === 'Active' && s.seatNumber !== null)
         .map(s => s.seatNumber as string);
       const available = ALL_SEAT_NUMBERS.filter(seat => !takenSeats.includes(seat));
-      resolve(available.sort());
+      resolve(available.sort((a, b) => parseInt(a) - parseInt(b))); // Sort numerically
     }, 100);
   });
 }
@@ -262,7 +259,7 @@ export function getTakenSeats(): Promise<string[]> {
       const takenSeats = students
         .filter(s => s.activityStatus === 'Active' && s.seatNumber !== null)
         .map(s => s.seatNumber as string);
-      resolve(takenSeats.sort());
+      resolve(takenSeats.sort((a, b) => parseInt(a) - parseInt(b))); // Sort numerically
     }, 100);
   });
 }

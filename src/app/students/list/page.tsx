@@ -89,7 +89,6 @@ export default function StudentListPage() {
                 <TableHead>Shift</TableHead>
                 <TableHead>Seat Number</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead>Next Due Date</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -107,7 +106,6 @@ export default function StudentListPage() {
                   <TableCell className="capitalize">{student.shift}</TableCell>
                   <TableCell>{student.seatNumber || 'N/A'}</TableCell>
                   <TableCell>{getStatusBadge(student)}</TableCell>
-                  <TableCell>{student.activityStatus === 'Left' ? 'N/A' : student.nextDueDate || 'N/A'}</TableCell>
                   <TableCell className="space-x-2">
                     <Link href={`/students/profiles/${student.studentId}`} passHref legacyBehavior>
                       <Button variant="outline" size="sm" title="View Profile">
@@ -132,7 +130,7 @@ export default function StudentListPage() {
               ))}
               {studentsToRender.length === 0 && !isLoading && (
                 <TableRow>
-                  <TableCell colSpan={9} className="py-4 text-center text-muted-foreground">
+                  <TableCell colSpan={8} className="py-4 text-center text-muted-foreground">
                     {emptyMessage}
                   </TableCell>
                 </TableRow>
