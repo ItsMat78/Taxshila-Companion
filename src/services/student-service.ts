@@ -340,7 +340,8 @@ export async function updateStudent(studentId: string, studentUpdateData: Partia
       let alertSentDueToStatusChange = false;
       if (studentUpdateData.activityStatus === 'Active' && currentStudent.activityStatus === 'Left') {
         try {
-          await sendAlertToStudent(studentId, "Account Re-activated", `Welcome back, ${newlyUpdatedStudent.name}! Your student account has been re-activated. Your shift is ${newlyUpdatedStudent.shift} and seat is ${newlyUpdatedStudent.seatNumber}. Fee is due by ${newlyUpdatedStudent.nextDueDate}.`, "info");
+          const alertMessage = `Welcome back, ${newlyUpdatedStudent.name}! Your student account has been re-activated.\nYour current details are:\nName: ${newlyUpdatedStudent.name}\nEmail: ${newlyUpdatedStudent.email || 'N/A'}\nPhone: ${newlyUpdatedStudent.phone}\nShift: ${newlyUpdatedStudent.shift}\nSeat Number: ${newlyUpdatedStudent.seatNumber}\nID Card: ${newlyUpdatedStudent.idCardFileName || 'Not Uploaded'}\n\nYour fee of ${newlyUpdatedStudent.amountDue} is due by ${newlyUpdatedStudent.nextDueDate}.`;
+          await sendAlertToStudent(studentId, "Account Re-activated", alertMessage, "info");
           alertSentDueToStatusChange = true;
         } catch (e) { console.error("Failed to send re-activation alert:", e); }
       } else if (studentUpdateData.activityStatus === 'Left' && currentStudent.activityStatus === 'Active') {
@@ -350,7 +351,6 @@ export async function updateStudent(studentId: string, studentUpdateData: Partia
         } catch (e) { console.error("Failed to send marked-as-left alert:", e); }
       }
       
-      // Check for other profile changes only if not handled by status change alerts AND if it's not just a fee status update triggered by marking payment (handled by recordStudentPayment)
       const isFeeStatusChangeOnlyToPaid = studentUpdateData.feeStatus === 'Paid' && currentStudent.feeStatus !== 'Paid' && Object.keys(studentUpdateData).length === 1;
 
       if (!alertSentDueToStatusChange && !isFeeStatusChangeOnlyToPaid && newlyUpdatedStudent.activityStatus === 'Active') {
@@ -363,7 +363,8 @@ export async function updateStudent(studentId: string, studentUpdateData: Partia
 
         if (nameChanged || emailChanged || phoneChanged || shiftChanged || seatChanged || idCardChanged) {
           try {
-            await sendAlertToStudent(studentId, "Profile Details Updated", `Hi ${newlyUpdatedStudent.name}, your profile details have been updated by an administrator. Please log in to review them if necessary.`, "info");
+            const alertMessage = `Hi ${newlyUpdatedStudent.name}, your profile details have been updated by an administrator. Your current details are:\nName: ${newlyUpdatedStudent.name}\nEmail: ${newlyUpdatedStudent.email || 'N/A'}\nPhone: ${newlyUpdatedStudent.phone}\nShift: ${newlyUpdatedStudent.shift}\nSeat Number: ${newlyUpdatedStudent.seatNumber}\nID Card: ${newlyUpdatedStudent.idCardFileName || 'Not Uploaded'}\n\nPlease review them in your profile.`;
+            await sendAlertToStudent(studentId, "Profile Details Updated", alertMessage, "info");
           } catch (e) { console.error("Failed to send profile update alert:", e); }
         }
       }
@@ -640,10 +641,8 @@ export async function sendAlertToStudent(
   return new Promise((resolve, reject) => {
     setTimeout(() => {
       const studentExists = students.some(s => s.studentId === studentId);
-      if (!studentExists) { // Simplified check, as studentId presence means it's targeted
+      if (!studentExists) { 
         console.warn(`Attempted to send targeted alert to non-existent student ID: ${studentId} for title: "${title}"`);
-        // Do not reject outright if it's a general status update for a student being marked left etc.
-        // However, if it's a feedback response to a non-existent student, that's an issue.
         if (type === 'feedback_response') {
              reject(new Error(`Student with ID ${studentId} not found for feedback response.`));
              return;
