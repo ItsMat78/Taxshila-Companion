@@ -24,13 +24,14 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  FormDescription, // Added FormDescription here
 } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { UploadCloud } from 'lucide-react';
 
 const studentFormSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
-  email: z.string().email({ message: "Invalid email address." }).optional(),
+  email: z.string().email({ message: "Invalid email address." }).optional().or(z.literal('')), // Allow empty string
   phone: z.string().min(10, { message: "Phone number must be at least 10 digits." }),
   shift: z.enum(["morning", "evening", "fullday"], { required_error: "Shift selection is required." }),
   idCardImage: z.any().optional(), // For FileList object
