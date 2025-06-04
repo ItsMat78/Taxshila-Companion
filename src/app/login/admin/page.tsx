@@ -11,7 +11,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useAuth } from '@/contexts/auth-context';
-import { Loader2, ShieldCheck } from 'lucide-react';
+import { Loader2, ShieldCheck, Users } from 'lucide-react';
 
 const loginFormSchema = z.object({
   email: z.string().email({ message: "Please enter a valid email address." }),
@@ -82,8 +82,10 @@ export default function AdminLoginPage() {
                 {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShieldCheck className="mr-2 h-4 w-4" />}
                 Login as Admin
               </Button>
-               <Link href="/login" passHref legacyBehavior>
-                 <Button variant="link" className="text-sm">Back to login options</Button>
+               <Link href="/login/member" passHref legacyBehavior>
+                 <Button variant="link" className="text-sm text-muted-foreground hover:text-primary">
+                    <Users className="mr-2 h-4 w-4" /> Login as Member
+                 </Button>
               </Link>
             </CardFooter>
           </form>
