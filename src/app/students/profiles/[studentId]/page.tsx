@@ -6,7 +6,7 @@ import { PageTitle } from '@/components/shared/page-title';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { ArrowLeft, CreditCard, CalendarDays, Receipt, Loader2, UserCircle, Briefcase } from 'lucide-react'; // Added UserCircle, Briefcase
+import { ArrowLeft, CreditCard, CalendarDays, Receipt, Loader2, UserCircle, Briefcase } from 'lucide-react'; 
 import { Badge } from '@/components/ui/badge';
 import { getStudentById } from '@/services/student-service';
 import type { Student } from '@/types/student';
@@ -113,14 +113,15 @@ export default function StudentDetailPage({ params }: StudentDetailPageProps) {
             <p><strong>Shift:</strong> <span className="capitalize">{student.shift}</span></p>
             <p><strong>Seat Number:</strong> {student.seatNumber || 'N/A'}</p>
             <p><strong>Registration Date:</strong> {student.registrationDate}</p>
-            <p><strong>Activity Status:</strong> 
-                <Badge 
-                    variant={student.activityStatus === "Active" ? "default" : "secondary"}
-                    className={student.activityStatus === "Active" ? "ml-2 bg-green-100 text-green-700" : "ml-2 bg-gray-100 text-gray-700"}
-                >
-                    {student.activityStatus}
-                </Badge>
-            </p>
+            <div className="flex items-center">
+              <strong>Activity Status:</strong> 
+              <Badge 
+                  variant={student.activityStatus === "Active" ? "default" : "secondary"}
+                  className={student.activityStatus === "Active" ? "ml-2 bg-green-100 text-green-700" : "ml-2 bg-gray-100 text-gray-700"}
+              >
+                  {student.activityStatus}
+              </Badge>
+            </div>
           </CardContent>
         </Card>
 
