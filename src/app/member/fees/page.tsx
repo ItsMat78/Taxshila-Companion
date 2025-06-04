@@ -20,7 +20,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Receipt, History, Download, DollarSign } from 'lucide-react';
+import { Receipt, History, Download, IndianRupee } from 'lucide-react'; // Changed DollarSign to IndianRupee
 import Link from 'next/link';
 
 // Placeholder data for fee details and payment history
@@ -46,7 +46,7 @@ export default function MemberFeesPage() {
         <Card className="shadow-lg">
           <CardHeader>
             <CardTitle className="flex items-center">
-              <DollarSign className="mr-2 h-5 w-5" />
+              <IndianRupee className="mr-2 h-5 w-5" /> {/* Changed DollarSign to IndianRupee */}
               Current Plan & Status
             </CardTitle>
             <CardDescription>Overview of your current subscription.</CardDescription>

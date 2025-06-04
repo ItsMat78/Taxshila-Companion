@@ -4,7 +4,7 @@ import * as React from 'react';
 import Link from 'next/link';
 import { PageTitle } from '@/components/shared/page-title';
 import { StatCard } from '@/components/shared/stat-card';
-import { Users, Briefcase, Armchair, Clock, UserCheck, DollarSign, AlertTriangle } from 'lucide-react';
+import { Users, Briefcase, Armchair, Clock, UserCheck, IndianRupee, AlertTriangle } from 'lucide-react'; // Changed DollarSign to IndianRupee
 import {
   Dialog,
   DialogContent,
@@ -59,7 +59,7 @@ export default function AdminDashboardPage() {
     { title: "Total Students", value: 125, icon: Users, description: "+5 since last month", href: "/students/list" },
     { title: "Occupied Seats", value: placeholderActiveStudents.length, icon: Briefcase, description: "Currently in use. Click to view.", action: () => setShowActiveStudentsDialog(true) },
     { title: "Available Seats", value: placeholderAvailableSeats.length, icon: Armchair, description: "Ready for booking. Click to view.", action: () => setShowAvailableSeatsDialog(true) },
-    { title: "Total Revenue", value: "₹5,670", icon: DollarSign, description: "This month (placeholder)", href: "/admin/fees/due" },
+    { title: "Total Revenue", value: "₹5,670", icon: IndianRupee, description: "This month (placeholder)", href: "/admin/fees/due" }, // Changed DollarSign to IndianRupee
   ];
 
   return (
@@ -91,7 +91,7 @@ export default function AdminDashboardPage() {
             return (
               <Dialog key={stat.title} open={dialogOpenState} onOpenChange={setDialogOpenState}>
                 <DialogTrigger asChild>
-                  <div className="cursor-pointer" onClick={stat.action}>
+                  <div className="cursor-pointer hover:shadow-md transition-shadow duration-150 ease-in-out rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" onClick={stat.action}>
                     {statCardElement}
                   </div>
                 </DialogTrigger>

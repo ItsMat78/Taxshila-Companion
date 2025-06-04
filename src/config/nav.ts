@@ -11,7 +11,7 @@ import {
   Database,
   CreditCard,
   Receipt,
-  DollarSign,
+  IndianRupee, // Changed from DollarSign
   BarChart3,
   History,
   QrCode,
@@ -21,8 +21,9 @@ import {
   Star,
   Inbox,
   Send,
-  Edit, // Added for Edit Student
-  ClipboardCheck, // Added for Mark Payment
+  Edit,
+  ClipboardCheck,
+  Landmark, // Added for Financials as an alternative if IndianRupee felt too specific for a category
   type Icon as LucideIcon,
 } from 'lucide-react';
 import type { UserRole } from '@/types/auth';
@@ -64,7 +65,6 @@ export const mainNav: NavItem[] = [
         icon: UserPlus,
         roles: ['admin'],
       },
-      // Edit Student is accessed via the list, so no direct nav item typically.
     ]
   },
   {
@@ -90,7 +90,7 @@ export const mainNav: NavItem[] = [
   {
     title: 'Financials',
     href: '#', 
-    icon: DollarSign,
+    icon: IndianRupee, // Changed from DollarSign to IndianRupee
     roles: ['admin'],
     items: [
       {
@@ -102,7 +102,7 @@ export const mainNav: NavItem[] = [
       {
         title: 'Payment History',
         href: '/admin/fees/payments-history',
-        icon: History, // Kept History icon
+        icon: History,
         roles: ['admin'],
       },
     ]
@@ -126,9 +126,9 @@ export const mainNav: NavItem[] = [
         roles: ['admin'],
       },
       {
-        title: 'Alerts History', // New
+        title: 'Alerts History',
         href: '/admin/alerts/history',
-        icon: History, // Using History icon for consistency
+        icon: History,
         roles: ['admin'],
       },
     ]
