@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from 'next/link';
@@ -25,12 +26,12 @@ import * as React from "react";
 
 function NavListItem({ item, isSubItem = false }: { item: NavItem; isSubItem?: boolean }) {
   const pathname = usePathname();
-  const { setOpenMobile } = useSidebar();
+  const { isMobile, setOpenMobile } = useSidebar(); // Moved hook call to top level
   const [isSubMenuOpen, setIsSubMenuOpen] = React.useState(pathname.startsWith(item.href) && !!item.items);
 
   const closeMobileSidebar = () => {
-    if (useSidebar().isMobile) {
-      setOpenMobile(false);
+    if (isMobile) { // Use destructured isMobile
+      setOpenMobile(false); // Use destructured setOpenMobile
     }
   };
 
