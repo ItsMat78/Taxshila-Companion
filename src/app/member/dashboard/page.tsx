@@ -12,7 +12,7 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle as ShadcnDialogTitle,
-  DialogTrigger,
+  DialogTrigger, // Ensure DialogTrigger is imported
 } from "@/components/ui/dialog";
 import { Alert, AlertDescription, AlertTitle as ShadcnAlertTitle } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
@@ -43,20 +43,22 @@ const DashboardTile: React.FC<DashboardTileProps> = ({ title, description, icon:
       }
     )}>
       <CardHeader className={cn(
-        "relative", // For the dot
-        isPrimaryAction ? "p-4 pb-2" : "p-3 pb-1"
+        "relative",
+        isPrimaryAction ? "p-4 pb-2" : "p-3 pb-1" 
       )}>
-        {hasNew && !isPrimaryAction && ( // The dot
+        {hasNew && !isPrimaryAction && (
           <span className="absolute top-1 right-1 block h-2.5 w-2.5 rounded-full bg-destructive ring-1 ring-white" />
         )}
-        <Icon className={cn(
-          isPrimaryAction ? "h-6 w-6 mb-1" : "h-5 w-5 mb-1"
-        )} />
-        <ShadcnCardTitle className={cn(
-          isPrimaryAction ? 'text-xl font-semibold' : 'text-lg font-semibold',
-        )}>
-          {title}
-        </ShadcnCardTitle>
+        <div className="flex items-center gap-2"> {/* Icon and Title on the same line */}
+          <Icon className={cn(
+            isPrimaryAction ? "h-6 w-6" : "h-5 w-5" 
+          )} />
+          <ShadcnCardTitle className={cn(
+            isPrimaryAction ? 'text-xl font-semibold' : 'text-lg font-semibold',
+          )}>
+            {title}
+          </ShadcnCardTitle>
+        </div>
       </CardHeader>
       <CardContent className={cn(
         "flex-grow", 
