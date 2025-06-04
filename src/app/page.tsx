@@ -17,7 +17,7 @@ import {
   CalendarDays,
   Send as SendIcon,
   Inbox,
-  Database as DatabaseIcon
+  Eye // Added Eye icon
 } from 'lucide-react';
 import {
   Dialog,
@@ -82,7 +82,7 @@ function AdminDashboardContent() {
     { title: "Total Students", value: 125, icon: Users, description: "+5 since last month", href: "/students/list" },
     { title: "Occupied Seats", value: placeholderActiveStudents.length, icon: Briefcase, description: "Currently in use. Click to view.", action: () => setShowActiveStudentsDialog(true) },
     { title: "Available Seats", value: placeholderAvailableSeats.length, icon: Armchair, description: "Ready for booking. Click to view.", action: () => setShowAvailableSeatsDialog(true) },
-    { title: "Fees Requiring Attention", value: "₹5,670", icon: IndianRupee, description: "Outstanding payments", href: "/admin/fees/due" },
+    { title: "Revenue", value: "₹15,670", icon: IndianRupee, description: "This month. (Placeholder)", href: "/admin/fees/payments-history" }, // Changed title, updated description and href
   ];
 
   const adminActionTiles: ActionTileItem[] = [
@@ -91,7 +91,7 @@ function AdminDashboardContent() {
     { title: "Attendance Overview", icon: CalendarDays, description: "Check student attendance logs.", href: "/attendance/calendar" },
     { title: "Send Alert", icon: SendIcon, description: "Broadcast to all members.", href: "/admin/alerts/send" },
     { title: "View Feedback", icon: Inbox, description: "Review member suggestions.", href: "/admin/feedback" },
-    { title: "Data Management", icon: DatabaseIcon, description: "Import/Export data.", href: "/admin/data-management" },
+    { title: "Seat Availability", icon: Eye, description: "View current seat status.", href: "/seats/availability" }, // Replaced Data Management
   ];
 
 
@@ -272,3 +272,5 @@ export default function MainPage() {
       </div>
   );
 }
+
+    
