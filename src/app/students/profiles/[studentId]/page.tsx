@@ -6,19 +6,23 @@ import { PageTitle } from '@/components/shared/page-title';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { ArrowLeft, CreditCard, CalendarDays, Receipt, Loader2, UserCircle, Briefcase } from 'lucide-react'; 
+import { useParams } from 'next/navigation'; // Import useParams
+import { ArrowLeft, CreditCard, CalendarDays, Receipt, Loader2, UserCircle, Briefcase } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { getStudentById } from '@/services/student-service';
 import type { Student } from '@/types/student';
 
-interface StudentDetailPageProps {
-  params: {
-    studentId: string;
-  };
-}
+// StudentDetailPageProps interface is no longer needed as params are accessed via hook
+// interface StudentDetailPageProps {
+//   params: {
+//     studentId: string;
+//   };
+// }
 
-export default function StudentDetailPage({ params }: StudentDetailPageProps) {
-  const { studentId } = params;
+export default function StudentDetailPage() { // Removed params from props
+  const paramsHook = useParams(); // Use the hook
+  const studentId = paramsHook.studentId as string; // Get studentId from the hook's result
+
   const [student, setStudent] = React.useState<Student | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
 
@@ -28,7 +32,7 @@ export default function StudentDetailPage({ params }: StudentDetailPageProps) {
         setIsLoading(true);
         try {
           const fetchedStudent = await getStudentById(studentId);
-          setStudent(fetchedStudent || null); 
+          setStudent(fetchedStudent || null);
         } catch (error) {
           console.error("Failed to fetch student:", error);
           setStudent(null);
@@ -40,11 +44,11 @@ export default function StudentDetailPage({ params }: StudentDetailPageProps) {
     }
   }, [studentId]);
 
-  const getFeeStatusBadge = (student: Student) => {
-    if (student.activityStatus === 'Left') {
+  const getFeeStatusBadge = (studentData: Student) => { // Renamed student to studentData to avoid conflict
+    if (studentData.activityStatus === 'Left') {
       return <Badge variant="secondary" className="bg-gray-100 text-gray-700 border-gray-300">N/A (Left)</Badge>;
     }
-    switch (student.feeStatus) {
+    switch (studentData.feeStatus) {
       case 'Overdue':
         return <Badge variant="destructive">Overdue</Badge>;
       case 'Due':
@@ -52,7 +56,7 @@ export default function StudentDetailPage({ params }: StudentDetailPageProps) {
       case 'Paid':
         return <Badge className="bg-green-100 text-green-700 border-green-300">Paid</Badge>;
       default:
-        return <Badge variant="outline">{student.feeStatus}</Badge>;
+        return <Badge variant="outline">{studentData.feeStatus}</Badge>;
     }
   };
 
@@ -97,7 +101,7 @@ export default function StudentDetailPage({ params }: StudentDetailPageProps) {
           </Button>
         </Link>
       </PageTitle>
-      
+
       <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-2">
         <Card className="shadow-md">
           <CardHeader>
@@ -114,8 +118,8 @@ export default function StudentDetailPage({ params }: StudentDetailPageProps) {
             <p><strong>Seat Number:</strong> {student.seatNumber || 'N/A'}</p>
             <p><strong>Registration Date:</strong> {student.registrationDate}</p>
             <div className="flex items-center">
-              <strong>Activity Status:</strong> 
-              <Badge 
+              <strong>Activity Status:</strong>
+              <Badge
                   variant={student.activityStatus === "Active" ? "default" : "secondary"}
                   className={student.activityStatus === "Active" ? "ml-2 bg-green-100 text-green-700" : "ml-2 bg-gray-100 text-gray-700"}
               >
