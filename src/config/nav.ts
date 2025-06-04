@@ -34,23 +34,17 @@ export const mainNav: NavItem[] = [
     roles: ['admin'],
   },
   {
-    title: 'QR Code',
+    title: 'QR Code Generation',
     href: '/students/qr-code',
     icon: QrCodeIcon,
     roles: ['admin'],
   },
   {
-    title: 'Booking',
+    title: 'Booking Management', // Renamed for clarity as shift selection is removed
     href: '#', 
     icon: Clock,
-    roles: ['admin'], // Group now admin-only, items within will specify further if needed
+    roles: ['admin'],
     items: [
-      {
-        title: 'Shift Selection',
-        href: '/booking/shifts',
-        icon: Clock,
-        roles: ['admin'], // Shift selection is now admin-only
-      },
       {
         title: 'Seat Release AI',
         href: '/booking/seat-release',
