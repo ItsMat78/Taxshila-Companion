@@ -15,7 +15,7 @@ import {
   Loader2,
   UserPlus,
   CalendarDays,
-  Send as SendIcon,
+  Send as SendIcon, // Renamed to avoid conflict with Send component if any
   Inbox,
   Eye,
   Database 
@@ -218,7 +218,7 @@ function AdminDashboardContent() {
 
       <div className="my-8 border-t border-border"></div>
       <h2 className="text-lg font-headline font-semibold tracking-tight mb-4">Quick Actions</h2>
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
         {adminActionTiles.map((tile) => {
           const Icon = tile.icon;
           return (
