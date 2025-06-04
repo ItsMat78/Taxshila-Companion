@@ -18,6 +18,13 @@ import {
 import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Form,
   FormControl,
   FormField,
@@ -27,8 +34,7 @@ import {
 } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { UserPlus, Loader2 } from 'lucide-react';
-// We will create addStudent in student-service.ts in the next step
-// import { addStudent, type AddStudentData } from '@/services/student-service';
+import { addStudent, getAvailableSeats, type AddStudentData } from '@/services/student-service';
 import type { Shift } from '@/types/student';
 
 const studentFormSchema = z.object({
@@ -36,6 +42,7 @@ const studentFormSchema = z.object({
   email: z.string().email({ message: "Invalid email address." }).optional().or(z.literal('')),
   phone: z.string().min(10, { message: "Phone number must be at least 10 digits." }),
   shift: z.enum(["morning", "evening", "fullday"], { required_error: "Shift selection is required." }),
+  seatNumber: z.string().min(1, "Seat selection is required."),
 });
 
 type StudentFormValues = z.infer<typeof studentFormSchema>;
@@ -49,6 +56,8 @@ const shiftOptions = [
 export default function StudentRegisterPage() {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [availableSeatOptions, setAvailableSeatOptions] = React.useState<string[]>([]);
+  const [isLoadingSeats, setIsLoadingSeats] = React.useState(true);
 
   const form = useForm<StudentFormValues>({
     resolver: zodResolver(studentFormSchema),
@@ -57,40 +66,54 @@ export default function StudentRegisterPage() {
       email: "",
       phone: "",
       shift: undefined,
+      seatNumber: "",
     },
   });
 
+  const fetchSeats = React.useCallback(async () => {
+    setIsLoadingSeats(true);
+    try {
+      const seats = await getAvailableSeats();
+      setAvailableSeatOptions(seats);
+    } catch (error) {
+      console.error("Failed to fetch available seats:", error);
+      toast({ title: "Error", description: "Could not load available seats.", variant: "destructive" });
+      setAvailableSeatOptions([]);
+    } finally {
+      setIsLoadingSeats(false);
+    }
+  }, [toast]);
+
+  React.useEffect(() => {
+    fetchSeats();
+  }, [fetchSeats]);
+
   async function onSubmit(data: StudentFormValues) {
     setIsSubmitting(true);
-    console.log("Student registration data:", data);
-
-    // Placeholder for actual API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-
-    // In the next step (3.2), we will replace this with:
-    // try {
-    //   const studentPayload = { ...data, email: data.email || undefined };
-    //   const newStudent = await addStudent(studentPayload);
-    //   toast({
-    //     title: "Student Registered Successfully",
-    //     description: `${newStudent.name} (ID: ${newStudent.studentId}) has been registered.`,
-    //   });
-    //   form.reset();
-    // } catch (error: any) {
-    //    toast({
-    //     title: "Registration Failed",
-    //     description: error.message || "An unexpected error occurred.",
-    //     variant: "destructive",
-    //   });
-    // }
-
-    toast({
-      title: "Student Submitted (Placeholder)",
-      description: `Data for ${data.name} has been logged.`,
-    });
-    form.reset(); // Reset form after successful submission
-
-    setIsSubmitting(false);
+    try {
+      const studentPayload: AddStudentData = { 
+        ...data, 
+        email: data.email || undefined,
+      };
+      const newStudent = await addStudent(studentPayload);
+      toast({
+        title: "Student Registered Successfully",
+        description: `${newStudent.name} (ID: ${newStudent.studentId}) has been registered with seat ${newStudent.seatNumber}.`,
+      });
+      form.reset();
+      await fetchSeats(); // Refresh available seats after successful registration
+    } catch (error: any) {
+       toast({
+        title: "Registration Failed",
+        description: error.message || "An unexpected error occurred.",
+        variant: "destructive",
+      });
+      if (error.message?.toLowerCase().includes("seat")) {
+        await fetchSeats(); // Refresh seats if it was a seat conflict
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   return (
@@ -127,9 +150,36 @@ export default function StudentRegisterPage() {
                   </FormControl>
                 <FormMessage /></FormItem>
               )} />
+              <FormField
+                control={form.control}
+                name="seatNumber"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Seat Number</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value} disabled={isSubmitting || isLoadingSeats}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder={isLoadingSeats ? "Loading seats..." : "Select an available seat"} />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {!isLoadingSeats && availableSeatOptions.length === 0 && (
+                            <p className="p-2 text-xs text-muted-foreground">No seats currently available.</p>
+                        )}
+                        {availableSeatOptions.map(seat => (
+                          <SelectItem key={seat} value={seat}>
+                            Seat {seat}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             </CardContent>
             <CardFooter>
-              <Button type="submit" className="w-full sm:w-auto" disabled={isSubmitting}>
+              <Button type="submit" className="w-full sm:w-auto" disabled={isSubmitting || isLoadingSeats}>
                 {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UserPlus className="mr-2 h-4 w-4" />}
                 {isSubmitting ? "Registering..." : "Register Student"}
               </Button>

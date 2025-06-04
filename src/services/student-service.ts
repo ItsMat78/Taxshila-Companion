@@ -177,8 +177,7 @@ export function getStudentByEmail(email: string): Promise<Student | undefined> {
     setTimeout(() => {
       const student = students.find(s => s.email === email && s.activityStatus === 'Active');
       if (student) {
-        // No need to run applyAutomaticStatusUpdates here as it's for fee status, not general lookup
-        resolve({...student}); // Return a copy
+        resolve({...student}); 
       } else {
         resolve(undefined);
       }
@@ -205,29 +204,36 @@ export interface AddStudentData {
   email?: string;
   phone: string;
   shift: Shift;
-  seatNumber: string;
-  idCardFileName?: string;
+  seatNumber: string; // Seat number is now required for adding a student
+  idCardFileName?: string; // Optional, if ID card upload is part of initial registration
 }
 
 export function addStudent(studentData: AddStudentData): Promise<Student> {
   return new Promise((resolve, reject) => {
     setTimeout(() => {
       processStudentsForUpdates([...students]); 
+
       if (students.some(s => s.seatNumber === studentData.seatNumber && s.activityStatus === "Active")) {
-        reject(new Error("Seat already taken by an active student."));
+        reject(new Error("Selected seat is already taken by an active student."));
         return;
       }
+      if (!ALL_SEAT_NUMBERS.includes(studentData.seatNumber)) {
+        reject(new Error("Invalid seat number selected."));
+        return;
+      }
+
       const today = new Date();
       const newStudent: Student = {
-        ...studentData,
+        ...studentData, // Includes name, phone, shift, seatNumber, and optional email/idCardFileName
         studentId: getNextStudentId(),
         feeStatus: "Due",
         activityStatus: "Active",
         registrationDate: format(today, 'yyyy-MM-dd'),
         amountDue: studentData.shift === "fullday" ? "₹1200" : "₹700",
         nextDueDate: format(addMonths(today, 1), 'yyyy-MM-dd'),
-        profilePictureUrl: "https://placehold.co/200x200.png",
-        paymentHistory: []
+        profilePictureUrl: "https://placehold.co/200x200.png", 
+        paymentHistory: [],
+        email: studentData.email || undefined, // Ensure email is undefined if empty string was passed
       };
       students.push(newStudent);
       resolve({...newStudent}); 
@@ -265,7 +271,7 @@ export function updateStudent(studentId: string, studentUpdateData: Partial<Omit
         updatedStudentData.lastPaymentDate = undefined;
         updatedStudentData.nextDueDate = undefined;
       } else if (studentUpdateData.activityStatus === 'Active' && currentStudent.activityStatus === 'Left') {
-        // Re-activating student specific logic already handled in edit page, here we just update
+        // Re-activating student specific logic (like fee status reset) should be handled in the component calling this
       }
       
       students[studentIndex] = updatedStudentData;
@@ -307,7 +313,7 @@ export function getActiveCheckIn(studentId: string): Promise<AttendanceRecord | 
       const todayStr = format(new Date(), 'yyyy-MM-dd');
       const activeRecord = attendanceRecords
         .filter(ar => ar.studentId === studentId && ar.date === todayStr && !ar.checkOutTime)
-        .sort((a, b) => parseISO(b.checkInTime).getTime() - parseISO(a.checkInTime).getTime())[0]; // Get the latest if multiple (shouldn't happen with current logic)
+        .sort((a, b) => parseISO(b.checkInTime).getTime() - parseISO(a.checkInTime).getTime())[0];
       resolve(activeRecord ? {...activeRecord} : undefined);
     }, 50);
   });
@@ -343,7 +349,7 @@ export function addCheckOut(recordId: string): Promise<AttendanceRecord | undefi
   });
 }
 
-export function getAttendanceForDate(studentId: string, date: string): Promise<AttendanceRecord[]> { // date in YYYY-MM-DD
+export function getAttendanceForDate(studentId: string, date: string): Promise<AttendanceRecord[]> { 
   return new Promise((resolve) => {
     setTimeout(() => {
       resolve(
@@ -375,6 +381,3 @@ export function getAttendanceRecordsByStudentId(studentId: string): Promise<Atte
     }, 50);
   });
 }
-
-
-    
