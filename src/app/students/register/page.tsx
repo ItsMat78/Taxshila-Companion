@@ -53,15 +53,15 @@ const shiftOptions = [
   { value: "fullday", label: "Full Day (7 AM - 10 PM)" },
 ];
 
-// Define all seat numbers from S01 to S85
-const ALL_SEAT_NUMBERS = Array.from({ length: 85 }, (_, i) => `S${String(i + 1).padStart(2, '0')}`);
+// Define all seat numbers from 01 to 85
+const ALL_SEAT_NUMBERS = Array.from({ length: 85 }, (_, i) => String(i + 1).padStart(2, '0'));
 
 // Placeholder for existing students to determine taken seats
 // In a real app, this data would come from a state management solution or API
 const MOCK_EXISTING_STUDENTS_FOR_SEAT_CHECK = [
-  { studentId: "TS001", seatNumber: "S01" },
-  { studentId: "TS002", seatNumber: "S05" },
-  { studentId: "TS003", seatNumber: "S85" },
+  { studentId: "TS001", seatNumber: "01" },
+  { studentId: "TS002", seatNumber: "05" },
+  { studentId: "TS003", seatNumber: "85" },
 ];
 
 export default function StudentRegisterPage() {
