@@ -140,7 +140,7 @@ export function AppSidebarContent() {
       <SidebarContent>
         <SidebarMenu>
           {mainNav.map((item) => (
-            <NavListItem key={item.href} item={item} />
+            <NavListItem key={item.title} item={item} />
           ))}
         </SidebarMenu>
       </SidebarContent>
