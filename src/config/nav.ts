@@ -2,7 +2,6 @@
 import {
   LayoutDashboard,
   Users,
-  QrCodeIcon,
   Clock,
   Bot,
   CalendarDays,
@@ -17,7 +16,7 @@ export type NavItem = {
   disabled?: boolean;
   label?: string;
   items?: NavItem[];
-  roles?: UserRole[]; 
+  roles?: UserRole[];
 };
 
 export const mainNav: NavItem[] = [
@@ -34,14 +33,8 @@ export const mainNav: NavItem[] = [
     roles: ['admin'],
   },
   {
-    title: 'QR Code Generation',
-    href: '/students/qr-code',
-    icon: QrCodeIcon,
-    roles: ['admin'],
-  },
-  {
-    title: 'Booking Management', // Renamed for clarity as shift selection is removed
-    href: '#', 
+    title: 'Booking Management',
+    href: '#',
     icon: Clock,
     roles: ['admin'],
     items: [
@@ -57,6 +50,6 @@ export const mainNav: NavItem[] = [
     title: 'Attendance Calendar',
     href: '/attendance/calendar',
     icon: CalendarDays,
-    roles: ['member', 'admin'], 
+    roles: ['member', 'admin'],
   },
 ];
