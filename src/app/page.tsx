@@ -100,7 +100,7 @@ function AdminDashboardContent() {
   return (
     <>
       <PageTitle title="Admin Dashboard" description="Overview of Taxshila Companion activities." />
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
         {stats.map((stat) => {
           const statCardElement = (
             <StatCard
@@ -218,24 +218,26 @@ function AdminDashboardContent() {
 
       <div className="my-8 border-t border-border"></div>
       <h2 className="text-lg font-headline font-semibold tracking-tight mb-4">Quick Actions</h2>
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
         {adminActionTiles.map((tile) => {
           const Icon = tile.icon;
           return (
             <Link href={tile.href} key={tile.title} className="block no-underline focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-lg h-full">
               <Card className={cn(
-                "shadow-md hover:shadow-lg transition-shadow h-full flex flex-col aspect-square items-center justify-center",
+                "shadow-md hover:shadow-lg transition-shadow h-full flex flex-col aspect-square",
                 tile.hasNew && "border-destructive ring-2 ring-destructive/50"
               )}>
-                <CardHeader className="p-3 pb-1 items-center text-center flex-grow justify-center relative">
+                <CardHeader className="p-3 pb-1 relative">
                    {tile.hasNew && (
                      <span className="absolute top-1 right-1 block h-2.5 w-2.5 rounded-full bg-destructive ring-1 ring-white" />
                    )}
-                  <Icon className="h-6 w-6 mb-2 text-primary" /> 
-                  <ShadcnCardTitle className="text-base font-semibold">{tile.title}</ShadcnCardTitle>
+                  <div className="flex items-center gap-2">
+                    <Icon className="h-6 w-6 text-primary" /> 
+                    <ShadcnCardTitle className="text-base font-semibold">{tile.title}</ShadcnCardTitle>
+                  </div>
                 </CardHeader>
-                <CardContent className="p-3 pt-0 text-center flex items-center justify-center">
-                  <ShadcnCardDescription className="text-xs text-muted-foreground">{tile.description}</ShadcnCardDescription>
+                <CardContent className="p-3 pt-0 flex-grow flex flex-col items-center justify-center">
+                  <ShadcnCardDescription className="text-xs text-muted-foreground text-center">{tile.description}</ShadcnCardDescription>
                 </CardContent>
               </Card>
             </Link>
