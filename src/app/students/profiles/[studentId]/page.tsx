@@ -1,12 +1,15 @@
 
 "use client";
 
+import * as React from 'react';
 import { PageTitle } from '@/components/shared/page-title';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { ArrowLeft, CreditCard, CalendarDays, Receipt } from 'lucide-react';
+import { ArrowLeft, CreditCard, CalendarDays, Receipt, Loader2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { getStudentById } from '@/services/student-service';
+import type { Student } from '@/types/student';
 
 interface StudentDetailPageProps {
   params: {
@@ -14,23 +17,59 @@ interface StudentDetailPageProps {
   };
 }
 
-// Placeholder student data structure including fee details
-const placeholderStudentDetails = {
-  "TS001": { name: "Aarav Sharma", email: "aarav.sharma@example.com", phone: "9876543210", shift: "morning", seatNumber: "A101", feeStatus: "Paid", amountDue: "₹0", lastPaidOn: "2024-06-01", nextDueDate: "2024-07-01" },
-  "TS002": { name: "Priya Patel", email: "priya.patel@example.com", phone: "9876543211", shift: "evening", seatNumber: "B203", feeStatus: "Due", amountDue: "₹700", lastPaidOn: "2024-05-05", nextDueDate: "2024-06-05" },
-  "TS003": { name: "Rohan Mehta", email: "rohan.mehta@example.com", phone: "9876543212", shift: "fullday", seatNumber: "C007", feeStatus: "Overdue", amountDue: "₹1200", lastPaidOn: "2024-04-15", nextDueDate: "2024-05-15" },
-};
-
-type StudentKey = keyof typeof placeholderStudentDetails;
-
-
 export default function StudentDetailPage({ params }: StudentDetailPageProps) {
   const { studentId } = params;
-  const student = placeholderStudentDetails[studentId as StudentKey] || {
-    name: "N/A", email: "N/A", phone: "N/A", shift: "N/A", seatNumber: "N/A",
-    feeStatus: "N/A", amountDue: "N/A", lastPaidOn: "N/A", nextDueDate: "N/A"
-  };
+  const [student, setStudent] = React.useState<Student | null>(null);
+  const [isLoading, setIsLoading] = React.useState(true);
 
+  React.useEffect(() => {
+    if (studentId) {
+      const fetchStudentData = async () => {
+        setIsLoading(true);
+        try {
+          const fetchedStudent = await getStudentById(studentId);
+          setStudent(fetchedStudent || null); // Set to null if undefined
+        } catch (error) {
+          console.error("Failed to fetch student:", error);
+          setStudent(null);
+        } finally {
+          setIsLoading(false);
+        }
+      };
+      fetchStudentData();
+    }
+  }, [studentId]);
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full py-10">
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+        <p className="mt-4 text-muted-foreground">Loading student details...</p>
+      </div>
+    );
+  }
+
+  if (!student) {
+    return (
+      <>
+        <PageTitle title="Student Not Found" description={`No student found with ID: ${studentId}`} >
+          <Link href="/students/list" passHref legacyBehavior>
+            <Button variant="outline">
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Back to Student List
+            </Button>
+          </Link>
+        </PageTitle>
+        <Card className="shadow-md">
+          <CardContent className="pt-6">
+            <p className="text-center text-muted-foreground">
+              The student you are looking for does not exist or could not be loaded.
+            </p>
+          </CardContent>
+        </Card>
+      </>
+    );
+  }
 
   return (
     <>
@@ -50,10 +89,11 @@ export default function StudentDetailPage({ params }: StudentDetailPageProps) {
           </CardHeader>
           <CardContent className="space-y-3">
             <p><strong>Name:</strong> {student.name}</p>
-            <p><strong>Email:</strong> {student.email}</p>
+            <p><strong>Email:</strong> {student.email || 'N/A'}</p>
             <p><strong>Phone:</strong> {student.phone}</p>
             <p><strong>Shift:</strong> <span className="capitalize">{student.shift}</span></p>
-            <p><strong>Seat Number:</strong> {student.seatNumber}</p>
+            <p><strong>Seat Number:</strong> {student.seatNumber || 'N/A'}</p>
+            <p><strong>Registration Date:</strong> {student.registrationDate}</p>
           </CardContent>
         </Card>
 
@@ -65,11 +105,22 @@ export default function StudentDetailPage({ params }: StudentDetailPageProps) {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            <p><strong>Status:</strong> <Badge variant={student.feeStatus === "Paid" ? "default" : student.feeStatus === "Due" ? "secondary" : "destructive"} className="bg-green-100 text-green-700 data-[variant=destructive]:bg-red-100 data-[variant=destructive]:text-red-700 data-[variant=secondary]:bg-yellow-100 data-[variant=secondary]:text-yellow-700 px-2 py-1 text-xs"> {student.feeStatus} </Badge> </p>
-            <p><strong>Amount Due:</strong> {student.amountDue}</p>
-            <p><strong>Last Paid On:</strong> {student.lastPaidOn}</p>
-            <p><strong>Next Due Date:</strong> {student.nextDueDate}</p>
-             <Button variant="outline" size="sm" className="mt-2">
+            <p><strong>Status:</strong> 
+              <Badge 
+                variant={student.feeStatus === "Paid" ? "default" : student.feeStatus === "Due" ? "secondary" : "destructive"} 
+                className={
+                  student.feeStatus === "Paid" ? "bg-green-100 text-green-700" : 
+                  student.feeStatus === "Due" ? "bg-yellow-100 text-yellow-700" : 
+                  student.feeStatus === "Overdue" ? "bg-red-100 text-red-700" : "" + " px-2 py-1 text-xs"
+                }
+              > 
+                {student.feeStatus} 
+              </Badge> 
+            </p>
+            <p><strong>Amount Due:</strong> {student.amountDue || "₹0"}</p>
+            <p><strong>Last Paid On:</strong> {student.lastPaymentDate || 'N/A'}</p>
+            <p><strong>Next Due Date:</strong> {student.nextDueDate || 'N/A'}</p>
+             <Button variant="outline" size="sm" className="mt-2" disabled>
                 <Receipt className="mr-2 h-4 w-4" /> View Payment History (Placeholder)
             </Button>
           </CardContent>
