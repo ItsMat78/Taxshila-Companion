@@ -295,7 +295,7 @@ export default function MemberDashboardPage() {
         const formatsToSupport = [ Html5QrcodeSupportedFormats.QR_CODE ];
         const config = {
             fps: 10,
-            qrbox: (viewfinderWidth: number, viewfinderHeight: number) => {
+             qrbox: (viewfinderWidth: number, viewfinderHeight: number) => {
               const edgePercentage = 0.7; 
               const edgeLength = Math.min(viewfinderWidth, viewfinderHeight) * edgePercentage;
               return { width: edgeLength, height: edgeLength };
@@ -318,7 +318,6 @@ export default function MemberDashboardPage() {
               try { await html5QrcodeScannerRef.current.pause(true); } 
               catch(e) { console.warn("Scanner pause error", e); }
           }
-
 
           if (decodedText === LIBRARY_QR_CODE_PAYLOAD) {
             try {
@@ -350,31 +349,41 @@ export default function MemberDashboardPage() {
               }
             }, 1000); 
           }
+          
+          if (html5QrcodeScannerRef.current && typeof html5QrcodeScannerRef.current.clear === 'function') {
+            try {
+                if (html5QrcodeScannerRef.current.getState() !== 0) await html5QrcodeScannerRef.current.clear();
+            } catch (clearError) {
+                console.warn("Error clearing scanner on success:", clearError);
+            } finally {
+                html5QrcodeScannerRef.current = null;
+            }
+          }
           setIsProcessingQr(false);
-          await handleCloseScanner();
+          setIsScannerOpen(false); // Ensure dialog closes
         };
 
         const onScanFailure = async (errorPayload: any) => {
           let errorMessage = typeof errorPayload === 'string' ? errorPayload : (errorPayload?.message || JSON.stringify(errorPayload));
           const errorMsgLower = errorMessage.toLowerCase();
           
-          if (
-              errorMsgLower.includes("permission denied") ||
-              errorMsgLower.includes("notallowederror") ||
-              errorMsgLower.includes("notfounderror") || 
-              errorMsgLower.includes("aborterror")
-          ) {
-              if (!errorMsgLower.includes("no qr code")) { 
-                  setHasCameraPermission(false);
-                  toast({
-                      variant: 'destructive',
-                      title: 'Camera or Scanner Error',
-                      description: 'Could not start QR scanner. Ensure camera permissions are enabled and no other app is using the camera. Try again.',
-                  });
-                  await handleCloseScanner();
-              }
-          } else if (!errorMsgLower.includes("no qr code")) {
-              console.warn("Dashboard QR Scan Failure (non-critical, e.g. format error):", errorMessage, errorPayload);
+          if (!errorMsgLower.includes("no qr code found")) { 
+            if (
+                errorMsgLower.includes("permission denied") ||
+                errorMsgLower.includes("notallowederror") ||
+                errorMsgLower.includes("notfounderror") || 
+                errorMsgLower.includes("aborterror")
+            ) {
+                setHasCameraPermission(false);
+                toast({
+                    variant: 'destructive',
+                    title: 'Camera or Scanner Error',
+                    description: 'Could not start QR scanner. Ensure camera permissions are enabled and no other app is using the camera. Try again.',
+                });
+                await handleCloseScanner();
+            } else {
+              console.warn("Dashboard QR Scan Failure (other, non-critical):", errorMessage, errorPayload);
+            }
           }
         };
         
@@ -410,8 +419,7 @@ export default function MemberDashboardPage() {
         toast({title: "Error", description: "Cannot mark attendance. Student details not loaded.", variant: "destructive"});
         return;
     }
-    if (activeCheckInRecord) { // This logic check is important for primary tile action
-        // This path shouldn't be hit if the tile is for check-out, but good for safety.
+    if (activeCheckInRecord) { 
         toast({title: "Already Checked In", description: "You are already checked in. Use the 'Check Out' button.", variant: "default"});
         return;
     }
@@ -569,54 +577,52 @@ export default function MemberDashboardPage() {
     <>
       <PageTitle title={pageTitleText} description="Your Taxshila Companion dashboard." />
       
-      <div className="mt-1 mb-4 text-xs text-center text-muted-foreground"> {/* Adjusted mb from mb-6 to mb-4 */}
-          {isLoadingCurrentSession ? (
-            <div className="flex items-center justify-center">
-              <Loader2 className="mr-1 h-3 w-3 animate-spin" />
-              <span>Loading session...</span>
-            </div>
-          ) : (
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-x-3 gap-y-1">
-              {activeCheckInRecord ? (
+       <div className="mt-1 mb-4 text-xs text-center text-muted-foreground">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-x-3 gap-y-1">
+            {isLoadingCurrentSession ? (
+              <div className="flex items-center justify-center">
+                <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                <span>Loading session...</span>
+              </div>
+            ) : activeCheckInRecord ? (
+              <div className="flex items-center">
+                <PlayCircle className="mr-1 h-3 w-3 text-green-600" />
+                <span>Checked In (since {activeCheckInRecord.checkInTime && isValid(parseISO(activeCheckInRecord.checkInTime)) ? format(parseISO(activeCheckInRecord.checkInTime), 'p') : 'N/A'})</span>
+              </div>
+            ) : (
+              <div className="flex items-center">
+                <CheckCircle className="mr-1 h-3 w-3 text-gray-500" />
+                <span>Not Currently Checked In</span>
+              </div>
+            )}
+            {hoursStudiedToday !== null && hoursStudiedToday > 0 && (
+              <div className="flex items-center">
+                <Hourglass className="mr-1 h-3 w-3 text-blue-500" />
+                <span>Today: {hoursStudiedToday.toFixed(1)} hrs</span>
+              </div>
+            )}
+            {hoursStudiedToday === 0 && !activeCheckInRecord && !isLoadingCurrentSession && (
                 <div className="flex items-center">
-                  <PlayCircle className="mr-1 h-3 w-3 text-green-600" />
-                  <span>Checked In (since {activeCheckInRecord.checkInTime && isValid(parseISO(activeCheckInRecord.checkInTime)) ? format(parseISO(activeCheckInRecord.checkInTime), 'p') : 'N/A'})</span>
-                </div>
-              ) : (
-                <div className="flex items-center">
-                  <CheckCircle className="mr-1 h-3 w-3 text-gray-500" />
-                  <span>Not Currently Checked In</span>
-                </div>
-              )}
-              {hoursStudiedToday !== null && hoursStudiedToday > 0 && (
-                <div className="flex items-center">
-                  <Hourglass className="mr-1 h-3 w-3 text-blue-500" />
-                  <span>Today: {hoursStudiedToday.toFixed(1)} hrs</span>
-                </div>
-              )}
-              {hoursStudiedToday === 0 && !activeCheckInRecord && (
-                 <div className="flex items-center">
-                  <Hourglass className="mr-1 h-3 w-3 text-blue-500" />
-                  <span>No study today.</span>
-                </div>
-              )}
-            </div>
-          )}
+                <Hourglass className="mr-1 h-3 w-3 text-blue-500" />
+                <span>No study today.</span>
+              </div>
+            )}
+          </div>
         </div>
 
 
-      <div className="mb-6"> {/* Added mb-6 here for spacing below primary button */}
+      <div className="mb-6">
         <DashboardTile
           title={primaryAttendanceTitle}
           description={activeCheckInRecord ? "You are currently checked in." : "Scan the library QR code for attendance."}
           icon={primaryAttendanceIcon}
           action={primaryAttendanceAction}
-          isPrimaryAction={!activeCheckInRecord && !isLoadingCurrentSession} 
+          isPrimaryAction={!primaryAttendanceDisabled} 
           isLoadingStatistic={isLoadingCurrentSession && primaryAttendanceIcon === Loader2}
           disabled={primaryAttendanceDisabled}
           className={cn(
-            (activeCheckInRecord && !isProcessingCheckout && !isLoadingCurrentSession) 
-              ? 'bg-green-600 hover:bg-green-700 text-primary-foreground hover:text-primary-foreground' 
+            (activeCheckInRecord && !isProcessingCheckout && !isLoadingCurrentSession && !primaryAttendanceDisabled) 
+              ? 'bg-green-600 hover:bg-green-700' // Removed text-primary-foreground, isPrimaryAction will handle it
               : ''
           )}
         />
