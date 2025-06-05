@@ -17,7 +17,7 @@ import {
   Timestamp,
   serverTimestamp,
   orderBy,
-  limit,
+  limit, // Added limit
   startAfter,
   getCountFromServer,
   runTransaction,
@@ -56,9 +56,10 @@ export {
   Timestamp,
   serverTimestamp,
   orderBy,
-  limit,
+  limit, // Export limit
   startAfter,
   getCountFromServer,
   runTransaction,
   increment
 };
+

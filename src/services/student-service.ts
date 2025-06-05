@@ -13,6 +13,7 @@ import {
   arrayUnion,
   deleteDoc, 
   orderBy,
+  limit, // Added limit to imports
   serverTimestamp
 } from '@/lib/firebase';
 import type { Student, Shift, FeeStatus, PaymentRecord, ActivityStatus, AttendanceRecord } from '@/types/student';
@@ -696,7 +697,7 @@ export async function sendGeneralAlert(title: string, message: string, type: Ale
     type,
     dateSent: Timestamp.fromDate(new Date()),
     isRead: false, // Default for new general alert
-    // studentId field is omitted for general alerts
+    studentId: null, // Explicitly set studentId to null for general alerts
   };
   const docRef = await addDoc(collection(db, ALERTS_COLLECTION), newAlertData);
   return { 
@@ -714,22 +715,20 @@ export async function sendAlertToStudent(
   originalFeedbackId?: string,
   originalFeedbackMessageSnippet?: string
 ): Promise<AlertItem> {
-  // Ensure student exists before sending a targeted alert
   const student = await getStudentByCustomId(customStudentId);
-  if (!student && type === 'feedback_response') { // Only strictly require student for feedback responses
+  if (!student && type === 'feedback_response') { 
       throw new Error(`Student with ID ${customStudentId} not found for feedback response.`);
   } else if (!student) {
       console.warn(`Attempted to send targeted alert to non-existent student ID: ${customStudentId} for title: "${title}"`);
-      // Proceed if not feedback response, but log warning. Might be for a student who just left.
   }
 
   const newAlertData: any = {
-    studentId: customStudentId, // Store custom TSMEMXXX ID
+    studentId: customStudentId, 
     title,
     message,
     type,
     dateSent: Timestamp.fromDate(new Date()),
-    isRead: false, // Default for new targeted alert
+    isRead: false, 
   };
   if (originalFeedbackId) newAlertData.originalFeedbackId = originalFeedbackId;
   if (originalFeedbackMessageSnippet) newAlertData.originalFeedbackMessageSnippet = originalFeedbackMessageSnippet;
@@ -751,51 +750,30 @@ export async function getAlertsForStudent(customStudentId: string): Promise<Aler
   const studentData = studentSnap.data() as Student | undefined;
   const readGeneralAlertIdsSet = new Set(studentData?.readGeneralAlertIds || []);
 
-  // Fetch targeted alerts
   const targetedQuery = query(
     collection(db, ALERTS_COLLECTION),
     where("studentId", "==", customStudentId)
   );
-  // Fetch general alerts (no studentId field OR studentId is null/undefined)
-  // Firestore doesn't support "OR" queries directly or "not-exists" in a simple way for this.
-  // A common pattern is to query for alerts that DON'T have a studentId field.
-  // For simplicity, if studentId is not present, it's general.
-  // We need to be careful how we structure this.
-  // Let's fetch alerts where studentId is ABSENT (general)
-  // and alerts where studentId == customStudentId (targeted).
-
+  
   const generalAlertsQuery = query(
       collection(db, ALERTS_COLLECTION),
-      where("studentId", "==", null) // Or ensure studentId is not set for general alerts
+      where("studentId", "==", null) 
   );
-  // If general alerts are defined by studentId NOT being present, use:
-  // const generalAlertsQuery = query(collection(db, ALERTS_COLLECTION));
-  // and filter client-side: .filter(alert => !alert.studentId)
-  // For now, assuming general alerts have studentId explicitly as null or undefined.
-  // Better: Store general alerts without the studentId field at all.
-  // To query for documents where a field does NOT exist is not straightforward.
-  // The simplest approach is to query all alerts and filter, or have a 'isGeneral' boolean field.
-  // Let's assume general alerts are those where `studentId` is not set (or explicitly null).
-  // For this query, I'll fetch alerts with NO studentId, and alerts WITH this studentId.
-  // This can be done with two separate queries and merging.
-
+  
   const targetedAlertsSnapshot = await getDocs(targetedQuery);
   const studentAlerts = targetedAlertsSnapshot.docs.map(alertItemFromDoc);
 
-  // Fetch all alerts and then filter general ones, OR use a specific field like type != 'feedback_response' and no studentId
-  // For a more robust general alert system, you might have a separate collection or a flag.
-  // Given the current structure, I'll fetch all alerts and client-side filter.
-  const allAlertsSnapshot = await getDocs(query(collection(db, ALERTS_COLLECTION)));
-  const generalAlerts = allAlertsSnapshot.docs
+  const generalAlertsSnapshot = await getDocs(generalAlertsQuery);
+  const generalAlerts = generalAlertsSnapshot.docs
       .map(alertItemFromDoc)
-      .filter(alert => !alert.studentId && alert.type !== 'feedback_response');
+      .filter(alert => alert.type !== 'feedback_response'); // Feedback responses should always be targeted
 
 
   const contextualizedAlerts = [
-    ...studentAlerts, // Targeted alerts already have their own isRead status
+    ...studentAlerts, 
     ...generalAlerts.map(alert => ({
       ...alert,
-      isRead: readGeneralAlertIdsSet.has(alert.id) // Use firestoreId (which is 'id' here)
+      isRead: readGeneralAlertIdsSet.has(alert.id) 
     }))
   ];
   
@@ -819,27 +797,25 @@ export async function markAlertAsRead(alertId: string, customStudentId: string):
     }
     const alertData = alertItemFromDoc(alertSnap);
 
-    // If it's a targeted alert for this student
     if (alertData.studentId === customStudentId) {
         await updateDoc(alertDocRef, { isRead: true });
         return { ...alertData, isRead: true };
     } 
-    // If it's a general alert (no studentId)
-    else if (!alertData.studentId) {
+    else if (alertData.studentId === null) { // General alert
         const student = await getStudentByCustomId(customStudentId);
         if (student && student.firestoreId) {
             const studentDocRef = doc(db, STUDENTS_COLLECTION, student.firestoreId);
             await updateDoc(studentDocRef, {
-                readGeneralAlertIds: arrayUnion(alertId) // Use Firestore ID of the alert
+                readGeneralAlertIds: arrayUnion(alertId) 
             });
-            return { ...alertData, isRead: true }; // Mark as read contextually for this student
+            return { ...alertData, isRead: true }; 
         } else {
             throw new Error("Student not found to mark general alert as read.");
         }
     }
-    // If it's a targeted alert but not for this student
-    else {
-        throw new Error("Permission denied to mark this alert as read.");
+    else { // Targeted alert for a different student
+        console.warn(`Attempt to mark alert ${alertId} as read by wrong student ${customStudentId}. Alert belongs to ${alertData.studentId}`);
+        return alertData; // Return original alert data, no change
     }
 }
 
@@ -858,3 +834,4 @@ declare module '@/types/communication' {
     firestoreId?: string;
   }
 }
+
