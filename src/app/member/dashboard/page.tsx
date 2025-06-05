@@ -17,7 +17,7 @@ import {
 import { Alert, AlertDescription, AlertTitle as ShadcnAlertTitle } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/auth-context';
-import { Camera, QrCode, Receipt, IndianRupee, MessageSquare, Bell, ScrollText, Star, Loader2, XCircle, Home, BarChart3, PlayCircle, CheckCircle, Hourglass, ScanLine } from 'lucide-react';
+import { Camera, QrCode, Receipt, IndianRupee, MessageSquare, Bell, ScrollText, Star, Loader2, XCircle, Home, BarChart3, PlayCircle, CheckCircle, Hourglass, ScanLine, LogOut } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getStudentByEmail, getAlertsForStudent, calculateMonthlyStudyHours, addCheckIn, addCheckOut, getActiveCheckIn, getAttendanceForDate } from '@/services/student-service';
 import type { AlertItem } from '@/types/communication';
@@ -166,6 +166,8 @@ export default function MemberDashboardPage() {
   const [activeCheckInRecord, setActiveCheckInRecord] = React.useState<AttendanceRecord | null>(null);
   const [hoursStudiedToday, setHoursStudiedToday] = React.useState<number | null>(null);
   const [isLoadingCurrentSession, setIsLoadingCurrentSession] = React.useState(true);
+  const [isProcessingCheckout, setIsProcessingCheckout] = React.useState(false);
+
 
   const [studentFeeStatus, setStudentFeeStatus] = React.useState<FeeStatus | null>(null);
   const [studentNextDueDate, setStudentNextDueDate] = React.useState<string | null>(null);
@@ -264,9 +266,13 @@ export default function MemberDashboardPage() {
         }
 
         if (html5QrcodeScannerRef.current) {
-          html5QrcodeScannerRef.current.clear()
-            .catch(clearError => console.error("Error clearing previous scanner instance (Dashboard):", clearError))
-            .finally(() => html5QrcodeScannerRef.current = null);
+          if (typeof html5QrcodeScannerRef.current.clear === 'function') {
+            html5QrcodeScannerRef.current.clear()
+              .catch(clearError => console.error("Error clearing previous scanner instance (Dashboard):", clearError))
+              .finally(() => html5QrcodeScannerRef.current = null);
+          } else {
+            html5QrcodeScannerRef.current = null;
+          }
         }
         
         const formatsToSupport = [ Html5QrcodeSupportedFormats.QR_CODE ];
@@ -282,7 +288,7 @@ export default function MemberDashboardPage() {
             rememberLastUsedCamera: true, 
         };
 
-        const scanner = new Html5QrcodeScanner(DASHBOARD_QR_SCANNER_ELEMENT_ID, config); // Defaults to verbose: true
+        const scanner = new Html5QrcodeScanner(DASHBOARD_QR_SCANNER_ELEMENT_ID, config);
         html5QrcodeScannerRef.current = scanner;
 
         const onScanSuccess = async (decodedText: string, decodedResult: any) => {
@@ -296,11 +302,11 @@ export default function MemberDashboardPage() {
           if (decodedText === LIBRARY_QR_CODE_PAYLOAD) {
             try {
               if (studentId) { 
-                  // Fetch the LATEST check-in status right before making a decision
+                  // This scanner is only for check-in now. Checkout is direct.
                   const currentActiveCheckIn = await getActiveCheckIn(studentId); 
                   if (currentActiveCheckIn) {
-                    await addCheckOut(currentActiveCheckIn.recordId);
-                    toast({ title: "Checked Out!", description: `Successfully checked out at ${new Date().toLocaleTimeString()}.` });
+                    // This case should ideally not be hit if UI only allows scanning for check-in
+                    toast({ title: "Already Checked In", description: `You are already checked in. Use the 'Check Out' button.`, variant: "default" });
                   } else {
                     await addCheckIn(studentId);
                     toast({ title: "Checked In!", description: `Successfully checked in at ${new Date().toLocaleTimeString()}.` });
@@ -318,7 +324,7 @@ export default function MemberDashboardPage() {
             setTimeout(() => { 
               if (html5QrcodeScannerRef.current ) {
                 try {
-                  if (html5QrcodeScannerRef.current.getState() === 2 /* PAUSED */) { // Assuming 2 is PAUSED
+                  if (html5QrcodeScannerRef.current.getState() === 2 /* PAUSED */) { 
                      html5QrcodeScannerRef.current.resume();
                   }
                 } catch(e) { console.warn("Scanner resume error", e); }
@@ -355,7 +361,7 @@ export default function MemberDashboardPage() {
         
         try {
           scanner.render(onScanSuccess, onScanFailure);
-          setHasCameraPermission(true); // Optimistically set
+          setHasCameraPermission(true); 
         } catch (err: any) {
               console.error("Error rendering scanner (Dashboard - render call failed):", err);
               setHasCameraPermission(false);
@@ -367,15 +373,19 @@ export default function MemberDashboardPage() {
       return () => {
         clearTimeout(timeoutId);
         if (html5QrcodeScannerRef.current && typeof html5QrcodeScannerRef.current.clear === 'function') {
-          html5QrcodeScannerRef.current.clear()
-            .catch((err) => console.error("Cleanup: Error clearing scanner (Dashboard):", err))
-            .finally(() => html5QrcodeScannerRef.current = null);
+          if (html5QrcodeScannerRef.current.getState() !== 0 /* NOT_STARTED */) {
+            html5QrcodeScannerRef.current.clear()
+              .catch((err) => console.error("Cleanup: Error clearing scanner (Dashboard):", err))
+              .finally(() => html5QrcodeScannerRef.current = null);
+          } else {
+             html5QrcodeScannerRef.current = null;
+          }
         } else {
           html5QrcodeScannerRef.current = null;
         }
       };
     } else if (!isScannerOpen && html5QrcodeScannerRef.current) {
-        if (typeof html5QrcodeScannerRef.current.clear === 'function') {
+        if (typeof html5QrcodeScannerRef.current.clear === 'function' && html5QrcodeScannerRef.current.getState() !== 0) {
             html5QrcodeScannerRef.current.clear()
               .catch(err => console.error("Error clearing scanner (Dashboard on close):", err))
               .finally(() => html5QrcodeScannerRef.current = null);
@@ -383,13 +393,16 @@ export default function MemberDashboardPage() {
             html5QrcodeScannerRef.current = null;
         }
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isScannerOpen, studentId, toast, fetchAllDashboardData]);
 
 
   const handleOpenScanner = () => {
     if (!studentId) {
         toast({title: "Error", description: "Cannot mark attendance. Student details not loaded.", variant: "destructive"});
+        return;
+    }
+    if (activeCheckInRecord) {
+        toast({title: "Already Checked In", description: "You are already checked in. Use the 'Check Out' button.", variant: "default"});
         return;
     }
     setHasCameraPermission(null); 
@@ -399,6 +412,27 @@ export default function MemberDashboardPage() {
 
   const handleCloseScanner = () => {
     setIsScannerOpen(false);
+  };
+
+  const handleDashboardCheckOut = async () => {
+    if (!studentId || !activeCheckInRecord) {
+      toast({ title: "Error", description: "Cannot check out. Active session not found or student ID missing.", variant: "destructive" });
+      return;
+    }
+    setIsProcessingCheckout(true);
+    try {
+      await addCheckOut(activeCheckInRecord.recordId);
+      toast({
+        title: "Checked Out!",
+        description: `Successfully checked out at ${new Date().toLocaleTimeString()}.`,
+      });
+      await fetchAllDashboardData(); // Refresh dashboard data
+    } catch (error: any) {
+      console.error("Error during dashboard check-out:", error);
+      toast({ title: "Check-out Error", description: error.message || "Failed to process check-out. Please try again.", variant: "destructive" });
+    } finally {
+      setIsProcessingCheckout(false);
+    }
   };
 
 
@@ -506,32 +540,37 @@ export default function MemberDashboardPage() {
     ? `Welcome, ${defaultWelcomeName}!`
     : (studentFirstName ? `Welcome, ${studentFirstName}!` : `Welcome, ${defaultWelcomeName}!`);
 
+  const primaryAttendanceAction = activeCheckInRecord ? handleDashboardCheckOut : handleOpenScanner;
+  const primaryAttendanceTitle = isLoadingCurrentSession ? "Loading..." : (activeCheckInRecord ? "Tap to Check Out" : "Scan to Check In");
+  const primaryAttendanceIcon = isLoadingCurrentSession ? Loader2 : (activeCheckInRecord ? LogOut : ScanLine);
+  const primaryAttendanceDisabled = !studentId || isLoadingCurrentSession || (activeCheckInRecord && isProcessingCheckout) || (!activeCheckInRecord && isScannerOpen);
+
+
   return (
     <>
       <PageTitle title={pageTitleText} description="Your Taxshila Companion dashboard." />
 
-      <Dialog open={isScannerOpen} onOpenChange={(open) => { if(!open) handleCloseScanner(); else handleOpenScanner();}}>
-        <DialogTrigger asChild>
-          <div className="mb-2 cursor-pointer">
-            <DashboardTile
-              title={isLoadingCurrentSession ? "Loading..." : (activeCheckInRecord ? "Scan to Check Out" : "Scan to Check In")}
-              description="Scan the library QR code for attendance."
-              icon={ScanLine}
-              action={handleOpenScanner}
-              isPrimaryAction={true}
-              disabled={!studentId || isLoadingCurrentSession}
-            />
-          </div>
-        </DialogTrigger>
+      <div className="mb-2">
+        <DashboardTile
+          title={primaryAttendanceTitle}
+          description={activeCheckInRecord ? "You are currently checked in." : "Scan the library QR code for attendance."}
+          icon={primaryAttendanceIcon}
+          action={primaryAttendanceAction}
+          isPrimaryAction={true}
+          disabled={primaryAttendanceDisabled}
+          className={isLoadingCurrentSession && activeCheckInRecord ? "animate-spin" : ""}
+        />
+      </div>
+       <Dialog open={isScannerOpen} onOpenChange={(open) => { if(!open) handleCloseScanner(); else if (!activeCheckInRecord) handleOpenScanner();}}>
         <DialogContent className="w-[90vw] max-w-xs sm:max-w-sm md:max-w-md p-4 flex flex-col overflow-hidden">
           <DialogHeader className="flex-shrink-0">
             <ShadcnDialogTitle className="flex items-center"><Camera className="mr-2"/>Scan Library QR Code</ShadcnDialogTitle>
             <DialogDescription>
-              Point your camera at the QR code provided at the library desk.
+              Point your camera at the QR code provided at the library desk to check-in.
             </DialogDescription>
           </DialogHeader>
           
-          <div className="flex-grow flex flex-col gap-3 mt-3 min-h-0"> {/* Added min-h-0 */}
+          <div className="flex-grow flex flex-col gap-3 mt-3 min-h-0">
             {hasCameraPermission === false && (
               <Alert variant="destructive" className="flex-shrink-0">
                 <XCircle className="h-4 w-4" />
