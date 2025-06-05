@@ -25,6 +25,8 @@ import type { AlertItem } from '@/types/communication';
 type DashboardTileProps = {
   title: string;
   description?: string;
+  statistic?: string | number | null;
+  isLoadingStatistic?: boolean;
   icon: React.ElementType;
   href?: string;
   action?: () => void;
@@ -34,7 +36,19 @@ type DashboardTileProps = {
   hasNew?: boolean;
 };
 
-const DashboardTile: React.FC<DashboardTileProps> = ({ title, description, icon: Icon, href, action, className = "", isPrimaryAction = false, external = false, hasNew = false }) => {
+const DashboardTile: React.FC<DashboardTileProps> = ({ 
+  title, 
+  description, 
+  statistic,
+  isLoadingStatistic,
+  icon: Icon, 
+  href, 
+  action, 
+  className = "", 
+  isPrimaryAction = false, 
+  external = false, 
+  hasNew = false 
+}) => {
   const content = (
     <Card className={cn(
       "shadow-lg hover:shadow-xl transition-shadow h-full flex flex-col",
@@ -66,12 +80,29 @@ const DashboardTile: React.FC<DashboardTileProps> = ({ title, description, icon:
         </div>
       </CardHeader>
       <CardContent className={cn(
-        "flex-grow",
-        isPrimaryAction ? "p-4 pt-2" : "flex flex-col items-center justify-center p-3 pt-1" 
+        "flex-grow flex flex-col items-center justify-center",
+        isPrimaryAction ? "p-4 pt-2" : "p-3 pt-1" 
       )}>
-        {description && <p className={cn(
-          isPrimaryAction ? 'text-sm text-primary-foreground/80' : 'text-xs text-muted-foreground text-center',
-        )}>{description}</p>}
+        {isLoadingStatistic ? (
+          <Loader2 className="h-8 w-8 animate-spin text-primary my-2" />
+        ) : statistic !== null && statistic !== undefined ? (
+          <>
+            <div className={cn(
+              "text-3xl font-bold",
+               isPrimaryAction ? 'text-primary-foreground' : 'text-foreground'
+            )}>
+              {statistic}
+            </div>
+            {description && <p className={cn(
+              "text-xs mt-1",
+              isPrimaryAction ? 'text-primary-foreground/80' : 'text-muted-foreground text-center',
+            )}>{description}</p>}
+          </>
+        ) : (
+          description && <p className={cn(
+            isPrimaryAction ? 'text-sm text-primary-foreground/80' : 'text-xs text-muted-foreground text-center',
+          )}>{description}</p>
+        )}
       </CardContent>
     </Card>
   );
@@ -119,7 +150,12 @@ export default function MemberDashboardPage() {
   React.useEffect(() => {
     if (user?.email) {
       setIsLoadingStudentData(true);
-      setIsLoadingStudyHours(true);
+      setIsLoadingStudyHours(true); 
+      setStudentFirstName(null); 
+      setStudentId(null); 
+      setMonthlyStudyHours(null);
+      setHasUnreadAlerts(false);
+
       getStudentByEmail(user.email)
         .then(studentDetails => {
           if (studentDetails) {
@@ -131,30 +167,24 @@ export default function MemberDashboardPage() {
 
             return Promise.all([alertPromise, studyHoursPromise]);
           }
-          setStudentFirstName(null);
-          setStudentId(null);
-          setMonthlyStudyHours(null); 
-          setHasUnreadAlerts(false);
+          setIsLoadingStudentData(false);
+          setIsLoadingStudyHours(false); 
           return Promise.reject("Student not found to fetch further data"); 
         })
         .then(([alerts, hours]) => {
           setHasUnreadAlerts(alerts.some(alert => !alert.isRead));
           setMonthlyStudyHours(hours);
+          setIsLoadingStudyHours(false);
         })
         .catch(error => {
           if (error !== "Student not found to fetch further data") {
             console.error("Error fetching student data, alerts or study hours for dashboard:", error);
             toast({ title: "Error", description: "Could not load all dashboard data.", variant: "destructive" });
           }
-          // Ensure states are reset on error
-          setStudentFirstName(null);
-          setStudentId(null); 
-          setHasUnreadAlerts(false);
-          setMonthlyStudyHours(null);
+          setIsLoadingStudyHours(false);
         })
         .finally(() => {
           setIsLoadingStudentData(false);
-          setIsLoadingStudyHours(false);
         });
     } else {
       setIsLoadingStudentData(false);
@@ -236,7 +266,6 @@ export default function MemberDashboardPage() {
         toast({ title: "Checked In!", description: `Successfully checked in at ${new Date().toLocaleTimeString()}.` });
       }
       
-      // Re-fetch study hours after check-in/out
       setIsLoadingStudyHours(true);
       calculateMonthlyStudyHours(studentId)
           .then(setMonthlyStudyHours)
@@ -253,21 +282,33 @@ export default function MemberDashboardPage() {
       setIsScannerOpen(false);
     }
   };
-
-  let activitySummaryDescription = "Track your study hours.";
-  if (isLoadingStudyHours || isLoadingStudentData) { // Combined loading state for initial placeholder
-    activitySummaryDescription = "Loading hours...";
-  } else if (studentId && monthlyStudyHours !== null) { // studentId check ensures student context is loaded
-    activitySummaryDescription = `${monthlyStudyHours} hours studied this month.`;
-  } else if (studentId && monthlyStudyHours === null) { // studentId loaded but hours failed
-    activitySummaryDescription = "N/A hours recorded.";
+  
+  let activitySummaryTileDescription = "Track your study hours.";
+  if (!isLoadingStudentData && studentId && !isLoadingStudyHours) {
+    if (monthlyStudyHours !== null && monthlyStudyHours > 0) {
+        activitySummaryTileDescription = "hours studied this month";
+    } else if (monthlyStudyHours === 0) {
+        activitySummaryTileDescription = "No hours yet this month";
+    }
   }
-  // Default is "Track your study hours." if studentId is null or other unhandled states.
 
 
   const coreActionTiles: DashboardTileProps[] = [
-    { title: "View Alerts", description: "Catch up on announcements.", icon: Bell, href: "/member/alerts", hasNew: isLoadingStudentData ? false : hasUnreadAlerts },
-    { title: "Activity Summary", description: activitySummaryDescription, icon: BarChart3, href: "/member/attendance" },
+    { 
+      title: "View Alerts", 
+      description: "Catch up on announcements.", 
+      icon: Bell, 
+      href: "/member/alerts", 
+      hasNew: isLoadingStudentData ? false : hasUnreadAlerts 
+    },
+    { 
+      title: "Activity Summary", 
+      description: activitySummaryTileDescription, 
+      statistic: (isLoadingStudentData || isLoadingStudyHours) ? null : monthlyStudyHours,
+      isLoadingStatistic: isLoadingStudentData || isLoadingStudyHours,
+      icon: BarChart3, 
+      href: "/member/attendance" 
+    },
     { title: "Pay Fees", description: "Settle your outstanding dues.", icon: IndianRupee, href: "/member/pay" },
     { title: "Submit Feedback", description: "Share suggestions or issues.", icon: MessageSquare, href: "/member/feedback" },
   ];
@@ -359,3 +400,5 @@ export default function MemberDashboardPage() {
     </>
   );
 }
+
+    
