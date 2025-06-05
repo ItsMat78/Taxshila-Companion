@@ -21,13 +21,15 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from '@/components/ui/badge';
-import { ArrowRight, Edit, Loader2, Users, UserX, UserCheck } from 'lucide-react';
+import { Input } from '@/components/ui/input'; // Added Input
+import { ArrowRight, Edit, Loader2, Users, UserX, UserCheck, Search as SearchIcon } from 'lucide-react'; // Added SearchIcon
 import { getAllStudents } from '@/services/student-service';
 import type { Student as StudentData } from '@/types/student'; 
 
 export default function StudentListPage() {
   const [allStudents, setAllStudents] = React.useState<StudentData[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
+  const [searchTerm, setSearchTerm] = React.useState("");
 
   React.useEffect(() => {
     const fetchStudents = async () => {
@@ -44,8 +46,21 @@ export default function StudentListPage() {
     fetchStudents();
   }, []);
 
-  const activeStudents = allStudents.filter(student => student.activityStatus === 'Active');
-  const leftStudents = allStudents.filter(student => student.activityStatus === 'Left');
+  const filteredStudents = React.useMemo(() => {
+    if (!searchTerm.trim()) {
+      return allStudents;
+    }
+    const lowercasedFilter = searchTerm.toLowerCase();
+    return allStudents.filter(student =>
+      student.name.toLowerCase().includes(lowercasedFilter) ||
+      student.studentId.toLowerCase().includes(lowercasedFilter) ||
+      (student.email && student.email.toLowerCase().includes(lowercasedFilter)) ||
+      student.phone.includes(searchTerm) // Phone search can be direct
+    );
+  }, [allStudents, searchTerm]);
+
+  const activeStudents = filteredStudents.filter(student => student.activityStatus === 'Active');
+  const leftStudents = filteredStudents.filter(student => student.activityStatus === 'Left');
 
   const getStatusBadge = (student: StudentData) => {
     if (student.activityStatus === 'Left') {
@@ -131,7 +146,7 @@ export default function StudentListPage() {
               {studentsToRender.length === 0 && !isLoading && (
                 <TableRow>
                   <TableCell colSpan={8} className="py-4 text-center text-muted-foreground">
-                    {emptyMessage}
+                    {searchTerm.trim() && allStudents.length > 0 ? "No students match your search." : emptyMessage}
                   </TableCell>
                 </TableRow>
               )}
@@ -144,7 +159,18 @@ export default function StudentListPage() {
 
   return (
     <>
-      <PageTitle title="Student Management" description="View and manage all registered students." />
+      <PageTitle title="Student Management" description="View and manage all registered students.">
+        <div className="relative ml-auto flex-1 md:grow-0">
+            <SearchIcon className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              type="search"
+              placeholder="Search students..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full rounded-lg bg-background pl-8 md:w-[200px] lg:w-[336px]"
+            />
+          </div>
+      </PageTitle>
       
       {renderStudentTable(
         activeStudents, 
