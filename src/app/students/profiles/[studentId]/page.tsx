@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { ArrowLeft, CreditCard, CalendarDays, Receipt, Loader2, UserCircle, Briefcase, History as HistoryIcon, LogIn, LogOut, Clock, FileText } from 'lucide-react';
+import { ArrowLeft, CreditCard, CalendarDays, Receipt, Loader2, UserCircle, Briefcase, History as HistoryIcon, LogIn, LogOut, Clock, FileText, Download } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -28,6 +28,26 @@ import { cn } from '@/lib/utils';
 
 const DEFAULT_PROFILE_PLACEHOLDER = "https://placehold.co/100x100.png";
 const ID_CARD_PLACEHOLDER = "https://placehold.co/300x200.png?text=ID+Card";
+
+// Mobile Card Item for Payment History
+const PaymentHistoryCardItem = ({ payment }: { payment: PaymentRecord }) => (
+  <div className="p-3 border rounded-md bg-muted/30 shadow-sm">
+    <div className="flex justify-between items-start mb-1">
+      <div className="font-medium text-sm">{payment.amount}</div>
+      <Badge variant="outline" className="text-xs capitalize">{payment.method}</Badge>
+    </div>
+    <div className="text-xs text-muted-foreground space-y-0.5">
+      <p>Date: {payment.date && isValid(parseISO(payment.date)) ? format(parseISO(payment.date), 'dd-MMM-yy') : 'N/A'}</p>
+      <p>Transaction ID: {payment.transactionId}</p>
+    </div>
+    <div className="mt-2">
+      <Button variant="outline" size="sm" disabled className="w-full">
+        <Download className="mr-1 h-3 w-3" /> Invoice
+      </Button>
+    </div>
+  </div>
+);
+
 
 export default function StudentDetailPage() {
   const paramsHook = useParams();
@@ -216,28 +236,44 @@ export default function StudentDetailPage() {
           </CardHeader>
           <CardContent>
             {(student.paymentHistory && student.paymentHistory.length > 0) ? (
-              <div className="max-h-60 w-full overflow-y-auto overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="text-xs whitespace-nowrap">Date</TableHead>
-                      <TableHead className="text-xs whitespace-nowrap">Amount</TableHead>
-                      <TableHead className="text-xs whitespace-nowrap">Method</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {student.paymentHistory.slice().reverse().map((payment: PaymentRecord) => (
-                      <TableRow key={payment.paymentId}>
-                        <TableCell className="text-xs whitespace-nowrap">{payment.date && isValid(parseISO(payment.date)) ? format(parseISO(payment.date), 'dd-MMM-yy') : 'N/A'}</TableCell>
-                        <TableCell className="text-xs whitespace-nowrap">{payment.amount}</TableCell>
-                        <TableCell className="text-xs capitalize whitespace-nowrap">{payment.method}</TableCell>
+              <>
+                {/* Mobile Card View for Payment History */}
+                <div className="md:hidden space-y-3 max-h-60 overflow-y-auto">
+                  {student.paymentHistory.slice().reverse().map((payment: PaymentRecord) => (
+                    <PaymentHistoryCardItem key={payment.paymentId} payment={payment} />
+                  ))}
+                </div>
+
+                {/* Desktop Table View for Payment History */}
+                <div className="hidden md:block max-h-60 w-full overflow-y-auto overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="text-xs whitespace-nowrap">Date</TableHead>
+                        <TableHead className="text-xs whitespace-nowrap">Amount</TableHead>
+                        <TableHead className="text-xs whitespace-nowrap">Method</TableHead>
+                        <TableHead className="text-xs whitespace-nowrap">Action</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
+                    </TableHeader>
+                    <TableBody>
+                      {student.paymentHistory.slice().reverse().map((payment: PaymentRecord) => (
+                        <TableRow key={payment.paymentId}>
+                          <TableCell className="text-xs whitespace-nowrap">{payment.date && isValid(parseISO(payment.date)) ? format(parseISO(payment.date), 'dd-MMM-yy') : 'N/A'}</TableCell>
+                          <TableCell className="text-xs whitespace-nowrap">{payment.amount}</TableCell>
+                          <TableCell className="text-xs capitalize whitespace-nowrap">{payment.method}</TableCell>
+                          <TableCell className="text-xs whitespace-nowrap">
+                            <Button variant="outline" size="sm" disabled>
+                              <Download className="mr-1 h-3 w-3" /> Invoice
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </>
             ) : (
-              <p className="text-muted-foreground text-sm">No payment history found.</p>
+              <p className="text-muted-foreground text-sm text-center py-4">No payment history found.</p>
             )}
           </CardContent>
         </Card>
@@ -263,7 +299,7 @@ export default function StudentDetailPage() {
             modifiers={{ today: new Date() }}
             modifiersStyles={{ today: { color: 'hsl(var(--accent-foreground))', backgroundColor: 'hsl(var(--accent))' } }}
           />
-          <div className="flex-1 w-full md:w-auto md:min-w-[250px]"> {/* Added min-w for flex item */}
+          <div className="flex-1 w-full md:w-auto md:min-w-[250px]">
             <h4 className="text-md font-semibold mb-2">
               Details for {selectedCalendarDate ? format(selectedCalendarDate, 'PPP') : 'selected date'}:
             </h4>
