@@ -17,56 +17,64 @@ ALL_SEAT_NUMBERS.sort((a, b) => parseInt(a) - parseInt(b));
 let students: Student[] = [
   {
     studentId: "TSMEM001",
-    name: "Riya Sharma",
-    email: "riya.s@example.com",
-    phone: "9123456780",
+    name: "Rohan Mehra",
+    email: "rohan.m@example.com",
+    phone: "9876543210",
     password: "memberpass1",
     shift: "morning",
-    seatNumber: "5",
+    seatNumber: "10",
     feeStatus: "Paid",
     activityStatus: "Active",
     registrationDate: format(subMonths(new Date(), 2), 'yyyy-MM-dd'),
     lastPaymentDate: format(new Date(), 'yyyy-MM-dd'),
     nextDueDate: format(addMonths(new Date(), 1), 'yyyy-MM-dd'),
     amountDue: "Rs. 0",
-    paymentHistory: [{ paymentId: "PAYM001", date: format(new Date(), 'yyyy-MM-dd'), amount: "Rs. 700", transactionId: "TXNMEM001", method: "UPI" }],
-    profilePictureUrl: "https://placehold.co/200x200.png?text=RS",
+    paymentHistory: [
+      { paymentId: "PAY_R1", date: format(subMonths(new Date(), 5), 'yyyy-MM-dd'), amount: "Rs. 700", transactionId: "TXNRM005", method: "UPI" },
+      { paymentId: "PAY_R2", date: format(subMonths(new Date(), 4), 'yyyy-MM-dd'), amount: "Rs. 700", transactionId: "TXNRM004", method: "UPI" },
+      { paymentId: "PAY_R3", date: format(subMonths(new Date(), 3), 'yyyy-MM-dd'), amount: "Rs. 700", transactionId: "TXNRM003", method: "UPI" },
+      { paymentId: "PAY_R4", date: format(subMonths(new Date(), 2), 'yyyy-MM-dd'), amount: "Rs. 700", transactionId: "TXNRM002", method: "UPI" },
+      { paymentId: "PAY_R5", date: format(subMonths(new Date(), 1), 'yyyy-MM-dd'), amount: "Rs. 700", transactionId: "TXNRM001", method: "UPI" },
+      { paymentId: "PAY_R6", date: format(new Date(), 'yyyy-MM-dd'), amount: "Rs. 700", transactionId: "TXNRMCURRENT", method: "UPI" },
+    ],
+    profilePictureUrl: "https://placehold.co/200x200.png?text=RM",
   },
   {
     studentId: "TSMEM002",
-    name: "Arjun Verma",
-    email: "arjun.v@example.net",
-    phone: "9123456781",
+    name: "Sneha Patel",
+    email: "sneha.p@example.net",
+    phone: "9876543211",
     password: "memberpass2",
     shift: "evening",
-    seatNumber: "22",
+    seatNumber: "25",
     feeStatus: "Due",
     activityStatus: "Active",
     registrationDate: format(subMonths(new Date(), 1), 'yyyy-MM-dd'),
     lastPaymentDate: format(subMonths(new Date(), 1), 'yyyy-MM-dd'),
     nextDueDate: format(new Date(), 'yyyy-MM-dd'),
     amountDue: "Rs. 700",
-    paymentHistory: [{ paymentId: "PAYM002", date: format(subMonths(new Date(), 1), 'yyyy-MM-dd'), amount: "Rs. 700", transactionId: "TXNMEM002", method: "Cash" }],
-    profilePictureUrl: "https://placehold.co/200x200.png?text=AV",
+    paymentHistory: [{ paymentId: "PAY_S1", date: format(subMonths(new Date(), 1), 'yyyy-MM-dd'), amount: "Rs. 700", transactionId: "TXNSP001", method: "Cash" }],
+    profilePictureUrl: "https://placehold.co/200x200.png?text=SP",
   },
   {
     studentId: "TSMEM003",
-    name: "Priya Singh",
-    email: "priya.s@example.org",
-    phone: "9123456782",
+    name: "Vikram Singh",
+    email: "vikram.s@example.org",
+    phone: "9876543212",
     password: "memberpass3",
     shift: "fullday",
-    seatNumber: "55",
+    seatNumber: "50",
     feeStatus: "Overdue",
     activityStatus: "Active",
     registrationDate: format(subMonths(new Date(), 3), 'yyyy-MM-dd'),
     lastPaymentDate: format(subMonths(new Date(), 2), 'yyyy-MM-dd'),
     nextDueDate: format(subMonths(new Date(), 1), 'yyyy-MM-dd'),
     amountDue: "Rs. 1200",
-    paymentHistory: [{ paymentId: "PAYM003", date: format(subMonths(new Date(), 2), 'yyyy-MM-dd'), amount: "Rs. 1200", transactionId: "TXNMEM003", method: "Card" }],
-    profilePictureUrl: "https://placehold.co/200x200.png?text=PS",
+    paymentHistory: [{ paymentId: "PAY_V1", date: format(subMonths(new Date(), 2), 'yyyy-MM-dd'), amount: "Rs. 1200", transactionId: "TXNVS001", method: "Card" }],
+    profilePictureUrl: "https://placehold.co/200x200.png?text=VS",
   },
 ];
+
 
 const todayAtFourPM = new Date();
 todayAtFourPM.setHours(16, 0, 0, 0);
@@ -83,9 +91,9 @@ let attendanceRecords: AttendanceRecord[] = [
 ];
 
 let feedbackItems: FeedbackItem[] = [
-    { id: "FB001", studentId: "TSMEM002", studentName: "Arjun Verma", dateSubmitted: format(subDays(new Date(),2), 'yyyy-MM-dd'), type: "Complaint", message: "The AC in the evening shift section is not working properly. It gets very warm.", status: "Open" },
-    { id: "FB002", studentId: "TSMEM003", studentName: "Priya Singh", dateSubmitted: format(subDays(new Date(),3), 'yyyy-MM-dd'), type: "Suggestion", message: "Could we have more charging points available near the window seats?", status: "Open" },
-    { id: "FB003", studentId: "TSMEM001", studentName: "Riya Sharma", dateSubmitted: format(subDays(new Date(),4), 'yyyy-MM-dd'), type: "Compliment", message: "The library is always clean and quiet. Great job!", status: "Resolved" },
+    { id: "FB001", studentId: "TSMEM002", studentName: "Sneha Patel", dateSubmitted: format(subDays(new Date(),2), 'yyyy-MM-dd'), type: "Complaint", message: "The AC in the evening shift section is not working properly. It gets very warm.", status: "Open" },
+    { id: "FB002", studentId: "TSMEM003", studentName: "Vikram Singh", dateSubmitted: format(subDays(new Date(),3), 'yyyy-MM-dd'), type: "Suggestion", message: "Could we have more charging points available near the window seats?", status: "Open" },
+    { id: "FB003", studentId: "TSMEM001", studentName: "Rohan Mehra", dateSubmitted: format(subDays(new Date(),4), 'yyyy-MM-dd'), type: "Compliment", message: "The library is always clean and quiet. Great job!", status: "Resolved" },
 ];
 
 let alertItems: AlertItem[] = [
@@ -200,7 +208,7 @@ export function getStudentById(studentId: string): Promise<Student | undefined> 
 export function getStudentByEmail(email: string): Promise<Student | undefined> {
   return new Promise((resolve) => {
     setTimeout(() => {
-      const studentIdx = students.findIndex(s => s.email === email);
+      const studentIdx = students.findIndex(s => s.email && s.email.toLowerCase() === email.toLowerCase());
       if (studentIdx !== -1) {
         const student = students[studentIdx];
         const updatedStudent = applyAutomaticStatusUpdates({...student});
@@ -220,13 +228,15 @@ export function getStudentByEmail(email: string): Promise<Student | undefined> {
 export function getStudentByIdentifier(identifier: string): Promise<Student | undefined> {
   return new Promise((resolve) => {
     setTimeout(() => {
-      const student = students.find(s => s.email === identifier || s.phone === identifier);
-      if (student) {
+      const studentIdx = students.findIndex(s => 
+        (s.email && s.email.toLowerCase() === identifier.toLowerCase()) || s.phone === identifier
+      );
+      if (studentIdx !== -1) {
+        const student = students[studentIdx];
         const updatedStudent = applyAutomaticStatusUpdates({...student});
-         const studentIdx = students.findIndex(s_orig => s_orig.studentId === student.studentId);
-         if (studentIdx !== -1 && (students[studentIdx].activityStatus !== updatedStudent.activityStatus ||
+         if (students[studentIdx].activityStatus !== updatedStudent.activityStatus ||
             students[studentIdx].seatNumber !== updatedStudent.seatNumber ||
-            students[studentIdx].feeStatus !== updatedStudent.feeStatus)) {
+            students[studentIdx].feeStatus !== updatedStudent.feeStatus) {
            students[studentIdx] = { ...students[studentIdx], ...updatedStudent };
         }
         resolve(students[studentIdx] ? {...students[studentIdx]} : undefined);
@@ -258,7 +268,6 @@ export interface AddStudentData {
   shift: Shift;
   seatNumber: string;
   idCardFileName?: string;
-  // No password here, as registration might not set it directly, or it's handled separately
 }
 
 export function addStudent(studentData: AddStudentData): Promise<Student> {
@@ -289,7 +298,7 @@ export function addStudent(studentData: AddStudentData): Promise<Student> {
       const newStudent: Student = {
         ...studentData,
         studentId: getNextStudentId(),
-        password: `default${studentData.phone.slice(-4)}`, // Example default password
+        password: `default${studentData.phone.slice(-4)}`, 
         feeStatus: "Due",
         activityStatus: "Active",
         registrationDate: format(today, 'yyyy-MM-dd'),
@@ -297,7 +306,7 @@ export function addStudent(studentData: AddStudentData): Promise<Student> {
         nextDueDate: format(addMonths(today, 1), 'yyyy-MM-dd'),
         profilePictureUrl: "https://placehold.co/200x200.png",
         paymentHistory: [],
-        email: studentData.email || undefined,
+        email: studentData.email ? studentData.email.toLowerCase() : undefined,
         idCardFileName: studentData.idCardFileName || undefined,
       };
       students.push(newStudent);
@@ -339,6 +348,9 @@ export async function updateStudent(studentId: string, studentUpdateData: Partia
       }
 
       let tempUpdatedStudentData: Student = { ...currentStudent, ...studentUpdateData, password: currentStudent.password };
+      if (tempUpdatedStudentData.email) {
+        tempUpdatedStudentData.email = tempUpdatedStudentData.email.toLowerCase();
+      }
 
 
       if (studentUpdateData.activityStatus === 'Left' && currentStudent.activityStatus === 'Active') {
@@ -365,7 +377,7 @@ export async function updateStudent(studentId: string, studentUpdateData: Partia
       let alertSentDueToStatusChange = false;
       if (studentUpdateData.activityStatus === 'Active' && currentStudent.activityStatus === 'Left') {
         try {
-           const alertMessage = `Welcome back, ${newlyUpdatedStudent.name}! Your student account has been re-activated.\nYour current details are:\nName: ${newlyUpdatedStudent.name}\nEmail: ${newlyUpdatedStudent.email || 'N/A'}\nPhone: ${newlyUpdatedStudent.phone}\nShift: ${newlyUpdatedStudent.shift}\nSeat Number: ${newlyUpdatedStudent.seatNumber}\nID Card File: ${newlyUpdatedStudent.idCardFileName || 'Not Uploaded'}\n\nYour fee of ${newlyUpdatedStudent.amountDue} is due by ${newlyUpdatedStudent.nextDueDate}.`;
+           const alertMessage = `Welcome back, ${newlyUpdatedStudent.name}! Your student account has been re-activated.\nYour current details are:\nName: ${newlyUpdatedStudent.name}\nEmail: ${newlyUpdatedStudent.email || 'N/A'}\nPhone: ${newlyUpdatedStudent.phone}\nShift: ${newlyUpdatedStudent.shift}\nSeat Number: ${newlyUpdatedStudent.seatNumber}\nID Card File: ${newlyUpdatedStudent.idCardFileName || 'Not Uploaded'}\n\nYour fee of ${newlyUpdatedStudent.amountDue} is due by ${newlyUpdatedStudent.nextDueDate ? format(parseISO(newlyUpdatedStudent.nextDueDate), 'PP') : 'N/A'}.`;
           await sendAlertToStudent(studentId, "Account Re-activated", alertMessage, "info");
           alertSentDueToStatusChange = true;
         } catch (e) { console.error("Failed to send re-activation alert:", e); }
@@ -540,10 +552,11 @@ export function getAttendanceRecordsByStudentId(studentId: string): Promise<Atte
 
 export async function recordStudentPayment(
   studentId: string,
-  paymentAmountInput: string,
-  paymentMethod: PaymentRecord['method'] | "Admin Recorded"
+  totalAmountPaidString: string, // e.g., "Rs. 1400"
+  paymentMethod: PaymentRecord['method'] | "Admin Recorded",
+  numberOfMonthsPaid: number = 1 
 ): Promise<Student | undefined> {
-  return new Promise((resolve, reject) => {
+  return new Promise(async (resolve, reject) => {
     setTimeout(async () => {
       const studentIndex = students.findIndex(s => s.studentId === studentId);
       if (studentIndex === -1) {
@@ -559,29 +572,29 @@ export async function recordStudentPayment(
 
       const today = new Date();
       const newPaymentId = `PAY${String(Date.now()).slice(-6)}${String(Math.floor(Math.random() * 100)).padStart(2,'0')}`;
-      const newTransactionId = `TXN${paymentMethod === "Admin Recorded" ? "ADMIN" : "MEM"}${String(Date.now()).slice(-7)}`;
-
-      let actualPaymentAmount = paymentAmountInput;
-      if (paymentAmountInput === "FULL_DUE" && student.amountDue && student.amountDue !== "N/A" && student.amountDue !== "Rs. 0") {
-        actualPaymentAmount = student.amountDue;
-      } else if (paymentAmountInput === "FULL_DUE") {
-        actualPaymentAmount = student.shift === "fullday" ? "Rs. 1200" : "Rs. 700";
-      }
+      const newTransactionId = `TXN${paymentMethod === "Admin Recorded" ? "ADMIN" : (paymentMethod === "UPI" ? "UPI" : "MEM")}${String(Date.now()).slice(-7)}`;
 
       const newPaymentRecord: PaymentRecord = {
         paymentId: newPaymentId,
         date: format(today, 'yyyy-MM-dd'),
-        amount: actualPaymentAmount,
+        amount: totalAmountPaidString, 
         transactionId: newTransactionId,
         method: paymentMethod === "Admin Recorded" ? "Desk Payment" : paymentMethod,
       };
+      
+      let baseDateForNextDue = today;
+      // If current due date is in the future, use that as the base to add months
+      if (student.nextDueDate && isValid(parseISO(student.nextDueDate)) && parseISO(student.nextDueDate) > today) {
+          baseDateForNextDue = parseISO(student.nextDueDate);
+      }
+
 
       const updatedStudent: Student = {
         ...student,
         feeStatus: "Paid",
         lastPaymentDate: format(today, 'yyyy-MM-dd'),
-        nextDueDate: format(addMonths(today, 1), 'yyyy-MM-dd'),
-        amountDue: "Rs. 0",
+        nextDueDate: format(addMonths(baseDateForNextDue, numberOfMonthsPaid), 'yyyy-MM-dd'),
+        amountDue: "Rs. 0", 
         paymentHistory: [...(student.paymentHistory || []), newPaymentRecord],
       };
 
@@ -591,7 +604,7 @@ export async function recordStudentPayment(
         await sendAlertToStudent(
           studentId,
           "Payment Confirmation",
-          `Hi ${updatedStudent.name}, your fee payment of ${actualPaymentAmount} has been successfully recorded. Your fees are now paid up to ${updatedStudent.nextDueDate}. Thank you!`,
+          `Hi ${updatedStudent.name}, your fee payment of ${totalAmountPaidString} for ${numberOfMonthsPaid} month(s) has been successfully recorded. Your fees are now paid up to ${updatedStudent.nextDueDate ? format(parseISO(updatedStudent.nextDueDate), 'PP') : 'N/A'}. Thank you!`,
           "info"
         );
       } catch (alertError) {
@@ -686,7 +699,7 @@ export function sendGeneralAlert(title: string, message: string, type: AlertItem
         message,
         type,
         dateSent: new Date().toISOString(),
-        isRead: false, // General alerts are initially unread for all
+        isRead: false, 
       };
       alertItems.push(newAlert);
       resolve({...newAlert});
@@ -719,7 +732,7 @@ export async function sendAlertToStudent(
         message,
         type,
         dateSent: new Date().toISOString(),
-        isRead: false, // Targeted alerts are initially unread for the target student
+        isRead: false, 
         originalFeedbackId,
         originalFeedbackMessageSnippet,
       };
@@ -736,14 +749,14 @@ export function getAlertsForStudent(studentId: string): Promise<AlertItem[]> {
 
       const contextualizedAlerts = alertItems
         .filter(alert =>
-          alert.studentId === studentId || // Targeted alerts for this student
-          (!alert.studentId && alert.type !== 'feedback_response') // General alerts (excluding feedback responses for others)
+          alert.studentId === studentId || 
+          (!alert.studentId && alert.type !== 'feedback_response') 
         )
         .map(originalAlert => {
           const contextualAlert = { ...originalAlert };
-          if (!originalAlert.studentId) { // If it's a general alert
+          if (!originalAlert.studentId) { 
             contextualAlert.isRead = studentSpecificReadGeneral.has(originalAlert.id);
-          } else if (originalAlert.studentId === studentId) { // If it's a targeted alert for this student
+          } else if (originalAlert.studentId === studentId) { 
             contextualAlert.isRead = originalAlert.isRead;
           }
           return contextualAlert;
@@ -768,22 +781,20 @@ export function markAlertAsRead(alertId: string, studentId: string): Promise<Ale
       const alertIndex = alertItems.findIndex(alert => alert.id === alertId);
       if (alertIndex !== -1) {
         const alertToUpdate = alertItems[alertIndex];
-        if (alertToUpdate.studentId === studentId) { // Targeted alert for this student
+        if (alertToUpdate.studentId === studentId) { 
           alertToUpdate.isRead = true;
-        } else if (!alertToUpdate.studentId) { // General alert
+        } else if (!alertToUpdate.studentId) { 
           if (!studentReadGeneralAlerts.has(studentId)) {
             studentReadGeneralAlerts.set(studentId, new Set<string>());
           }
           studentReadGeneralAlerts.get(studentId)!.add(alertId);
         } else {
-          // This case should ideally not be hit if getAlertsForStudent filters correctly
           reject(new Error("Alert not found for this student or permission denied."));
           return;
         }
 
-        // Return the contextualized alert state for the current student
         const contextualAlert = { ...alertToUpdate };
-        if (!contextualAlert.studentId) { // If it was a general alert, reflect its read state for *this* student
+        if (!contextualAlert.studentId) { 
             contextualAlert.isRead = studentReadGeneralAlerts.get(studentId)?.has(alertId) || false;
         }
         resolve(contextualAlert);
@@ -808,7 +819,7 @@ export async function calculateMonthlyRevenue(): Promise<string> {
         try {
           const paymentDate = parseISO(payment.date);
           if (isValid(paymentDate) && isWithinInterval(paymentDate, { start: currentMonthStart, end: currentMonthEnd })) {
-            const amountString = payment.amount.replace('Rs.', '').trim();
+            const amountString = payment.amount.replace('Rs. ', '').trim();
             const amountValue = parseInt(amountString, 10);
             if (!isNaN(amountValue)) {
               totalRevenue += amountValue;
@@ -831,7 +842,7 @@ export type MonthlyRevenueData = {
 
 export async function getMonthlyRevenueHistory(): Promise<MonthlyRevenueData[]> {
   const allStudentsData = await getAllStudents();
-  const monthlyRevenueMap: Record<string, number> = {}; // Key: "YYYY-MM"
+  const monthlyRevenueMap: Record<string, number> = {}; 
 
   allStudentsData.forEach(student => {
     if (student.paymentHistory) {
@@ -840,7 +851,7 @@ export async function getMonthlyRevenueHistory(): Promise<MonthlyRevenueData[]> 
           const paymentDate = parseISO(payment.date);
           if (isValid(paymentDate)) {
             const monthKey = format(paymentDate, 'yyyy-MM');
-            const amountString = payment.amount.replace('Rs.', '').trim();
+            const amountString = payment.amount.replace('Rs. ', '').trim();
             const amountValue = parseInt(amountString, 10);
             if (!isNaN(amountValue)) {
               monthlyRevenueMap[monthKey] = (monthlyRevenueMap[monthKey] || 0) + amountValue;
