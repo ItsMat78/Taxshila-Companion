@@ -241,10 +241,6 @@ export default function EditStudentPage() {
     if (passwordUpdated) {
         successMessage += wasReactivated ? " Their password has also been updated." : " Password has also been updated.";
     }
-    if (!alertSentDueToStatusChange && !isFeeStatusChangeOnlyToPaid && newlyUpdatedStudent.activityStatus === 'Active' && (nameChanged || emailChanged || phoneChanged || shiftChanged || seatChanged || idCardChanged || passwordUpdated)) {
-       successMessage += " An alert has been sent.";
-    }
-
 
     try {
       const updatedStudent = await updateStudent(studentId, payload);
