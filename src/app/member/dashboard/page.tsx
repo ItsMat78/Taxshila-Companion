@@ -95,7 +95,7 @@ const DashboardTile: React.FC<DashboardTileProps> = ({
           <>
             <div className={cn(
               "font-bold break-words",
-              isPrimaryAction ? 'text-xl sm:text-2xl text-primary-foreground' : 'text-lg sm:text-xl text-foreground',
+               isPrimaryAction ? 'text-xl sm:text-2xl text-primary-foreground' : 'text-lg sm:text-xl text-foreground',
               isUrgent && !isPrimaryAction && 'text-destructive'
             )}>
               {statistic}
@@ -107,8 +107,8 @@ const DashboardTile: React.FC<DashboardTileProps> = ({
           </>
         ) : (
           description && <p className={cn(
-            "break-words",
-            isPrimaryAction ? 'text-sm text-primary-foreground/80' : 'text-xs text-muted-foreground text-center',
+            "break-words text-center", // Ensure description is centered if no statistic
+            isPrimaryAction ? 'text-sm text-primary-foreground/80' : 'text-xs text-muted-foreground',
           )}>{description}</p>
         )}
       </CardContent>
@@ -241,6 +241,7 @@ export default function MemberDashboardPage() {
         })
         .finally(() => {
           setIsLoadingStudentData(false);
+          // Note: setIsLoadingStudyHours and setIsLoadingCurrentSession are handled within their respective data fetching logic
         });
     } else {
       setIsLoadingStudentData(false);
@@ -369,7 +370,6 @@ export default function MemberDashboardPage() {
 
   const generateCoreActionTiles = (): DashboardTileProps[] => {
     let payFeesTileDesc = "Settle your outstanding dues.";
-    let payFeesTileStat: string | null = null;
     let payFeesTileIsUrgent = false;
 
     if (isLoadingStudentData) {
@@ -377,8 +377,7 @@ export default function MemberDashboardPage() {
     } else if (studentId) {
       if (studentFeeStatus === "Due" || studentFeeStatus === "Overdue") {
         payFeesTileIsUrgent = true;
-        payFeesTileStat = `Due: ${studentNextDueDate && isValid(parseISO(studentNextDueDate)) ? format(parseISO(studentNextDueDate), 'PP') : 'N/A'}`;
-        payFeesTileDesc = `Status: ${studentFeeStatus}`;
+        payFeesTileDesc = `Status: ${studentFeeStatus}. Next payment due: ${studentNextDueDate && isValid(parseISO(studentNextDueDate)) ? format(parseISO(studentNextDueDate), 'PP') : 'N/A'}.`;
       } else if (studentFeeStatus === "Paid") {
         payFeesTileDesc = `Fees paid up to ${studentNextDueDate && isValid(parseISO(studentNextDueDate)) ? format(parseISO(studentNextDueDate), 'PP') : 'N/A'}.`;
       } else if (studentFeeStatus) { 
@@ -406,7 +405,7 @@ export default function MemberDashboardPage() {
       {
         title: "Pay Fees",
         description: payFeesTileDesc,
-        statistic: payFeesTileStat,
+        statistic: null, 
         isLoadingStatistic: isLoadingStudentData,
         icon: IndianRupee,
         href: "/member/pay",
