@@ -17,10 +17,12 @@ import {
 import { Alert, AlertDescription, AlertTitle as ShadcnAlertTitle } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/auth-context';
-import { Camera, QrCode, Receipt, IndianRupee, MessageSquare, Bell, ScrollText, Star, Loader2, XCircle, Home, BarChart3 } from 'lucide-react';
+import { Camera, QrCode, Receipt, IndianRupee, MessageSquare, Bell, ScrollText, Star, Loader2, XCircle, Home, BarChart3, PlayCircle, CheckCircle, Hourglass } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { getStudentByEmail, getAlertsForStudent, calculateMonthlyStudyHours, addCheckIn, addCheckOut, getActiveCheckIn } from '@/services/student-service'; 
+import { getStudentByEmail, getAlertsForStudent, calculateMonthlyStudyHours, addCheckIn, addCheckOut, getActiveCheckIn, getAttendanceForDate } from '@/services/student-service'; 
 import type { AlertItem } from '@/types/communication';
+import type { AttendanceRecord } from '@/types/student';
+import { format, parseISO, differenceInMilliseconds } from 'date-fns';
 
 type DashboardTileProps = {
   title: string;
@@ -147,14 +149,56 @@ export default function MemberDashboardPage() {
   const [monthlyStudyHours, setMonthlyStudyHours] = React.useState<number | null>(null);
   const [isLoadingStudyHours, setIsLoadingStudyHours] = React.useState(true);
 
+  const [activeCheckIn, setActiveCheckIn] = React.useState<AttendanceRecord | null>(null);
+  const [hoursStudiedToday, setHoursStudiedToday] = React.useState<number | null>(null);
+  const [isLoadingCurrentSession, setIsLoadingCurrentSession] = React.useState(true);
+
+  const fetchCurrentSessionData = React.useCallback(async (currentStudentId: string) => {
+    setIsLoadingCurrentSession(true);
+    setActiveCheckIn(null);
+    setHoursStudiedToday(null);
+    try {
+      const [activeCheckInData, todayAttendanceData] = await Promise.all([
+        getActiveCheckIn(currentStudentId),
+        getAttendanceForDate(currentStudentId, format(new Date(), 'yyyy-MM-dd'))
+      ]);
+
+      setActiveCheckIn(activeCheckInData || null);
+
+      let totalMillisecondsToday = 0;
+      const now = new Date();
+      todayAttendanceData.forEach(record => {
+        if (record.checkOutTime) {
+          totalMillisecondsToday += differenceInMilliseconds(parseISO(record.checkOutTime), parseISO(record.checkInTime));
+        } else if (activeCheckInData && record.recordId === activeCheckInData.recordId) {
+          // Current active session, calculate duration up to now
+          totalMillisecondsToday += differenceInMilliseconds(now, parseISO(record.checkInTime));
+        }
+      });
+      setHoursStudiedToday(totalMillisecondsToday / (1000 * 60 * 60));
+
+    } catch (error) {
+      console.error("Error fetching current session data:", error);
+      toast({ title: "Error", description: "Could not load current session details.", variant: "destructive" });
+      setActiveCheckIn(null);
+      setHoursStudiedToday(null);
+    } finally {
+      setIsLoadingCurrentSession(false);
+    }
+  }, [toast]);
+
+
   React.useEffect(() => {
     if (user?.email) {
       setIsLoadingStudentData(true);
       setIsLoadingStudyHours(true); 
+      setIsLoadingCurrentSession(true);
       setStudentFirstName(null); 
       setStudentId(null); 
       setMonthlyStudyHours(null);
       setHasUnreadAlerts(false);
+      setActiveCheckIn(null);
+      setHoursStudiedToday(null);
 
       getStudentByEmail(user.email)
         .then(studentDetails => {
@@ -164,37 +208,45 @@ export default function MemberDashboardPage() {
             
             const alertPromise = getAlertsForStudent(studentDetails.studentId);
             const studyHoursPromise = calculateMonthlyStudyHours(studentDetails.studentId);
+            const currentSessionPromise = fetchCurrentSessionData(studentDetails.studentId);
 
-            return Promise.all([alertPromise, studyHoursPromise]);
+
+            return Promise.all([alertPromise, studyHoursPromise, currentSessionPromise]);
           }
           setIsLoadingStudentData(false);
           setIsLoadingStudyHours(false); 
+          setIsLoadingCurrentSession(false);
           return Promise.reject("Student not found to fetch further data"); 
         })
-        .then(([alerts, hours]) => {
+        .then(([alerts, hours, _sessionData]) => {
           setHasUnreadAlerts(alerts.some(alert => !alert.isRead));
           setMonthlyStudyHours(hours);
-          setIsLoadingStudyHours(false);
+          // fetchCurrentSessionData handles its own state updates for activeCheckIn and hoursStudiedToday
         })
         .catch(error => {
           if (error !== "Student not found to fetch further data") {
             console.error("Error fetching student data, alerts or study hours for dashboard:", error);
-            toast({ title: "Error", description: "Could not load all dashboard data.", variant: "destructive" });
+            // toast({ title: "Error", description: "Could not load all dashboard data.", variant: "destructive" });
           }
-          setIsLoadingStudyHours(false);
         })
         .finally(() => {
           setIsLoadingStudentData(false);
+          setIsLoadingStudyHours(false); 
+          // setIsLoadingCurrentSession(false); // fetchCurrentSessionData handles this
         });
     } else {
       setIsLoadingStudentData(false);
       setIsLoadingStudyHours(false);
+      setIsLoadingCurrentSession(false);
       setStudentFirstName(null);
       setStudentId(null);
       setMonthlyStudyHours(null);
       setHasUnreadAlerts(false);
+      setActiveCheckIn(null);
+      setHoursStudiedToday(null);
     }
-  }, [user, toast]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, toast]); // Removed fetchCurrentSessionData from dep array to avoid re-triggering fetch on its own re-creation if not memoized
 
 
   React.useEffect(() => {
@@ -257,23 +309,26 @@ export default function MemberDashboardPage() {
     }
     setIsProcessingQr(true);
     try {
-      const activeCheckIn = await getActiveCheckIn(studentId);
-      if (activeCheckIn) {
-        await addCheckOut(activeCheckIn.recordId);
+      const currentActiveCheckIn = await getActiveCheckIn(studentId);
+      if (currentActiveCheckIn) {
+        await addCheckOut(currentActiveCheckIn.recordId);
         toast({ title: "Checked Out!", description: `Successfully checked out at ${new Date().toLocaleTimeString()}.` });
       } else {
         await addCheckIn(studentId);
         toast({ title: "Checked In!", description: `Successfully checked in at ${new Date().toLocaleTimeString()}.` });
       }
       
+      // Refresh both monthly and today's data
       setIsLoadingStudyHours(true);
       calculateMonthlyStudyHours(studentId)
           .then(setMonthlyStudyHours)
           .catch(() => {
-              toast({title:"Error", description: "Could not update study hours.", variant: "destructive"});
+              toast({title:"Error", description: "Could not update monthly study hours.", variant: "destructive"});
               setMonthlyStudyHours(null);
           })
           .finally(() => setIsLoadingStudyHours(false));
+      
+      fetchCurrentSessionData(studentId); // This will also update isLoadingCurrentSession
 
     } catch (error) {
       toast({ title: "Scan Error", description: "Failed to process attendance. Please try again.", variant: "destructive" });
@@ -295,13 +350,12 @@ export default function MemberDashboardPage() {
         activitySummaryTileDescription = "No hours recorded this month.";
       }
     } else {
-      // If monthlyStudyHours is null but not loading (e.g. error or no student record)
-      activityStatisticDisplay = null; // Or "N/A" if you want to show it large
+      activityStatisticDisplay = null; 
       activitySummaryTileDescription = "Could not load study hours.";
     }
   } else if (isLoadingStudyHours) {
-     activityStatisticDisplay = null; // Loader will be shown by DashboardTile
-     activitySummaryTileDescription = "Loading hours..."; // This will be shown below the loader if statistic is null
+     activityStatisticDisplay = null; 
+     activitySummaryTileDescription = "Loading hours..."; 
   }
 
 
@@ -315,8 +369,8 @@ export default function MemberDashboardPage() {
     },
     { 
       title: "Activity Summary", 
-      description: activitySummaryTileDescription,
       statistic: activityStatisticDisplay,
+      description: activitySummaryTileDescription,
       isLoadingStatistic: isLoadingStudentData || isLoadingStudyHours,
       icon: BarChart3, 
       href: "/member/attendance" 
@@ -341,7 +395,7 @@ export default function MemberDashboardPage() {
 
       <Dialog open={isScannerOpen} onOpenChange={setIsScannerOpen}>
         <DialogTrigger asChild>
-          <div className="mb-6 cursor-pointer">
+          <div className="mb-2 cursor-pointer"> {/* Reduced margin bottom */}
             <DashboardTile
               title="Mark Attendance"
               description="Scan the QR code at the library to check-in/out."
@@ -395,6 +449,44 @@ export default function MemberDashboardPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Current Session Display - Moved here and conditionally rendered */}
+      { !isLoadingStudentData && studentId && (
+        <div className="mb-6 mt-1 text-sm text-center text-muted-foreground">
+          {isLoadingCurrentSession ? (
+            <div className="flex items-center justify-center">
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              <span>Loading current session...</span>
+            </div>
+          ) : (
+            <div className="flex flex-col items-center gap-1 p-3 bg-card border rounded-md shadow-sm">
+              {activeCheckIn ? (
+                <div className="flex items-center text-green-600 font-medium">
+                  <PlayCircle className="mr-1.5 h-4 w-4" />
+                  <span>Checked In (since {format(parseISO(activeCheckIn.checkInTime), 'p')})</span>
+                </div>
+              ) : (
+                <div className="flex items-center text-gray-600 font-medium">
+                  <CheckCircle className="mr-1.5 h-4 w-4" />
+                  <span>Not Currently Checked In</span>
+                </div>
+              )}
+              {hoursStudiedToday !== null && hoursStudiedToday > 0 && (
+                <div className="flex items-center">
+                  <Hourglass className="mr-1.5 h-4 w-4 text-blue-500" />
+                  <span>Today's Study: {hoursStudiedToday.toFixed(1)} hrs</span>
+                </div>
+              )}
+              {hoursStudiedToday === 0 && !activeCheckIn && (
+                 <div className="flex items-center">
+                  <Hourglass className="mr-1.5 h-4 w-4 text-blue-500" />
+                  <span>No study time recorded today.</span>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
         {coreActionTiles.map((tile) => (
