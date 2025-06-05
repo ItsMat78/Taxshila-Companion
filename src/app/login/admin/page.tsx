@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 
-const LIBRARY_INTERIOR_URL = '/library-interior.png'
+const LIBRARY_INTERIOR_URL = '/cover.png' // Changed filename here
 const LOGO_URL = '/logo.png'
 
 export const metadata: Metadata = {
@@ -25,7 +25,7 @@ export default function AdminLoginPage() {
 
         {/* Logo Section (Left Column on MD+) */}
         <div className="flex flex-col items-center justify-center px-4 pt-4 pb-0 sm:p-6 md:w-1/3 md:border-r md:border-border/30">
-          <div className="relative w-16 h-auto sm:w-24 md:w-28 mb-0 sm:mb-6 md:mb-0"> {/* Changed mb-2 to mb-0 */}
+          <div className="relative w-16 h-auto sm:w-24 md:w-28 mb-0 sm:mb-6 md:mb-0">
             <Image
               src={LOGO_URL}
               alt="Taxshila Companion Logo"
@@ -40,7 +40,7 @@ export default function AdminLoginPage() {
 
         {/* Form Section (Right Column on MD+) */}
        <div className="flex flex-col flex-grow md:w-2/3">
-         <CardHeader className="text-center px-4 pb-4 pt-4 sm:p-6"> {/* Ensure pt-4 on smallest screens if mb-0 on logo wasn't enough, or adjust CardTitle/Desc margins */}
+         <CardHeader className="text-center px-4 pb-4 pt-4 sm:p-6">
            <CardTitle className="text-base sm:text-lg md:text-xl font-headline text-foreground">Welcome Back!</CardTitle>
            <CardDescription className="text-xs sm:text-xs md:text-sm text-foreground/80">Login to Taxshila Companion.</CardDescription>
          </CardHeader>
