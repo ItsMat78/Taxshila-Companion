@@ -420,7 +420,7 @@ export default function MemberDashboardPage() {
               </Alert>
             )}
 
-            <div className="w-full aspect-square bg-muted rounded-md overflow-hidden flex items-center justify-center">
+            <div className="w-full aspect-video bg-muted rounded-md overflow-hidden flex items-center justify-center">
                 <video ref={videoRef} className="w-full h-full object-cover" autoPlay muted playsInline />
             </div>
 
@@ -499,3 +499,4 @@ export default function MemberDashboardPage() {
     </>
   );
 }
+
