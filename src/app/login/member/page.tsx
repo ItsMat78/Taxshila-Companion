@@ -38,20 +38,34 @@ export default function MemberLoginPage() {
     },
   });
 
+  // useEffect to handle redirection after dialog is shown
+  React.useEffect(() => {
+    let timerId: NodeJS.Timeout;
+    if (showSuccessDialog) {
+      // Ensure isSubmitting remains true so button stays in "Logging in..." state
+      // if it's not already handled by the navigation itself.
+      // setIsSubmitting(true); // This should be handled by the onSubmit logic already.
+      timerId = setTimeout(() => {
+        router.push('/member/dashboard');
+      }, 500); // 500ms delay
+    }
+    return () => {
+      clearTimeout(timerId); // Cleanup timer on unmount or if showSuccessDialog changes
+    };
+  }, [showSuccessDialog, router]);
+
   async function onSubmit(data: LoginFormValues) {
     setIsSubmitting(true);
-    setShowSuccessDialog(false);
+    setShowSuccessDialog(false); // Reset before attempt, in case of re-submission
     try {
       const loggedInUser = await login(data.identifier, data.password);
       if (loggedInUser) {
-        setShowSuccessDialog(true);
-        // Short delay to allow dialog to render, then redirect
-        setTimeout(() => {
-          router.push('/member/dashboard');
-        }, 500); 
+        // isSubmitting is already true.
+        // setShowSuccessDialog will trigger the useEffect to handle the redirect.
+        setShowSuccessDialog(true); 
       } else {
         // Toast for login failure is handled by AuthContext
-        setIsSubmitting(false);
+        setIsSubmitting(false); // Allow re-submission
       }
     } catch (error) {
       console.error("Member login submission error:", error);
@@ -60,9 +74,11 @@ export default function MemberLoginPage() {
         description: "An unexpected error occurred. Please try again.",
         variant: "destructive",
       });
-      setIsSubmitting(false);
+      setIsSubmitting(false); // Allow re-submission on catch
+      setShowSuccessDialog(false); // Ensure dialog is hidden on error
     }
-     // No setIsSubmitting(false) here if successful, as page will redirect
+    // No setIsSubmitting(false) here if successful, 
+    // as the page will redirect via useEffect, and isSubmitting keeps the button disabled.
   }
 
   return (
@@ -94,7 +110,7 @@ export default function MemberLoginPage() {
                     <FormItem>
                       <FormLabel>Email or Phone Number</FormLabel>
                       <FormControl>
-                        <Input type="text" placeholder="you@example.com or 9876543210" {...field} disabled={isSubmitting || showSuccessDialog}/>
+                        <Input type="text" placeholder="you@example.com or 9876543210" {...field} disabled={isSubmitting}/>
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -107,7 +123,7 @@ export default function MemberLoginPage() {
                     <FormItem>
                       <FormLabel>Password</FormLabel>
                       <FormControl>
-                        <Input type="password" placeholder="••••••••" {...field} disabled={isSubmitting || showSuccessDialog}/>
+                        <Input type="password" placeholder="••••••••" {...field} disabled={isSubmitting}/>
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -115,12 +131,12 @@ export default function MemberLoginPage() {
                 />
               </CardContent>
               <CardFooter className="flex flex-col gap-4">
-                <Button type="submit" className="w-full" disabled={isSubmitting || showSuccessDialog}>
-                  {isSubmitting || showSuccessDialog ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <LogIn className="mr-2 h-4 w-4" />}
-                  {showSuccessDialog ? 'Logging in...' : 'Login'}
+                <Button type="submit" className="w-full" disabled={isSubmitting}>
+                  {(isSubmitting && !showSuccessDialog) ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : (showSuccessDialog ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <LogIn className="mr-2 h-4 w-4" />)}
+                  {showSuccessDialog ? 'Logging in...' : ((isSubmitting) ? 'Checking...' : 'Login')}
                 </Button>
                 <Link href="/login/admin" passHref legacyBehavior>
-                   <Button variant="link" className="text-sm text-muted-foreground hover:text-primary" disabled={isSubmitting || showSuccessDialog}>
+                   <Button variant="link" className="text-sm text-muted-foreground hover:text-primary" disabled={isSubmitting}>
                       <Shield className="mr-2 h-4 w-4" /> Login as Admin
                    </Button>
                 </Link>
