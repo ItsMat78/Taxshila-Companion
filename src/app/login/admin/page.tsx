@@ -45,12 +45,20 @@ export default function AdminLoginPage() {
       const loggedInUser = await login(data.identifier, data.password);
       if (loggedInUser) {
         setShowSuccessDialog(true);
-        // Short delay to allow dialog to render, then redirect
+        // Short delay to allow dialog to render, then redirect based on role
         setTimeout(() => {
-          router.push('/'); 
-        }, 500);
+          if (loggedInUser.role === 'admin') {
+            router.push('/'); 
+          } else if (loggedInUser.role === 'member') {
+            router.push('/member/dashboard');
+          } else {
+            // Fallback or error if role is unexpected
+            toast({ title: "Login Error", description: "Unexpected user role.", variant: "destructive" });
+            router.push('/login'); // Default fallback
+          }
+        }, 700); // Increased delay slightly for dialog visibility
       } else {
-        // Toast for login failure is handled by AuthContext
+        // Toast for login failure is handled by AuthContext or if loggedInUser is null
         setIsSubmitting(false);
       }
     } catch (error) {
@@ -107,7 +115,7 @@ export default function AdminLoginPage() {
               <CardFooter className="flex flex-col gap-4">
                 <Button type="submit" className="w-full" disabled={isSubmitting || showSuccessDialog}>
                   {isSubmitting || showSuccessDialog ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShieldCheck className="mr-2 h-4 w-4" />}
-                  {showSuccessDialog ? 'Logging in...' : 'Login as Admin'}
+                  {isSubmitting && !showSuccessDialog ? 'Checking...' : (showSuccessDialog ? 'Logging in...' : 'Login as Admin')}
                 </Button>
                  <Link href="/login/member" passHref legacyBehavior>
                    <Button variant="link" className="text-sm text-muted-foreground hover:text-primary" disabled={isSubmitting || showSuccessDialog}>

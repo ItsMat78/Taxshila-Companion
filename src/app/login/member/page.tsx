@@ -40,18 +40,25 @@ export default function MemberLoginPage() {
 
   async function onSubmit(data: LoginFormValues) {
     setIsSubmitting(true);
-    setShowSuccessDialog(false); // Ensure dialog isn't stuck from previous attempts
+    setShowSuccessDialog(false);
     try {
       const loggedInUser = await login(data.identifier, data.password);
       if (loggedInUser) {
         setShowSuccessDialog(true);
-        // Short delay to allow dialog to render, then redirect
+        // Short delay to allow dialog to render, then redirect based on role
         setTimeout(() => {
-          router.push('/member/dashboard'); // Redirect to member dashboard
-        }, 500); // 500ms delay
+          if (loggedInUser.role === 'member') {
+            router.push('/member/dashboard'); 
+          } else if (loggedInUser.role === 'admin') {
+            router.push('/');
+          } else {
+            // Fallback or error if role is unexpected
+            toast({ title: "Login Error", description: "Unexpected user role.", variant: "destructive" });
+            router.push('/login'); // Default fallback
+          }
+        }, 700); // Increased delay slightly for dialog visibility
       } else {
-        // Toast for login failure is handled by AuthContext
-        setIsSubmitting(false); // Re-enable button if login fails
+        setIsSubmitting(false);
       }
     } catch (error) {
       console.error("Member login submission error:", error);
@@ -60,10 +67,8 @@ export default function MemberLoginPage() {
         description: "An unexpected error occurred. Please try again.",
         variant: "destructive",
       });
-      setIsSubmitting(false); // Re-enable button on error
+      setIsSubmitting(false);
     }
-    // If login is successful, isSubmitting remains true and page redirects.
-    // If login fails or error, isSubmitting is set to false.
   }
 
   return (
@@ -118,7 +123,7 @@ export default function MemberLoginPage() {
               <CardFooter className="flex flex-col gap-4">
                 <Button type="submit" className="w-full" disabled={isSubmitting || showSuccessDialog}>
                   {isSubmitting || showSuccessDialog ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <LogIn className="mr-2 h-4 w-4" />}
-                  {showSuccessDialog ? 'Logging in...' : 'Login'}
+                  {isSubmitting && !showSuccessDialog ? 'Checking...' : (showSuccessDialog ? 'Logging in...' : 'Login')}
                 </Button>
                 <Link href="/login/admin" passHref legacyBehavior>
                    <Button variant="link" className="text-sm text-muted-foreground hover:text-primary" disabled={isSubmitting || showSuccessDialog}>
