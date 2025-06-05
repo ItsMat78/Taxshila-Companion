@@ -1047,6 +1047,42 @@ export async function uploadProfilePictureToStorage(studentFirestoreId: string, 
   });
 }
 
+// --- Data Management Service Functions ---
+export interface BatchImportSummary {
+  addedCount: number;
+  errorCount: number;
+  errors: string[];
+}
+
+export async function batchImportStudents(studentsToImport: AddStudentData[]): Promise<BatchImportSummary> {
+  let addedCount = 0;
+  let errorCount = 0;
+  const errors: string[] = [];
+
+  for (const studentData of studentsToImport) {
+    try {
+      // Basic validation before attempting to add
+      if (!studentData.name || !studentData.phone || !studentData.password || !studentData.shift || !studentData.seatNumber) {
+        throw new Error(`Missing required fields for student: ${studentData.name || 'N/A'}`);
+      }
+      await addStudent(studentData);
+      addedCount++;
+    } catch (error: any) {
+      console.error(`Error importing student ${studentData.name || studentData.phone}:`, error.message);
+      errors.push(`Failed to import ${studentData.name || studentData.phone}: ${error.message}`);
+      errorCount++;
+    }
+  }
+  return { addedCount, errorCount, errors };
+}
+
+export async function getAllStudentsWithPaymentHistory(): Promise<Student[]> {
+  // This function is similar to getAllStudents but ensures paymentHistory is populated
+  // For simplicity, we'll reuse getAllStudents as it already converts timestamps.
+  // If more specific payment-related processing was needed here, it would be added.
+  return getAllStudents();
+}
+
 
 declare module '@/types/student' {
   interface Student {
