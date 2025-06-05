@@ -25,7 +25,7 @@ import {
 import { useAuth } from '@/contexts/auth-context';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
-const LOGO_SIDEBAR_PLACEHOLDER = "https://placehold.co/120x40.png?text=Logo"; // Sidebar logo placeholder
+const ACTUAL_LOGO_URL = '/logo.png'; // Use the actual logo path
 
 function NavListItem({ item }: { item: NavItem }) {
   const pathname = usePathname();
@@ -150,20 +150,22 @@ export function AppSidebarContent() {
       <SidebarHeader className="p-4 flex flex-col items-start w-full">
         <Link href="/" className="flex items-center gap-2 mb-4 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:w-full">
           <Image 
-            src={LOGO_SIDEBAR_PLACEHOLDER} 
-            alt="Taxshila Logo" 
-            width={32}  // Smaller width for icon state
-            height={32} // Smaller height for icon state
-            className="object-contain group-data-[collapsible=icon]:block hidden h-8 w-8" // Show only when collapsed
+            src={ACTUAL_LOGO_URL} 
+            alt="Taxshila Logo Icon" 
+            width={64} 
+            height={64} 
+            className="object-contain group-data-[collapsible=icon]:block hidden h-8 w-8"
             data-ai-hint="logo brand"
+            priority
           />
            <Image 
-            src={LOGO_SIDEBAR_PLACEHOLDER} 
+            src={ACTUAL_LOGO_URL} 
             alt="Taxshila Logo" 
-            width={100} 
-            height={30} 
-            className="object-contain group-data-[collapsible=icon]:hidden" // Hide when collapsed
+            width={120} 
+            height={120} 
+            className="object-contain group-data-[collapsible=icon]:hidden h-8 w-auto" 
             data-ai-hint="logo brand"
+            priority
           />
           <h1 className="text-xl font-headline font-semibold group-data-[collapsible=icon]:hidden">Taxshila Companion</h1>
         </Link>
