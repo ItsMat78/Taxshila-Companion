@@ -19,7 +19,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/auth-context';
 import { Camera, QrCode, Receipt, IndianRupee, MessageSquare, Bell, ScrollText, Star, Loader2, XCircle, Home, BarChart3 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { getStudentByEmail, getAlertsForStudent, calculateMonthlyStudyHours } from '@/services/student-service';
+import { getStudentByEmail, getAlertsForStudent, calculateMonthlyStudyHours, addCheckIn, addCheckOut, getActiveCheckIn } from '@/services/student-service'; 
 import type { AlertItem } from '@/types/communication';
 
 type DashboardTileProps = {
@@ -119,21 +119,22 @@ export default function MemberDashboardPage() {
   React.useEffect(() => {
     if (user?.email) {
       setIsLoadingStudentData(true);
-      setIsLoadingStudyHours(true); 
+      setIsLoadingStudyHours(true);
       getStudentByEmail(user.email)
-        .then(student => {
-          if (student) {
-            setStudentId(student.studentId);
-            setStudentFirstName(student.name ? student.name.split(' ')[0] : null);
+        .then(studentDetails => {
+          if (studentDetails) {
+            setStudentId(studentDetails.studentId);
+            setStudentFirstName(studentDetails.name ? studentDetails.name.split(' ')[0] : null);
             
-            // Fetch alerts and study hours
-            const alertPromise = getAlertsForStudent(student.studentId);
-            const studyHoursPromise = calculateMonthlyStudyHours(student.studentId);
+            const alertPromise = getAlertsForStudent(studentDetails.studentId);
+            const studyHoursPromise = calculateMonthlyStudyHours(studentDetails.studentId);
 
-            return Promise.all([alertPromise, studyHoursPromise, student]);
+            return Promise.all([alertPromise, studyHoursPromise]);
           }
           setStudentFirstName(null);
           setStudentId(null);
+          setMonthlyStudyHours(null); 
+          setHasUnreadAlerts(false);
           return Promise.reject("Student not found to fetch further data"); 
         })
         .then(([alerts, hours]) => {
@@ -141,11 +142,13 @@ export default function MemberDashboardPage() {
           setMonthlyStudyHours(hours);
         })
         .catch(error => {
-          console.error("Error fetching student data, alerts or study hours for dashboard:", error);
           if (error !== "Student not found to fetch further data") {
+            console.error("Error fetching student data, alerts or study hours for dashboard:", error);
             toast({ title: "Error", description: "Could not load all dashboard data.", variant: "destructive" });
           }
-          setStudentFirstName(null); // Ensure reset on error
+          // Ensure states are reset on error
+          setStudentFirstName(null);
+          setStudentId(null); 
           setHasUnreadAlerts(false);
           setMonthlyStudyHours(null);
         })
@@ -159,6 +162,7 @@ export default function MemberDashboardPage() {
       setStudentFirstName(null);
       setStudentId(null);
       setMonthlyStudyHours(null);
+      setHasUnreadAlerts(false);
     }
   }, [user, toast]);
 
@@ -204,6 +208,10 @@ export default function MemberDashboardPage() {
   }, [isScannerOpen, toast]);
 
   const handleOpenScanner = () => {
+    if (!studentId) {
+        toast({title: "Error", description: "Cannot mark attendance. Student details not loaded.", variant: "destructive"});
+        return;
+    }
     setIsScannerOpen(true);
     setHasCameraPermission(null);
   };
@@ -213,32 +221,48 @@ export default function MemberDashboardPage() {
   };
 
   const simulateQrScan = async () => {
+    if (!studentId) {
+      toast({ title: "Error", description: "Student ID not found. Cannot record attendance.", variant: "destructive" });
+      return;
+    }
     setIsProcessingQr(true);
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    setIsProcessingQr(false);
-    setIsScannerOpen(false);
-    toast({
-      title: "Attendance Marked!",
-      description: `Your attendance has been recorded at ${new Date().toLocaleTimeString()}.`,
-    });
-    // Re-fetch study hours after simulated scan
-    if(studentId) {
-        setIsLoadingStudyHours(true);
-        calculateMonthlyStudyHours(studentId)
-            .then(setMonthlyStudyHours)
-            .catch(() => setMonthlyStudyHours(null))
-            .finally(() => setIsLoadingStudyHours(false));
+    try {
+      const activeCheckIn = await getActiveCheckIn(studentId);
+      if (activeCheckIn) {
+        await addCheckOut(activeCheckIn.recordId);
+        toast({ title: "Checked Out!", description: `Successfully checked out at ${new Date().toLocaleTimeString()}.` });
+      } else {
+        await addCheckIn(studentId);
+        toast({ title: "Checked In!", description: `Successfully checked in at ${new Date().toLocaleTimeString()}.` });
+      }
+      
+      // Re-fetch study hours after check-in/out
+      setIsLoadingStudyHours(true);
+      calculateMonthlyStudyHours(studentId)
+          .then(setMonthlyStudyHours)
+          .catch(() => {
+              toast({title:"Error", description: "Could not update study hours.", variant: "destructive"});
+              setMonthlyStudyHours(null);
+          })
+          .finally(() => setIsLoadingStudyHours(false));
+
+    } catch (error) {
+      toast({ title: "Scan Error", description: "Failed to process attendance. Please try again.", variant: "destructive" });
+    } finally {
+      setIsProcessingQr(false);
+      setIsScannerOpen(false);
     }
   };
 
   let activitySummaryDescription = "Track your study hours.";
-  if (isLoadingStudyHours) {
+  if (isLoadingStudyHours || isLoadingStudentData) { // Combined loading state for initial placeholder
     activitySummaryDescription = "Loading hours...";
-  } else if (monthlyStudyHours !== null) {
+  } else if (studentId && monthlyStudyHours !== null) { // studentId check ensures student context is loaded
     activitySummaryDescription = `${monthlyStudyHours} hours studied this month.`;
-  } else if (!isLoadingStudentData && studentId) { // Only show N/A if student is loaded but hours are not
+  } else if (studentId && monthlyStudyHours === null) { // studentId loaded but hours failed
     activitySummaryDescription = "N/A hours recorded.";
   }
+  // Default is "Track your study hours." if studentId is null or other unhandled states.
 
 
   const coreActionTiles: DashboardTileProps[] = [
@@ -254,7 +278,7 @@ export default function MemberDashboardPage() {
   ];
   
   const defaultWelcomeName = user?.email?.split('@')[0] || 'Member';
-  const pageTitleText = isLoadingStudentData 
+  const pageTitleText = isLoadingStudentData && !studentFirstName 
     ? `Welcome, ${defaultWelcomeName}!` 
     : (studentFirstName ? `Welcome, ${studentFirstName}!` : `Welcome, ${defaultWelcomeName}!`);
 
@@ -335,4 +359,3 @@ export default function MemberDashboardPage() {
     </>
   );
 }
-
