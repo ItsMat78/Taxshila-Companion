@@ -37,3 +37,9 @@ export interface AttendanceRecord {
   checkInTime: string; // ISO string
   checkOutTime?: string; // ISO string, optional
 }
+
+export interface FeeStructure {
+  morningFee: number;
+  eveningFee: number;
+  fullDayFee: number;
+}

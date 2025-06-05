@@ -16,12 +16,13 @@ import {
   limit,
   serverTimestamp,
   writeBatch,
-  storage, // Import Firebase Storage instance
-  storageRef, // Import Firebase Storage ref function
-  uploadBytesResumable, // Import Firebase Storage upload function
-  getDownloadURL // Import Firebase Storage getDownloadURL function
+  runTransaction, // Added runTransaction
+  storage,
+  storageRef,
+  uploadBytesResumable,
+  getDownloadURL
 } from '@/lib/firebase';
-import type { Student, Shift, FeeStatus, PaymentRecord, ActivityStatus, AttendanceRecord } from '@/types/student';
+import type { Student, Shift, FeeStatus, PaymentRecord, ActivityStatus, AttendanceRecord, FeeStructure } from '@/types/student';
 import type { FeedbackItem, FeedbackType, FeedbackStatus, AlertItem } from '@/types/communication';
 import { format, parseISO, differenceInDays, isPast, addMonths, subHours, subMinutes, startOfDay, endOfDay, isValid, differenceInMilliseconds, startOfMonth, endOfMonth, isWithinInterval, subMonths, getHours, compareDesc, getYear, getMonth } from 'date-fns';
 
@@ -30,6 +31,8 @@ const STUDENTS_COLLECTION = "students";
 const ATTENDANCE_COLLECTION = "attendanceRecords";
 const FEEDBACK_COLLECTION = "feedbackItems";
 const ALERTS_COLLECTION = "alertItems";
+const APP_CONFIG_COLLECTION = "appConfiguration"; // New collection for app settings
+const FEE_SETTINGS_DOC_ID = "feeSettings"; // Document ID for fee settings
 
 export const ALL_SEAT_NUMBERS: string[] = [];
 for (let i = 1; i <= 85; i++) {
@@ -44,8 +47,8 @@ const studentFromDoc = (docSnapshot: any): Student => {
   const data = docSnapshot.data();
   return {
     ...data,
-    id: docSnapshot.id, 
-    firestoreId: docSnapshot.id, 
+    id: docSnapshot.id,
+    firestoreId: docSnapshot.id,
     registrationDate: data.registrationDate instanceof Timestamp ? format(data.registrationDate.toDate(), 'yyyy-MM-dd') : data.registrationDate,
     lastPaymentDate: data.lastPaymentDate instanceof Timestamp ? format(data.lastPaymentDate.toDate(), 'yyyy-MM-dd') : (data.lastPaymentDate === null ? undefined : data.lastPaymentDate),
     nextDueDate: data.nextDueDate instanceof Timestamp ? format(data.nextDueDate.toDate(), 'yyyy-MM-dd') : (data.nextDueDate === null ? undefined : data.nextDueDate),
@@ -68,7 +71,7 @@ const attendanceRecordFromDoc = (docSnapshot: any): AttendanceRecord => {
   } else if (typeof data.checkInTime === 'string' && isValid(parseISO(data.checkInTime))) {
     checkInTimeISO = data.checkInTime;
   } else {
-    checkInTimeISO = new Date(0).toISOString(); 
+    checkInTimeISO = new Date(0).toISOString();
   }
 
   let checkOutTimeISO: string | undefined = undefined;
@@ -84,7 +87,7 @@ const attendanceRecordFromDoc = (docSnapshot: any): AttendanceRecord => {
   } else if (typeof data.date === 'string' && data.date.match(/^\d{4}-\d{2}-\d{2}$/)) {
     dateStr = data.date;
   } else {
-    dateStr = format(parseISO(checkInTimeISO), 'yyyy-MM-dd'); 
+    dateStr = format(parseISO(checkInTimeISO), 'yyyy-MM-dd');
   }
 
   return {
@@ -116,6 +119,51 @@ const alertItemFromDoc = (docSnapshot: any): AlertItem => {
     dateSent: data.dateSent instanceof Timestamp ? data.dateSent.toDate().toISOString() : data.dateSent,
   } as AlertItem;
 };
+
+
+// --- Fee Structure Service Functions ---
+const DEFAULT_FEE_STRUCTURE: FeeStructure = {
+  morningFee: 600,
+  eveningFee: 600,
+  fullDayFee: 1000,
+};
+
+export async function getFeeStructure(): Promise<FeeStructure> {
+  const feeSettingsDocRef = doc(db, APP_CONFIG_COLLECTION, FEE_SETTINGS_DOC_ID);
+  try {
+    const docSnap = await getDoc(feeSettingsDocRef);
+    if (docSnap.exists()) {
+      return docSnap.data() as FeeStructure;
+    } else {
+      // Document doesn't exist, create it with defaults
+      await runTransaction(db, async (transaction) => {
+        const freshDocSnap = await transaction.get(feeSettingsDocRef);
+        if (!freshDocSnap.exists()) {
+          transaction.set(feeSettingsDocRef, DEFAULT_FEE_STRUCTURE);
+        }
+      });
+      return DEFAULT_FEE_STRUCTURE;
+    }
+  } catch (error) {
+    console.error("Error getting or creating fee structure:", error);
+    // Fallback to default if there's an error during the process
+    return DEFAULT_FEE_STRUCTURE;
+  }
+}
+
+export async function updateFeeStructure(newFees: Partial<FeeStructure>): Promise<void> {
+  const feeSettingsDocRef = doc(db, APP_CONFIG_COLLECTION, FEE_SETTINGS_DOC_ID);
+  const dataToUpdate: Partial<FeeStructure> = {};
+  if (newFees.morningFee !== undefined && newFees.morningFee > 0) dataToUpdate.morningFee = newFees.morningFee;
+  if (newFees.eveningFee !== undefined && newFees.eveningFee > 0) dataToUpdate.eveningFee = newFees.eveningFee;
+  if (newFees.fullDayFee !== undefined && newFees.fullDayFee > 0) dataToUpdate.fullDayFee = newFees.fullDayFee;
+
+  if (Object.keys(dataToUpdate).length === 0) {
+    throw new Error("No valid fee updates provided.");
+  }
+
+  await updateDoc(feeSettingsDocRef, dataToUpdate);
+}
 
 
 // --- Student Service Functions ---
@@ -249,6 +297,7 @@ export interface AddStudentData {
 
 export async function addStudent(studentData: AddStudentData): Promise<Student> {
   const customStudentId = await getNextCustomStudentId();
+  const fees = await getFeeStructure(); // Get current fee structure
 
   const existingStudentById = await getStudentByCustomId(customStudentId);
   if (existingStudentById) {
@@ -278,6 +327,14 @@ export async function addStudent(studentData: AddStudentData): Promise<Student> 
   }
 
   const today = new Date();
+  let amountDueForShift: string;
+  switch (studentData.shift) {
+    case "morning": amountDueForShift = `Rs. ${fees.morningFee}`; break;
+    case "evening": amountDueForShift = `Rs. ${fees.eveningFee}`; break;
+    case "fullday": amountDueForShift = `Rs. ${fees.fullDayFee}`; break;
+    default: amountDueForShift = "Rs. 0"; // Should not happen
+  }
+
   const newStudentDataTypeConsistent: Omit<Student, 'firestoreId' | 'id'> = {
     studentId: customStudentId,
     name: studentData.name,
@@ -290,7 +347,7 @@ export async function addStudent(studentData: AddStudentData): Promise<Student> 
     feeStatus: "Due",
     activityStatus: "Active",
     registrationDate: format(today, 'yyyy-MM-dd'),
-    amountDue: studentData.shift === "fullday" ? "Rs. 1200" : "Rs. 700",
+    amountDue: amountDueForShift,
     nextDueDate: format(addMonths(today, 1), 'yyyy-MM-dd'),
     profilePictureUrl: "https://placehold.co/200x200.png",
     paymentHistory: [],
@@ -312,7 +369,7 @@ export async function addStudent(studentData: AddStudentData): Promise<Student> 
     profilePictureUrl: newStudentDataTypeConsistent.profilePictureUrl,
     paymentHistory: newStudentDataTypeConsistent.paymentHistory,
     readGeneralAlertIds: newStudentDataTypeConsistent.readGeneralAlertIds,
-    email: newStudentDataTypeConsistent.email || null, 
+    email: newStudentDataTypeConsistent.email || null,
     idCardFileName: newStudentDataTypeConsistent.idCardFileName || null,
   };
 
@@ -339,7 +396,7 @@ export async function updateStudent(customStudentId: string, studentUpdateData: 
   const payload: any = { ...studentUpdateData };
   delete payload.firestoreId;
   delete payload.studentId;
-  delete payload.id; 
+  delete payload.id;
 
   if (payload.registrationDate && typeof payload.registrationDate === 'string') {
     payload.registrationDate = Timestamp.fromDate(parseISO(payload.registrationDate));
@@ -374,7 +431,7 @@ export async function updateStudent(customStudentId: string, studentUpdateData: 
   const newSeatNumber = studentUpdateData.seatNumber !== undefined ? studentUpdateData.seatNumber : studentToUpdate.seatNumber;
 
   if (newSeatNumber && (newSeatNumber !== studentToUpdate.seatNumber || newShift !== studentToUpdate.shift || (studentUpdateData.activityStatus === 'Active' && studentToUpdate.activityStatus === 'Left'))) {
-      const allCurrentStudents = await getAllStudents(); 
+      const allCurrentStudents = await getAllStudents();
       const isSeatTakenForShift = allCurrentStudents.some(s =>
         s.studentId !== customStudentId &&
         s.activityStatus === "Active" &&
@@ -399,8 +456,17 @@ export async function updateStudent(customStudentId: string, studentUpdateData: 
     if (!newSeatNumber || !ALL_SEAT_NUMBERS.includes(newSeatNumber)) {
         throw new Error("A valid seat must be selected to re-activate a student.");
     }
+    const fees = await getFeeStructure();
+    let amountDueForShift: string;
+    switch (newShift) {
+      case "morning": amountDueForShift = `Rs. ${fees.morningFee}`; break;
+      case "evening": amountDueForShift = `Rs. ${fees.eveningFee}`; break;
+      case "fullday": amountDueForShift = `Rs. ${fees.fullDayFee}`; break;
+      default: amountDueForShift = "Rs. 0";
+    }
+
     payload.feeStatus = 'Due';
-    payload.amountDue = newShift === "fullday" ? "Rs. 1200" : "Rs. 700";
+    payload.amountDue = amountDueForShift;
     payload.lastPaymentDate = null;
     payload.nextDueDate = Timestamp.fromDate(addMonths(new Date(), 1));
     payload.paymentHistory = [];
@@ -419,11 +485,11 @@ export async function updateStudent(customStudentId: string, studentUpdateData: 
      await sendAlertToStudent(customStudentId, "Account Status Update", `Hi ${updatedStudent.name}, your student account has been marked as 'Left'.`, "info");
   } else if (updatedStudent.activityStatus === 'Active') {
       const profileChanged = (studentUpdateData.name && studentUpdateData.name !== studentToUpdate.name) ||
-                             (payload.email !== studentToUpdate.email) || 
+                             (payload.email !== studentToUpdate.email) ||
                              (studentUpdateData.phone && studentUpdateData.phone !== studentToUpdate.phone) ||
                              (studentUpdateData.shift && studentUpdateData.shift !== studentToUpdate.shift) ||
                              (studentUpdateData.seatNumber !== undefined && studentUpdateData.seatNumber !== studentToUpdate.seatNumber) ||
-                             (payload.idCardFileName !== studentToUpdate.idCardFileName) || 
+                             (payload.idCardFileName !== studentToUpdate.idCardFileName) ||
                              (payload.profilePictureUrl && payload.profilePictureUrl !== studentToUpdate.profilePictureUrl) ||
                              passwordUpdated;
 
@@ -457,7 +523,7 @@ export async function deleteStudentCompletely(customStudentId: string): Promise<
   attendanceSnapshot.forEach(docSnap => {
     batch.delete(doc(db, ATTENDANCE_COLLECTION, docSnap.id));
   });
-  
+
   await batch.commit();
 }
 
@@ -520,7 +586,7 @@ export async function addCheckIn(studentId: string): Promise<AttendanceRecord> {
         `Hi ${student.name}, you checked in outside your ${shiftName} shift (${shiftHoursMessage}). Please adhere to timings.`,
         "warning"
       );
-    } catch (alertError) { } 
+    } catch (alertError) { }
   }
 
   const newRecordData = {
@@ -588,6 +654,27 @@ export async function recordStudentPayment(
     throw new Error("Cannot record payment for a student who has left.");
   }
 
+  const fees = await getFeeStructure(); // Get current fee structure
+  let expectedMonthlyFee: number;
+  switch(studentToUpdate.shift) {
+    case "morning": expectedMonthlyFee = fees.morningFee; break;
+    case "evening": expectedMonthlyFee = fees.eveningFee; break;
+    case "fullday": expectedMonthlyFee = fees.fullDayFee; break;
+    default: throw new Error("Invalid shift for fee calculation.");
+  }
+
+  const amountToPayNumeric = parseInt(totalAmountPaidString.replace('Rs. ', '').trim(), 10);
+  if (isNaN(amountToPayNumeric) || amountToPayNumeric <= 0) {
+      throw new Error("Invalid payment amount provided.");
+  }
+  
+  // If it's an admin recording, and the amount is less than default, still proceed.
+  // For member payments, we might enforce full month payment.
+  if (paymentMethod !== "Admin Recorded" && amountToPayNumeric < (expectedMonthlyFee * numberOfMonthsPaid)) {
+      // This check can be more strict if needed. For now, just ensuring positive.
+  }
+
+
   const studentDocRef = doc(db, STUDENTS_COLLECTION, studentToUpdate.firestoreId);
   const today = new Date();
   const newPaymentId = `PAY${String(Date.now()).slice(-6)}${String(Math.floor(Math.random() * 100)).padStart(2,'0')}`;
@@ -596,7 +683,7 @@ export async function recordStudentPayment(
   const newPaymentRecord: PaymentRecord = {
     paymentId: newPaymentId,
     date: format(today, 'yyyy-MM-dd'),
-    amount: totalAmountPaidString,
+    amount: `Rs. ${amountToPayNumeric}`, // Use the actual amount paid
     transactionId: newTransactionId,
     method: paymentMethod === "Admin Recorded" ? "Desk Payment" : paymentMethod,
   };
@@ -627,10 +714,10 @@ export async function recordStudentPayment(
     await sendAlertToStudent(
       customStudentId,
       "Payment Confirmation",
-      `Hi ${updatedStudent.name}, your fee payment of ${totalAmountPaidString} for ${numberOfMonthsPaid} month(s) has been recorded. Fees paid up to ${updatedStudent.nextDueDate ? format(parseISO(updatedStudent.nextDueDate), 'PP') : 'N/A'}.`,
+      `Hi ${updatedStudent.name}, your fee payment of ${newPaymentRecord.amount} for ${numberOfMonthsPaid} month(s) has been recorded. Fees paid up to ${updatedStudent.nextDueDate ? format(parseISO(updatedStudent.nextDueDate), 'PP') : 'N/A'}.`,
       "info"
     );
-  } catch (alertError) { } 
+  } catch (alertError) { }
 
   return updatedStudent;
 }
@@ -653,7 +740,7 @@ export async function calculateMonthlyStudyHours(customStudentId: string): Promi
           }
         }
       }
-    } catch (e) { } 
+    } catch (e) { }
   });
   return Math.round(totalMilliseconds / (1000 * 60 * 60));
 }
@@ -677,7 +764,7 @@ export async function calculateMonthlyRevenue(): Promise<string> {
               totalRevenue += amountValue;
             }
           }
-        } catch (e) { } 
+        } catch (e) { }
       });
     }
   });
@@ -707,7 +794,7 @@ export async function getMonthlyRevenueHistory(): Promise<MonthlyRevenueData[]> 
               monthlyRevenueMap[monthKey] = (monthlyRevenueMap[monthKey] || 0) + amountValue;
             }
           }
-        } catch (e) { } 
+        } catch (e) { }
       });
     }
   });
@@ -734,8 +821,8 @@ export async function submitFeedback(
   type: FeedbackType
 ): Promise<FeedbackItem> {
   const newFeedbackData = {
-    studentId: studentId || null, 
-    studentName: studentName || null, 
+    studentId: studentId || null,
+    studentName: studentName || null,
     message,
     type,
     dateSubmitted: Timestamp.fromDate(new Date()),
@@ -770,14 +857,14 @@ export async function sendGeneralAlert(title: string, message: string, type: Ale
     message,
     type,
     dateSent: Timestamp.fromDate(new Date()),
-    isRead: false, 
-    studentId: null, 
+    isRead: false,
+    studentId: null,
   };
   const docRef = await addDoc(collection(db, ALERTS_COLLECTION), newAlertData);
   return {
-    id: docRef.id, 
+    id: docRef.id,
     ...newAlertData,
-    studentId: undefined, 
+    studentId: undefined,
     dateSent: newAlertData.dateSent.toDate().toISOString(),
   };
 }
@@ -800,12 +887,12 @@ export async function sendAlertToStudent(
   }
 
   const newAlertDataForFirestore: any = {
-    studentId: customStudentId, 
+    studentId: customStudentId,
     title,
     message,
     type,
     dateSent: Timestamp.fromDate(new Date()),
-    isRead: false, 
+    isRead: false,
   };
   if (originalFeedbackId) newAlertDataForFirestore.originalFeedbackId = originalFeedbackId;
   if (originalFeedbackMessageSnippet) newAlertDataForFirestore.originalFeedbackMessageSnippet = originalFeedbackMessageSnippet;
@@ -813,7 +900,7 @@ export async function sendAlertToStudent(
   const docRef = await addDoc(collection(db, ALERTS_COLLECTION), newAlertDataForFirestore);
 
   const newAlertDataForReturn: AlertItem = {
-    id: docRef.id, 
+    id: docRef.id,
     studentId: newAlertDataForFirestore.studentId,
     title: newAlertDataForFirestore.title,
     message: newAlertDataForFirestore.message,
@@ -837,7 +924,7 @@ export async function getAlertsForStudent(customStudentId: string): Promise<Aler
 
   const targetedQuery = query(
     collection(db, ALERTS_COLLECTION),
-    where("studentId", "==", customStudentId) 
+    where("studentId", "==", customStudentId)
   );
 
   const generalAlertsQuery = query(
@@ -851,14 +938,14 @@ export async function getAlertsForStudent(customStudentId: string): Promise<Aler
   const generalAlertsSnapshot = await getDocs(generalAlertsQuery);
   const generalAlerts = generalAlertsSnapshot.docs
       .map(alertItemFromDoc)
-      .filter(alert => alert.type !== 'feedback_response'); 
+      .filter(alert => alert.type !== 'feedback_response');
 
 
   const contextualizedAlerts = [
-    ...studentAlerts, 
+    ...studentAlerts,
     ...generalAlerts.map(alert => ({
       ...alert,
-      isRead: readGeneralAlertIdsSet.has(alert.id) 
+      isRead: readGeneralAlertIdsSet.has(alert.id)
     }))
   ];
 
@@ -881,7 +968,7 @@ export async function markAlertAsRead(alertId: string, customStudentId: string):
         throw new Error("Alert not found.");
     }
     const alertData = alertItemFromDoc(alertSnap);
-    
+
     if (alertData.studentId === customStudentId) { // Targeted alert
         if (!alertData.isRead) {
             await updateDoc(alertDocRef, { isRead: true });
@@ -895,10 +982,10 @@ export async function markAlertAsRead(alertId: string, customStudentId: string):
             const studentDocSnap = await getDoc(studentDocRef);
             const currentStudentData = studentDocSnap.data();
             const readIds = currentStudentData?.readGeneralAlertIds || [];
-            
+
             if (!readIds.includes(alertId)) {
                 await updateDoc(studentDocRef, {
-                    readGeneralAlertIds: arrayUnion(alertId) 
+                    readGeneralAlertIds: arrayUnion(alertId)
                 });
             }
             return { ...alertData, isRead: true }; // Mark as read for UI purposes
@@ -906,9 +993,9 @@ export async function markAlertAsRead(alertId: string, customStudentId: string):
             throw new Error("Student not found to mark general alert as read.");
         }
     }
-    else { 
+    else {
         // Alert is for a different student, do nothing to this student's record
-        return alertData; 
+        return alertData;
     }
 }
 
@@ -963,8 +1050,8 @@ export async function uploadProfilePictureToStorage(studentFirestoreId: string, 
 
 declare module '@/types/student' {
   interface Student {
-    id?: string; 
-    firestoreId?: string; 
+    id?: string;
+    firestoreId?: string;
     readGeneralAlertIds?: string[];
   }
 }
@@ -976,4 +1063,3 @@ declare module '@/types/communication' {
     firestoreId?: string;
   }
 }
-

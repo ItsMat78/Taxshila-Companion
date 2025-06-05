@@ -11,7 +11,7 @@ import {
   Database,
   CreditCard,
   Receipt,
-  IndianRupee, 
+  IndianRupee,
   BarChart3,
   History,
   QrCode,
@@ -23,11 +23,12 @@ import {
   Send,
   Edit,
   ClipboardCheck,
-  Landmark, 
+  Landmark,
   type Icon as LucideIcon,
   Home,
   UserCircle,
-  TrendingUp // Added TrendingUp
+  TrendingUp,
+  Settings // Added Settings icon
 } from 'lucide-react';
 import type { UserRole } from '@/types/auth';
 
@@ -39,7 +40,7 @@ export type NavItem = {
   label?: string;
   items?: NavItem[];
   roles?: UserRole[];
-  external?: boolean; 
+  external?: boolean;
 };
 
 export const mainNav: NavItem[] = [
@@ -52,7 +53,7 @@ export const mainNav: NavItem[] = [
   },
   {
     title: 'Students',
-    href: '#', 
+    href: '#',
     icon: Users,
     roles: ['admin'],
     items: [
@@ -72,7 +73,7 @@ export const mainNav: NavItem[] = [
   },
   {
     title: 'Seat Management',
-    href: '#', 
+    href: '#',
     icon: Armchair,
     roles: ['admin'],
     items: [
@@ -85,21 +86,21 @@ export const mainNav: NavItem[] = [
     ]
   },
   {
-    title: 'Attendance Overview', 
+    title: 'Attendance Overview',
     href: '/attendance/calendar',
     icon: CalendarDays,
     roles: ['admin'],
   },
   {
     title: 'Financials',
-    href: '#', 
-    icon: IndianRupee, 
+    href: '#',
+    icon: IndianRupee,
     roles: ['admin'],
     items: [
       {
         title: 'Fees Due List',
         href: '/admin/fees/due',
-        icon: CreditCard, 
+        icon: CreditCard,
         roles: ['admin'],
       },
       {
@@ -111,7 +112,13 @@ export const mainNav: NavItem[] = [
       {
         title: 'Revenue History',
         href: '/admin/fees/revenue-history',
-        icon: TrendingUp, 
+        icon: TrendingUp,
+        roles: ['admin'],
+      },
+      {
+        title: 'Manage Fees', // New Item
+        href: '/admin/fees/manage',
+        icon: Settings, // Using Settings icon
         roles: ['admin'],
       },
     ]
@@ -151,9 +158,9 @@ export const mainNav: NavItem[] = [
 
   // Member Routes
   {
-    title: 'Dashboard', 
+    title: 'Dashboard',
     href: '/member/dashboard',
-    icon: Home, 
+    icon: Home,
     roles: ['member'],
   },
   {
@@ -163,9 +170,9 @@ export const mainNav: NavItem[] = [
     roles: ['member'],
   },
   {
-    title: 'My Attendance', 
+    title: 'My Attendance',
     href: '/member/attendance',
-    icon: BarChart3, 
+    icon: BarChart3,
     roles: ['member'],
   },
   {
@@ -177,7 +184,7 @@ export const mainNav: NavItem[] = [
   {
     title: 'Pay Fees',
     href: '/member/pay',
-    icon: QrCode, 
+    icon: QrCode,
     roles: ['member'],
   },
   {
@@ -200,7 +207,7 @@ export const mainNav: NavItem[] = [
   },
   {
     title: 'Rate Us',
-    href: 'https://www.google.com/maps/search/?api=1&query=Taxshila+Study+Hall+Pune', 
+    href: 'https://www.google.com/maps/search/?api=1&query=Taxshila+Study+Hall+Pune',
     icon: Star,
     roles: ['member'],
     external: true,
