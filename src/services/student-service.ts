@@ -262,7 +262,7 @@ export interface AddStudentData {
   name: string;
   email?: string;
   phone: string;
-  password?: string; // Made optional for now, will make required if form adds it
+  password: string;
   shift: Shift;
   seatNumber: string;
   idCardFileName?: string;
@@ -296,7 +296,7 @@ export function addStudent(studentData: AddStudentData): Promise<Student> {
       const newStudent: Student = {
         ...studentData,
         studentId: getNextStudentId(),
-        password: studentData.password, // Use provided password
+        password: studentData.password,
         feeStatus: "Due",
         activityStatus: "Active",
         registrationDate: format(today, 'yyyy-MM-dd'),
@@ -313,7 +313,7 @@ export function addStudent(studentData: AddStudentData): Promise<Student> {
   });
 }
 
-export async function updateStudent(studentId: string, studentUpdateData: Partial<Omit<Student, 'studentId' | 'password'>>): Promise<Student | undefined> {
+export async function updateStudent(studentId: string, studentUpdateData: Partial<Student>): Promise<Student | undefined> {
   return new Promise((resolve, reject) => {
     setTimeout(async () => {
       processStudentsForUpdates([...students]);
@@ -345,7 +345,19 @@ export async function updateStudent(studentId: string, studentUpdateData: Partia
         }
       }
 
-      let tempUpdatedStudentData: Student = { ...currentStudent, ...studentUpdateData, password: currentStudent.password };
+      let tempUpdatedStudentData: Student = { ...currentStudent, ...studentUpdateData };
+      
+      // Handle password update explicitly: if not provided in update, keep existing; if empty string, it means clear (though unlikely for edit)
+      if (studentUpdateData.password === undefined) {
+        tempUpdatedStudentData.password = currentStudent.password; // Keep existing if not in update payload
+      } else if (studentUpdateData.password === "") {
+         // Retain old password if new password is empty string - admin should not accidentally clear passwords
+         tempUpdatedStudentData.password = currentStudent.password;
+      } else {
+         tempUpdatedStudentData.password = studentUpdateData.password; // Set new password
+      }
+
+
       if (tempUpdatedStudentData.email) {
         tempUpdatedStudentData.email = tempUpdatedStudentData.email.toLowerCase();
       }
@@ -388,21 +400,24 @@ export async function updateStudent(studentId: string, studentUpdateData: Partia
 
       const isFeeStatusChangeOnlyToPaid = studentUpdateData.feeStatus === 'Paid' && currentStudent.feeStatus !== 'Paid' && Object.keys(studentUpdateData).length === 1 && studentUpdateData.lastPaymentDate && studentUpdateData.nextDueDate && studentUpdateData.amountDue === "Rs. 0";
 
+      const nameChanged = studentUpdateData.name && studentUpdateData.name !== currentStudent.name;
+      const emailChanged = studentUpdateData.email !== undefined && studentUpdateData.email !== currentStudent.email;
+      const phoneChanged = studentUpdateData.phone && studentUpdateData.phone !== currentStudent.phone;
+      const shiftChanged = studentUpdateData.shift && studentUpdateData.shift !== currentStudent.shift;
+      const seatChanged = studentUpdateData.seatNumber !== undefined && studentUpdateData.seatNumber !== currentStudent.seatNumber && studentUpdateData.seatNumber !== null;
+      const idCardChanged = studentUpdateData.idCardFileName !== undefined && studentUpdateData.idCardFileName !== currentStudent.idCardFileName;
+      const passwordChanged = studentUpdateData.password && studentUpdateData.password !== currentStudent.password && studentUpdateData.password !== "";
 
-      if (!alertSentDueToStatusChange && !isFeeStatusChangeOnlyToPaid && newlyUpdatedStudent.activityStatus === 'Active') {
-        const nameChanged = studentUpdateData.name && studentUpdateData.name !== currentStudent.name;
-        const emailChanged = studentUpdateData.email !== undefined && studentUpdateData.email !== currentStudent.email;
-        const phoneChanged = studentUpdateData.phone && studentUpdateData.phone !== currentStudent.phone;
-        const shiftChanged = studentUpdateData.shift && studentUpdateData.shift !== currentStudent.shift;
-        const seatChanged = studentUpdateData.seatNumber !== undefined && studentUpdateData.seatNumber !== currentStudent.seatNumber && studentUpdateData.seatNumber !== null;
-        const idCardChanged = studentUpdateData.idCardFileName !== undefined && studentUpdateData.idCardFileName !== currentStudent.idCardFileName;
 
-        if (nameChanged || emailChanged || phoneChanged || shiftChanged || seatChanged || idCardChanged) {
-          try {
-            const alertMessage = `Hi ${newlyUpdatedStudent.name}, your profile details have been updated by an administrator. Your current details are:\nName: ${newlyUpdatedStudent.name}\nEmail: ${newlyUpdatedStudent.email || 'N/A'}\nPhone: ${newlyUpdatedStudent.phone}\nShift: ${newlyUpdatedStudent.shift}\nSeat Number: ${newlyUpdatedStudent.seatNumber || 'N/A'}\nID Card File: ${newlyUpdatedStudent.idCardFileName || 'Not Uploaded'}\n\nPlease review them in your profile.`;
-            await sendAlertToStudent(studentId, "Profile Details Updated", alertMessage, "info");
-          } catch (e) { console.error("Failed to send profile update alert:", e); }
-        }
+      if (!alertSentDueToStatusChange && !isFeeStatusChangeOnlyToPaid && newlyUpdatedStudent.activityStatus === 'Active' && (nameChanged || emailChanged || phoneChanged || shiftChanged || seatChanged || idCardChanged || passwordChanged)) {
+        try {
+          let alertMessage = `Hi ${newlyUpdatedStudent.name}, your profile details have been updated by an administrator. Your current details are:\nName: ${newlyUpdatedStudent.name}\nEmail: ${newlyUpdatedStudent.email || 'N/A'}\nPhone: ${newlyUpdatedStudent.phone}\nShift: ${newlyUpdatedStudent.shift}\nSeat Number: ${newlyUpdatedStudent.seatNumber || 'N/A'}\nID Card File: ${newlyUpdatedStudent.idCardFileName || 'Not Uploaded'}`;
+          if (passwordChanged) {
+            alertMessage += `\nYour password has also been updated.`;
+          }
+          alertMessage += `\nPlease review them in your profile.`;
+          await sendAlertToStudent(studentId, "Profile Details Updated", alertMessage, "info");
+        } catch (e) { console.error("Failed to send profile update alert:", e); }
       }
 
       resolve({ ...newlyUpdatedStudent });
@@ -904,3 +919,5 @@ export async function calculateMonthlyStudyHours(studentId: string): Promise<num
   });
   return Math.round(totalMilliseconds / (1000 * 60 * 60)); 
 }
+
+    

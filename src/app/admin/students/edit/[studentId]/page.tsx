@@ -35,7 +35,7 @@ import {
   FormDescription,
 } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Save, ClipboardCheck, Loader2, UserX, UserCheck, FileText } from 'lucide-react';
+import { ArrowLeft, Save, ClipboardCheck, Loader2, UserX, UserCheck, FileText, KeyRound } from 'lucide-react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { getStudentById, updateStudent, getAvailableSeats, recordStudentPayment } from '@/services/student-service';
@@ -54,6 +54,24 @@ const studentEditFormSchema = z.object({
   shift: z.enum(["morning", "evening", "fullday"], { required_error: "Shift selection is required." }),
   seatNumber: z.string().nullable().refine(val => val !== null && val !== "", { message: "Seat selection is required."}),
   idCardFileName: z.string().optional(),
+  newPassword: z.string().optional(),
+  confirmNewPassword: z.string().optional(),
+}).refine(data => {
+  if (data.newPassword && data.newPassword.length > 0) {
+    return data.newPassword.length >= 6;
+  }
+  return true;
+}, {
+  message: "New password must be at least 6 characters.",
+  path: ["newPassword"],
+}).refine(data => {
+  if (data.newPassword && data.newPassword.length > 0) {
+    return data.confirmNewPassword === data.newPassword;
+  }
+  return true;
+}, {
+  message: "New passwords don't match.",
+  path: ["confirmNewPassword"],
 });
 
 type StudentEditFormValues = z.infer<typeof studentEditFormSchema>;
@@ -87,6 +105,8 @@ export default function EditStudentPage() {
       shift: undefined,
       seatNumber: null,
       idCardFileName: "",
+      newPassword: "",
+      confirmNewPassword: "",
     },
   });
 
@@ -107,6 +127,8 @@ export default function EditStudentPage() {
           shift: student.shift,
           seatNumber: student.activityStatus === 'Left' ? null : student.seatNumber,
           idCardFileName: student.idCardFileName || "",
+          newPassword: "", // Always reset password fields on load
+          confirmNewPassword: "",
         });
       } else {
         toast({ title: "Error", description: "Student not found.", variant: "destructive" });
@@ -172,9 +194,16 @@ export default function EditStudentPage() {
     if (!studentId || !studentData) return;
     setIsSaving(true);
 
-    let payload: Partial<Student>;
+    let payload: Partial<Student> = {};
     let successMessage: string;
     let wasReactivated = false;
+    let passwordUpdated = false;
+
+    if (data.newPassword && data.newPassword.length >= 6 && data.newPassword === data.confirmNewPassword) {
+      payload.password = data.newPassword;
+      passwordUpdated = true;
+    }
+
 
     if (isStudentLeft) { 
       if (!data.seatNumber) {
@@ -184,6 +213,7 @@ export default function EditStudentPage() {
         return;
       }
       payload = {
+        ...payload,
         name: data.name,
         email: data.email,
         phone: data.phone,
@@ -193,10 +223,11 @@ export default function EditStudentPage() {
         registrationDate: studentData.registrationDate, 
         idCardFileName: data.idCardFileName,
       };
-      successMessage = `${data.name} has been re-activated. An alert has been sent.`;
+      successMessage = `${data.name} has been re-activated.`;
       wasReactivated = true;
     } else { 
       payload = {
+        ...payload,
         name: data.name,
         email: data.email,
         phone: data.phone,
@@ -204,8 +235,16 @@ export default function EditStudentPage() {
         seatNumber: data.seatNumber,
         idCardFileName: data.idCardFileName,
       };
-      successMessage = `${data.name}'s details have been updated. An alert has been sent if changes were made.`;
+      successMessage = `${data.name}'s details have been updated.`;
     }
+    
+    if (passwordUpdated) {
+        successMessage += wasReactivated ? " Their password has also been updated." : " Password has also been updated.";
+    }
+    if (!alertSentDueToStatusChange && !isFeeStatusChangeOnlyToPaid && newlyUpdatedStudent.activityStatus === 'Active' && (nameChanged || emailChanged || phoneChanged || shiftChanged || seatChanged || idCardChanged || passwordUpdated)) {
+       successMessage += " An alert has been sent.";
+    }
+
 
     try {
       const updatedStudent = await updateStudent(studentId, payload);
@@ -218,6 +257,8 @@ export default function EditStudentPage() {
             shift: updatedStudent.shift,
             seatNumber: updatedStudent.activityStatus === 'Left' ? null : updatedStudent.seatNumber,
             idCardFileName: updatedStudent.idCardFileName || "",
+            newPassword: "", 
+            confirmNewPassword: ""
         });
         setIsDirtyOverride(false); 
         toast({
@@ -284,6 +325,8 @@ export default function EditStudentPage() {
             shift: updatedStudent.shift,
             seatNumber: null,
             idCardFileName: updatedStudent.idCardFileName || "",
+            newPassword: "", 
+            confirmNewPassword: ""
         });
         setIsDirtyOverride(true); 
         toast({
@@ -334,7 +377,7 @@ export default function EditStudentPage() {
             <Skeleton className="h-4 w-full" />
           </CardHeader>
           <CardContent className="space-y-6">
-            {[...Array(6)].map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}
+            {[...Array(8)].map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}
           </CardContent>
           <CardFooter className="flex justify-between">
             <Skeleton className="h-10 w-40" />
@@ -461,6 +504,25 @@ export default function EditStudentPage() {
                   )}
                    <FormDescription>Editing/re-uploading ID card image not fully supported in demo (filename change only).</FormDescription>
               </FormItem>
+
+              <div className="space-y-2 pt-4 border-t">
+                <FormLabel className="flex items-center"><KeyRound className="mr-2 h-4 w-4 text-muted-foreground" />Update Password (Optional)</FormLabel>
+                 <FormField control={form.control} name="newPassword" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-xs text-muted-foreground">New Password</FormLabel>
+                    <FormControl><Input type="password" placeholder="Enter new password (min 6 chars)" {...field} disabled={isSaving} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+                <FormField control={form.control} name="confirmNewPassword" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-xs text-muted-foreground">Confirm New Password</FormLabel>
+                    <FormControl><Input type="password" placeholder="Re-enter new password" {...field} disabled={isSaving} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+              </div>
+
             </CardContent>
             <CardFooter className="flex flex-col sm:flex-row justify-between items-start gap-4">
               <Button
@@ -478,7 +540,7 @@ export default function EditStudentPage() {
                   {isSaving && studentData.feeStatus !== "Paid" && !isStudentLeft ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ClipboardCheck className="mr-2 h-4 w-4" />}
                   Mark Payment as Paid
                 </Button>
-                <Button type="submit" disabled={isSaving || isLoadingSeats || (!isStudentLeft && !form.formState.isDirty && !isDirtyOverride) }>
+                <Button type="submit" disabled={isSaving || isLoadingSeats || (!isStudentLeft && !form.formState.isDirty && !isDirtyOverride && !form.getValues("newPassword")) }>
                   {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : (isStudentLeft ? <UserCheck className="mr-2 h-4 w-4" /> : <Save className="mr-2 h-4 w-4" />)}
                   {isStudentLeft ? "Save and Re-activate" : "Save Changes"}
                 </Button>
@@ -490,3 +552,5 @@ export default function EditStudentPage() {
     </>
   );
 }
+
+    
