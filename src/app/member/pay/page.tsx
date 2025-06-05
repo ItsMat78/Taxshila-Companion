@@ -23,11 +23,12 @@ import {
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Loader2, CreditCard, ShieldCheck, IndianRupee, Verified, AlertCircle } from 'lucide-react';
+import { Loader2, CreditCard, ShieldCheck, IndianRupee, Verified, AlertCircle, CalendarCheck2 } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
 import { getStudentByEmail, recordStudentPayment } from '@/services/student-service'; 
 import type { Student } from '@/types/student'; 
-import { format, parseISO, isValid } from 'date-fns';
+import { format, parseISO, isValid, addMonths } from 'date-fns';
+import { cn } from '@/lib/utils';
 
 const MONTH_OPTIONS = [
   { value: 1, label: "1 Month" },
@@ -45,6 +46,7 @@ export default function MemberPayFeesPage() {
 
   const [selectedMonths, setSelectedMonths] = React.useState<number>(1);
   const [totalPayableAmount, setTotalPayableAmount] = React.useState<string>("Rs. 0");
+  const [calculatedNextDueDate, setCalculatedNextDueDate] = React.useState<string | null>(null);
   const [upiId, setUpiId] = React.useState<string>("");
   const [isUpiVerified, setIsUpiVerified] = React.useState<boolean>(false);
   const [upiVerificationMessage, setUpiVerificationMessage] = React.useState<string | null>(null);
@@ -88,8 +90,17 @@ export default function MemberPayFeesPage() {
       const monthlyFee = currentStudent.shift === "fullday" ? 1200 : 700;
       const calculatedAmount = monthlyFee * selectedMonths;
       setTotalPayableAmount(`Rs. ${calculatedAmount.toLocaleString('en-IN')}`);
+
+      let baseDateForNextDue = new Date();
+      if (currentStudent.nextDueDate && isValid(parseISO(currentStudent.nextDueDate)) && parseISO(currentStudent.nextDueDate) > baseDateForNextDue) {
+        baseDateForNextDue = parseISO(currentStudent.nextDueDate);
+      }
+      const nextDueDate = addMonths(baseDateForNextDue, selectedMonths);
+      setCalculatedNextDueDate(format(nextDueDate, 'PP'));
+
     } else {
       setTotalPayableAmount("Rs. 0");
+      setCalculatedNextDueDate(null);
     }
   }, [currentStudent, selectedMonths]);
 
@@ -100,15 +111,13 @@ export default function MemberPayFeesPage() {
       setIsUpiVerified(false);
       return;
     }
-    // Simulate UPI ID validation (e.g., basic format check)
     const upiRegex = /^[a-zA-Z0-9.\-_]{2,256}@[a-zA-Z]{2,64}$/;
     if (!upiRegex.test(upiId)) {
       setUpiVerificationMessage("Invalid UPI ID format (e.g., yourname@bank).");
       setIsUpiVerified(false);
       return;
     }
-    // Simulate successful verification after a short delay
-    setIsProcessingPayment(true); // Use this to show a brief loading on verify button
+    setIsProcessingPayment(true); 
     setTimeout(() => {
       setIsUpiVerified(true);
       setUpiVerificationMessage(`UPI ID "${upiId}" verified successfully.`);
@@ -125,11 +134,8 @@ export default function MemberPayFeesPage() {
       });
       return;
     }
-
     setIsProcessingPayment(true);
-    
-    await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate payment processing time
-    
+    await new Promise(resolve => setTimeout(resolve, 1500));
     try {
       const updatedStudent = await recordStudentPayment(
         currentStudent.studentId, 
@@ -137,7 +143,6 @@ export default function MemberPayFeesPage() {
         "UPI",
         selectedMonths
       );
-      
       if (updatedStudent) {
         setCurrentStudent(updatedStudent); 
         toast({
@@ -167,27 +172,40 @@ export default function MemberPayFeesPage() {
     }
   };
   
-  const getFeeStatusMessage = () => {
+  const getFeeStatusDisplay = () => {
     if (isLoadingStudent) {
-      return <p className="text-sm text-muted-foreground text-center py-2">Loading your fee details...</p>;
+      return <div className="flex items-center justify-center py-2"><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading fee details...</div>;
     }
     if (!currentStudent) {
-      return <p className="text-sm text-destructive text-center py-2">Could not load your student information. Please try again or contact admin.</p>;
+      return <p className="text-sm text-destructive text-center py-2">Could not load your student information.</p>;
     }
     if (currentStudent.activityStatus === 'Left') {
       return <p className="text-sm text-destructive text-center py-2">Your account is marked as 'Left'. Please contact admin for fee payments.</p>;
     }
     if (currentStudent.feeStatus === 'Paid' && currentStudent.nextDueDate && isValid(parseISO(currentStudent.nextDueDate))) {
-      return <p className="text-sm text-green-600 text-center py-2">Your fees are currently paid up to {format(parseISO(currentStudent.nextDueDate), 'PP')}.</p>;
+      return (
+        <div className="text-center py-2 space-y-1">
+          <p className="text-sm text-green-600 font-medium">Your fees are currently paid.</p>
+          <p className="text-xs text-muted-foreground">Next due date: {format(parseISO(currentStudent.nextDueDate), 'PP')}.</p>
+        </div>
+      );
     }
-    let dueMessage = `Your current amount due is Rs. ${currentStudent.amountDue || (currentStudent.shift === "fullday" ? "1200" : "700")}.`;
-    if(currentStudent.nextDueDate && isValid(parseISO(currentStudent.nextDueDate))) {
-        dueMessage += ` Next due date was ${format(parseISO(currentStudent.nextDueDate), 'PP')}.`;
+    let dueMessage = `Current Amount Due: ${currentStudent.amountDue || (currentStudent.shift === "fullday" ? "Rs. 1200" : "Rs. 700")}.`;
+    if (currentStudent.feeStatus === 'Overdue' && currentStudent.nextDueDate && isValid(parseISO(currentStudent.nextDueDate))) {
+      dueMessage += ` Payment was due on ${format(parseISO(currentStudent.nextDueDate), 'PP')}.`;
+    } else if (currentStudent.feeStatus === 'Due' && currentStudent.nextDueDate && isValid(parseISO(currentStudent.nextDueDate))) {
+      dueMessage += ` Next due date is ${format(parseISO(currentStudent.nextDueDate), 'PP')}.`;
     }
     return (
-      <p className="text-sm text-yellow-600 text-center py-2">
-        {dueMessage}
-      </p>
+      <div className={cn(
+        "text-center py-2 space-y-1",
+        currentStudent.feeStatus === 'Overdue' ? "text-red-600" : "text-yellow-600"
+      )}>
+        <p className="text-sm font-medium">
+          {currentStudent.feeStatus === 'Overdue' ? 'Fee Overdue' : 'Fee Due'}
+        </p>
+        <p className="text-xs">{dueMessage}</p>
+      </div>
     );
   };
 
@@ -197,12 +215,12 @@ export default function MemberPayFeesPage() {
     <>
       <PageTitle title="Pay Your Fees" description="Securely pay your membership fees using UPI." />
 
-      <Card className="mb-6 shadow-md">
-        <CardHeader>
-            <CardTitle>Current Fee Status</CardTitle>
+      <Card className="mb-6 shadow-md bg-muted/30">
+        <CardHeader className="pb-2 pt-4">
+            <CardTitle className="text-base font-semibold text-center">Current Fee Status</CardTitle>
         </CardHeader>
-        <CardContent>
-            {getFeeStatusMessage()}
+        <CardContent className="pb-4 pt-0">
+            {getFeeStatusDisplay()}
         </CardContent>
       </Card>
 
@@ -221,7 +239,7 @@ export default function MemberPayFeesPage() {
               <Select
                 value={String(selectedMonths)}
                 onValueChange={(value) => setSelectedMonths(Number(value))}
-                disabled={isProcessingPayment || !canPay}
+                disabled={isProcessingPayment || !canPay || isLoadingStudent}
               >
                 <SelectTrigger id="select-months" className="w-full mt-1">
                   <SelectValue placeholder="Select months" />
@@ -239,6 +257,12 @@ export default function MemberPayFeesPage() {
             <div>
               <p className="text-sm text-muted-foreground">Total Payable Amount:</p>
               <p className="text-2xl font-bold">{totalPayableAmount}</p>
+              {calculatedNextDueDate && canPay && !isLoadingStudent && (
+                <p className="text-xs text-green-600 flex items-center mt-1">
+                  <CalendarCheck2 className="mr-1 h-3 w-3" />
+                  Fees will be paid up to: {calculatedNextDueDate}
+                </p>
+              )}
             </div>
 
             <div>
@@ -250,16 +274,16 @@ export default function MemberPayFeesPage() {
                   value={upiId}
                   onChange={(e) => {
                     setUpiId(e.target.value);
-                    setIsUpiVerified(false); // Reset verification status on change
+                    setIsUpiVerified(false); 
                     setUpiVerificationMessage(null);
                   }}
-                  disabled={isProcessingPayment || !canPay}
+                  disabled={isProcessingPayment || !canPay || isLoadingStudent}
                   className="flex-grow"
                 />
                 <Button 
                   onClick={handleVerifyUpiId} 
                   variant="outline" 
-                  disabled={isProcessingPayment || !upiId.trim() || isUpiVerified || !canPay}
+                  disabled={isProcessingPayment || !upiId.trim() || isUpiVerified || !canPay || isLoadingStudent}
                 >
                   {isProcessingPayment && !isUpiVerified ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                   {isUpiVerified ? <Verified className="mr-2 h-4 w-4 text-green-500" /> : null}
@@ -278,7 +302,7 @@ export default function MemberPayFeesPage() {
             <Button 
               onClick={handlePayNowWithUpi} 
               className="w-full" 
-              disabled={isProcessingPayment || !isUpiVerified || !canPay}
+              disabled={isProcessingPayment || !isUpiVerified || !canPay || isLoadingStudent}
             >
               {isProcessingPayment ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CreditCard className="mr-2 h-4 w-4" />}
               {isProcessingPayment ? 'Processing Payment...' : `Pay ${totalPayableAmount} Now`}
