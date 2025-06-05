@@ -23,22 +23,28 @@ import {
 import { Receipt, History, Download, IndianRupee, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/auth-context';
-import { getStudentByEmail } from '@/services/student-service';
-import type { Student, PaymentRecord } from '@/types/student';
+import { getStudentByEmail, getFeeStructure } from '@/services/student-service'; // Added getFeeStructure
+import type { Student, PaymentRecord, FeeStructure as FeeStructureType } from '@/types/student'; // Added FeeStructureType
 import { useToast } from '@/hooks/use-toast';
+import { format, parseISO, isValid } from 'date-fns'; // Ensure format, parseISO, isValid are imported
 
 export default function MemberFeesPage() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [studentData, setStudentData] = React.useState<Student | null>(null);
+  const [feeStructure, setFeeStructure] = React.useState<FeeStructureType | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
 
   React.useEffect(() => {
     if (user?.email) {
-      const fetchStudentData = async () => {
+      const fetchInitialData = async () => {
         setIsLoading(true);
         try {
-          const student = await getStudentByEmail(user.email);
+          const [student, fees] = await Promise.all([
+            getStudentByEmail(user.email),
+            getFeeStructure()
+          ]);
+
           if (student) {
             setStudentData(student);
           } else {
@@ -48,33 +54,31 @@ export default function MemberFeesPage() {
               variant: "destructive",
             });
           }
+          setFeeStructure(fees);
         } catch (error) {
-          console.error("Failed to fetch student data for fees page:", error);
+          console.error("Failed to fetch student data or fees for fees page:", error);
           toast({
             title: "Error",
-            description: "Failed to load your fee details.",
+            description: "Failed to load your fee details or settings.",
             variant: "destructive",
           });
         } finally {
           setIsLoading(false);
         }
       };
-      fetchStudentData();
+      fetchInitialData();
     } else {
       setIsLoading(false); 
     }
   }, [user, toast]);
 
-  const getMonthlyFee = (shift?: Student['shift']): string => {
-    if (!shift) return "N/A";
+  const getMonthlyFeeDisplay = (shift?: Student['shift'], currentFeeStructure?: FeeStructureType | null): string => {
+    if (!shift || !currentFeeStructure) return "N/A";
     switch (shift) {
-      case "morning":
-      case "evening":
-        return "Rs. 700";
-      case "fullday":
-        return "Rs. 1200";
-      default:
-        return "N/A";
+      case "morning": return `Rs. ${currentFeeStructure.morningFee}`;
+      case "evening": return `Rs. ${currentFeeStructure.eveningFee}`;
+      case "fullday": return `Rs. ${currentFeeStructure.fullDayFee}`;
+      default: return "N/A";
     }
   };
   
@@ -110,7 +114,7 @@ export default function MemberFeesPage() {
     );
   }
 
-  if (!studentData) {
+  if (!studentData || !feeStructure) {
     return (
       <>
         <PageTitle title="My Fee Details" description="Could not load your information." />
@@ -147,7 +151,7 @@ export default function MemberFeesPage() {
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Monthly Fee:</span>
-              <span className="font-medium">{getMonthlyFee(studentData.shift)}</span>
+              <span className="font-medium">{getMonthlyFeeDisplay(studentData.shift, feeStructure)}</span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-muted-foreground">Status:</span>
@@ -160,11 +164,11 @@ export default function MemberFeesPage() {
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Amount Due:</span>
-              <span className="font-medium">{studentData.activityStatus === 'Left' ? 'N/A' : studentData.amountDue || "Rs. 0"}</span>
+              <span className="font-medium">{studentData.activityStatus === 'Left' ? 'N/A' : (studentData.amountDue && studentData.amountDue !== "Rs. 0" ? studentData.amountDue : getMonthlyFeeDisplay(studentData.shift, feeStructure))}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Next Due Date:</span>
-              <span className="font-medium">{studentData.activityStatus === 'Left' ? 'N/A' : studentData.nextDueDate || "N/A"}</span>
+              <span className="font-medium">{studentData.activityStatus === 'Left' ? 'N/A' : (studentData.nextDueDate && isValid(parseISO(studentData.nextDueDate)) ? format(parseISO(studentData.nextDueDate), 'PP') : "N/A")}</span>
             </div>
             {studentData.activityStatus === 'Active' && studentData.feeStatus !== 'Paid' && (
                 <Link href="/member/pay" passHref legacyBehavior>
@@ -199,7 +203,7 @@ export default function MemberFeesPage() {
                 <TableBody>
                   {paymentHistory.slice().reverse().map((payment: PaymentRecord) => ( 
                     <TableRow key={payment.paymentId}>
-                      <TableCell>{payment.date}</TableCell>
+                      <TableCell>{payment.date && isValid(parseISO(payment.date)) ? format(parseISO(payment.date), 'dd-MMM-yy') : 'N/A'}</TableCell>
                       <TableCell>{payment.amount}</TableCell>
                       <TableCell className="capitalize">{payment.method}</TableCell>
                       <TableCell>{payment.transactionId}</TableCell>
@@ -221,3 +225,5 @@ export default function MemberFeesPage() {
     </>
   );
 }
+
+    

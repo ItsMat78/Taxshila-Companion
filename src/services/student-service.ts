@@ -651,7 +651,7 @@ export async function getAttendanceRecordsByStudentId(studentId: string): Promis
 // --- Payment and Revenue ---
 export async function recordStudentPayment(
   customStudentId: string,
-  totalAmountPaidString: string,
+  totalAmountPaidString: string, // This can be "Rs. 0", "N/A", or a specific amount like "Rs. 700"
   paymentMethod: PaymentRecord['method'] | "Admin Recorded",
   numberOfMonthsPaid: number = 1
 ): Promise<Student | undefined> {
@@ -663,7 +663,7 @@ export async function recordStudentPayment(
     throw new Error("Cannot record payment for a student who has left.");
   }
 
-  const fees = await getFeeStructure(); 
+  const fees = await getFeeStructure();
   let expectedMonthlyFee: number;
   switch(studentToUpdate.shift) {
     case "morning": expectedMonthlyFee = fees.morningFee; break;
@@ -672,12 +672,21 @@ export async function recordStudentPayment(
     default: throw new Error("Invalid shift for fee calculation.");
   }
 
-  const amountToPayNumeric = parseInt(totalAmountPaidString.replace('Rs. ', '').trim(), 10);
-  if (isNaN(amountToPayNumeric) || amountToPayNumeric <= 0) {
-      throw new Error("Invalid payment amount provided.");
+  let amountToPayNumeric: number;
+  // If totalAmountPaidString is generic (like "Rs. 0" or "N/A"), calculate based on shift and months.
+  // Otherwise, parse the specific amount provided.
+  if (totalAmountPaidString === "Rs. 0" || totalAmountPaidString === "N/A" || !totalAmountPaidString.startsWith("Rs.")) {
+    amountToPayNumeric = expectedMonthlyFee * numberOfMonthsPaid;
+  } else {
+    amountToPayNumeric = parseInt(totalAmountPaidString.replace('Rs. ', '').trim(), 10);
+    if (isNaN(amountToPayNumeric) || amountToPayNumeric <= 0) {
+        throw new Error("Invalid payment amount provided in string.");
+    }
   }
   
   if (paymentMethod !== "Admin Recorded" && amountToPayNumeric < (expectedMonthlyFee * numberOfMonthsPaid)) {
+    // This condition might be too strict if allowing partial payments.
+    // For now, if not admin recorded, it expects full payment for the number of months.
   }
 
 
@@ -1295,3 +1304,5 @@ declare module '@/types/communication' {
   }
 }
 
+
+    

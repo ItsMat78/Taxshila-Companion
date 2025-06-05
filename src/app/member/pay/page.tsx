@@ -24,8 +24,8 @@ import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Loader2, CreditCard, ShieldCheck, IndianRupee, CalendarCheck2, Info, AlertCircle } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
-import { getStudentByEmail } from '@/services/student-service';
-import type { Student } from '@/types/student';
+import { getStudentByEmail, getFeeStructure } from '@/services/student-service'; // Added getFeeStructure
+import type { Student, FeeStructure as FeeStructureType } from '@/types/student'; // Added FeeStructureType
 import { format, parseISO, isValid, addMonths } from 'date-fns';
 import { cn } from '@/lib/utils';
 
@@ -41,16 +41,19 @@ export default function MemberPayFeesPage() {
 
   const [currentStudent, setCurrentStudent] = React.useState<Student | null>(null);
   const [isLoadingStudent, setIsLoadingStudent] = React.useState(true);
+  const [feeStructure, setFeeStructure] = React.useState<FeeStructureType | null>(null);
+  const [isLoadingFeeStructure, setIsLoadingFeeStructure] = React.useState(true);
 
   const [selectedMonths, setSelectedMonths] = React.useState<number>(1);
   const [totalPayableAmount, setTotalPayableAmount] = React.useState<string>("Rs. 0");
   const [calculatedNextDueDate, setCalculatedNextDueDate] = React.useState<string | null>(null);
 
   React.useEffect(() => {
-    if (user?.email) {
+    const fetchInitialData = async () => {
       setIsLoadingStudent(true);
-      const fetchStudent = async () => {
-        try {
+      setIsLoadingFeeStructure(true);
+      try {
+        if (user?.email) {
           const student = await getStudentByEmail(user.email);
           if (student) {
             setCurrentStudent(student);
@@ -62,26 +65,35 @@ export default function MemberPayFeesPage() {
             });
             setCurrentStudent(null);
           }
-        } catch (error) {
-          toast({
-            title: "Error",
-            description: "Failed to fetch your details.",
-            variant: "destructive",
-          });
-          setCurrentStudent(null);
-        } finally {
-          setIsLoadingStudent(false);
         }
-      };
-      fetchStudent();
-    } else {
-      setIsLoadingStudent(false);
-    }
+        const fees = await getFeeStructure();
+        setFeeStructure(fees);
+      } catch (error) {
+        toast({
+          title: "Error",
+          description: "Failed to fetch your details or fee settings.",
+          variant: "destructive",
+        });
+        setCurrentStudent(null);
+        setFeeStructure(null);
+      } finally {
+        setIsLoadingStudent(false);
+        setIsLoadingFeeStructure(false);
+      }
+    };
+    fetchInitialData();
   }, [user, toast]);
 
   React.useEffect(() => {
-    if (currentStudent) {
-      const monthlyFee = currentStudent.shift === "fullday" ? 1200 : 700;
+    if (currentStudent && feeStructure) {
+      let monthlyFee: number;
+      switch (currentStudent.shift) {
+        case "morning": monthlyFee = feeStructure.morningFee; break;
+        case "evening": monthlyFee = feeStructure.eveningFee; break;
+        case "fullday": monthlyFee = feeStructure.fullDayFee; break;
+        default: monthlyFee = 0;
+      }
+
       const calculatedAmount = monthlyFee * selectedMonths;
       setTotalPayableAmount(`Rs. ${calculatedAmount.toLocaleString('en-IN')}`);
 
@@ -96,18 +108,31 @@ export default function MemberPayFeesPage() {
       setTotalPayableAmount("Rs. 0");
       setCalculatedNextDueDate(null);
     }
-  }, [currentStudent, selectedMonths]);
+  }, [currentStudent, selectedMonths, feeStructure]);
 
   const getFeeStatusDisplay = () => {
-    if (isLoadingStudent) {
+    if (isLoadingStudent || isLoadingFeeStructure) {
       return <div className="flex items-center justify-center py-2"><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading fee details...</div>;
     }
     if (!currentStudent) {
       return <p className="text-sm text-destructive text-center py-2">Could not load your student information.</p>;
     }
+    if (!feeStructure) {
+      return <p className="text-sm text-destructive text-center py-2">Could not load fee structure.</p>;
+    }
     if (currentStudent.activityStatus === 'Left') {
       return <p className="text-sm text-destructive text-center py-2">Your account is marked as 'Left'. Please contact admin for fee payments.</p>;
     }
+
+    let currentMonthlyFeeString = "Rs. 0";
+    if (feeStructure) {
+        switch (currentStudent.shift) {
+            case "morning": currentMonthlyFeeString = `Rs. ${feeStructure.morningFee}`; break;
+            case "evening": currentMonthlyFeeString = `Rs. ${feeStructure.eveningFee}`; break;
+            case "fullday": currentMonthlyFeeString = `Rs. ${feeStructure.fullDayFee}`; break;
+        }
+    }
+    
     if (currentStudent.feeStatus === 'Paid' && currentStudent.nextDueDate && isValid(parseISO(currentStudent.nextDueDate))) {
       return (
         <div className="text-center py-2 space-y-1">
@@ -116,7 +141,8 @@ export default function MemberPayFeesPage() {
         </div>
       );
     }
-    let dueMessage = `Current Amount Due: ${currentStudent.amountDue || (currentStudent.shift === "fullday" ? "Rs. 1200" : "Rs. 700")}.`;
+    
+    let dueMessage = `Current Amount Due: ${currentStudent.amountDue && currentStudent.amountDue !== "Rs. 0" ? currentStudent.amountDue : currentMonthlyFeeString}.`;
     if (currentStudent.feeStatus === 'Overdue' && currentStudent.nextDueDate && isValid(parseISO(currentStudent.nextDueDate))) {
       dueMessage += ` Payment was due on ${format(parseISO(currentStudent.nextDueDate), 'PP')}.`;
     } else if (currentStudent.feeStatus === 'Due' && currentStudent.nextDueDate && isValid(parseISO(currentStudent.nextDueDate))) {
@@ -135,7 +161,7 @@ export default function MemberPayFeesPage() {
     );
   };
 
-  const canPay = currentStudent && currentStudent.activityStatus === 'Active';
+  const canPay = currentStudent && currentStudent.activityStatus === 'Active' && feeStructure;
 
   return (
     <>
@@ -165,7 +191,7 @@ export default function MemberPayFeesPage() {
               <Select
                 value={String(selectedMonths)}
                 onValueChange={(value) => setSelectedMonths(Number(value))}
-                disabled={!canPay || isLoadingStudent}
+                disabled={!canPay || isLoadingStudent || isLoadingFeeStructure}
               >
                 <SelectTrigger id="select-months" className="w-full mt-1">
                   <SelectValue placeholder="Select months" />
@@ -182,8 +208,8 @@ export default function MemberPayFeesPage() {
 
             <div>
               <p className="text-sm text-muted-foreground">Total Payable Amount:</p>
-              <p className="text-2xl font-bold">{totalPayableAmount}</p>
-              {calculatedNextDueDate && canPay && !isLoadingStudent && (
+              <p className="text-2xl font-bold">{isLoadingFeeStructure || isLoadingStudent ? <Loader2 className="h-6 w-6 animate-spin" /> : totalPayableAmount}</p>
+              {calculatedNextDueDate && canPay && !isLoadingStudent && !isLoadingFeeStructure && (
                 <p className="text-xs text-green-600 flex items-center mt-1">
                   <CalendarCheck2 className="mr-1 h-3 w-3" />
                   If paid, fees will be covered up to: {calculatedNextDueDate}
@@ -236,3 +262,5 @@ export default function MemberPayFeesPage() {
     </>
   );
 }
+
+    
