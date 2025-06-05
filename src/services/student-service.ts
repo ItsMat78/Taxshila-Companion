@@ -65,9 +65,7 @@ const attendanceRecordFromDoc = (docSnapshot: any): AttendanceRecord => {
     checkInTimeISO = data.checkInTime;
   } else {
     console.error(`Invalid or missing checkInTime in document ${docSnapshot.id}:`, data.checkInTime);
-    // Fallback or throw error
-    checkInTimeISO = new Date(0).toISOString(); // Default to epoch or handle error appropriately
-    // throw new Error(`Invalid checkInTime for attendance record ${docSnapshot.id}`);
+    checkInTimeISO = new Date(0).toISOString(); 
   }
 
   let checkOutTimeISO: string | undefined = undefined;
@@ -86,8 +84,7 @@ const attendanceRecordFromDoc = (docSnapshot: any): AttendanceRecord => {
     dateStr = data.date;
   } else {
     console.error(`Invalid or missing date format in document ${docSnapshot.id}:`, data.date);
-    dateStr = format(parseISO(checkInTimeISO), 'yyyy-MM-dd'); // Fallback to check-in date or handle error
-    // throw new Error(`Invalid date for attendance record ${docSnapshot.id}`);
+    dateStr = format(parseISO(checkInTimeISO), 'yyyy-MM-dd'); 
   }
 
   return {
@@ -112,12 +109,28 @@ const feedbackItemFromDoc = (docSnapshot: any): FeedbackItem => {
 const alertItemFromDoc = (docSnapshot: any): AlertItem => {
   const data = docSnapshot.data();
   if (!docSnapshot.id) {
-    console.error("Document snapshot has no ID:", docSnapshot);
+    // This case should ideally not happen if Firestore is working correctly.
+    console.error("Document snapshot missing ID:", docSnapshot);
+    // Fallback to a temporary ID or handle error, though this indicates a deeper issue.
+    // For robustness, ensure fields are present or provide defaults if data can be incomplete.
+    return {
+        id: `MISSING_ID_${Date.now()}`, // Placeholder, indicates an issue
+        firestoreId: `MISSING_ID_${Date.now()}`,
+        title: data?.title || "Untitled Alert",
+        message: data?.message || "No message content.",
+        type: data?.type || "info",
+        dateSent: data?.dateSent instanceof Timestamp ? data.dateSent.toDate().toISOString() : new Date().toISOString(),
+        studentId: data?.studentId === null ? undefined : data?.studentId,
+        isRead: data?.isRead || false,
+        originalFeedbackId: data?.originalFeedbackId,
+        originalFeedbackMessageSnippet: data?.originalFeedbackMessageSnippet,
+    } as AlertItem;
   }
   return {
     ...data,
-    id: docSnapshot.id, // Explicitly set id from the document snapshot id
+    id: docSnapshot.id,
     firestoreId: docSnapshot.id,
+    studentId: data.studentId === null ? undefined : data.studentId,
     dateSent: data.dateSent instanceof Timestamp ? data.dateSent.toDate().toISOString() : data.dateSent,
   } as AlertItem;
 };
@@ -331,8 +344,8 @@ export async function addStudent(studentData: AddStudentData): Promise<Student> 
     profilePictureUrl: newStudentDataTypeConsistent.profilePictureUrl,
     paymentHistory: newStudentDataTypeConsistent.paymentHistory,
     readGeneralAlertIds: newStudentDataTypeConsistent.readGeneralAlertIds,
-    email: newStudentDataTypeConsistent.email || null, // Store null if undefined or empty
-    idCardFileName: newStudentDataTypeConsistent.idCardFileName || null, // Store null if undefined or empty
+    email: newStudentDataTypeConsistent.email || null, 
+    idCardFileName: newStudentDataTypeConsistent.idCardFileName || null,
   };
 
 
@@ -359,7 +372,7 @@ export async function updateStudent(customStudentId: string, studentUpdateData: 
   const payload: any = { ...studentUpdateData };
   delete payload.firestoreId;
   delete payload.studentId;
-  delete payload.id; // Also remove 'id' if it exists in the partial update
+  delete payload.id; 
 
   if (payload.registrationDate && typeof payload.registrationDate === 'string') {
     payload.registrationDate = Timestamp.fromDate(parseISO(payload.registrationDate));
@@ -395,7 +408,7 @@ export async function updateStudent(customStudentId: string, studentUpdateData: 
   const newSeatNumber = studentUpdateData.seatNumber !== undefined ? studentUpdateData.seatNumber : studentToUpdate.seatNumber;
 
   if (newSeatNumber && (newSeatNumber !== studentToUpdate.seatNumber || newShift !== studentToUpdate.shift || (studentUpdateData.activityStatus === 'Active' && studentToUpdate.activityStatus === 'Left'))) {
-      const allCurrentStudents = await getAllStudents(); // This already filters for active with seats in its logic
+      const allCurrentStudents = await getAllStudents(); 
       const isSeatTakenForShift = allCurrentStudents.some(s =>
         s.studentId !== customStudentId &&
         s.activityStatus === "Active" &&
@@ -442,11 +455,11 @@ export async function updateStudent(customStudentId: string, studentUpdateData: 
      await sendAlertToStudent(customStudentId, "Account Status Update", `Hi ${updatedStudent.name}, your student account has been marked as 'Left'.`, "info");
   } else if (updatedStudent.activityStatus === 'Active') {
       const profileChanged = (studentUpdateData.name && studentUpdateData.name !== studentToUpdate.name) ||
-                             (payload.email !== studentToUpdate.email) || // compare with potentially nulled payload.email
+                             (payload.email !== studentToUpdate.email) || 
                              (studentUpdateData.phone && studentUpdateData.phone !== studentToUpdate.phone) ||
                              (studentUpdateData.shift && studentUpdateData.shift !== studentToUpdate.shift) ||
                              (studentUpdateData.seatNumber !== undefined && studentUpdateData.seatNumber !== studentToUpdate.seatNumber) ||
-                             (payload.idCardFileName !== studentToUpdate.idCardFileName) || // compare with potentially nulled payload.idCardFileName
+                             (payload.idCardFileName !== studentToUpdate.idCardFileName) || 
                              passwordUpdated;
 
       if (profileChanged) {
@@ -732,8 +745,8 @@ export async function submitFeedback(
   type: FeedbackType
 ): Promise<FeedbackItem> {
   const newFeedbackData = {
-    studentId: studentId || null, // Store null if undefined
-    studentName: studentName || null, // Store null if undefined
+    studentId: studentId || null, 
+    studentName: studentName || null, 
     message,
     type,
     dateSubmitted: Timestamp.fromDate(new Date()),
@@ -768,14 +781,14 @@ export async function sendGeneralAlert(title: string, message: string, type: Ale
     message,
     type,
     dateSent: Timestamp.fromDate(new Date()),
-    isRead: false, // General alerts start as unread for all
-    studentId: null, // Explicitly null for general alerts
+    isRead: false, 
+    studentId: null, 
   };
   const docRef = await addDoc(collection(db, ALERTS_COLLECTION), newAlertData);
   return {
-    id: docRef.id, // This is the firestoreId
+    id: docRef.id, 
     ...newAlertData,
-    studentId: undefined, // Map studentId: null from DB to undefined for type consistency
+    studentId: undefined, 
     dateSent: newAlertData.dateSent.toDate().toISOString(),
   };
 }
@@ -793,25 +806,23 @@ export async function sendAlertToStudent(
       throw new Error(`Student with ID ${customStudentId} not found for feedback response.`);
   } else if (!student) {
       console.warn(`Attempted to send targeted alert to non-existent student ID: ${customStudentId} for title: "${title}"`);
-       // Potentially throw an error or return a specific object indicating failure if student must exist
   }
 
   const newAlertDataForFirestore: any = {
-    studentId: customStudentId, // This is the custom TSMEM ID
+    studentId: customStudentId, 
     title,
     message,
     type,
     dateSent: Timestamp.fromDate(new Date()),
-    isRead: false, // Targeted alerts start as unread for this student
+    isRead: false, 
   };
   if (originalFeedbackId) newAlertDataForFirestore.originalFeedbackId = originalFeedbackId;
   if (originalFeedbackMessageSnippet) newAlertDataForFirestore.originalFeedbackMessageSnippet = originalFeedbackMessageSnippet;
 
   const docRef = await addDoc(collection(db, ALERTS_COLLECTION), newAlertDataForFirestore);
 
-  // Construct the AlertItem for return, ensuring correct optional types
   const newAlertDataForReturn: AlertItem = {
-    id: docRef.id, // This is the firestoreId
+    id: docRef.id, 
     studentId: newAlertDataForFirestore.studentId,
     title: newAlertDataForFirestore.title,
     message: newAlertDataForFirestore.message,
@@ -836,7 +847,7 @@ export async function getAlertsForStudent(customStudentId: string): Promise<Aler
   // Targeted alerts for this student
   const targetedQuery = query(
     collection(db, ALERTS_COLLECTION),
-    where("studentId", "==", customStudentId) // Query by customStudentId
+    where("studentId", "==", customStudentId) 
   );
 
   // General alerts (where studentId is null)
@@ -851,14 +862,14 @@ export async function getAlertsForStudent(customStudentId: string): Promise<Aler
   const generalAlertsSnapshot = await getDocs(generalAlertsQuery);
   const generalAlerts = generalAlertsSnapshot.docs
       .map(alertItemFromDoc)
-      .filter(alert => alert.type !== 'feedback_response'); // Exclude general feedback responses
+      .filter(alert => alert.type !== 'feedback_response'); 
 
 
   const contextualizedAlerts = [
-    ...studentAlerts, // These already have their specific `isRead` status from their own document
+    ...studentAlerts, 
     ...generalAlerts.map(alert => ({
       ...alert,
-      isRead: readGeneralAlertIdsSet.has(alert.id) // General alerts' read status is determined by the student's record
+      isRead: readGeneralAlertIdsSet.has(alert.id) 
     }))
   ];
 
@@ -874,35 +885,52 @@ export async function getAllAdminSentAlerts(): Promise<AlertItem[]> {
 
 
 export async function markAlertAsRead(alertId: string, customStudentId: string): Promise<AlertItem | undefined> {
+    console.log(`[markAlertAsRead] Called with alertId: ${alertId}, customStudentId: ${customStudentId}`);
     const alertDocRef = doc(db, ALERTS_COLLECTION, alertId);
     const alertSnap = await getDoc(alertDocRef);
 
     if (!alertSnap.exists()) {
+        console.error(`[markAlertAsRead] Alert not found with ID: ${alertId}`);
         throw new Error("Alert not found.");
     }
-    const alertData = alertItemFromDoc(alertSnap); // alertData.id is the firestoreId
+    const alertData = alertItemFromDoc(alertSnap);
+    console.log(`[markAlertAsRead] Fetched alertData:`, JSON.stringify(alertData, null, 2));
+
 
     // If the alert is targeted to this student
     if (alertData.studentId === customStudentId) {
+        console.log(`[markAlertAsRead] Alert is targeted. Updating isRead on alert doc.`);
         await updateDoc(alertDocRef, { isRead: true });
         return { ...alertData, isRead: true };
     }
     // If the alert is a general alert (studentId is null in DB, so undefined in alertData here)
-    else if (alertData.studentId === undefined) {
+    else if (!alertData.studentId) {
+        console.log(`[markAlertAsRead] Alert is general. Looking for student: ${customStudentId}`);
         const student = await getStudentByCustomId(customStudentId);
         if (student && student.firestoreId) {
+            console.log(`[markAlertAsRead] Student found: ${student.studentId}, firestoreId: ${student.firestoreId}`);
             const studentDocRef = doc(db, STUDENTS_COLLECTION, student.firestoreId);
+
+            const studentSnapBefore = await getDoc(studentDocRef);
+            console.log(`[markAlertAsRead] Student readGeneralAlertIds BEFORE update:`, studentSnapBefore.data()?.readGeneralAlertIds);
+
             await updateDoc(studentDocRef, {
-                readGeneralAlertIds: arrayUnion(alertData.id) // Use alertData.id which is the firestoreId
+                readGeneralAlertIds: arrayUnion(alertData.id) 
             });
-            return { ...alertData, isRead: true }; // Reflect the read status for this user
+            console.log(`[markAlertAsRead] Updated student's readGeneralAlertIds with alert ID: ${alertData.id}`);
+            
+            const studentSnapAfter = await getDoc(studentDocRef);
+            console.log(`[markAlertAsRead] Student readGeneralAlertIds AFTER update:`, studentSnapAfter.data()?.readGeneralAlertIds);
+
+            return { ...alertData, isRead: true }; 
         } else {
+            console.error(`[markAlertAsRead] Student not found to mark general alert as read. customStudentId: ${customStudentId}`);
             throw new Error("Student not found to mark general alert as read.");
         }
     }
-    else { // Targeted alert for a different student - should not happen if queries are correct
-        console.warn(`Attempt to mark alert ${alertId} as read by wrong student ${customStudentId}. Alert belongs to ${alertData.studentId}`);
-        return alertData; // Return original alert, no change
+    else { 
+        console.warn(`[markAlertAsRead] Attempt to mark alert ${alertId} as read by wrong student ${customStudentId}. Alert belongs to ${alertData.studentId}`);
+        return alertData; 
     }
 }
 
