@@ -43,9 +43,14 @@ const studentFormSchema = z.object({
   phone: z.string()
     .length(10, { message: "Phone number must be exactly 10 digits." })
     .regex(/^\d+$/, { message: "Phone number must contain only digits." }),
+  password: z.string().min(6, { message: "Password must be at least 6 characters." }),
+  confirmPassword: z.string(),
   shift: z.enum(["morning", "evening", "fullday"], { required_error: "Shift selection is required." }),
   seatNumber: z.string().min(1, "Seat selection is required."),
-  idCardFileName: z.string().optional(), // For storing filename
+  idCardFileName: z.string().optional(),
+}).refine(data => data.password === data.confirmPassword, {
+  message: "Passwords don't match",
+  path: ["confirmPassword"],
 });
 
 type StudentFormValues = z.infer<typeof studentFormSchema>;
@@ -69,6 +74,8 @@ export default function StudentRegisterPage() {
       name: "",
       email: "",
       phone: "",
+      password: "",
+      confirmPassword: "",
       shift: undefined,
       seatNumber: "",
       idCardFileName: "",
@@ -80,8 +87,8 @@ export default function StudentRegisterPage() {
   React.useEffect(() => {
     const fetchSeatsForShift = async (shift: Shift) => {
       setIsLoadingSeats(true);
-      setAvailableSeatOptions([]); // Clear previous options
-      form.setValue("seatNumber", ""); // Reset seat number when shift changes
+      setAvailableSeatOptions([]); 
+      form.setValue("seatNumber", ""); 
       try {
         const seats = await getAvailableSeats(shift);
         setAvailableSeatOptions(seats);
@@ -97,7 +104,7 @@ export default function StudentRegisterPage() {
     if (selectedShift) {
       fetchSeatsForShift(selectedShift);
     } else {
-      setAvailableSeatOptions([]); // Clear seats if no shift is selected
+      setAvailableSeatOptions([]); 
       setIsLoadingSeats(false);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -111,6 +118,7 @@ export default function StudentRegisterPage() {
         name: data.name,
         email: data.email || undefined,
         phone: data.phone,
+        password: data.password,
         shift: data.shift,
         seatNumber: data.seatNumber,
         idCardFileName: data.idCardFileName,
@@ -122,16 +130,15 @@ export default function StudentRegisterPage() {
       });
       form.reset();
       if (fileInputRef.current) {
-        fileInputRef.current.value = ""; // Reset file input
+        fileInputRef.current.value = ""; 
       }
-      setAvailableSeatOptions([]); // Clear seat options after registration
+      setAvailableSeatOptions([]); 
     } catch (error: any) {
        toast({
         title: "Registration Failed",
         description: error.message || "An unexpected error occurred.",
         variant: "destructive",
       });
-      // Optionally re-fetch seats for the selected shift if it was a seat conflict
       if (selectedShift && error.message?.toLowerCase().includes("seat")) {
         setIsLoadingSeats(true);
         try {
@@ -173,6 +180,12 @@ export default function StudentRegisterPage() {
               )} />
               <FormField control={form.control} name="phone" render={({ field }) => (
                 <FormItem><FormLabel>Phone Number</FormLabel><FormControl><Input type="tel" placeholder="Enter 10-digit phone number" {...field} disabled={isSubmitting} /></FormControl><FormMessage /></FormItem>
+              )} />
+              <FormField control={form.control} name="password" render={({ field }) => (
+                <FormItem><FormLabel>Password</FormLabel><FormControl><Input type="password" placeholder="Enter password (min 6 characters)" {...field} disabled={isSubmitting} /></FormControl><FormMessage /></FormItem>
+              )} />
+              <FormField control={form.control} name="confirmPassword" render={({ field }) => (
+                <FormItem><FormLabel>Confirm Password</FormLabel><FormControl><Input type="password" placeholder="Re-enter password" {...field} disabled={isSubmitting} /></FormControl><FormMessage /></FormItem>
               )} />
               <FormField control={form.control} name="shift" render={({ field }) => (
                 <FormItem className="space-y-3"><FormLabel>Shift Selection</FormLabel>

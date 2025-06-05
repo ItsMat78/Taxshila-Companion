@@ -17,12 +17,12 @@ ALL_SEAT_NUMBERS.sort((a, b) => parseInt(a) - parseInt(b));
 let students: Student[] = [
   {
     studentId: "TSMEM001",
-    name: "Rohan Mehra",
-    email: "rohan.m@example.com",
-    phone: "9876543210",
+    name: "Priya Sharma",
+    email: "priya.s@example.com",
+    phone: "9123456780",
     password: "memberpass1",
     shift: "morning",
-    seatNumber: "10",
+    seatNumber: "12",
     feeStatus: "Paid",
     activityStatus: "Active",
     registrationDate: format(subMonths(new Date(), 2), 'yyyy-MM-dd'),
@@ -30,48 +30,45 @@ let students: Student[] = [
     nextDueDate: format(addMonths(new Date(), 1), 'yyyy-MM-dd'),
     amountDue: "Rs. 0",
     paymentHistory: [
-      { paymentId: "PAY_R1", date: format(subMonths(new Date(), 5), 'yyyy-MM-dd'), amount: "Rs. 700", transactionId: "TXNRM005", method: "UPI" },
-      { paymentId: "PAY_R2", date: format(subMonths(new Date(), 4), 'yyyy-MM-dd'), amount: "Rs. 700", transactionId: "TXNRM004", method: "UPI" },
-      { paymentId: "PAY_R3", date: format(subMonths(new Date(), 3), 'yyyy-MM-dd'), amount: "Rs. 700", transactionId: "TXNRM003", method: "UPI" },
-      { paymentId: "PAY_R4", date: format(subMonths(new Date(), 2), 'yyyy-MM-dd'), amount: "Rs. 700", transactionId: "TXNRM002", method: "UPI" },
-      { paymentId: "PAY_R5", date: format(subMonths(new Date(), 1), 'yyyy-MM-dd'), amount: "Rs. 700", transactionId: "TXNRM001", method: "UPI" },
-      { paymentId: "PAY_R6", date: format(new Date(), 'yyyy-MM-dd'), amount: "Rs. 700", transactionId: "TXNRMCURRENT", method: "UPI" },
+      { paymentId: "PAY_PS1", date: format(subMonths(new Date(), 2), 'yyyy-MM-dd'), amount: "Rs. 700", transactionId: "TXNPS001", method: "UPI" },
+      { paymentId: "PAY_PS2", date: format(subMonths(new Date(), 1), 'yyyy-MM-dd'), amount: "Rs. 700", transactionId: "TXNPS002", method: "UPI" },
+      { paymentId: "PAY_PS3", date: format(new Date(), 'yyyy-MM-dd'), amount: "Rs. 700", transactionId: "TXNPS003", method: "UPI" },
     ],
-    profilePictureUrl: "https://placehold.co/200x200.png?text=RM",
+    profilePictureUrl: "https://placehold.co/200x200.png?text=PS",
   },
   {
     studentId: "TSMEM002",
-    name: "Sneha Patel",
-    email: "sneha.p@example.net",
-    phone: "9876543211",
+    name: "Amit Kumar",
+    email: "amit.k@example.net",
+    phone: "9123456781",
     password: "memberpass2",
     shift: "evening",
-    seatNumber: "25",
+    seatNumber: "34",
     feeStatus: "Due",
     activityStatus: "Active",
     registrationDate: format(subMonths(new Date(), 1), 'yyyy-MM-dd'),
     lastPaymentDate: format(subMonths(new Date(), 1), 'yyyy-MM-dd'),
     nextDueDate: format(new Date(), 'yyyy-MM-dd'),
     amountDue: "Rs. 700",
-    paymentHistory: [{ paymentId: "PAY_S1", date: format(subMonths(new Date(), 1), 'yyyy-MM-dd'), amount: "Rs. 700", transactionId: "TXNSP001", method: "Cash" }],
-    profilePictureUrl: "https://placehold.co/200x200.png?text=SP",
+    paymentHistory: [{ paymentId: "PAY_AK1", date: format(subMonths(new Date(), 1), 'yyyy-MM-dd'), amount: "Rs. 700", transactionId: "TXNAK001", method: "Cash" }],
+    profilePictureUrl: "https://placehold.co/200x200.png?text=AK",
   },
   {
     studentId: "TSMEM003",
-    name: "Vikram Singh",
-    email: "vikram.s@example.org",
-    phone: "9876543212",
+    name: "Anjali Gupta",
+    email: "anjali.g@example.org",
+    phone: "9123456782",
     password: "memberpass3",
     shift: "fullday",
-    seatNumber: "50",
+    seatNumber: "55",
     feeStatus: "Overdue",
     activityStatus: "Active",
     registrationDate: format(subMonths(new Date(), 3), 'yyyy-MM-dd'),
     lastPaymentDate: format(subMonths(new Date(), 2), 'yyyy-MM-dd'),
     nextDueDate: format(subMonths(new Date(), 1), 'yyyy-MM-dd'),
     amountDue: "Rs. 1200",
-    paymentHistory: [{ paymentId: "PAY_V1", date: format(subMonths(new Date(), 2), 'yyyy-MM-dd'), amount: "Rs. 1200", transactionId: "TXNVS001", method: "Card" }],
-    profilePictureUrl: "https://placehold.co/200x200.png?text=VS",
+    paymentHistory: [{ paymentId: "PAY_AG1", date: format(subMonths(new Date(), 2), 'yyyy-MM-dd'), amount: "Rs. 1200", transactionId: "TXNAG001", method: "Card" }],
+    profilePictureUrl: "https://placehold.co/200x200.png?text=AG",
   },
 ];
 
@@ -91,9 +88,9 @@ let attendanceRecords: AttendanceRecord[] = [
 ];
 
 let feedbackItems: FeedbackItem[] = [
-    { id: "FB001", studentId: "TSMEM002", studentName: "Sneha Patel", dateSubmitted: format(subDays(new Date(),2), 'yyyy-MM-dd'), type: "Complaint", message: "The AC in the evening shift section is not working properly. It gets very warm.", status: "Open" },
-    { id: "FB002", studentId: "TSMEM003", studentName: "Vikram Singh", dateSubmitted: format(subDays(new Date(),3), 'yyyy-MM-dd'), type: "Suggestion", message: "Could we have more charging points available near the window seats?", status: "Open" },
-    { id: "FB003", studentId: "TSMEM001", studentName: "Rohan Mehra", dateSubmitted: format(subDays(new Date(),4), 'yyyy-MM-dd'), type: "Compliment", message: "The library is always clean and quiet. Great job!", status: "Resolved" },
+    { id: "FB001", studentId: "TSMEM002", studentName: "Amit Kumar", dateSubmitted: format(subDays(new Date(),2), 'yyyy-MM-dd'), type: "Complaint", message: "The AC in the evening shift section is not working properly. It gets very warm.", status: "Open" },
+    { id: "FB002", studentId: "TSMEM003", studentName: "Anjali Gupta", dateSubmitted: format(subDays(new Date(),3), 'yyyy-MM-dd'), type: "Suggestion", message: "Could we have more charging points available near the window seats?", status: "Open" },
+    { id: "FB003", studentId: "TSMEM001", studentName: "Priya Sharma", dateSubmitted: format(subDays(new Date(),4), 'yyyy-MM-dd'), type: "Compliment", message: "The library is always clean and quiet. Great job!", status: "Resolved" },
 ];
 
 let alertItems: AlertItem[] = [
@@ -265,6 +262,7 @@ export interface AddStudentData {
   name: string;
   email?: string;
   phone: string;
+  password?: string; // Made optional for now, will make required if form adds it
   shift: Shift;
   seatNumber: string;
   idCardFileName?: string;
@@ -298,7 +296,7 @@ export function addStudent(studentData: AddStudentData): Promise<Student> {
       const newStudent: Student = {
         ...studentData,
         studentId: getNextStudentId(),
-        password: `default${studentData.phone.slice(-4)}`, 
+        password: studentData.password, // Use provided password
         feeStatus: "Due",
         activityStatus: "Active",
         registrationDate: format(today, 'yyyy-MM-dd'),
@@ -552,7 +550,7 @@ export function getAttendanceRecordsByStudentId(studentId: string): Promise<Atte
 
 export async function recordStudentPayment(
   studentId: string,
-  totalAmountPaidString: string, // e.g., "Rs. 1400"
+  totalAmountPaidString: string, 
   paymentMethod: PaymentRecord['method'] | "Admin Recorded",
   numberOfMonthsPaid: number = 1 
 ): Promise<Student | undefined> {
@@ -583,7 +581,7 @@ export async function recordStudentPayment(
       };
       
       let baseDateForNextDue = today;
-      // If current due date is in the future, use that as the base to add months
+      
       if (student.nextDueDate && isValid(parseISO(student.nextDueDate)) && parseISO(student.nextDueDate) > today) {
           baseDateForNextDue = parseISO(student.nextDueDate);
       }
