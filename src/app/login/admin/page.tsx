@@ -23,7 +23,7 @@ const loginFormSchema = z.object({
 
 type LoginFormValues = z.infer<typeof loginFormSchema>;
 
-const LOGO_URL = "/logo.png"; // Assumes logo.png is in public/
+const LOGO_URL = "/logo.png"; 
 
 export default function AdminLoginPage() {
   const { login } = useAuth();
@@ -54,7 +54,7 @@ export default function AdminLoginPage() {
             router.push('/member/dashboard');
           } else {
             toast({ title: "Login Error", description: "Unexpected user role.", variant: "destructive" });
-            router.push('/login/admin');
+            router.push('/login/admin'); 
           }
         }, 700);
       } else {
@@ -82,26 +82,26 @@ export default function AdminLoginPage() {
         {/* Login Card with backdrop blur */}
         <Card className="w-full max-w-md shadow-xl overflow-hidden bg-background/70 backdrop-blur-md">
           {/* Logo at the top of the card */}
-          <div className="p-6 flex flex-col items-center justify-center">
+          <div className="p-4 sm:p-6 flex flex-col items-center justify-center">
             <Image
               src={LOGO_URL}
               alt="Taxshila Companion Logo"
               width={150}
               height={50}
-              className="object-contain mb-6"
+              className="object-contain mb-4 sm:mb-6"
               data-ai-hint="logo brand"
               priority
             />
           </div>
 
-          <CardHeader className="text-center p-0 px-6 sm:px-8 pb-6">
-            <CardTitle className="text-2xl font-headline text-foreground">Welcome Back!</CardTitle>
-            <CardDescription className="text-foreground/80">Login to Taxshila Companion.</CardDescription>
+          <CardHeader className="text-center p-0 px-4 sm:px-6 pb-4 sm:pb-6">
+            <CardTitle className="text-xl sm:text-2xl font-headline text-foreground">Welcome Back!</CardTitle>
+            <CardDescription className="text-sm text-foreground/80">Login to Taxshila Companion.</CardDescription>
           </CardHeader>
 
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)}>
-              <CardContent className="space-y-4 p-6 sm:p-8 pt-0">
+              <CardContent className="space-y-4 p-4 sm:p-6 pt-0">
                 <FormField
                   control={form.control}
                   name="identifier"
@@ -129,7 +129,7 @@ export default function AdminLoginPage() {
                   )}
                 />
               </CardContent>
-              <CardFooter className="flex flex-col gap-4 p-6 sm:p-8 pt-0">
+              <CardFooter className="flex flex-col gap-4 p-4 sm:p-6 pt-0">
                 <Button type="submit" className="w-full" disabled={isSubmitting || showSuccessDialog}>
                   {isSubmitting || showSuccessDialog ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <LogIn className="mr-2 h-4 w-4" />}
                   {isSubmitting && !showSuccessDialog ? 'Checking...' : (showSuccessDialog ? 'Logging in...' : 'Login')}
