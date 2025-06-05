@@ -6,12 +6,13 @@ import Link from 'next/link';
 import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar';
 import { AppSidebarContent } from './app-sidebar-content';
 import { Button } from '@/components/ui/button';
-import { PanelLeft, Inbox, Bell, Loader2 } from 'lucide-react'; // Added Inbox, Bell, Loader2
+import { PanelLeft, Inbox, Bell, Loader2 } from 'lucide-react'; 
 import { useAuth } from '@/contexts/auth-context';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useNotificationCounts } from '@/hooks/use-notification-counts'; // New Hook
-import { NotificationBadge } from '@/components/shared/notification-badge'; // New Component
+import { useNotificationCounts } from '@/hooks/use-notification-counts'; 
+import { NotificationBadge } from '@/components/shared/notification-badge'; 
 import { cn } from '@/lib/utils';
+import { TopProgressBar } from '@/components/shared/top-progress-bar'; // Import TopProgressBar
 
 function NotificationIconArea() {
   const { user } = useAuth();
@@ -23,7 +24,7 @@ function NotificationIconArea() {
   }
 
   let href = "/";
-  let IconComponent = Inbox; // Default to avoid errors, should be overridden
+  let IconComponent = Inbox; 
 
   if (user.role === 'admin') {
     href = "/admin/feedback";
@@ -42,24 +43,39 @@ function NotificationIconArea() {
       </Link>
     );
   }
-  // Optionally, render the icon without a badge if count is 0, or nothing.
-  // For a cleaner look, let's render nothing if count is 0 and not loading.
+  
   return null; 
 }
 
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
-  const { user, isLoading } = useAuth();
+  const { user, isLoading: isAuthLoading } = useAuth();
   const pathname = usePathname();
   const router = useRouter();
+  const [isRouteLoading, setIsRouteLoading] = React.useState(false);
+  const prevPathnameRef = React.useRef(pathname);
+
 
   React.useEffect(() => {
-    if (!isLoading && !user && !pathname.startsWith('/login')) {
-      router.push('/login');
+    if (!isAuthLoading && !user && !pathname.startsWith('/login')) {
+      router.replace('/login');
     }
-  }, [user, isLoading, pathname, router]);
+  }, [user, isAuthLoading, pathname, router]);
 
-  if (isLoading) {
+  React.useEffect(() => {
+    if (prevPathnameRef.current !== pathname) {
+      setIsRouteLoading(true);
+      prevPathnameRef.current = pathname;
+      const timer = setTimeout(() => {
+        setIsRouteLoading(false);
+      }, 750); // Show loader for 750ms
+
+      return () => clearTimeout(timer);
+    }
+  }, [pathname]);
+
+
+  if (isAuthLoading) {
     return (
       <div className="flex min-h-screen w-full flex-col items-center justify-center bg-background">
         <Skeleton className="h-12 w-12 rounded-full" />
@@ -74,11 +90,17 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   }
 
   if (pathname.startsWith('/login')) {
-    return <>{children}</>;
+    return (
+      <>
+        <TopProgressBar isLoading={isRouteLoading} />
+        {children}
+      </>
+    );
   }
   
   return (
     <SidebarProvider defaultOpen>
+      <TopProgressBar isLoading={isRouteLoading} />
       <AppSidebarContent />
       <SidebarInset>
         <header className="sticky top-0 z-10 flex h-14 items-center gap-4 border-b bg-background/80 px-4 backdrop-blur-sm sm:h-16 sm:px-6 md:hidden">
