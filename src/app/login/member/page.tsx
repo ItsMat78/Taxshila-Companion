@@ -38,50 +38,32 @@ export default function MemberLoginPage() {
     },
   });
 
-  // useEffect to handle redirection AFTER dialog is shown
-  React.useEffect(() => {
-    let timerId: NodeJS.Timeout;
-    if (showSuccessDialog) {
-      // isSubmitting is true here, dialog is visible.
-      timerId = setTimeout(() => {
-        router.push('/member/dashboard');
-      }, 700); // Adjusted delay for better visibility
-    }
-    return () => {
-      clearTimeout(timerId); // Cleanup timer on unmount or if showSuccessDialog changes
-    };
-  }, [showSuccessDialog, router]); // Run when showSuccessDialog or router changes
-
   async function onSubmit(data: LoginFormValues) {
-    setIsSubmitting(true); // Disable button, show "Checking..."
-    setShowSuccessDialog(false); // Ensure dialog is reset if there was a previous attempt
-
+    setIsSubmitting(true);
+    setShowSuccessDialog(false); // Ensure dialog isn't stuck from previous attempts
     try {
       const loggedInUser = await login(data.identifier, data.password);
-
       if (loggedInUser) {
-        // Login was successful, user state in AuthContext is updated.
-        setShowSuccessDialog(true); // Trigger dialog. useEffect will handle redirect.
-                                    // isSubmitting remains true, button will show "Logging in..."
+        setShowSuccessDialog(true);
+        // Short delay to allow dialog to render, then redirect
+        setTimeout(() => {
+          router.push('/member/dashboard'); // Redirect to member dashboard
+        }, 500); // 500ms delay
       } else {
-        // Login failed (e.g., bad credentials, user not active, etc.)
-        // Toast for login failure is typically handled by AuthContext.
-        setIsSubmitting(false); // Re-enable button for another attempt.
+        // Toast for login failure is handled by AuthContext
+        setIsSubmitting(false); // Re-enable button if login fails
       }
     } catch (error) {
-      // Catch any unexpected errors during the login process itself.
       console.error("Member login submission error:", error);
       toast({
         title: "Login Error",
         description: "An unexpected error occurred. Please try again.",
         variant: "destructive",
       });
-      setIsSubmitting(false); // Re-enable button.
-      setShowSuccessDialog(false); // Ensure dialog isn't stuck.
+      setIsSubmitting(false); // Re-enable button on error
     }
-    // If login is successful, isSubmitting remains true, and setShowSuccessDialog(true) is called.
-    // The component re-renders, useEffect kicks in for the delayed navigation.
-    // If login fails (loggedInUser is null) or an error is caught, isSubmitting is set to false.
+    // If login is successful, isSubmitting remains true and page redirects.
+    // If login fails or error, isSubmitting is set to false.
   }
 
   return (
@@ -113,7 +95,7 @@ export default function MemberLoginPage() {
                     <FormItem>
                       <FormLabel>Email or Phone Number</FormLabel>
                       <FormControl>
-                        <Input type="text" placeholder="you@example.com or 9876543210" {...field} disabled={isSubmitting}/>
+                        <Input type="text" placeholder="you@example.com or 9876543210" {...field} disabled={isSubmitting || showSuccessDialog} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -126,7 +108,7 @@ export default function MemberLoginPage() {
                     <FormItem>
                       <FormLabel>Password</FormLabel>
                       <FormControl>
-                        <Input type="password" placeholder="••••••••" {...field} disabled={isSubmitting}/>
+                        <Input type="password" placeholder="••••••••" {...field} disabled={isSubmitting || showSuccessDialog} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -134,12 +116,12 @@ export default function MemberLoginPage() {
                 />
               </CardContent>
               <CardFooter className="flex flex-col gap-4">
-                <Button type="submit" className="w-full" disabled={isSubmitting}>
-                  {isSubmitting ? ( <Loader2 className="mr-2 h-4 w-4 animate-spin" />) : (<LogIn className="mr-2 h-4 w-4" />)}
-                  {showSuccessDialog ? 'Logging in...' : (isSubmitting ? 'Checking...' : 'Login')}
+                <Button type="submit" className="w-full" disabled={isSubmitting || showSuccessDialog}>
+                  {isSubmitting || showSuccessDialog ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <LogIn className="mr-2 h-4 w-4" />}
+                  {showSuccessDialog ? 'Logging in...' : 'Login'}
                 </Button>
                 <Link href="/login/admin" passHref legacyBehavior>
-                   <Button variant="link" className="text-sm text-muted-foreground hover:text-primary" disabled={isSubmitting}>
+                   <Button variant="link" className="text-sm text-muted-foreground hover:text-primary" disabled={isSubmitting || showSuccessDialog}>
                       <Shield className="mr-2 h-4 w-4" /> Login as Admin
                    </Button>
                 </Link>
