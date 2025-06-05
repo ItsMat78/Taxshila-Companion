@@ -82,12 +82,12 @@ export default function AdminLoginPage() {
         <Card className="w-full max-w-md shadow-xl bg-background/70 backdrop-blur-md max-h-[calc(100vh-theme(space.8))] overflow-y-auto rounded-lg">
           {/* Logo Section - responsive */}
           <div className="flex justify-center pt-6 pb-3 sm:pt-8 sm:pb-4">
-            <div className="relative w-32 h-auto sm:w-36 md:w-40"> {/* Responsive width container for logo */}
+            <div className="relative w-24 h-auto sm:w-28 md:w-32"> {/* Adjusted width for smaller logo */}
               <Image
                 src={LOGO_URL}
                 alt="Taxshila Companion Logo"
-                width={50} 
-                height={50} 
+                width={150} // Intrinsic width for quality
+                height={150} // Intrinsic height for quality (1:1 aspect ratio)
                 className="w-full h-auto object-contain" // Tailwind classes for responsive fill
                 data-ai-hint="logo brand"
                 priority
