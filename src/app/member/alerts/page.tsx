@@ -143,7 +143,7 @@ export default function MemberAlertsPage() {
   const handleOpenAlertDetails = async (alertItem: AlertItem) => {
     setCurrentAlertInModal(alertItem);
     setIsAlertDetailsOpen(true);
-    if (!alertItem.isRead && studentId) { 
+    if (!alertItem.isRead && studentId && alertItem.id) { // Ensure alertItem.id is present
       try {
         await markAlertAsRead(alertItem.id, studentId); 
         await fetchAlerts(studentId); 
@@ -222,10 +222,6 @@ export default function MemberAlertsPage() {
     );
   }
 
-  // --- TEMPORARY DEBUGGING ---
-  const encounteredIds = new Set();
-  // --- END TEMPORARY DEBUGGING ---
-
   return (
     <>
       <PageTitle title="Notifications & Alerts" description="Stay updated with important announcements from the library." />
@@ -241,18 +237,12 @@ export default function MemberAlertsPage() {
       ) : (
         <div className="space-y-4">
           {alertsList.map((alert) => {
-            // --- TEMPORARY DEBUGGING ---
-            if (alert.id === null || alert.id === undefined) {
-              console.warn('WARNING: Alert found with null or undefined ID:', alert);
+            if (!alert || !alert.id) {
+              // This check is defensive. If alert.id is truly undefined, this alert will be skipped.
+              // The root cause is that `alert.id` isn't being correctly passed from the service.
+              console.warn("Skipping alert with undefined ID:", alert);
+              return null;
             }
-            if (encounteredIds.has(alert.id)) {
-              console.warn('WARNING: Duplicate Alert ID found:', alert.id, 'Title:', alert.title);
-            } else {
-              encounteredIds.add(alert.id);
-            }
-            console.log('Rendering Alert - ID:', alert.id, 'Title:', alert.title);
-            // --- END TEMPORARY DEBUGGING ---
-
             const { mainIcon, cardClasses, titleClasses, badgeColorClass, badgeLabel, badgeIconElement } = getAlertInfo(alert);
             return (
               <Card 
@@ -303,3 +293,4 @@ export default function MemberAlertsPage() {
     </>
   );
 }
+
