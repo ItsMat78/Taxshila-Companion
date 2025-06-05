@@ -86,8 +86,8 @@ export default function AdminLoginPage() {
               <Image
                 src={LOGO_URL}
                 alt="Taxshila Companion Logo"
-                width={100} // Adjusted for 1:1 aspect ratio
-                height={100} // Adjusted for 1:1 aspect ratio
+                width={50} 
+                height={50} 
                 className="w-full h-auto object-contain" // Tailwind classes for responsive fill
                 data-ai-hint="logo brand"
                 priority
