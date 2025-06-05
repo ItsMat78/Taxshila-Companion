@@ -69,7 +69,7 @@ export default function FeesDuePage() {
     <>
       <PageTitle title="Student Fees Due" description="Manage and track students with outstanding fee payments." />
 
-      <Card className="shadow-lg">
+      <Card className="shadow-lg w-full">
         <CardHeader>
           <CardTitle className="flex items-center">
             <AlertTriangle className="mr-2 h-5 w-5 text-destructive" />

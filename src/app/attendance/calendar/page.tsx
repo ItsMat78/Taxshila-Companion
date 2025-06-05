@@ -93,7 +93,7 @@ export default function AdminAttendanceOverviewPage() {
         description="Select a student to view their attendance calendar and daily records."
       />
 
-      <Card className="mb-6 shadow-lg">
+      <Card className="mb-6 shadow-lg w-full">
         <CardHeader>
           <CardTitle className="flex items-center"><List className="mr-2 h-5 w-5" />Active Students</CardTitle>
           <CardDescription>Click on a student to view their attendance calendar.</CardDescription>
@@ -147,7 +147,7 @@ export default function AdminAttendanceOverviewPage() {
       </Card>
 
       {selectedStudent && (
-        <Card className="shadow-lg">
+        <Card className="shadow-lg w-full">
           <CardHeader>
             <CardTitle className="flex items-center">
               <UserCog className="mr-2 h-5 w-5" />
@@ -168,7 +168,7 @@ export default function AdminAttendanceOverviewPage() {
         </Card>
       )}
       {selectedStudent && date && (
-        <Card className="mt-6 shadow-lg">
+        <Card className="mt-6 shadow-lg w-full">
           <CardHeader>
             <CardTitle>Details for {selectedStudent.name} on {format(date, 'PPP')}</CardTitle>
           </CardHeader>
@@ -217,7 +217,7 @@ export default function AdminAttendanceOverviewPage() {
         </Card>
       )}
       {!selectedStudent && !isLoadingStudents && (
-        <Card className="shadow-lg">
+        <Card className="shadow-lg w-full">
             <CardContent className="pt-6">
                 <p className="text-center text-muted-foreground">Select a student from the list above to view their attendance calendar.</p>
             </CardContent>

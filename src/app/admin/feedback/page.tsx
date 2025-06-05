@@ -211,7 +211,7 @@ export default function AdminFeedbackPage() {
   return (
     <>
       <PageTitle title="Member Feedback & Suggestions" description="Review and manage feedback submitted by students." />
-      <Card className="shadow-lg">
+      <Card className="shadow-lg w-full">
         <CardHeader>
           <CardTitle className="flex items-center">
             <MessageSquare className="mr-2 h-5 w-5" />

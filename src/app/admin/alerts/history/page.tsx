@@ -80,7 +80,7 @@ export default function AdminAlertsHistoryPage() {
   return (
     <>
       <PageTitle title="Sent Alerts History" description="A log of all announcements and alerts sent to members." />
-      <Card className="shadow-lg">
+      <Card className="shadow-lg w-full">
         <CardHeader>
           <CardTitle className="flex items-center">
             <History className="mr-2 h-5 w-5" />

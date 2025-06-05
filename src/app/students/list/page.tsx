@@ -79,7 +79,7 @@ export default function StudentListPage() {
   };
 
   const renderStudentTable = (studentsToRender: StudentData[], tableTitle: string, tableDescription: string, icon: React.ReactNode, emptyMessage: string, isLeftTable: boolean = false) => (
-    <Card className="mt-6 shadow-lg">
+    <Card className="mt-6 shadow-lg w-full">
       <CardHeader>
         <CardTitle className="flex items-center">
           {icon}
@@ -97,9 +97,9 @@ export default function StudentListPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>ID</TableHead>
+                <TableHead className="whitespace-nowrap">ID</TableHead>
                 <TableHead>Name</TableHead>
-                <TableHead>Phone</TableHead>
+                <TableHead className="whitespace-nowrap">Phone</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>Shift</TableHead>
                 <TableHead>Seat</TableHead>
@@ -160,14 +160,14 @@ export default function StudentListPage() {
   return (
     <>
       <PageTitle title="Student Management" description="View and manage all registered students.">
-        <div className="relative ml-auto flex-1 md:grow-0">
+        <div className="relative ml-auto flex-1 md:grow-0 w-full sm:w-auto">
             <SearchIcon className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               type="search"
               placeholder="Search students..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full rounded-lg bg-background pl-8 md:w-[200px] lg:w-[336px]"
+              className="w-full rounded-lg bg-background pl-8 md:w-full lg:w-[336px]"
             />
           </div>
       </PageTitle>

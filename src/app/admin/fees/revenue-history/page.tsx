@@ -85,7 +85,7 @@ export default function RevenueHistoryPage() {
     <>
       <PageTitle title="Monthly Revenue History" description="Track revenue from received payments over time." />
 
-      <Card className="mb-6 shadow-lg">
+      <Card className="mb-6 shadow-lg w-full">
         <CardHeader>
           <CardTitle className="flex items-center">
             <TrendingUp className="mr-2 h-5 w-5" />
@@ -125,7 +125,7 @@ export default function RevenueHistoryPage() {
         </CardContent>
       </Card>
 
-      <Card className="shadow-lg">
+      <Card className="shadow-lg w-full">
         <CardHeader>
           <CardTitle className="flex items-center">
             <History className="mr-2 h-5 w-5" />

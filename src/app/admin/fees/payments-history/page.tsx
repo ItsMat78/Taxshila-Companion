@@ -77,7 +77,7 @@ export default function PaymentHistoryPage() {
     <>
       <PageTitle title="Recent Payment History" description="View a log of recent fee payments made by students." />
 
-      <Card className="shadow-lg">
+      <Card className="shadow-lg w-full">
         <CardHeader>
           <CardTitle className="flex items-center">
             <ListChecks className="mr-2 h-5 w-5 text-primary" />
