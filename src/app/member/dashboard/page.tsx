@@ -17,12 +17,16 @@ import {
 import { Alert, AlertDescription, AlertTitle as ShadcnAlertTitle } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/auth-context';
-import { Camera, QrCode, Receipt, IndianRupee, MessageSquare, Bell, ScrollText, Star, Loader2, XCircle, Home, BarChart3, PlayCircle, CheckCircle, Hourglass } from 'lucide-react';
+import { Camera, QrCode, Receipt, IndianRupee, MessageSquare, Bell, ScrollText, Star, Loader2, XCircle, Home, BarChart3, PlayCircle, CheckCircle, Hourglass, ScanLine } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getStudentByEmail, getAlertsForStudent, calculateMonthlyStudyHours, addCheckIn, addCheckOut, getActiveCheckIn, getAttendanceForDate } from '@/services/student-service';
 import type { AlertItem } from '@/types/communication';
 import type { Student, AttendanceRecord, FeeStatus } from '@/types/student';
 import { format, parseISO, differenceInMilliseconds, isValid } from 'date-fns';
+import { Html5QrcodeScanner, Html5QrcodeSupportedFormats } from 'html5-qrcode';
+
+const DASHBOARD_QR_SCANNER_ELEMENT_ID = "qr-reader-dashboard";
+const LIBRARY_QR_CODE_PAYLOAD = "TAXSHILA_LIBRARY_CHECKIN_QR_V1";
 
 type DashboardTileProps = {
   title: string;
@@ -37,6 +41,7 @@ type DashboardTileProps = {
   external?: boolean;
   hasNew?: boolean;
   isUrgent?: boolean;
+  disabled?: boolean;
 };
 
 const DashboardTile: React.FC<DashboardTileProps> = ({
@@ -52,11 +57,13 @@ const DashboardTile: React.FC<DashboardTileProps> = ({
   external = false,
   hasNew = false,
   isUrgent = false,
+  disabled = false,
 }) => {
   const content = (
     <Card className={cn(
-      "shadow-lg hover:shadow-xl transition-shadow h-full flex flex-col",
-      isPrimaryAction ? 'bg-primary text-primary-foreground hover:bg-primary/90' : 'hover:bg-muted/50',
+      "shadow-lg h-full flex flex-col",
+      isPrimaryAction ? 'bg-primary text-primary-foreground' : '',
+      disabled ? 'opacity-60 cursor-not-allowed bg-muted/50' : (isPrimaryAction ? 'hover:bg-primary/90' : 'hover:bg-muted/50 hover:shadow-xl transition-shadow'),
       {
         'border-destructive ring-1 ring-destructive/30': (isUrgent) && !isPrimaryAction,
       },
@@ -117,24 +124,25 @@ const DashboardTile: React.FC<DashboardTileProps> = ({
 
   const linkClasses = "block h-full no-underline focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-lg";
 
-  if (href) {
+  if (href && !disabled) {
     return (
       <Link
         href={href}
         target={external ? '_blank' : undefined}
         rel={external ? 'noopener noreferrer' : undefined}
         className={cn(linkClasses, className)}
+        onClick={(e) => { if (disabled) e.preventDefault(); }}
       >
         {content}
       </Link>
     );
   }
 
-  if (action) {
-    return <button onClick={action} className={cn("block w-full h-full text-left", linkClasses, className)}>{content}</button>;
+  if (action && !disabled) {
+    return <button onClick={action} className={cn("block w-full h-full text-left", linkClasses, className)} disabled={disabled}>{content}</button>;
   }
 
-  return <div className={className}>{content}</div>;
+  return <div className={cn(className, disabled ? 'cursor-not-allowed' : '')}>{content}</div>;
 };
 
 
@@ -143,9 +151,9 @@ export default function MemberDashboardPage() {
   const { toast } = useToast();
   const [isScannerOpen, setIsScannerOpen] = React.useState(false);
   const [hasCameraPermission, setHasCameraPermission] = React.useState<boolean | null>(null);
-  const videoRef = React.useRef<HTMLVideoElement | null>(null);
   const [isProcessingQr, setIsProcessingQr] = React.useState(false);
-  const streamRef = React.useRef<MediaStream | null>(null);
+  const html5QrcodeScannerRef = React.useRef<Html5QrcodeScanner | null>(null);
+
 
   const [studentId, setStudentId] = React.useState<string | null>(null);
   const [studentFirstName, setStudentFirstName] = React.useState<string | null>(null);
@@ -155,183 +163,171 @@ export default function MemberDashboardPage() {
   const [monthlyStudyHours, setMonthlyStudyHours] = React.useState<number | null>(null);
   const [isLoadingStudyHours, setIsLoadingStudyHours] = React.useState(true);
 
-  const [activeCheckIn, setActiveCheckIn] = React.useState<AttendanceRecord | null>(null);
+  const [activeCheckInRecord, setActiveCheckInRecord] = React.useState<AttendanceRecord | null>(null);
   const [hoursStudiedToday, setHoursStudiedToday] = React.useState<number | null>(null);
   const [isLoadingCurrentSession, setIsLoadingCurrentSession] = React.useState(true);
 
   const [studentFeeStatus, setStudentFeeStatus] = React.useState<FeeStatus | null>(null);
   const [studentNextDueDate, setStudentNextDueDate] = React.useState<string | null>(null);
 
-  const fetchCurrentSessionData = React.useCallback(async (currentStudentId: string) => {
-    setIsLoadingCurrentSession(true);
-    setActiveCheckIn(null);
-    setHoursStudiedToday(null);
-    try {
-      const [activeCheckInData, todayAttendanceData] = await Promise.all([
-        getActiveCheckIn(currentStudentId),
-        getAttendanceForDate(currentStudentId, format(new Date(), 'yyyy-MM-dd'))
-      ]);
-
-      setActiveCheckIn(activeCheckInData || null);
-
-      let totalMillisecondsToday = 0;
-      const now = new Date();
-      todayAttendanceData.forEach(record => {
-        if (record.checkOutTime && record.checkInTime && isValid(parseISO(record.checkOutTime)) && isValid(parseISO(record.checkInTime))) {
-          totalMillisecondsToday += differenceInMilliseconds(parseISO(record.checkOutTime), parseISO(record.checkInTime));
-        } else if (activeCheckInData && record.recordId === activeCheckInData.recordId && record.checkInTime && isValid(parseISO(record.checkInTime))) {
-          totalMillisecondsToday += differenceInMilliseconds(now, parseISO(record.checkInTime));
-        }
-      });
-      setHoursStudiedToday(totalMillisecondsToday / (1000 * 60 * 60));
-
-    } catch (error) {
-      console.error("Error fetching current session data:", error);
-      toast({ title: "Error", description: "Could not load current session details.", variant: "destructive" });
-      setActiveCheckIn(null);
-      setHoursStudiedToday(null);
-    } finally {
-      setIsLoadingCurrentSession(false);
-    }
-  }, [toast]);
-
-
-  React.useEffect(() => {
+  const fetchAllDashboardData = React.useCallback(async () => {
     if (user?.email) {
-      setIsLoadingStudentData(true);
-      setIsLoadingStudyHours(true);
-      // setIsLoadingCurrentSession is handled by fetchCurrentSessionData
+        setIsLoadingStudentData(true);
+        setIsLoadingStudyHours(true);
+        setIsLoadingCurrentSession(true);
 
-      // Reset dependent states initially
-      setStudentFirstName(null);
-      setStudentId(null);
-      setMonthlyStudyHours(null);
-      setHasUnreadAlerts(false);
-      setActiveCheckIn(null);
-      setHoursStudiedToday(null);
-      setStudentFeeStatus(null);
-      setStudentNextDueDate(null);
+        setStudentFirstName(null);
+        setStudentId(null);
+        setMonthlyStudyHours(null);
+        setHasUnreadAlerts(false);
+        setActiveCheckInRecord(null);
+        setHoursStudiedToday(null);
+        setStudentFeeStatus(null);
+        setStudentNextDueDate(null);
 
       let studentDetailsFetchedSuccessfully = false;
+      try {
+        const studentDetails = await getStudentByEmail(user.email);
+        if (studentDetails) {
+          studentDetailsFetchedSuccessfully = true;
+          setStudentId(studentDetails.studentId);
+          setStudentFirstName(studentDetails.name ? studentDetails.name.split(' ')[0] : null);
+          setStudentFeeStatus(studentDetails.feeStatus);
+          setStudentNextDueDate(studentDetails.nextDueDate || null);
 
-      getStudentByEmail(user.email)
-        .then(studentDetails => {
-          if (studentDetails) {
-            studentDetailsFetchedSuccessfully = true;
-            setStudentId(studentDetails.studentId);
-            setStudentFirstName(studentDetails.name ? studentDetails.name.split(' ')[0] : null);
-            setStudentFeeStatus(studentDetails.feeStatus);
-            setStudentNextDueDate(studentDetails.nextDueDate || null);
-            
-            fetchCurrentSessionData(studentDetails.studentId);
+          // Fetch dependent data in parallel
+          const [
+            alerts,
+            hours,
+            activeCheckInData,
+            todayAttendanceData
+          ] = await Promise.all([
+            getAlertsForStudent(studentDetails.studentId),
+            calculateMonthlyStudyHours(studentDetails.studentId),
+            getActiveCheckIn(studentDetails.studentId),
+            getAttendanceForDate(studentDetails.studentId, format(new Date(), 'yyyy-MM-dd'))
+          ]);
 
-            const alertPromise = getAlertsForStudent(studentDetails.studentId)
-              .then(alerts => {
-                setHasUnreadAlerts(alerts.some(alert => !alert.isRead));
-              })
-              .catch(err => {
-                console.error("Error fetching alerts for dashboard:", err);
-                setHasUnreadAlerts(false); // Default on error
-              });
+          setHasUnreadAlerts(alerts.some(alert => !alert.isRead));
+          setMonthlyStudyHours(hours);
+          
+          setActiveCheckInRecord(activeCheckInData || null);
+          let totalMillisecondsToday = 0;
+          const now = new Date();
+          todayAttendanceData.forEach(record => {
+            if (record.checkOutTime && record.checkInTime && isValid(parseISO(record.checkOutTime)) && isValid(parseISO(record.checkInTime))) {
+              totalMillisecondsToday += differenceInMilliseconds(parseISO(record.checkOutTime), parseISO(record.checkInTime));
+            } else if (activeCheckInData && record.recordId === activeCheckInData.recordId && record.checkInTime && isValid(parseISO(record.checkInTime))) {
+              totalMillisecondsToday += differenceInMilliseconds(now, parseISO(record.checkInTime));
+            }
+          });
+          setHoursStudiedToday(totalMillisecondsToday / (1000 * 60 * 60));
 
-            const studyHoursPromise = calculateMonthlyStudyHours(studentDetails.studentId)
-              .then(hours => {
-                setMonthlyStudyHours(hours);
-              })
-              .catch(err => {
-                console.error("Error fetching monthly study hours for dashboard:", err);
-                setMonthlyStudyHours(null); // Set to null on error
-              })
-              .finally(() => {
-                setIsLoadingStudyHours(false); 
-              });
-            
-            return Promise.allSettled([alertPromise, studyHoursPromise]);
-          } else {
-            // Student not found, ensure loading states are false
-            setIsLoadingStudyHours(false); 
-            setIsLoadingCurrentSession(false); 
-            return Promise.resolve(null); 
-          }
-        })
-        .catch(error => {
-          console.error("Error fetching student by email for dashboard:", error);
-          setIsLoadingStudyHours(false);
-          setIsLoadingCurrentSession(false); 
-        })
-        .finally(() => {
-          setIsLoadingStudentData(false);
-          // If student wasn't found, make sure all related states are reset
-          if (!studentDetailsFetchedSuccessfully) {
-            setStudentId(null);
-            setStudentFirstName(null);
-            setMonthlyStudyHours(null);
-            setHasUnreadAlerts(false);
-            setActiveCheckIn(null);
-            setHoursStudiedToday(null);
-            setStudentFeeStatus(null);
-            setStudentNextDueDate(null);
-            setIsLoadingStudyHours(false); // Ensure this is also false
-            setIsLoadingCurrentSession(false); // And this
-          }
-        });
+        } else {
+            toast({ title: "Error", description: "Could not find your student record.", variant: "destructive" });
+        }
+      } catch (error) {
+        console.error("Error fetching dashboard data:", error);
+        toast({ title: "Error", description: "Could not load all dashboard information.", variant: "destructive" });
+      } finally {
+        setIsLoadingStudentData(false);
+        setIsLoadingStudyHours(false);
+        setIsLoadingCurrentSession(false);
+        if (!studentDetailsFetchedSuccessfully) {
+            // Reset all states if student fetch failed
+            setStudentFirstName(null); setStudentId(null); setMonthlyStudyHours(null);
+            setHasUnreadAlerts(false); setActiveCheckInRecord(null); setHoursStudiedToday(null);
+            setStudentFeeStatus(null); setStudentNextDueDate(null);
+        }
+      }
     } else {
       // No user logged in, reset all states and loading flags
-      setIsLoadingStudentData(false);
-      setIsLoadingStudyHours(false);
-      setIsLoadingCurrentSession(false);
-      setStudentFirstName(null);
-      setStudentId(null);
-      setMonthlyStudyHours(null);
-      setHasUnreadAlerts(false);
-      setActiveCheckIn(null);
-      setHoursStudiedToday(null);
-      setStudentFeeStatus(null);
-      setStudentNextDueDate(null);
+      setIsLoadingStudentData(false); setIsLoadingStudyHours(false); setIsLoadingCurrentSession(false);
+      setStudentFirstName(null); setStudentId(null); setMonthlyStudyHours(null);
+      setHasUnreadAlerts(false); setActiveCheckInRecord(null); setHoursStudiedToday(null);
+      setStudentFeeStatus(null); setStudentNextDueDate(null);
     }
-  }, [user, toast, fetchCurrentSessionData]);
+  }, [user, toast]);
 
 
   React.useEffect(() => {
-    const getCameraPermission = async () => {
-      if (isScannerOpen) {
-        try {
-          const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
-          streamRef.current = stream;
-          setHasCameraPermission(true);
-          if (videoRef.current) {
-            videoRef.current.srcObject = stream;
-            videoRef.current.playsInline = true;
-          }
-        } catch (error) {
-          console.error('Error accessing camera:', error);
-          setHasCameraPermission(false);
-          toast({
-            variant: 'destructive',
-            title: 'Camera Access Denied',
-            description: 'Please enable camera permissions in your browser settings.',
-          });
-          setIsScannerOpen(false);
-        }
-      } else {
-        if (streamRef.current) {
-          streamRef.current.getTracks().forEach(track => track.stop());
-          streamRef.current = null;
-        }
-        if (videoRef.current) {
-          videoRef.current.srcObject = null;
-        }
-      }
-    };
+    fetchAllDashboardData();
+  }, [fetchAllDashboardData]);
 
-    getCameraPermission();
+  React.useEffect(() => {
+    if (isScannerOpen && currentStudentId) {
+       const formatsToSupport = [
+          Html5QrcodeSupportedFormats.QR_CODE,
+          Html5QrcodeSupportedFormats.UPC_A,
+          Html5QrcodeSupportedFormats.UPC_E,
+          Html5QrcodeSupportedFormats.EAN_8,
+          Html5QrcodeSupportedFormats.EAN_13,
+      ];
+      const scanner = new Html5QrcodeScanner(
+        DASHBOARD_QR_SCANNER_ELEMENT_ID,
+        { 
+            fps: 10, 
+            qrbox: { width: 250, height: 250 },
+            supportedScanTypes: [],
+            formatsToSupport: formatsToSupport
+        },
+        false // verbose
+      );
+      html5QrcodeScannerRef.current = scanner;
+
+      const onScanSuccess = async (decodedText: string, decodedResult: any) => {
+        if (isProcessingQr) return;
+        setIsProcessingQr(true);
+        scanner.pause(true);
+
+        if (decodedText === LIBRARY_QR_CODE_PAYLOAD) {
+          try {
+            // Re-fetch active check-in status just before action to ensure it's current
+            const currentActiveCheckIn = await getActiveCheckIn(currentStudentId); 
+            if (currentActiveCheckIn) {
+              await addCheckOut(currentActiveCheckIn.recordId);
+              toast({ title: "Checked Out!", description: `Successfully checked out at ${new Date().toLocaleTimeString()}.` });
+            } else {
+              await addCheckIn(currentStudentId);
+              toast({ title: "Checked In!", description: `Successfully checked in at ${new Date().toLocaleTimeString()}.` });
+            }
+            await fetchAllDashboardData(); // Refresh all dashboard data
+          } catch (error) {
+            toast({ title: "Scan Error", description: "Failed to process attendance. Please try again.", variant: "destructive" });
+          }
+        } else {
+          toast({ title: "Invalid QR Code", description: "Please scan the official library QR code.", variant: "destructive" });
+          setTimeout(() => scanner.resume(), 1000);
+        }
+        setIsProcessingQr(false);
+        setIsScannerOpen(false); // Close scanner dialog
+      };
+      
+      const onScanFailure = (error: any) => { /* console.warn(`QR error = ${error}`); */ };
+      
+      scanner.render(onScanSuccess, onScanFailure)
+        .then(() => setHasCameraPermission(true))
+        .catch(err => {
+            console.error("Error rendering scanner:", err);
+            setHasCameraPermission(false);
+            toast({ variant: 'destructive', title: 'Camera Error', description: 'Could not initialize camera for QR scanning.'});
+            setIsScannerOpen(false);
+        });
+    } else if (!isScannerOpen && html5QrcodeScannerRef.current) {
+        html5QrcodeScannerRef.current.clear().catch(err => console.error("Error clearing scanner:", err));
+        html5QrcodeScannerRef.current = null;
+        setHasCameraPermission(null);
+    }
 
     return () => {
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach(track => track.stop());
+      if (html5QrcodeScannerRef.current) {
+        html5QrcodeScannerRef.current.clear().catch(err => console.error("Cleanup: Error clearing scanner:", err));
+        html5QrcodeScannerRef.current = null;
       }
     };
-  }, [isScannerOpen, toast]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isScannerOpen, currentStudentId, toast, fetchAllDashboardData]);
+
 
   const handleOpenScanner = () => {
     if (!studentId) {
@@ -339,47 +335,12 @@ export default function MemberDashboardPage() {
         return;
     }
     setIsScannerOpen(true);
-    setHasCameraPermission(null);
   };
 
   const handleCloseScanner = () => {
     setIsScannerOpen(false);
   };
 
-  const simulateQrScan = async () => {
-    if (!studentId) {
-      toast({ title: "Error", description: "Student ID not found. Cannot record attendance.", variant: "destructive" });
-      return;
-    }
-    setIsProcessingQr(true);
-    try {
-      const currentActiveCheckIn = await getActiveCheckIn(studentId);
-      if (currentActiveCheckIn) {
-        await addCheckOut(currentActiveCheckIn.recordId);
-        toast({ title: "Checked Out!", description: `Successfully checked out at ${new Date().toLocaleTimeString()}.` });
-      } else {
-        await addCheckIn(studentId);
-        toast({ title: "Checked In!", description: `Successfully checked in at ${new Date().toLocaleTimeString()}.` });
-      }
-
-      setIsLoadingStudyHours(true);
-      calculateMonthlyStudyHours(studentId)
-          .then(setMonthlyStudyHours)
-          .catch(() => {
-              toast({title:"Error", description: "Could not update monthly study hours.", variant: "destructive"});
-              setMonthlyStudyHours(null);
-          })
-          .finally(() => setIsLoadingStudyHours(false));
-
-      fetchCurrentSessionData(studentId);
-
-    } catch (error) {
-      toast({ title: "Scan Error", description: "Failed to process attendance. Please try again.", variant: "destructive" });
-    } finally {
-      setIsProcessingQr(false);
-      setIsScannerOpen(false);
-    }
-  };
 
   let activityStatisticDisplay: string | null = null;
   let activityDescription: string = "Track your study hours.";
@@ -430,6 +391,7 @@ export default function MemberDashboardPage() {
         icon: Bell,
         href: "/member/alerts",
         hasNew: isLoadingStudentData ? false : hasUnreadAlerts,
+        disabled: !studentId,
       },
       {
         title: "Activity Summary",
@@ -438,6 +400,7 @@ export default function MemberDashboardPage() {
         isLoadingStatistic: isLoadingStudentData || isLoadingStudyHours,
         icon: BarChart3,
         href: "/member/attendance",
+        disabled: !studentId,
       },
       {
         title: "Pay Fees",
@@ -447,12 +410,14 @@ export default function MemberDashboardPage() {
         icon: IndianRupee,
         href: "/member/pay",
         isUrgent: payFeesTileIsUrgent,
+        disabled: !studentId,
       },
       {
         title: "Submit Feedback",
         description: "Share suggestions or issues.",
         icon: MessageSquare,
         href: "/member/feedback",
+        disabled: !studentId,
       },
     ];
   };
@@ -489,17 +454,18 @@ export default function MemberDashboardPage() {
         <DialogTrigger asChild>
           <div className="mb-2 cursor-pointer">
             <DashboardTile
-              title="Mark Attendance"
-              description="Scan the QR code at the library to check-in/out."
-              icon={QrCode}
+              title={isLoadingCurrentSession ? "Loading..." : (activeCheckInRecord ? "Scan to Check Out" : "Scan to Check In")}
+              description="Scan the library QR code for attendance."
+              icon={ScanLine}
               action={handleOpenScanner}
               isPrimaryAction={true}
+              disabled={!studentId || isLoadingCurrentSession}
             />
           </div>
         </DialogTrigger>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <ShadcnDialogTitle className="flex items-center"><Camera className="mr-2"/>Scan QR Code</ShadcnDialogTitle>
+            <ShadcnDialogTitle className="flex items-center"><Camera className="mr-2"/>Scan Library QR Code</ShadcnDialogTitle>
             <DialogDescription>
               Point your camera at the QR code provided at the library desk.
             </DialogDescription>
@@ -515,30 +481,22 @@ export default function MemberDashboardPage() {
                 </AlertDescription>
               </Alert>
             )}
+            
+            <div id={DASHBOARD_QR_SCANNER_ELEMENT_ID} className="w-full aspect-square bg-muted rounded-md overflow-hidden" />
 
-            <div className="w-full aspect-video bg-muted rounded-md overflow-hidden flex items-center justify-center">
-                <video ref={videoRef} className="w-full h-full object-cover" autoPlay muted playsInline />
-            </div>
-
-            {hasCameraPermission === null && !videoRef.current?.srcObject && (
+            {hasCameraPermission === null && (
                  <div className="flex items-center justify-center text-muted-foreground">
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Requesting camera...
+                    Initializing camera...
                 </div>
             )}
           </div>
 
-          {hasCameraPermission && (
-            <div className="flex flex-col sm:flex-row gap-2 mt-4">
-                <Button onClick={simulateQrScan} className="w-full sm:flex-1" disabled={isProcessingQr}>
-                  {isProcessingQr && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  {isProcessingQr ? "Processing..." : "Simulate Scan"}
-                </Button>
-                <Button variant="outline" onClick={handleCloseScanner} className="w-full sm:w-auto" disabled={isProcessingQr}>
-                  Cancel
-                </Button>
-            </div>
-          )}
+          <div className="flex flex-col sm:flex-row gap-2 mt-4">
+              <Button variant="outline" onClick={handleCloseScanner} className="w-full" disabled={isProcessingQr}>
+                Cancel
+              </Button>
+          </div>
         </DialogContent>
       </Dialog>
 
@@ -551,10 +509,10 @@ export default function MemberDashboardPage() {
             </div>
           ) : (
             <div className="flex flex-col sm:flex-row items-center justify-center gap-x-3 gap-y-1">
-              {activeCheckIn ? (
+              {activeCheckInRecord ? (
                 <div className="flex items-center">
                   <PlayCircle className="mr-1 h-3 w-3 text-green-600" />
-                  <span>Checked In (since {activeCheckIn.checkInTime && isValid(parseISO(activeCheckIn.checkInTime)) ? format(parseISO(activeCheckIn.checkInTime), 'p') : 'N/A'})</span>
+                  <span>Checked In (since {activeCheckInRecord.checkInTime && isValid(parseISO(activeCheckInRecord.checkInTime)) ? format(parseISO(activeCheckInRecord.checkInTime), 'p') : 'N/A'})</span>
                 </div>
               ) : (
                 <div className="flex items-center">
@@ -568,7 +526,7 @@ export default function MemberDashboardPage() {
                   <span>Today: {hoursStudiedToday.toFixed(1)} hrs</span>
                 </div>
               )}
-              {hoursStudiedToday === 0 && !activeCheckIn && (
+              {hoursStudiedToday === 0 && !activeCheckInRecord && (
                  <div className="flex items-center">
                   <Hourglass className="mr-1 h-3 w-3 text-blue-500" />
                   <span>No study today.</span>
@@ -578,6 +536,10 @@ export default function MemberDashboardPage() {
           )}
         </div>
       )}
+      {!studentId && !isLoadingStudentData && (
+         <p className="text-xs text-destructive text-center mb-4">Could not load your student record. Some features may be unavailable.</p>
+      )}
+
 
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
         {coreActionTiles.map((tile) => (
@@ -595,4 +557,3 @@ export default function MemberDashboardPage() {
     </>
   );
 }
-
