@@ -63,14 +63,16 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   }, [user, isAuthLoading, pathname, router]);
 
   React.useEffect(() => {
+    // On initial load, prevPathnameRef.current === pathname, so loader doesn't show.
+    // On subsequent route changes, this condition will be true.
     if (prevPathnameRef.current !== pathname) {
       setIsRouteLoading(true);
-      prevPathnameRef.current = pathname;
+      prevPathnameRef.current = pathname; // Update the ref to the new pathname
       const timer = setTimeout(() => {
         setIsRouteLoading(false);
-      }, 750); // Show loader for 750ms
+      }, 250); // Reduced duration to 250ms
 
-      return () => clearTimeout(timer);
+      return () => clearTimeout(timer); // Cleanup timer on unmount or if pathname changes again quickly
     }
   }, [pathname]);
 
