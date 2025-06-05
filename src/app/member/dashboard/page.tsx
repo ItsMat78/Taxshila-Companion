@@ -58,7 +58,7 @@ const DashboardTile: React.FC<DashboardTileProps> = ({
       "shadow-lg hover:shadow-xl transition-shadow h-full flex flex-col",
       isPrimaryAction ? 'bg-primary text-primary-foreground hover:bg-primary/90' : 'hover:bg-muted/50',
       {
-        'border-destructive ring-1 ring-destructive/30': (hasNew || isUrgent) && !isPrimaryAction,
+        'border-destructive ring-1 ring-destructive/30': (isUrgent) && !isPrimaryAction,
       },
       className
     )}>
@@ -107,7 +107,7 @@ const DashboardTile: React.FC<DashboardTileProps> = ({
           </>
         ) : (
           description && <p className={cn(
-            "break-words text-center", // Ensure description is centered if no statistic
+            "break-words text-center", 
             isPrimaryAction ? 'text-sm text-primary-foreground/80' : 'text-xs text-muted-foreground',
           )}>{description}</p>
         )}
@@ -200,7 +200,9 @@ export default function MemberDashboardPage() {
     if (user?.email) {
       setIsLoadingStudentData(true);
       setIsLoadingStudyHours(true);
-      setIsLoadingCurrentSession(true);
+      // setIsLoadingCurrentSession is handled by fetchCurrentSessionData
+
+      // Reset dependent states initially
       setStudentFirstName(null);
       setStudentId(null);
       setMonthlyStudyHours(null);
@@ -210,40 +212,71 @@ export default function MemberDashboardPage() {
       setStudentFeeStatus(null);
       setStudentNextDueDate(null);
 
+      let studentDetailsFetchedSuccessfully = false;
+
       getStudentByEmail(user.email)
         .then(studentDetails => {
           if (studentDetails) {
+            studentDetailsFetchedSuccessfully = true;
             setStudentId(studentDetails.studentId);
             setStudentFirstName(studentDetails.name ? studentDetails.name.split(' ')[0] : null);
             setStudentFeeStatus(studentDetails.feeStatus);
             setStudentNextDueDate(studentDetails.nextDueDate || null);
-
-
-            const alertPromise = getAlertsForStudent(studentDetails.studentId);
-            const studyHoursPromise = calculateMonthlyStudyHours(studentDetails.studentId);
+            
             fetchCurrentSessionData(studentDetails.studentId);
 
-            return Promise.all([alertPromise, studyHoursPromise]);
+            const alertPromise = getAlertsForStudent(studentDetails.studentId)
+              .then(alerts => {
+                setHasUnreadAlerts(alerts.some(alert => !alert.isRead));
+              })
+              .catch(err => {
+                console.error("Error fetching alerts for dashboard:", err);
+                setHasUnreadAlerts(false); // Default on error
+              });
+
+            const studyHoursPromise = calculateMonthlyStudyHours(studentDetails.studentId)
+              .then(hours => {
+                setMonthlyStudyHours(hours);
+              })
+              .catch(err => {
+                console.error("Error fetching monthly study hours for dashboard:", err);
+                setMonthlyStudyHours(null); // Set to null on error
+              })
+              .finally(() => {
+                setIsLoadingStudyHours(false); 
+              });
+            
+            return Promise.allSettled([alertPromise, studyHoursPromise]);
+          } else {
+            // Student not found, ensure loading states are false
+            setIsLoadingStudyHours(false); 
+            setIsLoadingCurrentSession(false); 
+            return Promise.resolve(null); 
           }
-          setIsLoadingStudentData(false);
-          setIsLoadingStudyHours(false);
-          setIsLoadingCurrentSession(false);
-          return Promise.reject("Student not found to fetch further data");
-        })
-        .then(([alerts, hours]) => {
-          setHasUnreadAlerts(alerts.some(alert => !alert.isRead));
-          setMonthlyStudyHours(hours);
         })
         .catch(error => {
-          if (error !== "Student not found to fetch further data") {
-            console.error("Error fetching student data, alerts or study hours for dashboard:", error);
-          }
+          console.error("Error fetching student by email for dashboard:", error);
+          setIsLoadingStudyHours(false);
+          setIsLoadingCurrentSession(false); 
         })
         .finally(() => {
           setIsLoadingStudentData(false);
-          // Note: setIsLoadingStudyHours and setIsLoadingCurrentSession are handled within their respective data fetching logic
+          // If student wasn't found, make sure all related states are reset
+          if (!studentDetailsFetchedSuccessfully) {
+            setStudentId(null);
+            setStudentFirstName(null);
+            setMonthlyStudyHours(null);
+            setHasUnreadAlerts(false);
+            setActiveCheckIn(null);
+            setHoursStudiedToday(null);
+            setStudentFeeStatus(null);
+            setStudentNextDueDate(null);
+            setIsLoadingStudyHours(false); // Ensure this is also false
+            setIsLoadingCurrentSession(false); // And this
+          }
         });
     } else {
+      // No user logged in, reset all states and loading flags
       setIsLoadingStudentData(false);
       setIsLoadingStudyHours(false);
       setIsLoadingCurrentSession(false);
@@ -351,25 +384,29 @@ export default function MemberDashboardPage() {
   let activityStatisticDisplay: string | null = null;
   let activityDescription: string = "Track your study hours.";
 
-  if (!isLoadingStudentData && studentId && !isLoadingStudyHours) {
-    if (monthlyStudyHours !== null && monthlyStudyHours > 0) {
-      activityStatisticDisplay = `${monthlyStudyHours} hours`;
-      activityDescription = "studied this month";
+  if (isLoadingStudentData || isLoadingStudyHours) {
+    activityStatisticDisplay = null; 
+    activityDescription = "Loading hours...";
+  } else if (studentId) {
+    if (monthlyStudyHours === null) { 
+      activityStatisticDisplay = "0 hours";
+      activityDescription = "No activity recorded yet.";
     } else if (monthlyStudyHours === 0) {
       activityStatisticDisplay = "0 hours";
       activityDescription = "No hours recorded this month.";
+    } else { 
+      activityStatisticDisplay = `${monthlyStudyHours} hours`;
+      activityDescription = "studied this month";
     }
-     else {
-       activityStatisticDisplay = null;
-      activityDescription = "Could not load study hours.";
-    }
-  } else if (isLoadingStudyHours || isLoadingStudentData) {
-     activityStatisticDisplay = null;
-     activityDescription = "Loading hours...";
+  } else if (!isLoadingStudentData && !studentId) {
+    activityStatisticDisplay = "N/A";
+    activityDescription = "Student record not linked.";
   }
+
 
   const generateCoreActionTiles = (): DashboardTileProps[] => {
     let payFeesTileDesc = "Settle your outstanding dues.";
+    let payFeesTileStatistic: string | null = null;
     let payFeesTileIsUrgent = false;
 
     if (isLoadingStudentData) {
@@ -379,7 +416,7 @@ export default function MemberDashboardPage() {
         payFeesTileIsUrgent = true;
         payFeesTileDesc = `Status: ${studentFeeStatus}. Next payment due: ${studentNextDueDate && isValid(parseISO(studentNextDueDate)) ? format(parseISO(studentNextDueDate), 'PP') : 'N/A'}.`;
       } else if (studentFeeStatus === "Paid") {
-        payFeesTileDesc = `Fees paid up to ${studentNextDueDate && isValid(parseISO(studentNextDueDate)) ? format(parseISO(studentNextDueDate), 'PP') : 'N/A'}.`;
+        payFeesTileDesc = `Fees paid up to: ${studentNextDueDate && isValid(parseISO(studentNextDueDate)) ? format(parseISO(studentNextDueDate), 'PP') : 'N/A'}.`;
       } else if (studentFeeStatus) { 
          payFeesTileDesc = `Fee status: ${studentFeeStatus}.`;
       }
@@ -405,7 +442,7 @@ export default function MemberDashboardPage() {
       {
         title: "Pay Fees",
         description: payFeesTileDesc,
-        statistic: null, 
+        statistic: payFeesTileStatistic, 
         isLoadingStatistic: isLoadingStudentData,
         icon: IndianRupee,
         href: "/member/pay",
@@ -558,3 +595,4 @@ export default function MemberDashboardPage() {
     </>
   );
 }
+

@@ -45,20 +45,17 @@ export default function AdminLoginPage() {
       const loggedInUser = await login(data.identifier, data.password);
       if (loggedInUser) {
         setShowSuccessDialog(true);
-        // Short delay to allow dialog to render, then redirect based on role
         setTimeout(() => {
           if (loggedInUser.role === 'admin') {
             router.push('/'); 
           } else if (loggedInUser.role === 'member') {
             router.push('/member/dashboard');
           } else {
-            // Fallback or error if role is unexpected
             toast({ title: "Login Error", description: "Unexpected user role.", variant: "destructive" });
-            router.push('/login'); // Default fallback
+            router.push('/login/admin'); 
           }
-        }, 700); // Increased delay slightly for dialog visibility
+        }, 700); 
       } else {
-        // Toast for login failure is handled by AuthContext or if loggedInUser is null
         setIsSubmitting(false);
       }
     } catch (error) {
@@ -70,7 +67,6 @@ export default function AdminLoginPage() {
       });
       setIsSubmitting(false);
     }
-    // No setIsSubmitting(false) here if successful, as page will redirect
   }
 
   return (
@@ -79,8 +75,8 @@ export default function AdminLoginPage() {
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
         <Card className="w-full max-w-md shadow-xl">
           <CardHeader>
-            <CardTitle className="text-2xl text-center">Admin Login</CardTitle>
-            <CardDescription className="text-center">Access the Taxshila Companion admin panel.</CardDescription>
+            <CardTitle className="text-2xl text-center">Login</CardTitle>
+            <CardDescription className="text-center">Access your Taxshila Companion account.</CardDescription>
           </CardHeader>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)}>
@@ -92,7 +88,7 @@ export default function AdminLoginPage() {
                     <FormItem>
                       <FormLabel>Email or Phone Number</FormLabel>
                       <FormControl>
-                        <Input type="text" placeholder="admin@example.com or 8210183751" {...field} disabled={isSubmitting || showSuccessDialog} />
+                        <Input type="text" placeholder="Enter your email or phone" {...field} disabled={isSubmitting || showSuccessDialog} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -115,13 +111,8 @@ export default function AdminLoginPage() {
               <CardFooter className="flex flex-col gap-4">
                 <Button type="submit" className="w-full" disabled={isSubmitting || showSuccessDialog}>
                   {isSubmitting || showSuccessDialog ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShieldCheck className="mr-2 h-4 w-4" />}
-                  {isSubmitting && !showSuccessDialog ? 'Checking...' : (showSuccessDialog ? 'Logging in...' : 'Login as Admin')}
+                  {isSubmitting && !showSuccessDialog ? 'Checking...' : (showSuccessDialog ? 'Logging in...' : 'Login')}
                 </Button>
-                 <Link href="/login/member" passHref legacyBehavior>
-                   <Button variant="link" className="text-sm text-muted-foreground hover:text-primary" disabled={isSubmitting || showSuccessDialog}>
-                      <Users className="mr-2 h-4 w-4" /> Login as Member
-                   </Button>
-                </Link>
               </CardFooter>
             </form>
           </Form>
@@ -130,3 +121,4 @@ export default function AdminLoginPage() {
     </>
   );
 }
+

@@ -5,12 +5,11 @@ import * as React from 'react';
 import { useRouter } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 
-// This page now redirects to the member login page by default.
 export default function LoginPageRedirect() {
   const router = useRouter();
 
   React.useEffect(() => {
-    router.replace('/login/member');
+    router.replace('/login/admin');
   }, [router]);
 
   return (
@@ -20,3 +19,4 @@ export default function LoginPageRedirect() {
     </div>
   );
 }
+

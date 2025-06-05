@@ -54,7 +54,7 @@ const studentFromDoc = (docSnapshot: any): Student => {
 const attendanceRecordFromDoc = (docSnapshot: any): AttendanceRecord => {
   const data = docSnapshot.data();
   if (!data) {
-    console.error(`Attendance document ${docSnapshot.id} has no data.`);
+    // console.error(`Attendance document ${docSnapshot.id} has no data.`); // Removed for cleanup
     throw new Error(`Attendance document ${docSnapshot.id} has no data.`);
   }
 
@@ -64,7 +64,7 @@ const attendanceRecordFromDoc = (docSnapshot: any): AttendanceRecord => {
   } else if (typeof data.checkInTime === 'string' && isValid(parseISO(data.checkInTime))) {
     checkInTimeISO = data.checkInTime;
   } else {
-    console.error(`Invalid or missing checkInTime in document ${docSnapshot.id}:`, data.checkInTime);
+    // console.error(`Invalid or missing checkInTime in document ${docSnapshot.id}:`, data.checkInTime); // Removed for cleanup
     checkInTimeISO = new Date(0).toISOString(); 
   }
 
@@ -74,7 +74,7 @@ const attendanceRecordFromDoc = (docSnapshot: any): AttendanceRecord => {
   } else if (typeof data.checkOutTime === 'string' && isValid(parseISO(data.checkOutTime))) {
     checkOutTimeISO = data.checkOutTime;
   } else if (data.checkOutTime !== null && data.checkOutTime !== undefined) {
-    console.warn(`Unexpected checkOutTime format in document ${docSnapshot.id}:`, data.checkOutTime);
+    // console.warn(`Unexpected checkOutTime format in document ${docSnapshot.id}:`, data.checkOutTime); // Removed for cleanup
   }
 
   let dateStr: string;
@@ -83,7 +83,7 @@ const attendanceRecordFromDoc = (docSnapshot: any): AttendanceRecord => {
   } else if (typeof data.date === 'string' && data.date.match(/^\d{4}-\d{2}-\d{2}$/)) {
     dateStr = data.date;
   } else {
-    console.error(`Invalid or missing date format in document ${docSnapshot.id}:`, data.date);
+    // console.error(`Invalid or missing date format in document ${docSnapshot.id}:`, data.date); // Removed for cleanup
     dateStr = format(parseISO(checkInTimeISO), 'yyyy-MM-dd'); 
   }
 
@@ -109,12 +109,9 @@ const feedbackItemFromDoc = (docSnapshot: any): FeedbackItem => {
 const alertItemFromDoc = (docSnapshot: any): AlertItem => {
   const data = docSnapshot.data();
   if (!docSnapshot.id) {
-    // This case should ideally not happen if Firestore is working correctly.
-    console.error("Document snapshot missing ID:", docSnapshot);
-    // Fallback to a temporary ID or handle error, though this indicates a deeper issue.
-    // For robustness, ensure fields are present or provide defaults if data can be incomplete.
+    // console.error("Document snapshot missing ID:", docSnapshot); // Removed for cleanup
     return {
-        id: `MISSING_ID_${Date.now()}`, // Placeholder, indicates an issue
+        id: `MISSING_ID_${Date.now()}`, 
         firestoreId: `MISSING_ID_${Date.now()}`,
         title: data?.title || "Untitled Alert",
         message: data?.message || "No message content.",
@@ -148,7 +145,7 @@ async function applyAutomaticStatusUpdates(studentData: Student): Promise<Studen
       const dueDateOnly = startOfDay(dueDate);
 
       if (isValid(dueDateOnly) && isPast(dueDateOnly) && differenceInDays(todayDateOnly, dueDateOnly) > 5) {
-        console.log(`Auto-marking student ${updatedStudent.studentId} (${updatedStudent.name}) as Left due to overdue fees.`);
+        // console.log(`Auto-marking student ${updatedStudent.studentId} (${updatedStudent.name}) as Left due to overdue fees.`); // Removed for cleanup
         updatedStudent = {
             ...updatedStudent,
             activityStatus: 'Left',
@@ -158,7 +155,6 @@ async function applyAutomaticStatusUpdates(studentData: Student): Promise<Studen
             lastPaymentDate: undefined,
             nextDueDate: undefined,
         };
-        // Persist this change to Firestore
         if (updatedStudent.firestoreId) {
              await updateDoc(doc(db, STUDENTS_COLLECTION, updatedStudent.firestoreId), {
                 activityStatus: 'Left',
@@ -171,10 +167,9 @@ async function applyAutomaticStatusUpdates(studentData: Student): Promise<Studen
         }
       }
     } catch (e) {
-      console.error(`Error parsing date for student ${updatedStudent.studentId}: ${updatedStudent.nextDueDate}`, e);
+      // console.error(`Error parsing date for student ${updatedStudent.studentId}: ${updatedStudent.nextDueDate}`, e); // Removed for cleanup
     }
   }
-  // Update fee status to Overdue if due date is past
   if (updatedStudent.activityStatus === 'Active' && updatedStudent.feeStatus !== 'Paid' && updatedStudent.nextDueDate) {
     try {
         const dueDate = parseISO(updatedStudent.nextDueDate);
@@ -186,7 +181,7 @@ async function applyAutomaticStatusUpdates(studentData: Student): Promise<Studen
             }
         }
     } catch (e) {
-        console.error(`Error processing fee status for student ${updatedStudent.studentId}: ${updatedStudent.nextDueDate}`, e);
+        // console.error(`Error processing fee status for student ${updatedStudent.studentId}: ${updatedStudent.nextDueDate}`, e); // Removed for cleanup
     }
   }
   return updatedStudent;
@@ -200,7 +195,6 @@ export async function getAllStudents(): Promise<Student[]> {
   querySnapshot.forEach((docSnap) => {
     studentsList.push(studentFromDoc(docSnap));
   });
-  // Apply updates after fetching all
   studentsList = await Promise.all(studentsList.map(s => applyAutomaticStatusUpdates(s)));
   return studentsList;
 }
@@ -214,7 +208,6 @@ export async function getStudentByCustomId(studentId: string): Promise<Student |
   const student = studentFromDoc(querySnapshot.docs[0]);
   return applyAutomaticStatusUpdates(student);
 }
-// Alias getStudentById to getStudentByCustomId for compatibility
 export const getStudentById = getStudentByCustomId;
 
 
@@ -230,13 +223,11 @@ export async function getStudentByEmail(email: string): Promise<Student | undefi
 
 export async function getStudentByIdentifier(identifier: string): Promise<Student | undefined> {
   let student: Student | undefined;
-  // Try by email
   const emailQuery = query(collection(db, STUDENTS_COLLECTION), where("email", "==", identifier.toLowerCase()));
   let querySnapshot = await getDocs(emailQuery);
   if (!querySnapshot.empty) {
     student = studentFromDoc(querySnapshot.docs[0]);
   } else {
-    // Try by phone
     const phoneQuery = query(collection(db, STUDENTS_COLLECTION), where("phone", "==", identifier));
     querySnapshot = await getDocs(phoneQuery);
     if (!querySnapshot.empty) {
@@ -277,19 +268,16 @@ export interface AddStudentData {
 export async function addStudent(studentData: AddStudentData): Promise<Student> {
   const customStudentId = await getNextCustomStudentId();
 
-  // Check if customStudentId already exists
   const existingStudentById = await getStudentByCustomId(customStudentId);
   if (existingStudentById) {
     throw new Error(`Generated Student ID ${customStudentId} already exists. Please try again.`);
   }
-  // Check if email already exists
   if (studentData.email && studentData.email.trim() !== "") {
     const existingStudentByEmail = await getStudentByEmail(studentData.email);
     if (existingStudentByEmail) {
       throw new Error(`Email ${studentData.email} is already registered.`);
     }
   }
-  // Check if phone already exists
   const phoneQuery = query(collection(db, STUDENTS_COLLECTION), where("phone", "==", studentData.phone));
   const phoneSnapshot = await getDocs(phoneQuery);
   if (!phoneSnapshot.empty) {
@@ -308,7 +296,6 @@ export async function addStudent(studentData: AddStudentData): Promise<Student> 
   }
 
   const today = new Date();
-  // Initial data for Student type, dates are strings here
   const newStudentDataTypeConsistent: Omit<Student, 'firestoreId' | 'id'> = {
     studentId: customStudentId,
     name: studentData.name,
@@ -328,7 +315,6 @@ export async function addStudent(studentData: AddStudentData): Promise<Student> 
     readGeneralAlertIds: [],
   };
 
-  // Prepare data for Firestore (convert dates to Timestamps, ensure no 'undefined' values are sent)
   const firestoreReadyData: any = {
     studentId: newStudentDataTypeConsistent.studentId,
     name: newStudentDataTypeConsistent.name,
@@ -351,7 +337,6 @@ export async function addStudent(studentData: AddStudentData): Promise<Student> 
 
   const docRef = await addDoc(collection(db, STUDENTS_COLLECTION), firestoreReadyData);
 
-  // Return data consistent with Student type (dates as strings)
   return {
     ...newStudentDataTypeConsistent,
     id: docRef.id,
@@ -403,7 +388,6 @@ export async function updateStudent(customStudentId: string, studentUpdateData: 
   }
 
 
-  // Seat availability check if seat or shift changes
   const newShift = studentUpdateData.shift || studentToUpdate.shift;
   const newSeatNumber = studentUpdateData.seatNumber !== undefined ? studentUpdateData.seatNumber : studentToUpdate.seatNumber;
 
@@ -423,7 +407,6 @@ export async function updateStudent(customStudentId: string, studentUpdateData: 
       }
   }
 
-  // Handle status changes
   if (studentUpdateData.activityStatus === 'Left' && studentToUpdate.activityStatus === 'Active') {
     payload.seatNumber = null;
     payload.feeStatus = 'N/A';
@@ -445,7 +428,6 @@ export async function updateStudent(customStudentId: string, studentUpdateData: 
   const updatedDocSnap = await getDoc(studentDocRef);
   let updatedStudent = studentFromDoc(updatedDocSnap);
 
-  // Send alerts for status changes or significant profile updates
   const passwordUpdated = studentUpdateData.password && studentUpdateData.password !== studentToUpdate.password && studentUpdateData.password !== "";
 
   if (studentUpdateData.activityStatus === 'Active' && studentToUpdate.activityStatus === 'Left') {
@@ -530,7 +512,7 @@ export async function addCheckIn(studentId: string): Promise<AttendanceRecord> {
         `Hi ${student.name}, you checked in outside your ${shiftName} shift (${shiftHoursMessage}). Please adhere to timings.`,
         "warning"
       );
-    } catch (alertError) { console.error("Failed to send outside shift alert:", alertError); }
+    } catch (alertError) { /* console.error("Failed to send outside shift alert:", alertError); */ } // Removed for cleanup
   }
 
   const newRecordData = {
@@ -560,7 +542,6 @@ export async function addCheckOut(recordId: string): Promise<AttendanceRecord | 
 }
 
 export async function getAttendanceForDate(studentId: string, date: string): Promise<AttendanceRecord[]> {
-  // date is YYYY-MM-DD string
   const q = query(
     collection(db, ATTENDANCE_COLLECTION),
     where("studentId", "==", studentId),
@@ -641,7 +622,7 @@ export async function recordStudentPayment(
       `Hi ${updatedStudent.name}, your fee payment of ${totalAmountPaidString} for ${numberOfMonthsPaid} month(s) has been recorded. Fees paid up to ${updatedStudent.nextDueDate ? format(parseISO(updatedStudent.nextDueDate), 'PP') : 'N/A'}.`,
       "info"
     );
-  } catch (alertError) { console.error("Failed to send payment confirmation alert:", alertError); }
+  } catch (alertError) { /* console.error("Failed to send payment confirmation alert:", alertError); */ } // Removed for cleanup
 
   return updatedStudent;
 }
@@ -664,7 +645,7 @@ export async function calculateMonthlyStudyHours(customStudentId: string): Promi
           }
         }
       }
-    } catch (e) { console.error("Error processing attendance for hour calculation:", record, e); }
+    } catch (e) { /* console.error("Error processing attendance for hour calculation:", record, e); */ } // Removed for cleanup
   });
   return Math.round(totalMilliseconds / (1000 * 60 * 60));
 }
@@ -688,7 +669,7 @@ export async function calculateMonthlyRevenue(): Promise<string> {
               totalRevenue += amountValue;
             }
           }
-        } catch (e) { console.error("Error parsing payment date or amount:", payment.date, payment.amount, e); }
+        } catch (e) { /* console.error("Error parsing payment date or amount:", payment.date, payment.amount, e); */ } // Removed for cleanup
       });
     }
   });
@@ -718,7 +699,7 @@ export async function getMonthlyRevenueHistory(): Promise<MonthlyRevenueData[]> 
               monthlyRevenueMap[monthKey] = (monthlyRevenueMap[monthKey] || 0) + amountValue;
             }
           }
-        } catch (e) { console.error(`Error processing payment ${payment.paymentId} for revenue history:`, e); }
+        } catch (e) { /* console.error(`Error processing payment ${payment.paymentId} for revenue history:`, e); */ } // Removed for cleanup
       });
     }
   });
@@ -805,7 +786,7 @@ export async function sendAlertToStudent(
   if (!student && type === 'feedback_response') {
       throw new Error(`Student with ID ${customStudentId} not found for feedback response.`);
   } else if (!student) {
-      console.warn(`Attempted to send targeted alert to non-existent student ID: ${customStudentId} for title: "${title}"`);
+      // console.warn(`Attempted to send targeted alert to non-existent student ID: ${customStudentId} for title: "${title}"`); // Removed for cleanup
   }
 
   const newAlertDataForFirestore: any = {
@@ -844,13 +825,11 @@ export async function getAlertsForStudent(customStudentId: string): Promise<Aler
   const studentData = studentSnap.data() as Student | undefined;
   const readGeneralAlertIdsSet = new Set(studentData?.readGeneralAlertIds || []);
 
-  // Targeted alerts for this student
   const targetedQuery = query(
     collection(db, ALERTS_COLLECTION),
     where("studentId", "==", customStudentId) 
   );
 
-  // General alerts (where studentId is null)
   const generalAlertsQuery = query(
       collection(db, ALERTS_COLLECTION),
       where("studentId", "==", null)
@@ -885,60 +864,42 @@ export async function getAllAdminSentAlerts(): Promise<AlertItem[]> {
 
 
 export async function markAlertAsRead(alertId: string, customStudentId: string): Promise<AlertItem | undefined> {
-    console.log(`[markAlertAsRead] Called with alertId: ${alertId}, customStudentId: ${customStudentId}`);
     const alertDocRef = doc(db, ALERTS_COLLECTION, alertId);
     const alertSnap = await getDoc(alertDocRef);
 
     if (!alertSnap.exists()) {
-        console.error(`[markAlertAsRead] Alert not found with ID: ${alertId}`);
+        // console.error(`[markAlertAsRead] Alert not found with ID: ${alertId}`); // Removed for cleanup
         throw new Error("Alert not found.");
     }
     const alertData = alertItemFromDoc(alertSnap);
-    console.log(`[markAlertAsRead] Fetched alertData:`, JSON.stringify(alertData, null, 2));
 
-
-    // If the alert is targeted to this student
     if (alertData.studentId === customStudentId) {
-        console.log(`[markAlertAsRead] Alert is targeted. Updating isRead on alert doc.`);
         await updateDoc(alertDocRef, { isRead: true });
         return { ...alertData, isRead: true };
     }
-    // If the alert is a general alert (studentId is null in DB, so undefined in alertData here)
-    else if (!alertData.studentId) {
-        console.log(`[markAlertAsRead] Alert is general. Looking for student: ${customStudentId}`);
+    else if (!alertData.studentId) { // General alert
         const student = await getStudentByCustomId(customStudentId);
         if (student && student.firestoreId) {
-            console.log(`[markAlertAsRead] Student found: ${student.studentId}, firestoreId: ${student.firestoreId}`);
             const studentDocRef = doc(db, STUDENTS_COLLECTION, student.firestoreId);
-
-            const studentSnapBefore = await getDoc(studentDocRef);
-            console.log(`[markAlertAsRead] Student readGeneralAlertIds BEFORE update:`, studentSnapBefore.data()?.readGeneralAlertIds);
-
             await updateDoc(studentDocRef, {
                 readGeneralAlertIds: arrayUnion(alertData.id) 
             });
-            console.log(`[markAlertAsRead] Updated student's readGeneralAlertIds with alert ID: ${alertData.id}`);
-            
-            const studentSnapAfter = await getDoc(studentDocRef);
-            console.log(`[markAlertAsRead] Student readGeneralAlertIds AFTER update:`, studentSnapAfter.data()?.readGeneralAlertIds);
-
             return { ...alertData, isRead: true }; 
         } else {
-            console.error(`[markAlertAsRead] Student not found to mark general alert as read. customStudentId: ${customStudentId}`);
+            // console.error(`[markAlertAsRead] Student not found to mark general alert as read. customStudentId: ${customStudentId}`); // Removed for cleanup
             throw new Error("Student not found to mark general alert as read.");
         }
     }
     else { 
-        console.warn(`[markAlertAsRead] Attempt to mark alert ${alertId} as read by wrong student ${customStudentId}. Alert belongs to ${alertData.studentId}`);
+        // console.warn(`[markAlertAsRead] Attempt to mark alert ${alertId} as read by wrong student ${customStudentId}. Alert belongs to ${alertData.studentId}`); // Removed for cleanup
         return alertData; 
     }
 }
 
-// Extend Student type in student.d.ts to include firestoreId and readGeneralAlertIds
 declare module '@/types/student' {
   interface Student {
-    id?: string; // Firestore document ID (optional because not present on AddStudentData)
-    firestoreId?: string; // Firestore document ID
+    id?: string; 
+    firestoreId?: string; 
     readGeneralAlertIds?: string[];
   }
 }
