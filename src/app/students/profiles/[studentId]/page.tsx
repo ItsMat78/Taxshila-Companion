@@ -290,16 +290,18 @@ export default function StudentDetailPage() {
             Monthly attendance for {student.name}. Select a date to view details.
           </CardDescription>
         </CardHeader>
-        <CardContent className="flex flex-col items-center gap-4 md:flex-row md:items-start md:flex-wrap lg:flex-nowrap">
-          <Calendar
-            mode="single"
-            selected={selectedCalendarDate}
-            onSelect={setSelectedCalendarDate}
-            className="rounded-md border shadow-inner min-w-[280px] sm:min-w-[320px] md:min-w-0"
-            modifiers={{ today: new Date() }}
-            modifiersStyles={{ today: { color: 'hsl(var(--accent-foreground))', backgroundColor: 'hsl(var(--accent))' } }}
-          />
-          <div className="flex-1 w-full md:w-auto md:min-w-[250px]">
+        <CardContent className="flex flex-col items-stretch gap-6 md:flex-row md:items-start">
+          <div className="w-full md:w-auto md:flex-shrink-0 md:max-w-[340px]"> {/* Calendar Container */}
+            <Calendar
+              mode="single"
+              selected={selectedCalendarDate}
+              onSelect={setSelectedCalendarDate}
+              className="rounded-md border shadow-inner mx-auto md:mx-0 min-w-[280px] sm:min-w-[320px]"
+              modifiers={{ today: new Date() }}
+              modifiersStyles={{ today: { color: 'hsl(var(--accent-foreground))', backgroundColor: 'hsl(var(--accent))' } }}
+            />
+          </div>
+          <div className="flex-1 w-full min-w-0 md:min-w-[250px] lg:max-w-xl"> {/* Attendance List Container */}
             <h4 className="text-md font-semibold mb-2">
               Details for {selectedCalendarDate ? format(selectedCalendarDate, 'PPP') : 'selected date'}:
             </h4>
@@ -310,7 +312,7 @@ export default function StudentDetailPage() {
             ) : dailyAttendanceRecords.length === 0 ? (
               <p className="text-muted-foreground py-4">No attendance records found for this day.</p>
             ) : (
-              <ul className="space-y-3 max-h-60 overflow-y-auto">
+              <ul className="space-y-3 max-h-80 overflow-y-auto"> {/* Increased max-h for better viewing */}
                 {dailyAttendanceRecords.map(record => (
                   <li key={record.recordId} className="p-3 border rounded-md bg-muted/30">
                     <div className="flex items-center justify-between">
