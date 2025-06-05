@@ -253,134 +253,142 @@ export default function MemberDashboardPage() {
 
   React.useEffect(() => {
     if (isScannerOpen && studentId) {
-      const scannerElement = document.getElementById(DASHBOARD_QR_SCANNER_ELEMENT_ID);
-      if (!scannerElement) {
-        console.warn("Dashboard QR scanner element not found. Dialog might not be fully rendered yet.");
-        return;
-      }
+      const timeoutId = setTimeout(() => { // Add a delay
+        const scannerElement = document.getElementById(DASHBOARD_QR_SCANNER_ELEMENT_ID);
+        if (!scannerElement) {
+          console.warn("Dashboard QR scanner element not found after delay. Dialog might not be fully rendered yet.");
+          setIsScannerOpen(false); // Close dialog if element is still not found
+          toast({variant: 'destructive', title: "Scanner Error", description: "Could not initialize QR scanner."});
+          return;
+        }
 
-      if (html5QrcodeScannerRef.current) {
-        try { html5QrcodeScannerRef.current.clear(); } 
-        catch (clearError) { console.error("Error clearing previous scanner instance (Dashboard):", clearError); }
-        html5QrcodeScannerRef.current = null;
-      }
-      
-      const formatsToSupport = [ Html5QrcodeSupportedFormats.QR_CODE ];
-      const config = {
-          fps: 10,
-          qrbox: (viewfinderWidth: number, viewfinderHeight: number) => {
-            const edgePercentage = 0.7; 
-            const edgeLength = Math.min(viewfinderWidth, viewfinderHeight) * edgePercentage;
-            return { width: edgeLength, height: edgeLength };
-          },
-          supportedScanTypes: [Html5QrcodeScanType.SCAN_TYPE_CAMERA],
-          formatsToSupport: formatsToSupport,
-          rememberLastUsedCamera: false, // Changed to false
-      };
-
-      const scanner = new Html5QrcodeScanner( DASHBOARD_QR_SCANNER_ELEMENT_ID, config, false );
-      html5QrcodeScannerRef.current = scanner;
-
-      const onScanSuccess = async (decodedText: string, decodedResult: any) => {
-        if (isProcessingQr) return;
-        setIsProcessingQr(true);
         if (html5QrcodeScannerRef.current) {
-            try { await html5QrcodeScannerRef.current.pause(true); } 
-            catch(e) { console.warn("Scanner pause error", e); }
-        }
-
-        if (decodedText === LIBRARY_QR_CODE_PAYLOAD) {
-          try {
-            if (studentId) { // Ensure studentId is still valid here
-                const currentActiveCheckIn = await getActiveCheckIn(studentId); 
-                if (currentActiveCheckIn) {
-                  await addCheckOut(currentActiveCheckIn.recordId);
-                  toast({ title: "Checked Out!", description: `Successfully checked out at ${new Date().toLocaleTimeString()}.` });
-                } else {
-                  await addCheckIn(studentId);
-                  toast({ title: "Checked In!", description: `Successfully checked in at ${new Date().toLocaleTimeString()}.` });
-                }
-                await fetchAllDashboardData(); // Refresh dashboard data
-            } else {
-                toast({ title: "Error", description: "Student ID not available for scan processing.", variant: "destructive"});
+          try { 
+            if (html5QrcodeScannerRef.current.getState() !== 0 /* NOT_STARTED */) {
+              html5QrcodeScannerRef.current.clear(); 
             }
-          } catch (error: any) {
-            console.error("Detailed error during scan processing (Dashboard):", error);
-            toast({ title: "Scan Error", description: error.message || "Failed to process attendance. Please try again.", variant: "destructive" });
-          }
-        } else {
-          toast({ title: "Invalid QR Code", description: "Please scan the official library QR code.", variant: "destructive" });
-          setTimeout(() => { // Add delay before resuming scanner
-            if (html5QrcodeScannerRef.current ) {
-              try {
-                if (html5QrcodeScannerRef.current.getState() === 2 /* PAUSED */) { // Check if scanner is PAUSED
-                   html5QrcodeScannerRef.current.resume();
-                }
-              } catch(e) { console.warn("Scanner resume error", e); }
-            }
-          }, 1000); // Resume after 1 second
+          } 
+          catch (clearError) { console.error("Error clearing previous scanner instance (Dashboard):", clearError); }
+          html5QrcodeScannerRef.current = null;
         }
-        setIsProcessingQr(false);
-        setIsScannerOpen(false); // Close dialog on any scan attempt outcome
-      };
-
-      const onScanFailure = (errorMessage: string, errorObject?: any) => {
-        let detailedMessage = typeof errorMessage === 'string' ? errorMessage : JSON.stringify(errorMessage);
-        const errorMsgLower = detailedMessage.toLowerCase();
         
-        // Only set hasCameraPermission to false for critical errors
-        if (
-            errorMsgLower.includes("permission denied") ||
-            errorMsgLower.includes("notallowederror") ||
-            errorMsgLower.includes("notfounderror") || // Camera not found by the browser
-            errorMsgLower.includes("aborterror") ||
-            (errorObject && typeof errorObject.message === 'string' && errorObject.message.toLowerCase().includes("permission denied"))
-        ) {
-            if (!errorMsgLower.includes("no qr code")) { // Don't treat "no QR found" as a critical camera failure
-                setHasCameraPermission(false);
-                toast({
-                    variant: 'destructive',
-                    title: 'Camera or Scanner Error',
-                    description: 'Could not start QR scanner. Please ensure camera permissions are enabled and no other app is using the camera. Try again.',
-                });
-                setIsScannerOpen(false); // Close on critical error
+        const formatsToSupport = [ Html5QrcodeSupportedFormats.QR_CODE ];
+        const config = {
+            fps: 10,
+            qrbox: (viewfinderWidth: number, viewfinderHeight: number) => {
+              const edgePercentage = 0.7; 
+              const edgeLength = Math.min(viewfinderWidth, viewfinderHeight) * edgePercentage;
+              return { width: edgeLength, height: edgeLength };
+            },
+            supportedScanTypes: [Html5QrcodeScanType.SCAN_TYPE_CAMERA],
+            formatsToSupport: formatsToSupport,
+            rememberLastUsedCamera: true, 
+        };
+
+        const scanner = new Html5QrcodeScanner( DASHBOARD_QR_SCANNER_ELEMENT_ID, config, false );
+        html5QrcodeScannerRef.current = scanner;
+
+        const onScanSuccess = async (decodedText: string, decodedResult: any) => {
+          if (isProcessingQr) return;
+          setIsProcessingQr(true);
+          if (html5QrcodeScannerRef.current) {
+              try { await html5QrcodeScannerRef.current.pause(true); } 
+              catch(e) { console.warn("Scanner pause error", e); }
+          }
+
+          if (decodedText === LIBRARY_QR_CODE_PAYLOAD) {
+            try {
+              if (studentId) { 
+                  const currentActiveCheckIn = await getActiveCheckIn(studentId); 
+                  if (currentActiveCheckIn) {
+                    await addCheckOut(currentActiveCheckIn.recordId);
+                    toast({ title: "Checked Out!", description: `Successfully checked out at ${new Date().toLocaleTimeString()}.` });
+                  } else {
+                    await addCheckIn(studentId);
+                    toast({ title: "Checked In!", description: `Successfully checked in at ${new Date().toLocaleTimeString()}.` });
+                  }
+                  await fetchAllDashboardData(); 
+              } else {
+                  toast({ title: "Error", description: "Student ID not available for scan processing.", variant: "destructive"});
+              }
+            } catch (error: any) {
+              console.error("Detailed error during scan processing (Dashboard):", error);
+              toast({ title: "Scan Error", description: error.message || "Failed to process attendance. Please try again.", variant: "destructive" });
             }
-        } else if (!errorMsgLower.includes("no qr code")) {
-            console.warn("Dashboard QR Scan Failure (non-critical, e.g. format error):", detailedMessage, errorObject);
+          } else {
+            toast({ title: "Invalid QR Code", description: "Please scan the official library QR code.", variant: "destructive" });
+            setTimeout(() => { 
+              if (html5QrcodeScannerRef.current ) {
+                try {
+                  if (html5QrcodeScannerRef.current.getState() === 2 /* PAUSED */) { 
+                     html5QrcodeScannerRef.current.resume();
+                  }
+                } catch(e) { console.warn("Scanner resume error", e); }
+              }
+            }, 1000); 
+          }
+          setIsProcessingQr(false);
+          setIsScannerOpen(false); 
+        };
+
+        const onScanFailure = (errorMessage: string, errorObject?: any) => {
+          let detailedMessage = typeof errorMessage === 'string' ? errorMessage : JSON.stringify(errorMessage);
+          const errorMsgLower = detailedMessage.toLowerCase();
+          
+          if (
+              errorMsgLower.includes("permission denied") ||
+              errorMsgLower.includes("notallowederror") ||
+              errorMsgLower.includes("notfounderror") || 
+              errorMsgLower.includes("aborterror") ||
+              (errorObject && typeof errorObject.message === 'string' && errorObject.message.toLowerCase().includes("permission denied"))
+          ) {
+              if (!errorMsgLower.includes("no qr code")) { 
+                  setHasCameraPermission(false);
+                  toast({
+                      variant: 'destructive',
+                      title: 'Camera or Scanner Error',
+                      description: 'Could not start QR scanner. Ensure camera permissions are enabled and no other app is using the camera. Try again.',
+                  });
+                  setIsScannerOpen(false); 
+              }
+          } else if (!errorMsgLower.includes("no qr code")) {
+              console.warn("Dashboard QR Scan Failure (non-critical, e.g. format error):", detailedMessage, errorObject);
+          }
+        };
+        
+        try {
+          scanner.render(onScanSuccess, onScanFailure);
+          setHasCameraPermission(true); 
+        } catch (err: any) {
+              console.error("Error rendering scanner (Dashboard - render call failed):", err);
+              setHasCameraPermission(false);
+              toast({ variant: 'destructive', title: 'Camera Initialization Error', description: err.message || 'Could not initialize camera for QR scanning.'});
+              setIsScannerOpen(false); 
         }
-        // Do NOT set isProcessingQr to false here, as this callback might be called multiple times for non-QR detection
+      }, 100); // 100ms delay
+
+      return () => {
+        clearTimeout(timeoutId);
+        if (html5QrcodeScannerRef.current) {
+          try { 
+            if (html5QrcodeScannerRef.current.getState() !== 0 /* NOT_STARTED */) {
+              html5QrcodeScannerRef.current.clear(); 
+            }
+          } 
+          catch (e) { console.error("Cleanup: Error clearing scanner (Dashboard):", e); }
+          html5QrcodeScannerRef.current = null;
+        }
       };
-      
-      try {
-        scanner.render(onScanSuccess, onScanFailure);
-        setHasCameraPermission(true); 
-      } catch (err: any) {
-            console.error("Error rendering scanner (Dashboard - render call failed):", err);
-            setHasCameraPermission(false);
-            toast({ variant: 'destructive', title: 'Camera Initialization Error', description: err.message || 'Could not initialize camera for QR scanning.'});
-            setIsScannerOpen(false); // Close dialog if render fails
-      }
     } else if (!isScannerOpen && html5QrcodeScannerRef.current) {
         try { 
           if (html5QrcodeScannerRef.current.getState() !== 0 /* NOT_STARTED */) {
             html5QrcodeScannerRef.current.clear(); 
           }
         } 
-        catch(e) { console.error("Error clearing scanner (Dashboard):", e); }
+        catch(e) { console.error("Error clearing scanner (Dashboard on close):", e); }
         html5QrcodeScannerRef.current = null;
     }
-
-    return () => {
-      if (html5QrcodeScannerRef.current) {
-        try { 
-          if (html5QrcodeScannerRef.current.getState() !== 0 /* NOT_STARTED */) {
-            html5QrcodeScannerRef.current.clear(); 
-          }
-        } 
-        catch (e) { console.error("Cleanup: Error clearing scanner (Dashboard):", e); }
-        html5QrcodeScannerRef.current = null;
-      }
-    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isScannerOpen, studentId, toast, fetchAllDashboardData]);
 
 
@@ -389,8 +397,8 @@ export default function MemberDashboardPage() {
         toast({title: "Error", description: "Cannot mark attendance. Student details not loaded.", variant: "destructive"});
         return;
     }
-    setHasCameraPermission(null); // Reset for "Initializing..." message
-    setIsProcessingQr(false); // Ensure processing is reset
+    setHasCameraPermission(null); 
+    setIsProcessingQr(false); 
     setIsScannerOpen(true);
   };
 
@@ -520,7 +528,7 @@ export default function MemberDashboardPage() {
             />
           </div>
         </DialogTrigger>
-        <DialogContent className="w-[90vw] max-w-xs sm:max-w-sm md:max-w-md p-4 overflow-hidden flex flex-col">
+        <DialogContent className="w-[90vw] max-w-xs sm:max-w-sm md:max-w-md p-4 flex flex-col overflow-hidden">
           <DialogHeader className="flex-shrink-0">
             <ShadcnDialogTitle className="flex items-center"><Camera className="mr-2"/>Scan Library QR Code</ShadcnDialogTitle>
             <DialogDescription>
