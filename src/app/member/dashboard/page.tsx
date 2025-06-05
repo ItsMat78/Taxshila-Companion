@@ -23,7 +23,6 @@ import { getStudentByEmail, getAlertsForStudent, calculateMonthlyStudyHours, add
 import type { AlertItem } from '@/types/communication';
 import type { Student, AttendanceRecord, FeeStatus } from '@/types/student';
 import { format, parseISO, differenceInMilliseconds, isValid } from 'date-fns';
-import { usePathname } from 'next/navigation';
 
 type DashboardTileProps = {
   title: string;
@@ -37,9 +36,7 @@ type DashboardTileProps = {
   isPrimaryAction?: boolean;
   external?: boolean;
   hasNew?: boolean;
-  isUrgent?: boolean; // Added for urgent styling like fees due
-  isLoadingAction?: boolean;
-  onClickTile?: () => void;
+  isUrgent?: boolean;
 };
 
 const DashboardTile: React.FC<DashboardTileProps> = ({
@@ -54,13 +51,8 @@ const DashboardTile: React.FC<DashboardTileProps> = ({
   isPrimaryAction = false,
   external = false,
   hasNew = false,
-  isUrgent = false, // Added prop
-  isLoadingAction = false,
-  onClickTile,
+  isUrgent = false,
 }) => {
-  const ActualIcon = isLoadingAction ? Loader2 : Icon;
-  const iconProps = isLoadingAction ? { className: cn(isPrimaryAction ? "h-5 w-5 sm:h-6 sm:w-6 animate-spin" : "h-5 w-5 sm:h-6 sm:w-6 mb-1 animate-spin") } : {};
-
   const content = (
     <Card className={cn(
       "shadow-lg hover:shadow-xl transition-shadow h-full flex flex-col",
@@ -74,18 +66,16 @@ const DashboardTile: React.FC<DashboardTileProps> = ({
         "relative",
         isPrimaryAction ? "p-3 sm:p-4 pb-1 sm:pb-2" : "p-2 sm:p-3 pb-0 sm:pb-1"
       )}>
-        {(hasNew || isUrgent) && !isPrimaryAction && ( // Show dot for new or urgent
+        {(hasNew || isUrgent) && !isPrimaryAction && (
           <span className="absolute top-1 right-1 block h-2.5 w-2.5 rounded-full bg-destructive ring-1 ring-white" />
         )}
         <div className={cn(
           "flex items-center gap-2",
            isPrimaryAction ? "" : "flex-col text-center"
         )}>
-          <ActualIcon className={cn(
-            isPrimaryAction ? "h-5 w-5 sm:h-6 sm:w-6" : "h-5 w-5 sm:h-6 sm:w-6 mb-1",
-            isLoadingAction && "animate-spin"
+          <Icon className={cn(
+            isPrimaryAction ? "h-5 w-5 sm:h-6 sm:w-6" : "h-5 w-5 sm:h-6 sm:w-6 mb-1"
           )}
-          {...iconProps}
            />
           <ShadcnCardTitle className={cn(
             "break-words",
@@ -104,9 +94,9 @@ const DashboardTile: React.FC<DashboardTileProps> = ({
         ) : statistic !== null && statistic !== undefined ? (
           <>
             <div className={cn(
-              "text-xl sm:text-2xl font-bold break-words",
-               isPrimaryAction ? 'text-primary-foreground' : 'text-foreground',
-               isUrgent && !isPrimaryAction && 'text-destructive' // Make statistic text red if urgent
+              "font-bold break-words",
+              isPrimaryAction ? 'text-xl sm:text-2xl text-primary-foreground' : 'text-lg sm:text-xl text-foreground',
+              isUrgent && !isPrimaryAction && 'text-destructive'
             )}>
               {statistic}
             </div>
@@ -127,12 +117,6 @@ const DashboardTile: React.FC<DashboardTileProps> = ({
 
   const linkClasses = "block h-full no-underline focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-lg";
 
-  const handleClick = () => {
-    if (onClickTile) {
-      onClickTile();
-    }
-  };
-
   if (href) {
     return (
       <Link
@@ -140,7 +124,6 @@ const DashboardTile: React.FC<DashboardTileProps> = ({
         target={external ? '_blank' : undefined}
         rel={external ? 'noopener noreferrer' : undefined}
         className={cn(linkClasses, className)}
-        onClick={handleClick}
       >
         {content}
       </Link>
@@ -148,7 +131,7 @@ const DashboardTile: React.FC<DashboardTileProps> = ({
   }
 
   if (action) {
-    return <button onClick={() => { handleClick(); action(); }} className={cn("block w-full h-full text-left", linkClasses, className)}>{content}</button>;
+    return <button onClick={action} className={cn("block w-full h-full text-left", linkClasses, className)}>{content}</button>;
   }
 
   return <div className={className}>{content}</div>;
@@ -178,18 +161,6 @@ export default function MemberDashboardPage() {
 
   const [studentFeeStatus, setStudentFeeStatus] = React.useState<FeeStatus | null>(null);
   const [studentNextDueDate, setStudentNextDueDate] = React.useState<string | null>(null);
-
-  const [navigatingTo, setNavigatingTo] = React.useState<string | null>(null);
-  const pathname = usePathname();
-
-  React.useEffect(() => {
-    // Reset navigatingTo when pathname changes (navigation is complete)
-    if (navigatingTo) {
-      setNavigatingTo(null);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pathname]);
-
 
   const fetchCurrentSessionData = React.useCallback(async (currentStudentId: string) => {
     setIsLoadingCurrentSession(true);
@@ -270,7 +241,6 @@ export default function MemberDashboardPage() {
         })
         .finally(() => {
           setIsLoadingStudentData(false);
-          // Note: isLoadingStudyHours and isLoadingCurrentSession are handled by their respective fetches
         });
     } else {
       setIsLoadingStudentData(false);
@@ -411,7 +381,7 @@ export default function MemberDashboardPage() {
         payFeesTileDesc = `Status: ${studentFeeStatus}`;
       } else if (studentFeeStatus === "Paid") {
         payFeesTileDesc = `Fees paid up to ${studentNextDueDate && isValid(parseISO(studentNextDueDate)) ? format(parseISO(studentNextDueDate), 'PP') : 'N/A'}.`;
-      } else if (studentFeeStatus) { // e.g. N/A
+      } else if (studentFeeStatus) { 
          payFeesTileDesc = `Fee status: ${studentFeeStatus}.`;
       }
     }
@@ -424,8 +394,6 @@ export default function MemberDashboardPage() {
         icon: Bell,
         href: "/member/alerts",
         hasNew: isLoadingStudentData ? false : hasUnreadAlerts,
-        isLoadingAction: navigatingTo === "/member/alerts",
-        onClickTile: () => setNavigatingTo("/member/alerts"),
       },
       {
         title: "Activity Summary",
@@ -434,8 +402,6 @@ export default function MemberDashboardPage() {
         isLoadingStatistic: isLoadingStudentData || isLoadingStudyHours,
         icon: BarChart3,
         href: "/member/attendance",
-        isLoadingAction: navigatingTo === "/member/attendance",
-        onClickTile: () => setNavigatingTo("/member/attendance"),
       },
       {
         title: "Pay Fees",
@@ -445,16 +411,12 @@ export default function MemberDashboardPage() {
         icon: IndianRupee,
         href: "/member/pay",
         isUrgent: payFeesTileIsUrgent,
-        isLoadingAction: navigatingTo === "/member/pay",
-        onClickTile: () => setNavigatingTo("/member/pay"),
       },
       {
         title: "Submit Feedback",
         description: "Share suggestions or issues.",
         icon: MessageSquare,
         href: "/member/feedback",
-        isLoadingAction: navigatingTo === "/member/feedback",
-        onClickTile: () => setNavigatingTo("/member/feedback"),
       },
     ];
   };
@@ -468,8 +430,6 @@ export default function MemberDashboardPage() {
       description: "Familiarize yourself with guidelines.", 
       icon: ScrollText, 
       href: "/member/rules",
-      isLoadingAction: navigatingTo === "/member/rules",
-      onClickTile: () => setNavigatingTo("/member/rules"),
     },
     { 
       title: "Rate Us", 
@@ -477,8 +437,6 @@ export default function MemberDashboardPage() {
       icon: Star, 
       href: "https://www.google.com/maps/search/?api=1&query=Taxshila+Study+Hall+Pune", 
       external: true,
-      isLoadingAction: navigatingTo === "https://www.google.com/maps/search/?api=1&query=Taxshila+Study+Hall+Pune", // External links won't show loading well this way
-      onClickTile: () => setNavigatingTo("https://www.google.com/maps/search/?api=1&query=Taxshila+Study+Hall+Pune"), // But we can still try
     },
   ];
 
