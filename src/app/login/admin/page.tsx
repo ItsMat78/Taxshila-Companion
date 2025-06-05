@@ -16,7 +16,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { LoggingInDialog } from '@/components/shared/logging-in-dialog';
 
-const LOGO_URL = "/logo.png"; 
+const LOGO_URL = "/logo.png";
 const LIBRARY_INTERIOR_URL = "/cover.png";
 
 const loginFormSchema = z.object({
@@ -55,9 +55,9 @@ export default function AdminLoginPage() {
             router.push('/member/dashboard');
           } else {
             toast({ title: "Login Error", description: "Unexpected user role.", variant: "destructive" });
-            router.push('/login/admin'); 
+            router.push('/login/admin');
           }
-        }, 700); 
+        }, 700);
       } else {
         setIsSubmitting(false);
       }
@@ -79,16 +79,16 @@ export default function AdminLoginPage() {
         style={{ backgroundImage: `url(${LIBRARY_INTERIOR_URL})` }}
         className="min-h-screen flex items-center justify-center bg-cover bg-center p-4"
       >
-        <Card className="w-full max-w-md md:max-w-3xl shadow-xl bg-background/70 backdrop-blur-md rounded-lg flex flex-col md:flex-row max-h-[calc(100vh-theme(space.8))] overflow-y-auto">
-          
+        <Card className="w-full max-w-md md:max-w-3xl shadow-xl bg-background/70 backdrop-blur-md rounded-lg flex flex-col md:flex-row max-h-[calc(100vh_-_theme(space.8))] overflow-y-auto">
+
           {/* Logo Section (Left Column on MD+) */}
-          <div className="flex flex-col items-center justify-center p-4 sm:p-6 md:w-1/3 md:border-r md:border-border/30">
-            <div className="relative w-16 h-auto sm:w-24 md:w-28 mb-2 md:mb-0"> {/* Reduced mb-4 to mb-2 */}
+          <div className="flex flex-col items-center justify-center px-4 pt-4 pb-0 sm:p-6 md:w-1/3 md:border-r md:border-border/30">
+            <div className="relative w-16 h-auto sm:w-24 md:w-28">
               <Image
                 src={LOGO_URL}
                 alt="Taxshila Companion Logo"
-                width={150} 
-                height={150} 
+                width={150}
+                height={150}
                 className="w-full h-auto object-contain"
                 data-ai-hint="logo brand"
                 priority
@@ -98,14 +98,14 @@ export default function AdminLoginPage() {
 
           {/* Form Section (Right Column on MD+) */}
           <div className="flex flex-col flex-grow md:w-2/3">
-            <CardHeader className="text-center p-4 sm:p-6 pt-2 pb-4 sm:pb-6">
-              <CardTitle className="text-xl sm:text-2xl font-headline text-foreground">Welcome Back!</CardTitle>
-              <CardDescription className="text-sm text-foreground/80">Login to Taxshila Companion.</CardDescription>
+            <CardHeader className="text-center px-4 pb-4 pt-0 sm:pt-6 sm:px-6 sm:pb-6">
+              <CardTitle className="text-lg sm:text-xl font-headline text-foreground">Welcome Back!</CardTitle>
+              <CardDescription className="text-xs sm:text-sm text-foreground/80">Login to Taxshila Companion.</CardDescription>
             </CardHeader>
-            
+
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)}>
-                <CardContent className="space-y-4 p-4 sm:p-6 pt-0">
+                <CardContent className="space-y-4 px-4 sm:px-6 pt-0">
                   <FormField
                     control={form.control}
                     name="identifier"
@@ -133,7 +133,7 @@ export default function AdminLoginPage() {
                     )}
                   />
                 </CardContent>
-                <CardFooter className="flex flex-col gap-4 p-4 sm:p-6 pt-0">
+                <CardFooter className="flex flex-col gap-4 px-4 pb-4 pt-0 sm:p-6 sm:pt-0">
                   <Button type="submit" className="w-full" disabled={isSubmitting || showSuccessDialog}>
                     {isSubmitting || showSuccessDialog ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <LogIn className="mr-2 h-4 w-4" />}
                     {isSubmitting && !showSuccessDialog ? 'Checking...' : (showSuccessDialog ? 'Logging in...' : 'Login')}
