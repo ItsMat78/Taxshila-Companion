@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { ArrowLeft, CreditCard, CalendarDays, Receipt, Loader2, UserCircle, Briefcase, History as HistoryIcon, LogIn, LogOut, Clock, FileText, Download } from 'lucide-react';
+import { ArrowLeft, CreditCard, CalendarDays, Receipt, Loader2, UserCircle, Briefcase, History as HistoryIcon, LogIn, LogOut, Clock, FileText, Download, Mail, Phone } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -36,7 +36,7 @@ const PaymentHistoryCardItem = ({ payment }: { payment: PaymentRecord }) => (
       <div className="font-medium text-sm">{payment.amount}</div>
       <Badge variant="outline" className="text-xs capitalize">{payment.method}</Badge>
     </div>
-    <div className="text-xs text-muted-foreground space-y-1"> {/* Changed from space-y-0.5 */}
+    <div className="text-xs text-muted-foreground space-y-1">
       <p>Date: {payment.date && isValid(parseISO(payment.date)) ? format(parseISO(payment.date), 'dd-MMM-yy') : 'N/A'}</p>
       <p>Transaction ID: {payment.transactionId}</p>
     </div>
@@ -185,8 +185,20 @@ export default function StudentDetailPage() {
             </div>
           </CardHeader>
           <CardContent className="space-y-2 pt-0 text-sm">
-            <p><strong>Email:</strong> {student.email || 'N/A'}</p>
-            <p><strong>Phone:</strong> {student.phone}</p>
+            <div className="flex items-center">
+              <Mail className="mr-3 h-4 w-4 text-muted-foreground flex-shrink-0" />
+              <div className="min-w-0">
+                <p className="text-xs text-muted-foreground">Email</p>
+                <p className="font-medium break-words">{student.email || 'N/A'}</p>
+              </div>
+            </div>
+             <div className="flex items-center">
+              <Phone className="mr-3 h-4 w-4 text-muted-foreground flex-shrink-0" />
+              <div className="min-w-0">
+                <p className="text-xs text-muted-foreground">Phone</p>
+                <p className="font-medium break-words">{student.phone}</p>
+              </div>
+            </div>
             <p><strong>Shift:</strong> <span className="capitalize">{student.shift}</span></p>
             <p><strong>Seat Number:</strong> {student.seatNumber || 'N/A'}</p>
             <p><strong>Registered:</strong> {student.registrationDate ? format(parseISO(student.registrationDate), 'PP') : 'N/A'}</p>
