@@ -20,7 +20,7 @@ export default function DataManagementPage() {
   const { toast } = useToast();
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const [isImporting, setIsImporting] = React.useState(false);
-  const [isExporting, setIsExporting] = React.useState<string | null>(null);
+  const [isExporting, setIsExporting] = React.useState<string | null>(null); // Stores "TypeFormat" e.g., "StudentsCSV"
 
   const handleImportCSV = () => {
     if (fileInputRef.current?.files && fileInputRef.current.files.length > 0) {

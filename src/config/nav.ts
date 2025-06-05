@@ -28,7 +28,8 @@ import {
   Home,
   UserCircle,
   TrendingUp,
-  Settings // Added Settings icon
+  Settings,
+  UploadCloud // Added UploadCloud for Data Management icon (or use Database if preferred)
 } from 'lucide-react';
 import type { UserRole } from '@/types/auth';
 
@@ -116,9 +117,9 @@ export const mainNav: NavItem[] = [
         roles: ['admin'],
       },
       {
-        title: 'Manage Fees', // New Item
+        title: 'Manage Fees',
         href: '/admin/fees/manage',
-        icon: Settings, // Using Settings icon
+        icon: Settings,
         roles: ['admin'],
       },
     ]
@@ -152,7 +153,7 @@ export const mainNav: NavItem[] = [
   {
     title: 'Data Management',
     href: '/admin/data-management',
-    icon: Database,
+    icon: Database, // Using Database icon as it seems more fitting than UploadCloud for general data management
     roles: ['admin'],
   },
 
@@ -164,7 +165,7 @@ export const mainNav: NavItem[] = [
     roles: ['member'],
   },
   {
-    title: 'My Profile', // New Profile Page
+    title: 'My Profile', 
     href: '/member/profile',
     icon: UserCircle,
     roles: ['member'],
@@ -184,7 +185,7 @@ export const mainNav: NavItem[] = [
   {
     title: 'Pay Fees',
     href: '/member/pay',
-    icon: QrCode,
+    icon: QrCode, // Kept QrCode for now, can be changed if payment method changes
     roles: ['member'],
   },
   {
