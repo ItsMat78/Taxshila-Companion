@@ -66,10 +66,11 @@ export default function MemberAttendancePage() {
           setMonthlyStudyHours(0);
           setActiveCheckInRecord(null);
         }
-      } catch (error) {
+      } catch (error: any) {
+        console.error("Error fetching student data/active check-in:", error);
         toast({
           title: "Error",
-          description: "Failed to fetch student details or session status.",
+          description: error.message || "Failed to fetch student details or session status.",
           variant: "destructive",
         });
         setCurrentStudentId(null);
@@ -91,6 +92,28 @@ export default function MemberAttendancePage() {
     fetchStudentDataAndActiveCheckIn();
   }, [fetchStudentDataAndActiveCheckIn]);
 
+  const fetchAttendanceForSelectedDate = React.useCallback(async () => {
+    if (currentStudentId && date) {
+      setIsLoadingDetails(true);
+      try {
+        const records = await getAttendanceForDate(currentStudentId, format(date, 'yyyy-MM-dd'));
+        setAttendanceForDay(records);
+      } catch (error: any) {
+        console.error("Error fetching attendance for date:", error);
+        toast({
+          title: "Error Fetching Attendance",
+          description: error.message || "Could not load attendance for the selected date.",
+          variant: "destructive",
+        });
+        setAttendanceForDay([]);
+      } finally {
+        setIsLoadingDetails(false);
+      }
+    } else {
+      setAttendanceForDay([]);
+    }
+  }, [currentStudentId, date, toast]);
+
 
   React.useEffect(() => {
     if (isScannerOpen && currentStudentId && !activeCheckInRecord) {
@@ -103,21 +126,23 @@ export default function MemberAttendancePage() {
       ];
       const scanner = new Html5QrcodeScanner(
         QR_SCANNER_ELEMENT_ID,
-        { 
-          fps: 10, 
+        {
+          fps: 10,
           qrbox: { width: 250, height: 250 },
-          supportedScanTypes: [], 
+          supportedScanTypes: [],
           formatsToSupport: formatsToSupport
         },
-        false // verbose
+        false
       );
       html5QrcodeScannerRef.current = scanner;
 
       const onScanSuccess = async (decodedText: string, decodedResult: any) => {
         if (isProcessingQr) return;
         setIsProcessingQr(true);
-        scanner.pause(true);
-        setHasCameraPermission(true); // Reaffirm permission on successful scan attempt
+        if (html5QrcodeScannerRef.current) {
+            html5QrcodeScannerRef.current.pause(true);
+        }
+        setHasCameraPermission(true);
 
         if (decodedText === LIBRARY_QR_CODE_PAYLOAD) {
           try {
@@ -126,85 +151,76 @@ export default function MemberAttendancePage() {
               title: "Checked In!",
               description: `Successfully checked in at ${new Date().toLocaleTimeString()}.`,
             });
-            await fetchStudentDataAndActiveCheckIn(); 
-            await fetchAttendanceForSelectedDate(); 
-          } catch (error) {
-            toast({ title: "Check-in Error", description: "Failed to process check-in. Please try again.", variant: "destructive" });
+            await fetchStudentDataAndActiveCheckIn();
+            await fetchAttendanceForSelectedDate();
+          } catch (error: any) {
+            console.error("Error during check-in processing:", error);
+            toast({ title: "Check-in Error", description: error.message || "Failed to process check-in. Please try again.", variant: "destructive" });
           }
         } else {
           toast({ title: "Invalid QR Code", description: "Please scan the official library QR code.", variant: "destructive" });
-          setTimeout(() => scanner.resume(), 1000); 
+          setTimeout(() => {
+             if (html5QrcodeScannerRef.current && html5QrcodeScannerRef.current.getState() === 2 /* PAUSED */ ) {
+                html5QrcodeScannerRef.current.resume();
+            }
+          }, 1000);
         }
         setIsProcessingQr(false);
-        setIsScannerOpen(false); 
+        setIsScannerOpen(false);
       };
 
-      const onScanFailure = (errorMessage: string, errorObject?: any) => {
-        // Basic check for permission denial messages
-        if (errorMessage.toLowerCase().includes("permission denied") ||
-            errorMessage.toLowerCase().includes("notallowederror") ||
+      const onScanFailure = (errorPayload: string | { message?: string }, errorObject?: any) => {
+        let errorMessageText = "QR scan failed.";
+        if (typeof errorPayload === 'string') {
+            errorMessageText = errorPayload;
+        } else if (errorPayload && typeof errorPayload.message === 'string') {
+            errorMessageText = errorPayload.message;
+        }
+
+        if (errorMessageText.toLowerCase().includes("permission denied") ||
+            errorMessageText.toLowerCase().includes("notallowederror") ||
+            errorMessageText.toLowerCase().includes("notfounderror") ||
             (errorObject && typeof errorObject.message === 'string' && errorObject.message.toLowerCase().includes("permission denied"))) {
           setHasCameraPermission(false);
           toast({
             variant: 'destructive',
-            title: 'Camera Access Denied',
-            description: 'Please enable camera permissions in your browser settings.',
+            title: 'Camera Access Denied or Not Found',
+            description: 'Please enable camera permissions and ensure a camera is connected.',
           });
         }
-        // console.warn(`QR error = ${errorMessage}`, errorObject);
       };
-      
+
       try {
         scanner.render(onScanSuccess, onScanFailure);
-        setHasCameraPermission(true); // Optimistically set to true if render doesn't throw
-      } catch (error) {
+        setHasCameraPermission(true);
+      } catch (error: any) {
         console.error("Error during scanner.render() call:", error);
         setHasCameraPermission(false);
         toast({
           variant: 'destructive',
           title: 'Scanner Initialization Error',
-          description: 'Could not start the QR scanner. Please ensure camera permissions are enabled and try again.',
+          description: error.message || 'Could not start the QR scanner. Please ensure camera permissions are enabled and try again.',
         });
-        setIsScannerOpen(false); // Close scanner if render fails
+        setIsScannerOpen(false);
       }
 
     } else if (!isScannerOpen && html5QrcodeScannerRef.current) {
         html5QrcodeScannerRef.current.clear()
         .catch(err => console.error("Error clearing scanner:", err));
         html5QrcodeScannerRef.current = null;
-        setHasCameraPermission(null); 
     }
-    
+
     return () => {
         if (html5QrcodeScannerRef.current) {
-            html5QrcodeScannerRef.current.clear().catch(err => console.error("Cleanup: Error clearing scanner:", err));
+            if (typeof html5QrcodeScannerRef.current.clear === 'function') {
+                 html5QrcodeScannerRef.current.clear().catch(err => console.error("Cleanup: Error clearing scanner:", err));
+            }
             html5QrcodeScannerRef.current = null;
         }
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isScannerOpen, currentStudentId, activeCheckInRecord, toast, fetchStudentDataAndActiveCheckIn]);
+  }, [isScannerOpen, currentStudentId, activeCheckInRecord, toast, fetchStudentDataAndActiveCheckIn, fetchAttendanceForSelectedDate]);
 
-
-  const fetchAttendanceForSelectedDate = React.useCallback(async () => {
-    if (currentStudentId && date) {
-      setIsLoadingDetails(true);
-      try {
-        const records = await getAttendanceForDate(currentStudentId, format(date, 'yyyy-MM-dd'));
-        setAttendanceForDay(records);
-      } catch (error) {
-        toast({
-          title: "Error Fetching Attendance",
-          description: "Could not load attendance for the selected date.",
-          variant: "destructive",
-        });
-        setAttendanceForDay([]);
-      } finally {
-        setIsLoadingDetails(false);
-      }
-    } else {
-      setAttendanceForDay([]);
-    }
-  }, [currentStudentId, date, toast]);
 
   React.useEffect(() => {
     fetchAttendanceForSelectedDate();
@@ -233,8 +249,9 @@ export default function MemberAttendancePage() {
       });
       await fetchStudentDataAndActiveCheckIn();
       await fetchAttendanceForSelectedDate();
-    } catch (error) {
-      toast({ title: "Check-out Error", description: "Failed to process check-out. Please try again.", variant: "destructive" });
+    } catch (error: any) {
+      console.error("Error during check-out:", error);
+      toast({ title: "Check-out Error", description: error.message || "Failed to process check-out. Please try again.", variant: "destructive" });
     } finally {
       setIsProcessingQr(false);
     }
@@ -243,11 +260,11 @@ export default function MemberAttendancePage() {
 
   return (
     <>
-      <PageTitle 
+      <PageTitle
         title="My Attendance"
-        description="Mark your presence, view your calendar, and track your study hours." 
+        description="Mark your presence, view your calendar, and track your study hours."
       />
-      
+
       <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-2">
         <Card className="shadow-lg">
           <CardHeader>
@@ -256,8 +273,8 @@ export default function MemberAttendancePage() {
               Mark Attendance
             </CardTitle>
             <CardDescription>
-              {isLoadingActiveCheckIn ? "Loading session status..." : 
-                (activeCheckInRecord 
+              {isLoadingActiveCheckIn ? "Loading session status..." :
+                (activeCheckInRecord
                   ? `You are currently checked in since ${format(parseISO(activeCheckInRecord.checkInTime), 'p')}.`
                   : "Scan the QR code at the library desk to check-in.")
               }

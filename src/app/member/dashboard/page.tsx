@@ -114,7 +114,7 @@ const DashboardTile: React.FC<DashboardTileProps> = ({
           </>
         ) : (
           description && <p className={cn(
-            "break-words text-center", 
+            "break-words text-center",
             isPrimaryAction ? 'text-sm text-primary-foreground/80' : 'text-xs text-muted-foreground',
           )}>{description}</p>
         )}
@@ -195,7 +195,6 @@ export default function MemberDashboardPage() {
           setStudentFeeStatus(studentDetails.feeStatus);
           setStudentNextDueDate(studentDetails.nextDueDate || null);
 
-          // Fetch dependent data in parallel
           const [
             alerts,
             hours,
@@ -210,7 +209,7 @@ export default function MemberDashboardPage() {
 
           setHasUnreadAlerts(alerts.some(alert => !alert.isRead));
           setMonthlyStudyHours(hours);
-          
+
           setActiveCheckInRecord(activeCheckInData || null);
           let totalMillisecondsToday = 0;
           const now = new Date();
@@ -226,22 +225,20 @@ export default function MemberDashboardPage() {
         } else {
             toast({ title: "Error", description: "Could not find your student record.", variant: "destructive" });
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error("Error fetching dashboard data:", error);
-        toast({ title: "Error", description: "Could not load all dashboard information.", variant: "destructive" });
+        toast({ title: "Error", description: error.message || "Could not load all dashboard information.", variant: "destructive" });
       } finally {
         setIsLoadingStudentData(false);
         setIsLoadingStudyHours(false);
         setIsLoadingCurrentSession(false);
         if (!studentDetailsFetchedSuccessfully) {
-            // Reset all states if student fetch failed
             setStudentFirstName(null); setStudentId(null); setMonthlyStudyHours(null);
             setHasUnreadAlerts(false); setActiveCheckInRecord(null); setHoursStudiedToday(null);
             setStudentFeeStatus(null); setStudentNextDueDate(null);
         }
       }
     } else {
-      // No user logged in, reset all states and loading flags
       setIsLoadingStudentData(false); setIsLoadingStudyHours(false); setIsLoadingCurrentSession(false);
       setStudentFirstName(null); setStudentId(null); setMonthlyStudyHours(null);
       setHasUnreadAlerts(false); setActiveCheckInRecord(null); setHoursStudiedToday(null);
@@ -255,7 +252,7 @@ export default function MemberDashboardPage() {
   }, [fetchAllDashboardData]);
 
   React.useEffect(() => {
-    if (isScannerOpen && studentId) { // Use studentId (state variable)
+    if (isScannerOpen && studentId) {
        const formatsToSupport = [
           Html5QrcodeSupportedFormats.QR_CODE,
           Html5QrcodeSupportedFormats.UPC_A,
@@ -265,73 +262,100 @@ export default function MemberDashboardPage() {
       ];
       const scanner = new Html5QrcodeScanner(
         DASHBOARD_QR_SCANNER_ELEMENT_ID,
-        { 
-            fps: 10, 
+        {
+            fps: 10,
             qrbox: { width: 250, height: 250 },
             supportedScanTypes: [],
             formatsToSupport: formatsToSupport
         },
-        false // verbose
+        false
       );
       html5QrcodeScannerRef.current = scanner;
 
       const onScanSuccess = async (decodedText: string, decodedResult: any) => {
         if (isProcessingQr) return;
         setIsProcessingQr(true);
-        scanner.pause(true);
+        if (html5QrcodeScannerRef.current) {
+            html5QrcodeScannerRef.current.pause(true);
+        }
 
         if (decodedText === LIBRARY_QR_CODE_PAYLOAD) {
           try {
-            // Re-fetch active check-in status just before action to ensure it's current
-            if (studentId) { // Use studentId (state variable)
-                const currentActiveCheckIn = await getActiveCheckIn(studentId); 
+            if (studentId) {
+                const currentActiveCheckIn = await getActiveCheckIn(studentId);
                 if (currentActiveCheckIn) {
                   await addCheckOut(currentActiveCheckIn.recordId);
                   toast({ title: "Checked Out!", description: `Successfully checked out at ${new Date().toLocaleTimeString()}.` });
                 } else {
-                  await addCheckIn(studentId); // Use studentId (state variable)
+                  await addCheckIn(studentId);
                   toast({ title: "Checked In!", description: `Successfully checked in at ${new Date().toLocaleTimeString()}.` });
                 }
-                await fetchAllDashboardData(); // Refresh all dashboard data
+                await fetchAllDashboardData();
             } else {
                 toast({ title: "Error", description: "Student ID not available for scan processing.", variant: "destructive"});
             }
-          } catch (error) {
-            toast({ title: "Scan Error", description: "Failed to process attendance. Please try again.", variant: "destructive" });
+          } catch (error: any) {
+            console.error("Error during scan processing:", error);
+            toast({ title: "Scan Error", description: error.message || "Failed to process attendance. Please try again.", variant: "destructive" });
           }
         } else {
           toast({ title: "Invalid QR Code", description: "Please scan the official library QR code.", variant: "destructive" });
-          setTimeout(() => scanner.resume(), 1000);
+          setTimeout(() => {
+            if (html5QrcodeScannerRef.current && html5QrcodeScannerRef.current.getState() === 2 /* PAUSED */ ) {
+                html5QrcodeScannerRef.current.resume();
+            }
+          }, 1000);
         }
         setIsProcessingQr(false);
-        setIsScannerOpen(false); // Close scanner dialog
+        setIsScannerOpen(false);
       };
-      
-      const onScanFailure = (error: any) => { /* console.warn(`QR error = ${error}`); */ };
-      
+
+      const onScanFailure = (errorPayload: string | { message?: string }) => {
+        let errorMessageText = "QR scan failed.";
+        if (typeof errorPayload === 'string') {
+            errorMessageText = errorPayload;
+        } else if (errorPayload && typeof errorPayload.message === 'string') {
+            errorMessageText = errorPayload.message;
+        }
+        
+        if (errorMessageText.toLowerCase().includes("permission denied") ||
+            errorMessageText.toLowerCase().includes("notallowederror") ||
+            errorMessageText.toLowerCase().includes("notfounderror")
+        ) {
+          setHasCameraPermission(false);
+          toast({
+            variant: 'destructive',
+            title: 'Camera Access Denied or Not Found',
+            description: 'Please enable camera permissions and ensure a camera is connected.',
+          });
+        }
+      };
+
       try {
         scanner.render(onScanSuccess, onScanFailure);
         setHasCameraPermission(true);
-      } catch (err) {
+      } catch (err: any) {
             console.error("Error rendering scanner:", err);
             setHasCameraPermission(false);
-            toast({ variant: 'destructive', title: 'Camera Error', description: 'Could not initialize camera for QR scanning.'});
+            toast({ variant: 'destructive', title: 'Camera Error', description: err.message || 'Could not initialize camera for QR scanning.'});
             setIsScannerOpen(false);
       }
     } else if (!isScannerOpen && html5QrcodeScannerRef.current) {
-        html5QrcodeScannerRef.current.clear().catch(err => console.error("Error clearing scanner:", err));
+        html5QrcodeScannerRef.current.clear()
+          .catch(err => console.error("Error clearing scanner:", err));
         html5QrcodeScannerRef.current = null;
-        setHasCameraPermission(null);
     }
 
     return () => {
       if (html5QrcodeScannerRef.current) {
-        html5QrcodeScannerRef.current.clear().catch(err => console.error("Cleanup: Error clearing scanner:", err));
+        if (typeof html5QrcodeScannerRef.current.clear === 'function') {
+            html5QrcodeScannerRef.current.clear().catch(err => console.error("Cleanup: Error clearing scanner:", err));
+        }
         html5QrcodeScannerRef.current = null;
       }
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isScannerOpen, studentId, toast, fetchAllDashboardData]); // Corrected to studentId
+  }, [isScannerOpen, studentId, toast, fetchAllDashboardData]);
 
 
   const handleOpenScanner = () => {
@@ -351,16 +375,16 @@ export default function MemberDashboardPage() {
   let activityDescription: string = "Track your study hours.";
 
   if (isLoadingStudentData || isLoadingStudyHours) {
-    activityStatisticDisplay = null; 
+    activityStatisticDisplay = null;
     activityDescription = "Loading hours...";
   } else if (studentId) {
-    if (monthlyStudyHours === null) { 
+    if (monthlyStudyHours === null) {
       activityStatisticDisplay = "0 hours";
       activityDescription = "No activity recorded yet.";
     } else if (monthlyStudyHours === 0) {
       activityStatisticDisplay = "0 hours";
       activityDescription = "No hours recorded this month.";
-    } else { 
+    } else {
       activityStatisticDisplay = `${monthlyStudyHours} hours`;
       activityDescription = "studied this month";
     }
@@ -383,7 +407,7 @@ export default function MemberDashboardPage() {
         payFeesTileDesc = `Status: ${studentFeeStatus}. Next payment due: ${studentNextDueDate && isValid(parseISO(studentNextDueDate)) ? format(parseISO(studentNextDueDate), 'PP') : 'N/A'}.`;
       } else if (studentFeeStatus === "Paid") {
         payFeesTileDesc = `Fees paid up to: ${studentNextDueDate && isValid(parseISO(studentNextDueDate)) ? format(parseISO(studentNextDueDate), 'PP') : 'N/A'}.`;
-      } else if (studentFeeStatus) { 
+      } else if (studentFeeStatus) {
          payFeesTileDesc = `Fee status: ${studentFeeStatus}.`;
       }
     }
@@ -410,7 +434,7 @@ export default function MemberDashboardPage() {
       {
         title: "Pay Fees",
         description: payFeesTileDesc,
-        statistic: payFeesTileStatistic, 
+        statistic: payFeesTileStatistic,
         isLoadingStatistic: isLoadingStudentData,
         icon: IndianRupee,
         href: "/member/pay",
@@ -426,22 +450,22 @@ export default function MemberDashboardPage() {
       },
     ];
   };
-  
+
   const coreActionTiles = generateCoreActionTiles();
 
 
   const otherResourcesTiles: DashboardTileProps[] = [
-    { 
-      title: "Library Rules", 
-      description: "Familiarize yourself with guidelines.", 
-      icon: ScrollText, 
+    {
+      title: "Library Rules",
+      description: "Familiarize yourself with guidelines.",
+      icon: ScrollText,
       href: "/member/rules",
     },
-    { 
-      title: "Rate Us", 
-      description: "Love our space? Let others know!", 
-      icon: Star, 
-      href: "https://www.google.com/maps/search/?api=1&query=Taxshila+Study+Hall+Pune", 
+    {
+      title: "Rate Us",
+      description: "Love our space? Let others know!",
+      icon: Star,
+      href: "https://www.google.com/maps/search/?api=1&query=Taxshila+Study+Hall+Pune",
       external: true,
     },
   ];
@@ -486,7 +510,7 @@ export default function MemberDashboardPage() {
                 </AlertDescription>
               </Alert>
             )}
-            
+
             <div id={DASHBOARD_QR_SCANNER_ELEMENT_ID} className="w-full aspect-square bg-muted rounded-md overflow-hidden" />
 
             {hasCameraPermission === null && (
