@@ -37,7 +37,7 @@ const CardTitle = React.forwardRef<
   <h3 // Changed from div to h3 for semantic title
     ref={ref}
     className={cn(
-      "text-lg font-semibold leading-tight tracking-tight font-headline", // Changed to leading-tight
+      "text-lg font-semibold leading-tight tracking-tight font-headline break-words", // Added break-words
       className
     )}
     {...props}
@@ -51,7 +51,7 @@ const CardDescription = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <p // Changed from div to p
     ref={ref}
-    className={cn("text-sm text-muted-foreground", className)} // text-sm is explicit here, fine
+    className={cn("text-sm text-muted-foreground break-words", className)} // Added break-words, text-sm is explicit here, fine
     {...props}
   />
 ))
