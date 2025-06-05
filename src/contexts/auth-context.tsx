@@ -10,11 +10,12 @@ import { useToast } from "@/hooks/use-toast";
 interface User {
   email: string;
   role: UserRole;
+  profilePictureUrl?: string; // Added profilePictureUrl
 }
 
 interface AuthContextType {
   user: User | null;
-  login: (identifier: string, passwordAttempt: string) => Promise<User | null>; // Updated signature
+  login: (identifier: string, passwordAttempt: string) => Promise<User | null>; 
   logout: () => void;
   isLoading: boolean;
 }
@@ -22,8 +23,8 @@ interface AuthContextType {
 const AuthContext = React.createContext<AuthContextType | undefined>(undefined);
 
 const adminUsers = [
-  { name: "Shreyash Rai", email: 'shreyashrai078@gmail.com', phone: '8210183751', password: 'meowmeow123', role: 'admin' as UserRole },
-  { name: "Kritika Rai", email: 'kritigrace@gmail.com', phone: '9621678184', password: 'meowmeow123', role: 'admin' as UserRole },
+  { name: "Shreyash Rai", email: 'shreyashrai078@gmail.com', phone: '8210183751', password: 'meowmeow123', role: 'admin' as UserRole, profilePictureUrl: undefined },
+  { name: "Kritika Rai", email: 'kritigrace@gmail.com', phone: '9621678184', password: 'meowmeow123', role: 'admin' as UserRole, profilePictureUrl: undefined },
 ];
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -53,32 +54,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = async (identifier: string, passwordAttempt: string): Promise<User | null> => {
     setIsLoading(true);
 
-    // Try admin login
     const admin = adminUsers.find(
       (u) => (u.email.toLowerCase() === identifier.toLowerCase() || u.phone === identifier) && u.password === passwordAttempt
     );
     if (admin) {
-      const userData = { email: admin.email, role: admin.role };
+      const userData: User = { email: admin.email, role: admin.role, profilePictureUrl: admin.profilePictureUrl };
       setUser(userData);
       sessionStorage.setItem('taxshilaUser', JSON.stringify(userData));
       setIsLoading(false);
-      return userData; // Return user data on success
+      return userData; 
     }
 
-    // Try member login
     try {
       const member = await getStudentByIdentifier(identifier);
       if (member && member.password === passwordAttempt && member.activityStatus === 'Active') {
         if (!member.email) {
             toast({ title: "Login Issue", description: "Member account has no email. Please contact admin.", variant: "destructive" });
             setIsLoading(false);
-            return null; // Return null on failure
+            return null;
         }
-        const userData = { email: member.email, role: 'member' as UserRole };
+        const userData: User = { email: member.email, role: 'member' as UserRole, profilePictureUrl: member.profilePictureUrl };
         setUser(userData);
         sessionStorage.setItem('taxshilaUser', JSON.stringify(userData));
         setIsLoading(false);
-        return userData; // Return user data on success
+        return userData; 
       } else if (member && member.password !== passwordAttempt) {
         toast({ title: "Login Failed", description: "Incorrect password for member.", variant: "destructive" });
       } else if (member && member.activityStatus === 'Left') {
@@ -88,12 +87,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.error("Member login error:", error);
     }
 
-    // If neither admin nor member login succeeded
-    if(!admin){ // Check if admin login also failed before toasting this generic one
+    if(!admin){ 
       toast({ title: "Login Failed", description: "Invalid credentials or user not found.", variant: "destructive" });
     }
     setIsLoading(false);
-    return null; // Return null on failure
+    return null; 
   };
 
   const logout = () => {

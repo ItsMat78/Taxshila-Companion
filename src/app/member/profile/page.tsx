@@ -18,9 +18,9 @@ import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from '@/contexts/auth-context';
-import { getStudentByEmail, updateStudent, uploadProfilePictureToStorage } from '@/services/student-service'; 
+import { getStudentByEmail } from '@/services/student-service'; 
 import type { Student } from '@/types/student'; 
-import { UserCircle, UploadCloud, Save, Mail, Phone, BookOpen, MapPin, Receipt, Loader2 } from 'lucide-react';
+import { UserCircle, UploadCloud, Save, Mail, Phone, BookOpen, MapPin, Receipt, Loader2, Edit } from 'lucide-react';
 
 const DEFAULT_PROFILE_PLACEHOLDER = "https://placehold.co/200x200.png";
 const ID_CARD_PLACEHOLDER = "https://placehold.co/300x200.png?text=ID+Card";
@@ -86,50 +86,35 @@ export default function MemberProfilePage() {
   };
 
   const handleSaveProfilePicture = async () => {
-    if (!selectedFile || !memberDetails?.studentId || !memberDetails.firestoreId) {
+    if (!profilePicturePreview || !memberDetails) {
       toast({
-        title: "Error",
-        description: "No picture selected or critical user details (like Firestore ID) are missing.",
+        title: "No Picture Selected",
+        description: "Please select a picture to update.",
         variant: "destructive",
       });
       return;
     }
   
     setIsSavingPicture(true);
-    try {
-      // 1. Upload image to Firebase Storage using the student's Firestore ID
-      const downloadURL = await uploadProfilePictureToStorage(memberDetails.firestoreId, selectedFile);
+    // Simulate client-side update for now
+    await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate network delay
+    
+    setCurrentProfilePicture(profilePicturePreview); // Update displayed picture
+    
+    // Update local studentDetails state if you want to reflect it in other parts that might use memberDetails.profilePictureUrl
+    // This part is optional as currentProfilePicture is directly used for Avatar src
+    // setMemberDetails(prev => prev ? ({ ...prev, profilePictureUrl: profilePicturePreview }) : null);
+
+    toast({
+      title: "Profile Picture Preview Updated",
+      description: "Your new profile picture is previewed. (Note: Not saved to server in this version).",
+    });
   
-      // 2. Update Firestore with the new URL using the student's custom ID
-      const updatedStudentData = await updateStudent(memberDetails.studentId, { profilePictureUrl: downloadURL });
-  
-      if (updatedStudentData) {
-        setMemberDetails(updatedStudentData); // Update local state with the full updated student object
-        setCurrentProfilePicture(downloadURL); // Update displayed picture
-        toast({
-          title: "Profile Picture Updated",
-          description: "Your new profile picture has been saved.",
-        });
-      } else {
-        // This case should ideally not happen if updateStudent resolves successfully
-        // but good to have a fallback.
-        throw new Error("Failed to update student record in Firestore after picture upload.");
-      }
-  
-    } catch (error: any) {
-      console.error("Error saving profile picture:", error);
-      toast({
-        title: "Error Saving Picture",
-        description: error.message || "Could not save your profile picture. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsSavingPicture(false);
-      setProfilePicturePreview(null); // Clear preview
-      setSelectedFile(null); // Clear selected file
-      if (fileInputRef.current) {
-        fileInputRef.current.value = ""; // Reset file input
-      }
+    setIsSavingPicture(false);
+    setProfilePicturePreview(null); // Clear preview
+    setSelectedFile(null); // Clear selected file
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ""; // Reset file input
     }
   };
 
@@ -200,7 +185,7 @@ export default function MemberProfilePage() {
               className="w-full"
             >
               {isSavingPicture ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-              {isSavingPicture ? "Saving..." : "Save Profile Picture"}
+              {isSavingPicture ? "Updating..." : "Update Profile Picture"}
             </Button>
           </CardFooter>
         </Card>

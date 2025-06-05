@@ -3,7 +3,7 @@
 
 import * as React from 'react';
 import Link from 'next/link';
-import Image from 'next/image'; // Import next/image
+import Image from 'next/image'; 
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
@@ -12,7 +12,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useAuth } from '@/contexts/auth-context';
-import { Loader2, LogIn } from 'lucide-react'; // Changed ShieldCheck to LogIn
+import { Loader2, LogIn } from 'lucide-react'; 
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { LoggingInDialog } from '@/components/shared/logging-in-dialog';
@@ -25,6 +25,7 @@ const loginFormSchema = z.object({
 type LoginFormValues = z.infer<typeof loginFormSchema>;
 
 const LOGIN_IMAGE_PLACEHOLDER = "https://placehold.co/600x300.png";
+const LOGO_PLACEHOLDER = "https://placehold.co/150x50.png?text=Taxshila+Logo";
 
 export default function AdminLoginPage() {
   const { login } = useAuth();
@@ -77,19 +78,27 @@ export default function AdminLoginPage() {
       <LoggingInDialog isOpen={showSuccessDialog} />
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[hsl(var(--background))] to-[hsl(var(--muted))] p-4">
         <Card className="w-full max-w-md shadow-xl overflow-hidden">
-          <div className="bg-primary/10 p-4 flex justify-center">
+          <div className="bg-primary/10 p-6 flex flex-col items-center justify-center">
+            <Image 
+              src={LOGO_PLACEHOLDER}
+              alt="Taxshila Companion Logo"
+              width={150}
+              height={50}
+              className="object-contain mb-6"
+              data-ai-hint="logo brand"
+            />
             <Image 
               src={LOGIN_IMAGE_PLACEHOLDER} 
-              alt="Taxshila Study Hall" 
+              alt="Taxshila Study Hall Interior" 
               width={300} 
               height={150} 
-              className="object-contain rounded-md"
-              data-ai-hint="library study"
+              className="object-cover rounded-md shadow-md"
+              data-ai-hint="library interior"
             />
           </div>
-          <CardHeader className="text-center pt-4 pb-2">
+          <CardHeader className="text-center pt-6 pb-2">
             <CardTitle className="text-2xl font-headline">Welcome to Taxshila Companion</CardTitle>
-            <CardDescription>Your dedicated portal for managing study hall activities.</CardDescription>
+            <CardDescription>Your dedicated portal for study hall activities.</CardDescription>
           </CardHeader>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)}>
