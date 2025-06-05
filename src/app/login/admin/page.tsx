@@ -111,9 +111,9 @@ export default function AdminLoginPage() {
                     name="identifier"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-foreground/90">Email or Phone Number</FormLabel>
+                        <FormLabel className="text-xs sm:text-sm text-foreground/90">Email or Phone Number</FormLabel>
                         <FormControl>
-                          <Input type="text" placeholder="Enter your email or phone" {...field} disabled={isSubmitting || showSuccessDialog} />
+                          <Input type="text" placeholder="Enter your email or phone" {...field} disabled={isSubmitting || showSuccessDialog} className="text-xs sm:text-sm" />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -124,9 +124,9 @@ export default function AdminLoginPage() {
                     name="password"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-foreground/90">Password</FormLabel>
+                        <FormLabel className="text-xs sm:text-sm text-foreground/90">Password</FormLabel>
                         <FormControl>
-                          <Input type="password" placeholder="••••••••" {...field} disabled={isSubmitting || showSuccessDialog} />
+                          <Input type="password" placeholder="••••••••" {...field} disabled={isSubmitting || showSuccessDialog} className="text-xs sm:text-sm" />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -134,7 +134,7 @@ export default function AdminLoginPage() {
                   />
                 </CardContent>
                 <CardFooter className="flex flex-col gap-4 px-4 pb-4 pt-0 sm:p-6 sm:pt-0">
-                  <Button type="submit" className="w-full" disabled={isSubmitting || showSuccessDialog}>
+                  <Button type="submit" className="w-full" disabled={isSubmitting || showSuccessDialog} size="sm">
                     {isSubmitting || showSuccessDialog ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <LogIn className="mr-2 h-4 w-4" />}
                     {isSubmitting && !showSuccessDialog ? 'Checking...' : (showSuccessDialog ? 'Logging in...' : 'Login')}
                   </Button>
