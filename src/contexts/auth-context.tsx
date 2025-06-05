@@ -4,8 +4,8 @@
 import type { UserRole } from '@/types/auth';
 import * as React from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { getStudentByIdentifier } from '@/services/student-service'; // Import service
-import { useToast } from "@/hooks/use-toast"; // Import useToast
+import { getStudentByIdentifier } from '@/services/student-service'; 
+import { useToast } from "@/hooks/use-toast"; 
 
 interface User {
   email: string;
@@ -14,7 +14,7 @@ interface User {
 
 interface AuthContextType {
   user: User | null;
-  login: (identifier: string, passwordAttempt: string) => Promise<void>; // Updated signature
+  login: (identifier: string, passwordAttempt: string) => Promise<User | null>; // Updated signature
   logout: () => void;
   isLoading: boolean;
 }
@@ -50,7 +50,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [user, isLoading, pathname, router]);
 
-  const login = async (identifier: string, passwordAttempt: string) => {
+  const login = async (identifier: string, passwordAttempt: string): Promise<User | null> => {
     setIsLoading(true);
 
     // Try admin login
@@ -61,9 +61,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const userData = { email: admin.email, role: admin.role };
       setUser(userData);
       sessionStorage.setItem('taxshilaUser', JSON.stringify(userData));
-      router.push('/'); // Admin dashboard
       setIsLoading(false);
-      return;
+      return userData; // Return user data on success
     }
 
     // Try member login
@@ -73,14 +72,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (!member.email) {
             toast({ title: "Login Issue", description: "Member account has no email. Please contact admin.", variant: "destructive" });
             setIsLoading(false);
-            return;
+            return null; // Return null on failure
         }
         const userData = { email: member.email, role: 'member' as UserRole };
         setUser(userData);
         sessionStorage.setItem('taxshilaUser', JSON.stringify(userData));
-        router.push('/member/dashboard');
         setIsLoading(false);
-        return;
+        return userData; // Return user data on success
       } else if (member && member.password !== passwordAttempt) {
         toast({ title: "Login Failed", description: "Incorrect password for member.", variant: "destructive" });
       } else if (member && member.activityStatus === 'Left') {
@@ -88,12 +86,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     } catch (error) {
       console.error("Member login error:", error);
-      // This catch might not be strictly necessary if getStudentByIdentifier returns undefined for not found
     }
 
     // If neither admin nor member login succeeded
-    toast({ title: "Login Failed", description: "Invalid credentials or user not found.", variant: "destructive" });
+    if(!admin){ // Check if admin login also failed before toasting this generic one
+      toast({ title: "Login Failed", description: "Invalid credentials or user not found.", variant: "destructive" });
+    }
     setIsLoading(false);
+    return null; // Return null on failure
   };
 
   const logout = () => {
