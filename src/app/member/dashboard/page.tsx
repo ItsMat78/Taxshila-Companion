@@ -255,7 +255,7 @@ export default function MemberDashboardPage() {
   }, [fetchAllDashboardData]);
 
   React.useEffect(() => {
-    if (isScannerOpen && currentStudentId) {
+    if (isScannerOpen && studentId) { // Use studentId (state variable)
        const formatsToSupport = [
           Html5QrcodeSupportedFormats.QR_CODE,
           Html5QrcodeSupportedFormats.UPC_A,
@@ -283,15 +283,19 @@ export default function MemberDashboardPage() {
         if (decodedText === LIBRARY_QR_CODE_PAYLOAD) {
           try {
             // Re-fetch active check-in status just before action to ensure it's current
-            const currentActiveCheckIn = await getActiveCheckIn(currentStudentId); 
-            if (currentActiveCheckIn) {
-              await addCheckOut(currentActiveCheckIn.recordId);
-              toast({ title: "Checked Out!", description: `Successfully checked out at ${new Date().toLocaleTimeString()}.` });
+            if (studentId) { // Use studentId (state variable)
+                const currentActiveCheckIn = await getActiveCheckIn(studentId); 
+                if (currentActiveCheckIn) {
+                  await addCheckOut(currentActiveCheckIn.recordId);
+                  toast({ title: "Checked Out!", description: `Successfully checked out at ${new Date().toLocaleTimeString()}.` });
+                } else {
+                  await addCheckIn(studentId); // Use studentId (state variable)
+                  toast({ title: "Checked In!", description: `Successfully checked in at ${new Date().toLocaleTimeString()}.` });
+                }
+                await fetchAllDashboardData(); // Refresh all dashboard data
             } else {
-              await addCheckIn(currentStudentId);
-              toast({ title: "Checked In!", description: `Successfully checked in at ${new Date().toLocaleTimeString()}.` });
+                toast({ title: "Error", description: "Student ID not available for scan processing.", variant: "destructive"});
             }
-            await fetchAllDashboardData(); // Refresh all dashboard data
           } catch (error) {
             toast({ title: "Scan Error", description: "Failed to process attendance. Please try again.", variant: "destructive" });
           }
@@ -305,14 +309,15 @@ export default function MemberDashboardPage() {
       
       const onScanFailure = (error: any) => { /* console.warn(`QR error = ${error}`); */ };
       
-      scanner.render(onScanSuccess, onScanFailure)
-        .then(() => setHasCameraPermission(true))
-        .catch(err => {
+      try {
+        scanner.render(onScanSuccess, onScanFailure);
+        setHasCameraPermission(true);
+      } catch (err) {
             console.error("Error rendering scanner:", err);
             setHasCameraPermission(false);
             toast({ variant: 'destructive', title: 'Camera Error', description: 'Could not initialize camera for QR scanning.'});
             setIsScannerOpen(false);
-        });
+      }
     } else if (!isScannerOpen && html5QrcodeScannerRef.current) {
         html5QrcodeScannerRef.current.clear().catch(err => console.error("Error clearing scanner:", err));
         html5QrcodeScannerRef.current = null;
@@ -326,7 +331,7 @@ export default function MemberDashboardPage() {
       }
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isScannerOpen, currentStudentId, toast, fetchAllDashboardData]);
+  }, [isScannerOpen, studentId, toast, fetchAllDashboardData]); // Corrected to studentId
 
 
   const handleOpenScanner = () => {
