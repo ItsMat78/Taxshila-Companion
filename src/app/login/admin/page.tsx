@@ -23,9 +23,7 @@ const loginFormSchema = z.object({
 
 type LoginFormValues = z.infer<typeof loginFormSchema>;
 
-// Update these paths to point to your images in the 'public' folder
 const LOGO_URL = "/logo.png"; // Assumes logo.png is in public/
-const LIBRARY_INTERIOR_URL = "/cover.png"; // Assumes cover.png is in public/
 
 export default function AdminLoginPage() {
   const { login } = useAuth();
@@ -76,90 +74,70 @@ export default function AdminLoginPage() {
   return (
     <>
       <LoggingInDialog isOpen={showSuccessDialog} />
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[hsl(var(--background))] to-[hsl(var(--muted))] p-4">
-        <div className="w-full max-w-sm md:max-w-4xl lg:max-w-5xl bg-card rounded-lg shadow-xl overflow-hidden md:grid md:grid-cols-2">
-          {/* Image Section (Left Column on MD+) */}
-          <div className="hidden md:flex flex-col items-center justify-center bg-primary/5 p-8 lg:p-12">
+      {/* Outer container for full page background */}
+      <div
+        className="min-h-screen flex items-center justify-center bg-cover bg-center p-4"
+        style={{ backgroundImage: "url('/cover.png')" }}
+      >
+        {/* Login Card with backdrop blur */}
+        <Card className="w-full max-w-md shadow-xl overflow-hidden bg-background/70 backdrop-blur-md">
+          {/* Logo at the top of the card */}
+          <div className="p-6 flex flex-col items-center justify-center">
             <Image
               src={LOGO_URL}
               alt="Taxshila Companion Logo"
-              width={200}
-              height={67}
-              className="object-contain mb-8 lg:mb-12"
+              width={150}
+              height={50}
+              className="object-contain mb-6"
               data-ai-hint="logo brand"
               priority
             />
-            <Image
-              src={LIBRARY_INTERIOR_URL}
-              alt="Taxshila Study Hall Interior"
-              width={360}
-              height={270}
-              className="object-cover rounded-lg shadow-md"
-              data-ai-hint="library interior study"
-              priority
-            />
           </div>
 
-          {/* Form Section (Right Column on MD+, Full width on SM) */}
-          <div className="p-6 sm:p-8">
-            {/* Logo for small screens */}
-            <div className="md:hidden flex flex-col items-center mb-6">
-              <Image
-                src={LOGO_URL} 
-                alt="Taxshila Companion Logo"
-                width={150}
-                height={50}
-                className="object-contain"
-                data-ai-hint="logo brand"
-                priority
-              />
-            </div>
+          <CardHeader className="text-center p-0 px-6 sm:px-8 pb-6">
+            <CardTitle className="text-2xl font-headline text-foreground">Welcome Back!</CardTitle>
+            <CardDescription className="text-foreground/80">Login to Taxshila Companion.</CardDescription>
+          </CardHeader>
 
-            <CardHeader className="text-center p-0 mb-6">
-              <CardTitle className="text-2xl font-headline">Welcome Back!</CardTitle>
-              <CardDescription>Login to Taxshila Companion.</CardDescription>
-            </CardHeader>
-
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)}>
-                <CardContent className="space-y-4 p-0">
-                  <FormField
-                    control={form.control}
-                    name="identifier"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Email or Phone Number</FormLabel>
-                        <FormControl>
-                          <Input type="text" placeholder="Enter your email or phone" {...field} disabled={isSubmitting || showSuccessDialog} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="password"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Password</FormLabel>
-                        <FormControl>
-                          <Input type="password" placeholder="••••••••" {...field} disabled={isSubmitting || showSuccessDialog} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </CardContent>
-                <CardFooter className="flex flex-col gap-4 p-0 pt-6">
-                  <Button type="submit" className="w-full" disabled={isSubmitting || showSuccessDialog}>
-                    {isSubmitting || showSuccessDialog ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <LogIn className="mr-2 h-4 w-4" />}
-                    {isSubmitting && !showSuccessDialog ? 'Checking...' : (showSuccessDialog ? 'Logging in...' : 'Login')}
-                  </Button>
-                </CardFooter>
-              </form>
-            </Form>
-          </div>
-        </div>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)}>
+              <CardContent className="space-y-4 p-6 sm:p-8 pt-0">
+                <FormField
+                  control={form.control}
+                  name="identifier"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-foreground/90">Email or Phone Number</FormLabel>
+                      <FormControl>
+                        <Input type="text" placeholder="Enter your email or phone" {...field} disabled={isSubmitting || showSuccessDialog} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="password"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-foreground/90">Password</FormLabel>
+                      <FormControl>
+                        <Input type="password" placeholder="••••••••" {...field} disabled={isSubmitting || showSuccessDialog} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </CardContent>
+              <CardFooter className="flex flex-col gap-4 p-6 sm:p-8 pt-0">
+                <Button type="submit" className="w-full" disabled={isSubmitting || showSuccessDialog}>
+                  {isSubmitting || showSuccessDialog ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <LogIn className="mr-2 h-4 w-4" />}
+                  {isSubmitting && !showSuccessDialog ? 'Checking...' : (showSuccessDialog ? 'Logging in...' : 'Login')}
+                </Button>
+              </CardFooter>
+            </form>
+          </Form>
+        </Card>
       </div>
     </>
   );
