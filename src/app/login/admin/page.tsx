@@ -24,8 +24,8 @@ const loginFormSchema = z.object({
 
 type LoginFormValues = z.infer<typeof loginFormSchema>;
 
-const LOGIN_IMAGE_PLACEHOLDER = "https://placehold.co/600x300.png";
-const LOGO_PLACEHOLDER = "https://placehold.co/150x50.png?text=Taxshila+Logo";
+const LOGIN_IMAGE_PLACEHOLDER = "https://drive.google.com/file/d/1EBwkUjQdnlbXvppWzoLT-C72l5yRkC03/view?usp=drive_link";
+const LOGO_PLACEHOLDER = "https://drive.google.com/file/d/178d6OEJMEzWwO0VStjKZPVsMChWz2e3V/view?usp=drive_link";
 
 export default function AdminLoginPage() {
   const { login } = useAuth();
