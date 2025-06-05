@@ -38,47 +38,50 @@ export default function MemberLoginPage() {
     },
   });
 
-  // useEffect to handle redirection after dialog is shown
+  // useEffect to handle redirection AFTER dialog is shown
   React.useEffect(() => {
     let timerId: NodeJS.Timeout;
     if (showSuccessDialog) {
-      // Ensure isSubmitting remains true so button stays in "Logging in..." state
-      // if it's not already handled by the navigation itself.
-      // setIsSubmitting(true); // This should be handled by the onSubmit logic already.
+      // isSubmitting is true here, dialog is visible.
       timerId = setTimeout(() => {
         router.push('/member/dashboard');
-      }, 500); // 500ms delay
+      }, 700); // Adjusted delay for better visibility
     }
     return () => {
       clearTimeout(timerId); // Cleanup timer on unmount or if showSuccessDialog changes
     };
-  }, [showSuccessDialog, router]);
+  }, [showSuccessDialog, router]); // Run when showSuccessDialog or router changes
 
   async function onSubmit(data: LoginFormValues) {
-    setIsSubmitting(true);
-    setShowSuccessDialog(false); // Reset before attempt, in case of re-submission
+    setIsSubmitting(true); // Disable button, show "Checking..."
+    setShowSuccessDialog(false); // Ensure dialog is reset if there was a previous attempt
+
     try {
       const loggedInUser = await login(data.identifier, data.password);
+
       if (loggedInUser) {
-        // isSubmitting is already true.
-        // setShowSuccessDialog will trigger the useEffect to handle the redirect.
-        setShowSuccessDialog(true); 
+        // Login was successful, user state in AuthContext is updated.
+        setShowSuccessDialog(true); // Trigger dialog. useEffect will handle redirect.
+                                    // isSubmitting remains true, button will show "Logging in..."
       } else {
-        // Toast for login failure is handled by AuthContext
-        setIsSubmitting(false); // Allow re-submission
+        // Login failed (e.g., bad credentials, user not active, etc.)
+        // Toast for login failure is typically handled by AuthContext.
+        setIsSubmitting(false); // Re-enable button for another attempt.
       }
     } catch (error) {
+      // Catch any unexpected errors during the login process itself.
       console.error("Member login submission error:", error);
       toast({
         title: "Login Error",
         description: "An unexpected error occurred. Please try again.",
         variant: "destructive",
       });
-      setIsSubmitting(false); // Allow re-submission on catch
-      setShowSuccessDialog(false); // Ensure dialog is hidden on error
+      setIsSubmitting(false); // Re-enable button.
+      setShowSuccessDialog(false); // Ensure dialog isn't stuck.
     }
-    // No setIsSubmitting(false) here if successful, 
-    // as the page will redirect via useEffect, and isSubmitting keeps the button disabled.
+    // If login is successful, isSubmitting remains true, and setShowSuccessDialog(true) is called.
+    // The component re-renders, useEffect kicks in for the delayed navigation.
+    // If login fails (loggedInUser is null) or an error is caught, isSubmitting is set to false.
   }
 
   return (
@@ -132,8 +135,8 @@ export default function MemberLoginPage() {
               </CardContent>
               <CardFooter className="flex flex-col gap-4">
                 <Button type="submit" className="w-full" disabled={isSubmitting}>
-                  {(isSubmitting && !showSuccessDialog) ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : (showSuccessDialog ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <LogIn className="mr-2 h-4 w-4" />)}
-                  {showSuccessDialog ? 'Logging in...' : ((isSubmitting) ? 'Checking...' : 'Login')}
+                  {isSubmitting ? ( <Loader2 className="mr-2 h-4 w-4 animate-spin" />) : (<LogIn className="mr-2 h-4 w-4" />)}
+                  {showSuccessDialog ? 'Logging in...' : (isSubmitting ? 'Checking...' : 'Login')}
                 </Button>
                 <Link href="/login/admin" passHref legacyBehavior>
                    <Button variant="link" className="text-sm text-muted-foreground hover:text-primary" disabled={isSubmitting}>
