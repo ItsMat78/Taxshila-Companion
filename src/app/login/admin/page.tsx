@@ -82,7 +82,7 @@ export default function AdminLoginPage() {
         <Card className="w-full max-w-md md:max-w-3xl shadow-xl bg-background/70 backdrop-blur-md rounded-lg flex flex-col md:flex-row max-h-[calc(100vh_-_theme(space.8))] overflow-y-auto">
 
           {/* Logo Section (Left Column on MD+) */}
-          <div className="flex flex-col items-center justify-center px-4 pt-4 pb-0 sm:p-6 md:w-1/3 md:border-r md:border-border/30">
+          <div className="flex flex-col items-center justify-center px-4 pt-4 pb-0 sm:p-6 md:w-1/3 md:border-r md:border-border/30 md:py-6">
             <div className="relative w-16 h-auto sm:w-24 md:w-28">
               <Image
                 src={LOGO_URL}
@@ -99,8 +99,8 @@ export default function AdminLoginPage() {
           {/* Form Section (Right Column on MD+) */}
           <div className="flex flex-col flex-grow md:w-2/3">
             <CardHeader className="text-center px-4 pb-4 pt-0 sm:pt-6 sm:px-6 sm:pb-6">
-              <CardTitle className="text-lg sm:text-xl font-headline text-foreground">Welcome Back!</CardTitle>
-              <CardDescription className="text-xs sm:text-sm text-foreground/80">Login to Taxshila Companion.</CardDescription>
+              <CardTitle className="text-base sm:text-lg md:text-xl font-headline text-foreground">Welcome Back!</CardTitle>
+              <CardDescription className="text-xs sm:text-xs md:text-sm text-foreground/80">Login to Taxshila Companion.</CardDescription>
             </CardHeader>
 
             <Form {...form}>
