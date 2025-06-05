@@ -216,21 +216,21 @@ export default function StudentDetailPage() {
           </CardHeader>
           <CardContent>
             {(student.paymentHistory && student.paymentHistory.length > 0) ? (
-              <div className="max-h-60 overflow-y-auto">
+              <div className="max-h-60 w-full overflow-y-auto overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="text-xs">Date</TableHead>
-                      <TableHead className="text-xs">Amount</TableHead>
-                      <TableHead className="text-xs">Method</TableHead>
+                      <TableHead className="text-xs whitespace-nowrap">Date</TableHead>
+                      <TableHead className="text-xs whitespace-nowrap">Amount</TableHead>
+                      <TableHead className="text-xs whitespace-nowrap">Method</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {student.paymentHistory.slice().reverse().map((payment: PaymentRecord) => (
                       <TableRow key={payment.paymentId}>
-                        <TableCell className="text-xs">{payment.date && isValid(parseISO(payment.date)) ? format(parseISO(payment.date), 'dd-MMM-yy') : 'N/A'}</TableCell>
-                        <TableCell className="text-xs">{payment.amount}</TableCell>
-                        <TableCell className="text-xs capitalize">{payment.method}</TableCell>
+                        <TableCell className="text-xs whitespace-nowrap">{payment.date && isValid(parseISO(payment.date)) ? format(parseISO(payment.date), 'dd-MMM-yy') : 'N/A'}</TableCell>
+                        <TableCell className="text-xs whitespace-nowrap">{payment.amount}</TableCell>
+                        <TableCell className="text-xs capitalize whitespace-nowrap">{payment.method}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -254,16 +254,16 @@ export default function StudentDetailPage() {
             Monthly attendance for {student.name}. Select a date to view details.
           </CardDescription>
         </CardHeader>
-        <CardContent className="flex flex-col items-center gap-4 md:flex-row md:items-start">
+        <CardContent className="flex flex-col items-center gap-4 md:flex-row md:items-start md:flex-wrap lg:flex-nowrap">
           <Calendar
             mode="single"
             selected={selectedCalendarDate}
             onSelect={setSelectedCalendarDate}
-            className="rounded-md border shadow-inner"
+            className="rounded-md border shadow-inner min-w-[280px] sm:min-w-[320px] md:min-w-0"
             modifiers={{ today: new Date() }}
             modifiersStyles={{ today: { color: 'hsl(var(--accent-foreground))', backgroundColor: 'hsl(var(--accent))' } }}
           />
-          <div className="flex-1 w-full md:w-auto">
+          <div className="flex-1 w-full md:w-auto md:min-w-[250px]"> {/* Added min-w for flex item */}
             <h4 className="text-md font-semibold mb-2">
               Details for {selectedCalendarDate ? format(selectedCalendarDate, 'PPP') : 'selected date'}:
             </h4>
@@ -315,3 +315,4 @@ export default function StudentDetailPage() {
     </>
   );
 }
+
