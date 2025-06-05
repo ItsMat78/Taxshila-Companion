@@ -520,6 +520,19 @@ export async function deleteStudentCompletely(customStudentId: string): Promise<
     batch.delete(doc(db, ATTENDANCE_COLLECTION, docSnap.id));
   });
 
+  const targetedAlertsQuery = query(collection(db, ALERTS_COLLECTION), where("studentId", "==", customStudentId));
+  const targetedAlertsSnapshot = await getDocs(targetedAlertsQuery);
+  targetedAlertsSnapshot.forEach(docSnap => {
+    batch.delete(doc(db, ALERTS_COLLECTION, docSnap.id));
+  });
+  
+  const feedbackQuery = query(collection(db, FEEDBACK_COLLECTION), where("studentId", "==", customStudentId));
+  const feedbackSnapshot = await getDocs(feedbackQuery);
+  feedbackSnapshot.forEach(docSnap => {
+    batch.delete(doc(db, FEEDBACK_COLLECTION, docSnap.id));
+  });
+
+
   await batch.commit();
 }
 
@@ -1074,80 +1087,80 @@ export async function batchImportAttendance(recordsToImport: AttendanceImportDat
   for (let i = 0; i < recordsToImport.length; i++) {
     const record = recordsToImport[i];
     try {
-      if (!record.studentId || !record.date || !record.checkInTime) {
+      if (!record['Student ID'] || !record['Date'] || !record['Check-In Time']) {
         errors.push(`Row ${i + 2}: Missing Student ID, Date, or Check-In Time.`);
         errorCount++;
         continue;
       }
 
-      const student = await getStudentByCustomId(record.studentId);
+      const student = await getStudentByCustomId(record['Student ID']);
       if (!student) {
-        errors.push(`Row ${i + 2}: Student ID "${record.studentId}" not found.`);
+        errors.push(`Row ${i + 2}: Student ID "${record['Student ID']}" not found.`);
         errorCount++;
         continue;
       }
 
       let parsedDate: Date;
-      if (isValid(parseISO(record.date))) {
-          parsedDate = parseISO(record.date);
+      if (isValid(parseISO(record['Date']))) {
+          parsedDate = parseISO(record['Date']);
       } else {
-          errors.push(`Row ${i + 2}: Invalid Date format "${record.date}". Expected YYYY-MM-DD.`);
+          errors.push(`Row ${i + 2}: Invalid Date format "${record['Date']}". Expected YYYY-MM-DD.`);
           errorCount++;
           continue;
       }
       
       let checkInDateTime: Date;
       const timeRegex = /^\d{2}:\d{2}:\d{2}$/;
-      if (timeRegex.test(record.checkInTime)) {
-        const [hours, minutes, seconds] = record.checkInTime.split(':').map(Number);
+      if (timeRegex.test(record['Check-In Time'])) {
+        const [hours, minutes, seconds] = record['Check-In Time'].split(':').map(Number);
         checkInDateTime = setSeconds(setMinutes(setHours(parsedDate, hours), minutes), seconds);
-      } else if (isValid(parseISO(record.checkInTime))) {
-        checkInDateTime = parseISO(record.checkInTime);
+      } else if (isValid(parseISO(record['Check-In Time']))) {
+        checkInDateTime = parseISO(record['Check-In Time']);
       } else {
-        errors.push(`Row ${i + 2}: Invalid Check-In Time format "${record.checkInTime}". Expected HH:MM:SS or full ISO string.`);
+        errors.push(`Row ${i + 2}: Invalid Check-In Time format "${record['Check-In Time']}". Expected HH:MM:SS or full ISO string.`);
         errorCount++;
         continue;
       }
 
       let checkOutDateTime: Date | null = null;
-      if (record.checkOutTime && record.checkOutTime.trim() !== "") {
-        if (timeRegex.test(record.checkOutTime)) {
-          const [hours, minutes, seconds] = record.checkOutTime.split(':').map(Number);
+      if (record['Check-Out Time'] && record['Check-Out Time'].trim() !== "") {
+        if (timeRegex.test(record['Check-Out Time'])) {
+          const [hours, minutes, seconds] = record['Check-Out Time'].split(':').map(Number);
           checkOutDateTime = setSeconds(setMinutes(setHours(parsedDate, hours), minutes), seconds);
-        } else if (isValid(parseISO(record.checkOutTime))) {
-          checkOutDateTime = parseISO(record.checkOutTime);
+        } else if (isValid(parseISO(record['Check-Out Time']))) {
+          checkOutDateTime = parseISO(record['Check-Out Time']);
         } else {
-          errors.push(`Row ${i + 2}: Invalid Check-Out Time format "${record.checkOutTime}". Expected HH:MM:SS or full ISO string, or leave blank.`);
+          errors.push(`Row ${i + 2}: Invalid Check-Out Time format "${record['Check-Out Time']}". Expected HH:MM:SS or full ISO string, or leave blank.`);
           errorCount++;
           continue;
         }
       }
       
       if (checkOutDateTime && checkOutDateTime <= checkInDateTime) {
-        errors.push(`Row ${i+2}: Check-Out Time must be after Check-In Time for Student ID ${record.studentId}.`);
+        errors.push(`Row ${i+2}: Check-Out Time must be after Check-In Time for Student ID ${record['Student ID']}.`);
         errorCount++;
         continue;
       }
 
       const newRecordRef = doc(collection(db, ATTENDANCE_COLLECTION));
       batch.set(newRecordRef, {
-        studentId: record.studentId,
-        date: format(parsedDate, 'yyyy-MM-dd'), // Store consistent date string
+        studentId: record['Student ID'],
+        date: format(parsedDate, 'yyyy-MM-dd'), 
         checkInTime: Timestamp.fromDate(checkInDateTime),
         checkOutTime: checkOutDateTime ? Timestamp.fromDate(checkOutDateTime) : null,
       });
       operationCount++;
       successCount++;
 
-      if (operationCount >= 499) { // Firestore batch limit is 500 operations
+      if (operationCount >= 499) { 
         await batch.commit();
-        // batch = writeBatch(db); // Re-initialize batch for next set of operations
+        // batch = writeBatch(db); 
         operationCount = 0;
       }
 
     } catch (error: any) {
-      console.error(`Error importing attendance for student ${record.studentId}:`, error.message);
-      errors.push(`Row ${i + 2} (Student ID ${record.studentId}): ${error.message}`);
+      console.error(`Error importing attendance for student ${record['Student ID']}:`, error.message);
+      errors.push(`Row ${i + 2} (Student ID ${record['Student ID']}): ${error.message}`);
       errorCount++;
     }
   }
@@ -1168,38 +1181,38 @@ export async function batchImportPayments(recordsToImport: PaymentImportData[]):
   for (let i = 0; i < recordsToImport.length; i++) {
     const record = recordsToImport[i];
     try {
-      if (!record.studentId || !record.date || !record.amount) {
+      if (!record['Student ID'] || !record['Date'] || !record['Amount']) {
         errors.push(`Row ${i + 2}: Missing Student ID, Date, or Amount.`);
         errorCount++;
         continue;
       }
 
-      const student = await getStudentByCustomId(record.studentId);
+      const student = await getStudentByCustomId(record['Student ID']);
       if (!student || !student.firestoreId) {
-        errors.push(`Row ${i + 2}: Student ID "${record.studentId}" not found.`);
+        errors.push(`Row ${i + 2}: Student ID "${record['Student ID']}" not found.`);
         errorCount++;
         continue;
       }
       
       let parsedDate: Date;
-      if (isValid(parseISO(record.date))) {
-          parsedDate = parseISO(record.date);
+      if (isValid(parseISO(record['Date']))) {
+          parsedDate = parseISO(record['Date']);
       } else {
-          errors.push(`Row ${i + 2}: Invalid Date format "${record.date}". Expected YYYY-MM-DD.`);
+          errors.push(`Row ${i + 2}: Invalid Date format "${record['Date']}". Expected YYYY-MM-DD.`);
           errorCount++;
           continue;
       }
 
-      const amountNumeric = parseInt(record.amount.replace(/Rs\.?\s*/, '').replace(/,/g, ''), 10);
+      const amountNumeric = parseInt(record['Amount'].replace(/Rs\.?\s*/, '').replace(/,/g, ''), 10);
       if (isNaN(amountNumeric) || amountNumeric <= 0) {
-        errors.push(`Row ${i + 2}: Invalid Amount "${record.amount}". Must be a positive number.`);
+        errors.push(`Row ${i + 2}: Invalid Amount "${record['Amount']}". Must be a positive number.`);
         errorCount++;
         continue;
       }
 
       const newPaymentId = `PAYIMP${String(Date.now()).slice(-5)}${String(Math.floor(Math.random() * 100)).padStart(2, '0')}`;
-      const newTransactionId = record.transactionId || `IMP-${Date.now().toString().slice(-6)}`;
-      const method = record.method || "Imported";
+      const newTransactionId = record['Transaction ID'] || `IMP-${Date.now().toString().slice(-6)}`;
+      const method = record['Method'] || "Imported";
 
       const paymentRecord: PaymentRecord = {
         paymentId: newPaymentId,
@@ -1228,8 +1241,8 @@ export async function batchImportPayments(recordsToImport: PaymentImportData[]):
       }
 
     } catch (error: any) {
-      console.error(`Error importing payment for student ${record.studentId}:`, error.message);
-      errors.push(`Row ${i + 2} (Student ID ${record.studentId}): ${error.message}`);
+      console.error(`Error importing payment for student ${record['Student ID']}:`, error.message);
+      errors.push(`Row ${i + 2} (Student ID ${record['Student ID']}): ${error.message}`);
       errorCount++;
     }
   }
@@ -1237,6 +1250,27 @@ export async function batchImportPayments(recordsToImport: PaymentImportData[]):
     await batch.commit();
   }
   return { processedCount: recordsToImport.length, successCount, errorCount, errors };
+}
+
+export async function deleteAllData(): Promise<void> {
+  const collectionsToDelete = [
+    STUDENTS_COLLECTION,
+    ATTENDANCE_COLLECTION,
+    FEEDBACK_COLLECTION,
+    ALERTS_COLLECTION,
+    APP_CONFIG_COLLECTION,
+  ];
+
+  for (const collectionName of collectionsToDelete) {
+    const collectionRef = collection(db, collectionName);
+    const snapshot = await getDocs(collectionRef);
+    const batch = writeBatch(db);
+    snapshot.docs.forEach((docSnap) => {
+      batch.delete(docSnap.ref);
+    });
+    await batch.commit();
+    console.log(`All documents in ${collectionName} have been deleted.`);
+  }
 }
 
 
@@ -1260,3 +1294,4 @@ declare module '@/types/communication' {
     firestoreId?: string;
   }
 }
+

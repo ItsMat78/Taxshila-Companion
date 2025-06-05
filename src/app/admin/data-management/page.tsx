@@ -14,7 +14,7 @@ import {
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { UploadCloud, DownloadCloud, FileText, FileSpreadsheet, Loader2, Users, FileClock, Banknote, AlertCircle } from 'lucide-react';
+import { UploadCloud, DownloadCloud, FileText, FileSpreadsheet, Loader2, Users, FileClock, Banknote, AlertCircle, Trash2 } from 'lucide-react';
 import Papa from 'papaparse';
 import { 
   getAllStudents, 
@@ -23,10 +23,23 @@ import {
   getAllAttendanceRecords, 
   getAllStudentsWithPaymentHistory,
   batchImportAttendance,
-  batchImportPayments
+  batchImportPayments,
+  deleteAllData // Import the new delete function
 } from '@/services/student-service';
 import type { Student, AttendanceRecord, PaymentRecord, AttendanceImportData, PaymentImportData } from '@/types/student';
 import { format, parseISO, isValid } from 'date-fns';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { useRouter } from 'next/navigation'; // For redirecting after deletion
 
 interface AggregatedPaymentRecordForExport extends PaymentRecord {
   studentId: string;
@@ -37,12 +50,14 @@ type ImportType = "students" | "attendance" | "payments";
 
 export default function DataManagementPage() {
   const { toast } = useToast();
+  const router = useRouter();
   const studentFileInputRef = React.useRef<HTMLInputElement>(null);
   const attendanceFileInputRef = React.useRef<HTMLInputElement>(null);
   const paymentFileInputRef = React.useRef<HTMLInputElement>(null);
 
   const [isImporting, setIsImporting] = React.useState<ImportType | null>(null);
   const [isExporting, setIsExporting] = React.useState<string | null>(null);
+  const [isDeletingDatabase, setIsDeletingDatabase] = React.useState(false);
 
   const handleFileSelected = (event: React.ChangeEvent<HTMLInputElement>, importType: ImportType) => {
     const file = event.target.files?.[0];
@@ -110,7 +125,7 @@ export default function DataManagementPage() {
 
   const processStudentImport = async (parsedData: any[], actualHeaders: string[]) => {
     const expectedHeaders = ['Name', 'Email', 'Phone', 'Password', 'Shift', 'Seat Number'];
-    const missingHeaders = expectedHeaders.filter(h => !actualHeaders.includes(h) && (h !== 'Email')); // Email is optional
+    const missingHeaders = expectedHeaders.filter(h => !actualHeaders.includes(h) && (h !== 'Email')); 
     const strictlyMissingHeaders = expectedHeaders.filter(h => h !== 'Email' && !actualHeaders.includes(h));
 
 
@@ -173,7 +188,7 @@ export default function DataManagementPage() {
   };
 
   const processAttendanceImport = async (parsedData: any[], actualHeaders: string[]) => {
-    const expectedHeaders = ['Student ID', 'Date', 'Check-In Time']; // Check-Out Time is optional
+    const expectedHeaders = ['Student ID', 'Date', 'Check-In Time']; 
     const missingHeaders = expectedHeaders.filter(h => !actualHeaders.includes(h));
     if (missingHeaders.length > 0) {
       toast({ title: 'Invalid CSV Headers', description: `Missing required attendance headers: ${missingHeaders.join(', ')}.`, variant: 'destructive' });
@@ -207,7 +222,7 @@ export default function DataManagementPage() {
   };
 
   const processPaymentImport = async (parsedData: any[], actualHeaders: string[]) => {
-    const expectedHeaders = ['Student ID', 'Date', 'Amount']; // Transaction ID and Method are optional
+    const expectedHeaders = ['Student ID', 'Date', 'Amount']; 
     const missingHeaders = expectedHeaders.filter(h => !actualHeaders.includes(h));
     if (missingHeaders.length > 0) {
       toast({ title: 'Invalid CSV Headers', description: `Missing required payment headers: ${missingHeaders.join(', ')}.`, variant: 'destructive' });
@@ -290,7 +305,7 @@ export default function DataManagementPage() {
       const csvData = Papa.unparse(attendanceRecords.map(ar => ({
         'Record ID': ar.recordId,
         'Student ID': ar.studentId,
-        'Date': ar.date, // Already YYYY-MM-DD
+        'Date': ar.date, 
         'Check-In Time': ar.checkInTime ? format(parseISO(ar.checkInTime), 'yyyy-MM-dd HH:mm:ss') : '',
         'Check-Out Time': ar.checkOutTime ? format(parseISO(ar.checkOutTime), 'yyyy-MM-dd HH:mm:ss') : '',
       })));
@@ -345,6 +360,29 @@ export default function DataManagementPage() {
     }
   };
 
+  const handleDeleteDatabase = async () => {
+    setIsDeletingDatabase(true);
+    try {
+      await deleteAllData();
+      toast({
+        title: 'Database Cleared',
+        description: 'All application data has been deleted successfully.',
+        duration: 7000,
+      });
+      // Optionally, redirect or refresh to reflect the empty state
+      router.refresh(); 
+    } catch (error: any) {
+      console.error("Error deleting database:", error);
+      toast({
+        title: 'Database Deletion Failed',
+        description: error.message || 'An unexpected error occurred.',
+        variant: 'destructive',
+        duration: 7000,
+      });
+    } finally {
+      setIsDeletingDatabase(false);
+    }
+  };
 
   return (
     <>
@@ -438,6 +476,55 @@ export default function DataManagementPage() {
             <p className="text-xs text-muted-foreground pt-2">
               Ensure CSV files for import are UTF-8 encoded and match the specified header formats.
             </p>
+        </CardFooter>
+      </Card>
+
+      <Card className="shadow-lg mt-6 border-destructive">
+        <CardHeader>
+          <CardTitle className="flex items-center text-destructive">
+            <AlertCircle className="mr-2 h-5 w-5" />Danger Zone
+          </CardTitle>
+          <CardDescription className="text-destructive">
+            These actions are irreversible and can lead to permanent data loss.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="destructive" className="w-full sm:w-auto" disabled={isDeletingDatabase}>
+                {isDeletingDatabase ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
+                {isDeletingDatabase ? 'Deleting Database...' : 'Delete Entire Database'}
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle className="text-destructive">Are you absolutely sure?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This action cannot be undone. This will permanently delete ALL data from the
+                  application, including all students, attendance records, payment history,
+                  feedback, alerts, and fee configurations.
+                  <br /><br />
+                  <strong>There is no recovery for this action.</strong>
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel disabled={isDeletingDatabase}>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={handleDeleteDatabase}
+                  disabled={isDeletingDatabase}
+                  className="bg-destructive hover:bg-destructive/90"
+                >
+                  {isDeletingDatabase ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                  Confirm Permanent Deletion
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </CardContent>
+        <CardFooter>
+          <p className="text-xs text-muted-foreground">
+            Please proceed with extreme caution. It is recommended to export all data before performing any destructive action.
+          </p>
         </CardFooter>
       </Card>
     </>
