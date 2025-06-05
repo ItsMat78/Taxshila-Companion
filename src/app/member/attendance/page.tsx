@@ -106,7 +106,7 @@ export default function MemberAttendancePage() {
         { 
           fps: 10, 
           qrbox: { width: 250, height: 250 },
-          supportedScanTypes: [], // Pass empty array if you want to rely on formatsToSupport
+          supportedScanTypes: [], 
           formatsToSupport: formatsToSupport
         },
         false // verbose
@@ -117,6 +117,7 @@ export default function MemberAttendancePage() {
         if (isProcessingQr) return;
         setIsProcessingQr(true);
         scanner.pause(true);
+        setHasCameraPermission(true); // Reaffirm permission on successful scan attempt
 
         if (decodedText === LIBRARY_QR_CODE_PAYLOAD) {
           try {
@@ -125,38 +126,53 @@ export default function MemberAttendancePage() {
               title: "Checked In!",
               description: `Successfully checked in at ${new Date().toLocaleTimeString()}.`,
             });
-            await fetchStudentDataAndActiveCheckIn(); // Refresh active check-in status
-            await fetchAttendanceForSelectedDate(); // Refresh daily attendance
+            await fetchStudentDataAndActiveCheckIn(); 
+            await fetchAttendanceForSelectedDate(); 
           } catch (error) {
             toast({ title: "Check-in Error", description: "Failed to process check-in. Please try again.", variant: "destructive" });
           }
         } else {
           toast({ title: "Invalid QR Code", description: "Please scan the official library QR code.", variant: "destructive" });
-          setTimeout(() => scanner.resume(), 1000); // Resume scanner after a short delay
+          setTimeout(() => scanner.resume(), 1000); 
         }
         setIsProcessingQr(false);
-        setIsScannerOpen(false); // Close scanner after attempt
+        setIsScannerOpen(false); 
       };
 
-      const onScanFailure = (error: any) => {
-        // console.warn(`QR error = ${error}`);
+      const onScanFailure = (errorMessage: string, errorObject?: any) => {
+        // Basic check for permission denial messages
+        if (errorMessage.toLowerCase().includes("permission denied") ||
+            errorMessage.toLowerCase().includes("notallowederror") ||
+            (errorObject && typeof errorObject.message === 'string' && errorObject.message.toLowerCase().includes("permission denied"))) {
+          setHasCameraPermission(false);
+          toast({
+            variant: 'destructive',
+            title: 'Camera Access Denied',
+            description: 'Please enable camera permissions in your browser settings.',
+          });
+        }
+        // console.warn(`QR error = ${errorMessage}`, errorObject);
       };
       
-      scanner.render(onScanSuccess, onScanFailure)
-        .then(() => setHasCameraPermission(true))
-        .catch(err => {
-            console.error("Error rendering scanner:", err);
-            setHasCameraPermission(false);
-            toast({ variant: 'destructive', title: 'Camera Error', description: 'Could not initialize camera for QR scanning.' });
-            setIsScannerOpen(false);
+      try {
+        scanner.render(onScanSuccess, onScanFailure);
+        setHasCameraPermission(true); // Optimistically set to true if render doesn't throw
+      } catch (error) {
+        console.error("Error during scanner.render() call:", error);
+        setHasCameraPermission(false);
+        toast({
+          variant: 'destructive',
+          title: 'Scanner Initialization Error',
+          description: 'Could not start the QR scanner. Please ensure camera permissions are enabled and try again.',
         });
-
+        setIsScannerOpen(false); // Close scanner if render fails
+      }
 
     } else if (!isScannerOpen && html5QrcodeScannerRef.current) {
         html5QrcodeScannerRef.current.clear()
         .catch(err => console.error("Error clearing scanner:", err));
         html5QrcodeScannerRef.current = null;
-        setHasCameraPermission(null);
+        setHasCameraPermission(null); 
     }
     
     return () => {
