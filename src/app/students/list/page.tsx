@@ -24,7 +24,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input'; // Added Input
 import { ArrowRight, Edit, Loader2, Users, UserX, UserCheck, Search as SearchIcon } from 'lucide-react'; // Added SearchIcon
 import { getAllStudents } from '@/services/student-service';
-import type { Student as StudentData } from '@/types/student'; 
+import type { Student as StudentData } from '@/types/student';
 
 export default function StudentListPage() {
   const [allStudents, setAllStudents] = React.useState<StudentData[]>([]);
@@ -97,14 +97,14 @@ export default function StudentListPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Student ID</TableHead>
+                <TableHead>ID</TableHead>
                 <TableHead>Name</TableHead>
                 <TableHead>Phone</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>Shift</TableHead>
-                <TableHead>Seat Number</TableHead>
+                <TableHead>Seat</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead>Actions</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -121,7 +121,7 @@ export default function StudentListPage() {
                   <TableCell className="capitalize">{student.shift}</TableCell>
                   <TableCell>{student.seatNumber || 'N/A'}</TableCell>
                   <TableCell>{getStatusBadge(student)}</TableCell>
-                  <TableCell className="space-x-2">
+                  <TableCell className="space-x-1 text-right whitespace-nowrap">
                     <Link href={`/students/profiles/${student.studentId}`} passHref legacyBehavior>
                       <Button variant="outline" size="sm" title="View Profile">
                         <ArrowRight className="h-4 w-4" />
@@ -171,18 +171,18 @@ export default function StudentListPage() {
             />
           </div>
       </PageTitle>
-      
+
       {renderStudentTable(
-        activeStudents, 
-        "Active Students", 
+        activeStudents,
+        "Active Students",
         "A list of all students currently active in the system.",
         <Users className="h-5 w-5" />,
         "No active students found."
       )}
 
       {renderStudentTable(
-        leftStudents, 
-        "Students Who Have Left", 
+        leftStudents,
+        "Students Who Have Left",
         "A list of students who are no longer active. Click re-activate icon to manage their details and re-assign a seat.",
         <UserX className="h-5 w-5" />,
         "No students have left the study hall.",

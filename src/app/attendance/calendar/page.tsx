@@ -30,10 +30,10 @@ export default function AdminAttendanceOverviewPage() {
   const { toast } = useToast();
   const [allStudents, setAllStudents] = React.useState<Student[]>([]);
   const [isLoadingStudents, setIsLoadingStudents] = React.useState(true);
-  
+
   const [date, setDate] = React.useState<Date | undefined>(new Date());
   const [selectedStudent, setSelectedStudent] = React.useState<Student | null>(null);
-  
+
   const [attendanceForDay, setAttendanceForDay] = React.useState<AttendanceRecord[]>([]);
   const [isLoadingDetails, setIsLoadingDetails] = React.useState(false);
 
@@ -88,11 +88,11 @@ export default function AdminAttendanceOverviewPage() {
 
   return (
     <>
-      <PageTitle 
+      <PageTitle
         title="Student Attendance Overview"
-        description="Select a student to view their attendance calendar and daily records." 
+        description="Select a student to view their attendance calendar and daily records."
       />
-      
+
       <Card className="mb-6 shadow-lg">
         <CardHeader>
           <CardTitle className="flex items-center"><List className="mr-2 h-5 w-5" />Active Students</CardTitle>
@@ -117,9 +117,9 @@ export default function AdminAttendanceOverviewPage() {
               </TableHeader>
               <TableBody>
                 {allStudents.map((student) => (
-                  <TableRow 
-                    key={student.studentId} 
-                    className={`cursor-pointer hover:bg-muted/50 ${selectedStudent?.studentId === student.studentId ? 'bg-primary/10' : ''}`} 
+                  <TableRow
+                    key={student.studentId}
+                    className={`cursor-pointer hover:bg-muted/50 ${selectedStudent?.studentId === student.studentId ? 'bg-primary/10' : ''}`}
                     onClick={() => handleStudentSelect(student)}
                   >
                     <TableCell>{student.studentId}</TableCell>
@@ -127,9 +127,9 @@ export default function AdminAttendanceOverviewPage() {
                     <TableCell>{student.email || 'N/A'}</TableCell>
                     <TableCell className="capitalize">{student.shift}</TableCell>
                     <TableCell>
-                      <Button 
-                        variant={selectedStudent?.studentId === student.studentId ? "default" : "outline"} 
-                        size="sm" 
+                      <Button
+                        variant={selectedStudent?.studentId === student.studentId ? "default" : "outline"}
+                        size="sm"
                         onClick={(e) => { e.stopPropagation(); handleStudentSelect(student); }}
                       >
                         View Calendar
@@ -226,5 +226,3 @@ export default function AdminAttendanceOverviewPage() {
     </>
   );
 }
-
-    

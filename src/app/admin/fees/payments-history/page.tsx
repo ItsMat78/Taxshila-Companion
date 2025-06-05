@@ -97,10 +97,10 @@ export default function PaymentHistoryPage() {
                 <TableRow>
                   <TableHead>Payment ID</TableHead>
                   <TableHead>Student Name</TableHead>
-                  <TableHead className="w-[150px]">Date</TableHead>
+                  <TableHead>Date</TableHead>
                   <TableHead>Amount</TableHead>
                   <TableHead>Transaction ID</TableHead>
-                  <TableHead className="w-[120px]">Method</TableHead>
+                  <TableHead>Method</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -108,7 +108,7 @@ export default function PaymentHistoryPage() {
                   <TableRow key={payment.paymentId}>
                     <TableCell>{payment.paymentId}</TableCell>
                     <TableCell className="font-medium">{payment.studentName} ({payment.studentId})</TableCell>
-                    <TableCell>
+                    <TableCell className="whitespace-nowrap">
                       {payment.date && isValid(parseISO(payment.date))
                         ? format(parseISO(payment.date), 'MMM d, yyyy')
                         : 'N/A'}
@@ -117,7 +117,7 @@ export default function PaymentHistoryPage() {
                     <TableCell>{payment.transactionId}</TableCell>
                     <TableCell>
                       <Badge variant="secondary" className="capitalize">
-                        <CreditCard className="mr-1 h-3 w-3"/> 
+                        <CreditCard className="mr-1 h-3 w-3"/>
                         {payment.method}
                       </Badge>
                     </TableCell>

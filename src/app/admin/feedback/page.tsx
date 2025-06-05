@@ -50,7 +50,7 @@ function FeedbackResponseDialog({ feedbackItem, isOpen, onClose, onSendResponse 
 
   React.useEffect(() => {
     if (isOpen) {
-      setResponseMessage(""); 
+      setResponseMessage("");
     }
   }, [isOpen]);
 
@@ -63,7 +63,7 @@ function FeedbackResponseDialog({ feedbackItem, isOpen, onClose, onSendResponse 
     setIsSending(true);
     await onSendResponse(feedbackItem.id, responseMessage, feedbackItem.message);
     setIsSending(false);
-    onClose(); 
+    onClose();
   };
 
   return (
@@ -146,21 +146,21 @@ export default function AdminFeedbackPage() {
           selectedFeedbackForResponse.studentId,
           `Response to your feedback: "${snippet}"`,
           responseMessage,
-          "feedback_response", 
-          selectedFeedbackForResponse.id, 
-          snippet 
+          "feedback_response",
+          selectedFeedbackForResponse.id,
+          snippet
         );
         toast({ title: "Response Sent", description: `Alert sent to ${selectedFeedbackForResponse.studentName || 'student'} and feedback marked as Resolved.` });
-      } else if (status !== "Resolved") { 
+      } else if (status !== "Resolved") {
         toast({ title: "Feedback Updated", description: `Status changed to ${status}.` });
       }
-      await fetchFeedback(); 
+      await fetchFeedback();
       refreshNotifications(); // Trigger notification count refresh
     } catch (error: any) {
       toast({ title: "Update Failed", description: error.message || "Could not update feedback status.", variant: "destructive" });
     } finally {
       setUpdatingFeedbackId(null);
-      setSelectedFeedbackForResponse(null); 
+      setSelectedFeedbackForResponse(null);
     }
   };
 
@@ -225,12 +225,12 @@ export default function AdminFeedbackPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[120px]">Date</TableHead>
-                <TableHead className="w-[150px]">Student</TableHead>
-                <TableHead className="w-[120px]">Type</TableHead>
+                <TableHead className="whitespace-nowrap">Date</TableHead>
+                <TableHead>Student</TableHead>
+                <TableHead>Type</TableHead>
                 <TableHead>Message</TableHead>
-                <TableHead className="w-[100px]">Status</TableHead>
-                <TableHead className="w-[200px] text-right">Actions</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -244,7 +244,7 @@ export default function AdminFeedbackPage() {
               ) : (
                 feedbackList.map((item) => (
                   <TableRow key={item.id}>
-                    <TableCell className="text-xs">{format(parseISO(item.dateSubmitted), 'MMM d, yyyy')}</TableCell>
+                    <TableCell className="text-xs whitespace-nowrap">{format(parseISO(item.dateSubmitted), 'MMM d, yyyy')}</TableCell>
                     <TableCell>
                         {item.studentName || 'Anonymous'}
                         {item.studentId && <span className="block text-xs text-muted-foreground">({item.studentId})</span>}
@@ -252,8 +252,8 @@ export default function AdminFeedbackPage() {
                     <TableCell>{getFeedbackTypeBadge(item.type)}</TableCell>
                     <TableCell className="text-sm">{item.message}</TableCell>
                     <TableCell>{getFeedbackStatusBadge(item.status)}</TableCell>
-                    <TableCell className="text-right space-x-1">
-                      {item.status === "Open" && item.studentId && ( 
+                    <TableCell className="text-right space-x-1 whitespace-nowrap">
+                      {item.status === "Open" && item.studentId && (
                         <Button
                           variant="outline"
                           size="sm"
@@ -297,7 +297,7 @@ export default function AdminFeedbackPage() {
         isOpen={isResponseDialogOpen}
         onClose={() => {
             setIsResponseDialogOpen(false);
-            setSelectedFeedbackForResponse(null); 
+            setSelectedFeedbackForResponse(null);
         }}
         onSendResponse={handleSendAndResolve}
       />

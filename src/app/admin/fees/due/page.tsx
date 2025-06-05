@@ -35,8 +35,8 @@ export default function FeesDuePage() {
       setIsLoading(true);
       try {
         const allStudents = await getAllStudents();
-        const dueStudents = allStudents.filter(student => 
-          student.activityStatus === "Active" && 
+        const dueStudents = allStudents.filter(student =>
+          student.activityStatus === "Active" &&
           (student.feeStatus === "Due" || student.feeStatus === "Overdue")
         );
 
@@ -46,11 +46,11 @@ export default function FeesDuePage() {
             return statusOrder(a.feeStatus) - statusOrder(b.feeStatus);
           }
           try {
-            const dateA = a.nextDueDate && isValid(parseISO(a.nextDueDate)) ? parseISO(a.nextDueDate) : new Date(0); 
+            const dateA = a.nextDueDate && isValid(parseISO(a.nextDueDate)) ? parseISO(a.nextDueDate) : new Date(0);
             const dateB = b.nextDueDate && isValid(parseISO(b.nextDueDate)) ? parseISO(b.nextDueDate) : new Date(0);
             return dateA.getTime() - dateB.getTime();
           } catch (e) {
-            return 0; 
+            return 0;
           }
         });
 
@@ -87,12 +87,12 @@ export default function FeesDuePage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[120px]">Student ID</TableHead>
+                  <TableHead>Student ID</TableHead>
                   <TableHead>Name</TableHead>
-                  <TableHead className="w-[150px]">Amount Due</TableHead>
-                  <TableHead className="w-[150px]">Last Payment</TableHead>
-                  <TableHead className="w-[150px]">Next Due Date</TableHead>
-                  <TableHead className="w-[120px]">Status</TableHead>
+                  <TableHead>Amount Due</TableHead>
+                  <TableHead>Last Payment</TableHead>
+                  <TableHead>Next Due Date</TableHead>
+                  <TableHead>Status</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -101,19 +101,19 @@ export default function FeesDuePage() {
                     <TableCell>{student.studentId}</TableCell>
                     <TableCell className="font-medium">{student.name}</TableCell>
                     <TableCell>{student.amountDue || 'N/A'}</TableCell>
-                    <TableCell>
-                      {student.lastPaymentDate && isValid(parseISO(student.lastPaymentDate)) 
-                        ? format(parseISO(student.lastPaymentDate), 'MMM d, yyyy') 
+                    <TableCell className="whitespace-nowrap">
+                      {student.lastPaymentDate && isValid(parseISO(student.lastPaymentDate))
+                        ? format(parseISO(student.lastPaymentDate), 'MMM d, yyyy')
                         : 'N/A'}
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="whitespace-nowrap">
                       {student.nextDueDate && isValid(parseISO(student.nextDueDate))
                         ? format(parseISO(student.nextDueDate), 'MMM d, yyyy')
                         : 'N/A'}
                     </TableCell>
                     <TableCell>
-                      <Badge 
-                        variant={student.feeStatus === "Overdue" ? "destructive" : "default"} 
+                      <Badge
+                        variant={student.feeStatus === "Overdue" ? "destructive" : "default"}
                         className={`capitalize ${student.feeStatus === "Due" ? "bg-yellow-100 text-yellow-700 border-yellow-300 hover:bg-yellow-200" : ""}`}
                       >
                         {student.feeStatus === "Overdue" && <CalendarClock className="mr-1 h-3 w-3" />}

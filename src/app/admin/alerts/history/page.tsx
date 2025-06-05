@@ -29,14 +29,14 @@ import { cn } from '@/lib/utils';
 const getAlertDisplayInfo = (alert: AlertItem) => {
   switch (alert.type) {
     case 'closure':
-      return { 
-        icon: <Info className="h-4 w-4 text-blue-500" />, 
+      return {
+        icon: <Info className="h-4 w-4 text-blue-500" />,
         color: "text-blue-700 bg-blue-100",
         label: "Closure"
       };
     case 'warning':
-      return { 
-        icon: <AlertTriangle className="h-4 w-4 text-yellow-500" />, 
+      return {
+        icon: <AlertTriangle className="h-4 w-4 text-yellow-500" />,
         color: "text-yellow-700 bg-yellow-100",
         label: "Warning"
       };
@@ -48,8 +48,8 @@ const getAlertDisplayInfo = (alert: AlertItem) => {
       };
     case 'info':
     default:
-      return { 
-        icon: <Megaphone className="h-4 w-4 text-primary" />, 
+      return {
+        icon: <Megaphone className="h-4 w-4 text-primary" />,
         color: "text-primary bg-primary/10",
         label: "Info / General"
       };
@@ -98,11 +98,11 @@ export default function AdminAlertsHistoryPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[150px]">Date Sent</TableHead>
-                  <TableHead className="w-[180px]">Type</TableHead>
-                  <TableHead className="w-[180px]">Audience</TableHead>
+                  <TableHead>Date Sent</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Audience</TableHead>
                   <TableHead>Title</TableHead>
-                  <TableHead className="w-[35%]">Message</TableHead>
+                  <TableHead>Message</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -110,7 +110,7 @@ export default function AdminAlertsHistoryPage() {
                   const { icon, color, label } = getAlertDisplayInfo(alert);
                   return (
                     <TableRow key={alert.id}>
-                      <TableCell className="text-xs">{format(parseISO(alert.dateSent), 'MMM d, yyyy, p')}</TableCell>
+                      <TableCell className="text-xs whitespace-nowrap">{format(parseISO(alert.dateSent), 'MMM d, yyyy, p')}</TableCell>
                       <TableCell>
                         <Badge variant="outline" className={cn("capitalize border-opacity-50", color)}>
                           {React.cloneElement(icon, {className: "mr-1 h-3 w-3"})}
