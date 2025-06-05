@@ -36,7 +36,7 @@ const PaymentHistoryCardItem = ({ payment }: { payment: PaymentRecord }) => (
       <div className="font-medium text-sm">{payment.amount}</div>
       <Badge variant="outline" className="text-xs capitalize">{payment.method}</Badge>
     </div>
-    <div className="text-xs text-muted-foreground space-y-0.5">
+    <div className="text-xs text-muted-foreground space-y-1"> {/* Changed from space-y-0.5 */}
       <p>Date: {payment.date && isValid(parseISO(payment.date)) ? format(parseISO(payment.date), 'dd-MMM-yy') : 'N/A'}</p>
       <p>Transaction ID: {payment.transactionId}</p>
     </div>
@@ -290,18 +290,18 @@ export default function StudentDetailPage() {
             Monthly attendance for {student.name}. Select a date to view details.
           </CardDescription>
         </CardHeader>
-        <CardContent className="flex flex-col items-stretch gap-6"> {/* Always vertical stack */}
-          <div className="w-full flex justify-center"> {/* Center the calendar */}
+        <CardContent className="flex flex-col items-stretch gap-6">
+          <div className="w-full flex justify-center">
             <Calendar
               mode="single"
               selected={selectedCalendarDate}
               onSelect={setSelectedCalendarDate}
-              className="rounded-md border shadow-inner min-w-[280px] sm:min-w-[320px] max-w-md" // Control calendar width
+              className="rounded-md border shadow-inner min-w-[280px] sm:min-w-[320px] max-w-md"
               modifiers={{ today: new Date() }}
               modifiersStyles={{ today: { color: 'hsl(var(--accent-foreground))', backgroundColor: 'hsl(var(--accent))' } }}
             />
           </div>
-          <div className="w-full"> {/* Attendance List takes full width of card */}
+          <div className="w-full">
             <h4 className="text-md font-semibold mb-2">
               Details for {selectedCalendarDate ? format(selectedCalendarDate, 'PPP') : 'selected date'}:
             </h4>
