@@ -18,7 +18,7 @@ import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from '@/contexts/auth-context';
-import { getStudentByEmail } from '@/services/student-service'; 
+import { getStudentByEmail, updateStudent, uploadProfilePictureToStorage } from '@/services/student-service'; 
 import type { Student } from '@/types/student'; 
 import { UserCircle, UploadCloud, Save, Mail, Phone, BookOpen, MapPin, Receipt, Loader2 } from 'lucide-react';
 
@@ -86,25 +86,49 @@ export default function MemberProfilePage() {
   };
 
   const handleSaveProfilePicture = async () => {
-    if (profilePicturePreview && selectedFile && memberDetails?.studentId) {
-      setIsSavingPicture(true);
-      // Simulate client-side update without saving to Firestore to avoid size limit error.
-      // In a real app, upload `selectedFile` to cloud storage and save the URL.
-      
-      // Simulate a short delay for "saving"
-      await new Promise(resolve => setTimeout(resolve, 500));
-
-      setCurrentProfilePicture(profilePicturePreview);
+    if (!selectedFile || !memberDetails?.studentId || !memberDetails.firestoreId) {
       toast({
-        title: "Profile Picture Updated (Locally)",
-        description: "Your new profile picture is previewed. It will not be saved to the database in this demo.",
+        title: "Error",
+        description: "No picture selected or critical user details (like Firestore ID) are missing.",
+        variant: "destructive",
       });
-
+      return;
+    }
+  
+    setIsSavingPicture(true);
+    try {
+      // 1. Upload image to Firebase Storage using the student's Firestore ID
+      const downloadURL = await uploadProfilePictureToStorage(memberDetails.firestoreId, selectedFile);
+  
+      // 2. Update Firestore with the new URL using the student's custom ID
+      const updatedStudentData = await updateStudent(memberDetails.studentId, { profilePictureUrl: downloadURL });
+  
+      if (updatedStudentData) {
+        setMemberDetails(updatedStudentData); // Update local state with the full updated student object
+        setCurrentProfilePicture(downloadURL); // Update displayed picture
+        toast({
+          title: "Profile Picture Updated",
+          description: "Your new profile picture has been saved.",
+        });
+      } else {
+        // This case should ideally not happen if updateStudent resolves successfully
+        // but good to have a fallback.
+        throw new Error("Failed to update student record in Firestore after picture upload.");
+      }
+  
+    } catch (error: any) {
+      console.error("Error saving profile picture:", error);
+      toast({
+        title: "Error Saving Picture",
+        description: error.message || "Could not save your profile picture. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
       setIsSavingPicture(false);
-      setProfilePicturePreview(null);
-      setSelectedFile(null);
+      setProfilePicturePreview(null); // Clear preview
+      setSelectedFile(null); // Clear selected file
       if (fileInputRef.current) {
-        fileInputRef.current.value = "";
+        fileInputRef.current.value = ""; // Reset file input
       }
     }
   };
@@ -172,7 +196,7 @@ export default function MemberProfilePage() {
           <CardFooter>
             <Button 
               onClick={handleSaveProfilePicture} 
-              disabled={!profilePicturePreview || isSavingPicture}
+              disabled={!profilePicturePreview || isSavingPicture || !selectedFile}
               className="w-full"
             >
               {isSavingPicture ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}

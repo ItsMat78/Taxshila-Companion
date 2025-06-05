@@ -15,7 +15,11 @@ import {
   orderBy,
   limit,
   serverTimestamp,
-  writeBatch
+  writeBatch,
+  storage, // Import Firebase Storage instance
+  storageRef, // Import Firebase Storage ref function
+  uploadBytesResumable, // Import Firebase Storage upload function
+  getDownloadURL // Import Firebase Storage getDownloadURL function
 } from '@/lib/firebase';
 import type { Student, Shift, FeeStatus, PaymentRecord, ActivityStatus, AttendanceRecord } from '@/types/student';
 import type { FeedbackItem, FeedbackType, FeedbackStatus, AlertItem } from '@/types/communication';
@@ -106,7 +110,7 @@ const alertItemFromDoc = (docSnapshot: any): AlertItem => {
   const data = docSnapshot.data();
   return {
     ...data,
-    id: docSnapshot.id,
+    id: docSnapshot.id, // Ensure id is set from docSnapshot.id
     firestoreId: docSnapshot.id,
     studentId: data.studentId === null ? undefined : data.studentId,
     dateSent: data.dateSent instanceof Timestamp ? data.dateSent.toDate().toISOString() : data.dateSent,
@@ -420,11 +424,13 @@ export async function updateStudent(customStudentId: string, studentUpdateData: 
                              (studentUpdateData.shift && studentUpdateData.shift !== studentToUpdate.shift) ||
                              (studentUpdateData.seatNumber !== undefined && studentUpdateData.seatNumber !== studentToUpdate.seatNumber) ||
                              (payload.idCardFileName !== studentToUpdate.idCardFileName) || 
+                             (payload.profilePictureUrl && payload.profilePictureUrl !== studentToUpdate.profilePictureUrl) ||
                              passwordUpdated;
 
       if (profileChanged) {
         let alertMessage = `Hi ${updatedStudent.name}, your profile details have been updated.\nName: ${updatedStudent.name}\nEmail: ${updatedStudent.email || 'N/A'}\nPhone: ${updatedStudent.phone}\nShift: ${updatedStudent.shift}\nSeat: ${updatedStudent.seatNumber || 'N/A'}`;
         if (passwordUpdated) alertMessage += `\nYour password has also been updated.`;
+        if (payload.profilePictureUrl && payload.profilePictureUrl !== studentToUpdate.profilePictureUrl) alertMessage += `\nYour profile picture has been updated.`;
         await sendAlertToStudent(customStudentId, "Profile Details Updated", alertMessage, "info");
       }
   }
@@ -452,21 +458,6 @@ export async function deleteStudentCompletely(customStudentId: string): Promise<
     batch.delete(doc(db, ATTENDANCE_COLLECTION, docSnap.id));
   });
   
-  // Potentially delete feedback items (if they store studentId directly and should be removed)
-  // const feedbackQuery = query(collection(db, FEEDBACK_COLLECTION), where("studentId", "==", customStudentId));
-  // const feedbackSnapshot = await getDocs(feedbackQuery);
-  // feedbackSnapshot.forEach(docSnap => {
-  //   batch.delete(doc(db, FEEDBACK_COLLECTION, docSnap.id));
-  // });
-
-  // Potentially delete student-specific alerts
-  // const alertsQuery = query(collection(db, ALERTS_COLLECTION), where("studentId", "==", customStudentId));
-  // const alertsSnapshot = await getDocs(alertsQuery);
-  // alertsSnapshot.forEach(docSnap => {
-  //   batch.delete(doc(db, ALERTS_COLLECTION, docSnap.id));
-  // });
-
-
   await batch.commit();
 }
 
@@ -668,13 +659,13 @@ export async function calculateMonthlyStudyHours(customStudentId: string): Promi
 }
 
 export async function calculateMonthlyRevenue(): Promise<string> {
-  const allStudents = await getAllStudents();
+  const allStudentsData = await getAllStudents();
   let totalRevenue = 0;
   const now = new Date();
   const currentMonthStart = startOfMonth(now);
   const currentMonthEnd = endOfMonth(now);
 
-  allStudents.forEach(student => {
+  allStudentsData.forEach(student => {
     if (student.paymentHistory) {
       student.paymentHistory.forEach(payment => {
         try {
@@ -803,6 +794,9 @@ export async function sendAlertToStudent(
   if (!student && type === 'feedback_response') {
       throw new Error(`Student with ID ${customStudentId} not found for feedback response.`);
   } else if (!student) {
+    // For other alert types, we might still proceed if studentId is just for record keeping,
+    // but generally it's better if student exists.
+    // console.warn(`Student with ID ${customStudentId} not found for sending alert of type ${type}. Alert will be sent without specific student link confirmation.`);
   }
 
   const newAlertDataForFirestore: any = {
@@ -887,15 +881,14 @@ export async function markAlertAsRead(alertId: string, customStudentId: string):
         throw new Error("Alert not found.");
     }
     const alertData = alertItemFromDoc(alertSnap);
-
+    
     if (alertData.studentId === customStudentId) { // Targeted alert
         if (!alertData.isRead) {
             await updateDoc(alertDocRef, { isRead: true });
             return { ...alertData, isRead: true };
         }
         return alertData; // Already read
-    }
-    else if (!alertData.studentId) { // General alert
+    } else if (!alertData.studentId) { // General alert (studentId on alertData will be undefined due to alertItemFromDoc mapping null to undefined)
         const student = await getStudentByCustomId(customStudentId);
         if (student && student.firestoreId) {
             const studentDocRef = doc(db, STUDENTS_COLLECTION, student.firestoreId);
@@ -918,6 +911,55 @@ export async function markAlertAsRead(alertId: string, customStudentId: string):
         return alertData; 
     }
 }
+
+
+// --- Firebase Storage Service Functions ---
+export async function uploadProfilePictureToStorage(studentFirestoreId: string, file: File): Promise<string> {
+  if (!studentFirestoreId) {
+    throw new Error("Student Firestore ID is required for uploading profile picture.");
+  }
+  if (!file) {
+    throw new Error("File is required for uploading profile picture.");
+  }
+
+  const fileExtension = file.name.split('.').pop();
+  const fileName = `profilePicture.${fileExtension}`; // Use a consistent name to overwrite
+  const imageRef = storageRef(storage, `profilePictures/${studentFirestoreId}/${fileName}`);
+
+  return new Promise((resolve, reject) => {
+    const uploadTask = uploadBytesResumable(imageRef, file);
+
+    uploadTask.on('state_changed',
+      (snapshot) => {
+        // Optional: Observe state change events such as progress, pause, and resume
+        // const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+      },
+      (error) => {
+        console.error("Upload to Firebase Storage failed:", error);
+        switch (error.code) {
+          case 'storage/unauthorized':
+            reject(new Error("Permission denied to upload. Check Firebase Storage security rules."));
+            break;
+          case 'storage/canceled':
+            reject(new Error("Upload canceled."));
+            break;
+          default:
+            reject(new Error("Failed to upload profile picture: " + error.message));
+        }
+      },
+      async () => {
+        try {
+          const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+          resolve(downloadURL);
+        } catch (error) {
+          console.error("Failed to get download URL from Firebase Storage:", error);
+          reject(new Error("Failed to get download URL after upload."));
+        }
+      }
+    );
+  });
+}
+
 
 declare module '@/types/student' {
   interface Student {

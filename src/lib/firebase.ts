@@ -17,12 +17,13 @@ import {
   Timestamp,
   serverTimestamp,
   orderBy,
-  limit, // Added limit
+  limit, 
   startAfter,
   getCountFromServer,
   runTransaction,
   increment
 } from 'firebase/firestore';
+import { getStorage, ref as storageRef, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage';
 
 // Firebase configuration (using environment variables)
 const firebaseConfig = {
@@ -37,10 +38,16 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+const storage = getStorage(app); // Initialize Firebase Storage
 
 export { 
   app, 
   db,
+  storage, // Export storage instance
+  storageRef, // Export storageRef for creating references
+  uploadBytesResumable, // Export for uploading files
+  getDownloadURL, // Export for getting download URL
+  deleteObject, // Export for deleting files (optional for now)
   collection,
   getDocs,
   getDoc,
@@ -56,7 +63,7 @@ export {
   Timestamp,
   serverTimestamp,
   orderBy,
-  limit, // Export limit
+  limit, 
   startAfter,
   getCountFromServer,
   runTransaction,
