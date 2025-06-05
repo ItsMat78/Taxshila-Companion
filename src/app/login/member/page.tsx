@@ -12,10 +12,11 @@ import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useAuth } from '@/contexts/auth-context';
 import { Loader2, LogIn, Shield } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 const loginFormSchema = z.object({
-  email: z.string().email({ message: "Please enter a valid email address." }),
-  password: z.string().min(6, { message: "Password must be at least 6 characters." }),
+  identifier: z.string().min(1, { message: "Email or Phone Number is required." }),
+  password: z.string().min(1, { message: "Password is required." }), // Simplified min length for prototype
 });
 
 type LoginFormValues = z.infer<typeof loginFormSchema>;
@@ -23,21 +24,37 @@ type LoginFormValues = z.infer<typeof loginFormSchema>;
 export default function MemberLoginPage() {
   const { login } = useAuth();
   const [isLoading, setIsLoading] = React.useState(false);
+  const { toast } = useToast();
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginFormSchema),
     defaultValues: {
-      email: '',
+      identifier: '',
       password: '',
     },
   });
 
   async function onSubmit(data: LoginFormValues) {
     setIsLoading(true);
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    login(data.email, 'member');
-    // No need to setIsLoading(false) as navigation will occur
+    try {
+      await login(data.identifier, data.password);
+      // login function handles redirection and toasts on failure
+    } catch (error) {
+      // This catch is for unexpected errors during the login process itself,
+      // not for auth failures which are handled by toast in login()
+      console.error("Login submission error:", error);
+      toast({
+        title: "Login Error",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      // Only set isLoading to false if login didn't navigate away
+      // This might be tricky as login is async and navigates.
+      // For simplicity, if login fails, the auth context sets its loading to false.
+      // If we reach here and still loading, it means login context did not complete navigation.
+      // However, login function above already handles setIsLoading(false)
+    }
   }
 
   return (
@@ -62,12 +79,12 @@ export default function MemberLoginPage() {
             <CardContent className="space-y-4">
               <FormField
                 control={form.control}
-                name="email"
+                name="identifier"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Email</FormLabel>
+                    <FormLabel>Email or Phone Number</FormLabel>
                     <FormControl>
-                      <Input type="email" placeholder="you@example.com" {...field} />
+                      <Input type="text" placeholder="you@example.com or 9876543210" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

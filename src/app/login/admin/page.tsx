@@ -12,10 +12,11 @@ import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useAuth } from '@/contexts/auth-context';
 import { Loader2, ShieldCheck, Users } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 const loginFormSchema = z.object({
-  email: z.string().email({ message: "Please enter a valid email address." }),
-  password: z.string().min(6, { message: "Password must be at least 6 characters." }),
+  identifier: z.string().min(1, { message: "Email or Phone Number is required." }),
+  password: z.string().min(1, { message: "Password is required." }), // Simplified min length
 });
 
 type LoginFormValues = z.infer<typeof loginFormSchema>;
@@ -23,21 +24,31 @@ type LoginFormValues = z.infer<typeof loginFormSchema>;
 export default function AdminLoginPage() {
   const { login } = useAuth();
   const [isLoading, setIsLoading] = React.useState(false);
+  const { toast } = useToast();
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginFormSchema),
     defaultValues: {
-      email: '',
+      identifier: '',
       password: '',
     },
   });
 
   async function onSubmit(data: LoginFormValues) {
     setIsLoading(true);
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    login(data.email, 'admin');
-    // No need to setIsLoading(false) as navigation will occur
+    try {
+      await login(data.identifier, data.password);
+      // login function handles redirection and toasts on failure
+    } catch (error) {
+      console.error("Admin login submission error:", error);
+      toast({
+        title: "Login Error",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+       // Let the auth context handle its own loading state based on login success/failure/navigation
+    }
   }
 
   return (
@@ -52,12 +63,12 @@ export default function AdminLoginPage() {
             <CardContent className="space-y-4">
               <FormField
                 control={form.control}
-                name="email"
+                name="identifier"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Email</FormLabel>
+                    <FormLabel>Email or Phone Number</FormLabel>
                     <FormControl>
-                      <Input type="email" placeholder="admin@example.com" {...field} />
+                      <Input type="text" placeholder="admin@example.com or 8210183751" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

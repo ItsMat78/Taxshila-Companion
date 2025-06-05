@@ -4,6 +4,8 @@
 import type { UserRole } from '@/types/auth';
 import * as React from 'react';
 import { useRouter, usePathname } from 'next/navigation';
+import { getStudentByIdentifier } from '@/services/student-service'; // Import service
+import { useToast } from "@/hooks/use-toast"; // Import useToast
 
 interface User {
   email: string;
@@ -12,18 +14,24 @@ interface User {
 
 interface AuthContextType {
   user: User | null;
-  login: (email: string, role: UserRole) => void;
+  login: (identifier: string, passwordAttempt: string) => Promise<void>; // Updated signature
   logout: () => void;
   isLoading: boolean;
 }
 
 const AuthContext = React.createContext<AuthContextType | undefined>(undefined);
 
+const adminUsers = [
+  { name: "Shreyash Rai", email: 'shreyashrai078@gmail.com', phone: '8210183751', password: 'meowmeow123', role: 'admin' as UserRole },
+  { name: "Kritika Rai", email: 'kritigrace@gmail.com', phone: '9621678184', password: 'meowmeow123', role: 'admin' as UserRole },
+];
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = React.useState<User | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
   const router = useRouter();
   const pathname = usePathname();
+  const { toast } = useToast();
 
   React.useEffect(() => {
     const mockSessionCheck = setTimeout(() => {
@@ -36,23 +44,56 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => clearTimeout(mockSessionCheck);
   }, []);
 
-  // This effect handles redirection IF NOT on a login page and user state changes or loads
   React.useEffect(() => {
     if (!isLoading && !user && !pathname.startsWith('/login')) {
       router.replace('/login');
     }
   }, [user, isLoading, pathname, router]);
 
-  const login = (email: string, role: UserRole) => {
-    const userData = { email, role };
-    setUser(userData);
-    sessionStorage.setItem('taxshilaUser', JSON.stringify(userData));
-    setIsLoading(false); // Ensure loading is false after login attempt
-    if (role === 'admin') {
+  const login = async (identifier: string, passwordAttempt: string) => {
+    setIsLoading(true);
+
+    // Try admin login
+    const admin = adminUsers.find(
+      (u) => (u.email.toLowerCase() === identifier.toLowerCase() || u.phone === identifier) && u.password === passwordAttempt
+    );
+    if (admin) {
+      const userData = { email: admin.email, role: admin.role };
+      setUser(userData);
+      sessionStorage.setItem('taxshilaUser', JSON.stringify(userData));
       router.push('/'); // Admin dashboard
-    } else {
-      router.push('/member/dashboard'); // Member dashboard
+      setIsLoading(false);
+      return;
     }
+
+    // Try member login
+    try {
+      const member = await getStudentByIdentifier(identifier);
+      if (member && member.password === passwordAttempt && member.activityStatus === 'Active') {
+        if (!member.email) {
+            toast({ title: "Login Issue", description: "Member account has no email. Please contact admin.", variant: "destructive" });
+            setIsLoading(false);
+            return;
+        }
+        const userData = { email: member.email, role: 'member' as UserRole };
+        setUser(userData);
+        sessionStorage.setItem('taxshilaUser', JSON.stringify(userData));
+        router.push('/member/dashboard');
+        setIsLoading(false);
+        return;
+      } else if (member && member.password !== passwordAttempt) {
+        toast({ title: "Login Failed", description: "Incorrect password for member.", variant: "destructive" });
+      } else if (member && member.activityStatus === 'Left') {
+         toast({ title: "Login Failed", description: "This member account is no longer active. Please contact administration.", variant: "destructive" });
+      }
+    } catch (error) {
+      console.error("Member login error:", error);
+      // This catch might not be strictly necessary if getStudentByIdentifier returns undefined for not found
+    }
+
+    // If neither admin nor member login succeeded
+    toast({ title: "Login Failed", description: "Invalid credentials or user not found.", variant: "destructive" });
+    setIsLoading(false);
   };
 
   const logout = () => {

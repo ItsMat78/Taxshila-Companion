@@ -2,6 +2,7 @@
 import type { Student, Shift, FeeStatus, PaymentRecord, ActivityStatus, AttendanceRecord } from '@/types/student';
 import type { FeedbackItem, FeedbackType, FeedbackStatus, AlertItem } from '@/types/communication';
 import { format, parseISO, differenceInDays, isPast, addMonths, subHours, subMinutes, startOfDay, endOfDay, isValid, differenceInMilliseconds, startOfMonth, endOfMonth, isWithinInterval, subMonths, subDays, getHours, getYear, getMonth, eachMonthOfInterval, compareDesc } from 'date-fns';
+import { useToast } from '@/hooks/use-toast'; // Import useToast
 
 export const ALL_SEAT_NUMBERS: string[] = [];
 // Populate seats from 1 to 85, EXCLUDING 17
@@ -15,77 +16,56 @@ ALL_SEAT_NUMBERS.sort((a, b) => parseInt(a) - parseInt(b));
 
 let students: Student[] = [
   {
-    studentId: "TS001",
-    name: "Aarav Sharma",
-    email: "aarav.sharma@example.com",
-    phone: "9876543210",
+    studentId: "TSMEM001",
+    name: "Riya Sharma",
+    email: "riya.s@example.com",
+    phone: "9123456780",
+    password: "memberpass1",
     shift: "morning",
-    seatNumber: "1",
-    idCardFileName: "aarav_id.jpg",
+    seatNumber: "5",
     feeStatus: "Paid",
     activityStatus: "Active",
-    registrationDate: "2024-01-15",
-    lastPaymentDate: "2024-06-01",
-    nextDueDate: "2024-07-01",
-    amountDue: "Rs. 0",
-    profilePictureUrl: "https://placehold.co/200x200.png?text=AS",
-    paymentHistory: [
-        { paymentId: "PAY_TS001_CURRENT", date: format(new Date(), 'yyyy-MM-dd'), amount: "Rs. 700", transactionId: "TXN_TS001_CURRENT", method: "UPI" },
-        { paymentId: "PAY001", date: "2024-06-01", amount: "Rs. 700", transactionId: "TXN12345601", method: "UPI" },
-        { paymentId: "PAY001B", date: format(subMonths(new Date(),1), 'yyyy-MM-dd'), amount: "Rs. 700", transactionId: "TXN12345PREV", method: "UPI" },
-        { paymentId: "PAY_TS001_2MONTHS_AGO", date: format(subMonths(new Date(),2), 'yyyy-MM-dd'), amount: "Rs. 700", transactionId: "TXN_TS001_2MAGO", method: "Cash" },
-        { paymentId: "PAY_TS001_3MONTHS_AGO", date: format(subMonths(new Date(),3), 'yyyy-MM-dd'), amount: "Rs. 650", transactionId: "TXN_TS001_3MAGO", method: "Card" },
-        { paymentId: "PAY_TS001_4MONTHS_AGO", date: format(subMonths(new Date(),4), 'yyyy-MM-dd'), amount: "Rs. 700", transactionId: "TXN_TS001_4MAGO", method: "UPI" },
-        { paymentId: "PAY_TS001_5MONTHS_AGO", date: format(subMonths(new Date(),5), 'yyyy-MM-dd'), amount: "Rs. 700", transactionId: "TXN_TS001_5MAGO", method: "Cash" },
-        { paymentId: "PAY_TS001_6MONTHS_AGO", date: format(subMonths(new Date(),6), 'yyyy-MM-dd'), amount: "Rs. 700", transactionId: "TXN_TS001_6MAGO", method: "Card" },
-        { paymentId: "PAY_TS001_7MONTHS_AGO", date: format(subMonths(new Date(),7), 'yyyy-MM-dd'), amount: "Rs. 700", transactionId: "TXN_TS001_7MAGO", method: "UPI" },
-    ]
-  },
-  {
-    studentId: "TS002",
-    name: "Priya Patel",
-    email: "priya.patel@example.com",
-    phone: "9876543211",
-    shift: "evening",
-    seatNumber: "2",
-    idCardFileName: "priya_id.png",
-    feeStatus: "Paid",
-    activityStatus: "Active",
-    registrationDate: "2024-02-20",
+    registrationDate: format(subMonths(new Date(), 2), 'yyyy-MM-dd'),
     lastPaymentDate: format(new Date(), 'yyyy-MM-dd'),
     nextDueDate: format(addMonths(new Date(), 1), 'yyyy-MM-dd'),
     amountDue: "Rs. 0",
-    paymentHistory: [
-      { paymentId: "PAYMENT_PRIYA_PREV", date: format(new Date(), 'yyyy-MM-dd'), amount: "Rs. 700", transactionId: "TXN_PRIYA_PREV", method: "UPI" },
-      { paymentId: "PAYMENT_PRIYA_2MAGO", date: format(subMonths(new Date(), 2), 'yyyy-MM-dd'), amount: "Rs. 700", transactionId: "TXN_PRIYA_2MAGO", method: "Card" },
-    ],
-    profilePictureUrl: "https://placehold.co/200x200.png?text=PP",
+    paymentHistory: [{ paymentId: "PAYM001", date: format(new Date(), 'yyyy-MM-dd'), amount: "Rs. 700", transactionId: "TXNMEM001", method: "UPI" }],
+    profilePictureUrl: "https://placehold.co/200x200.png?text=RS",
   },
   {
-    studentId: "TS003",
-    name: "Rohan Mehta (Full Day)",
-    email: "rohan.mehta@example.com",
-    phone: "9876543212",
+    studentId: "TSMEM002",
+    name: "Arjun Verma",
+    email: "arjun.v@example.net",
+    phone: "9123456781",
+    password: "memberpass2",
+    shift: "evening",
+    seatNumber: "22",
+    feeStatus: "Due",
+    activityStatus: "Active",
+    registrationDate: format(subMonths(new Date(), 1), 'yyyy-MM-dd'),
+    lastPaymentDate: format(subMonths(new Date(), 1), 'yyyy-MM-dd'),
+    nextDueDate: format(new Date(), 'yyyy-MM-dd'),
+    amountDue: "Rs. 700",
+    paymentHistory: [{ paymentId: "PAYM002", date: format(subMonths(new Date(), 1), 'yyyy-MM-dd'), amount: "Rs. 700", transactionId: "TXNMEM002", method: "Cash" }],
+    profilePictureUrl: "https://placehold.co/200x200.png?text=AV",
+  },
+  {
+    studentId: "TSMEM003",
+    name: "Priya Singh",
+    email: "priya.s@example.org",
+    phone: "9123456782",
+    password: "memberpass3",
     shift: "fullday",
-    seatNumber: "35",
-    idCardFileName: "rohan_aadhar.jpeg",
+    seatNumber: "55",
     feeStatus: "Overdue",
     activityStatus: "Active",
-    registrationDate: "2024-03-10",
-    lastPaymentDate: "2024-03-15",
-    nextDueDate: format(addMonths(new Date(), -2), 'yyyy-MM-dd'),
+    registrationDate: format(subMonths(new Date(), 3), 'yyyy-MM-dd'),
+    lastPaymentDate: format(subMonths(new Date(), 2), 'yyyy-MM-dd'),
+    nextDueDate: format(subMonths(new Date(), 1), 'yyyy-MM-dd'),
     amountDue: "Rs. 1200",
-    paymentHistory: [
-        { paymentId: "PAY_TS003_1MONTH_AGO", date: format(subMonths(new Date(),1), 'yyyy-MM-dd'), amount: "Rs. 1200", transactionId: "TXN_TS003_1MAGO", method: "UPI" },
-    ],
-    profilePictureUrl: "https://placehold.co/200x200.png?text=RM",
+    paymentHistory: [{ paymentId: "PAYM003", date: format(subMonths(new Date(), 2), 'yyyy-MM-dd'), amount: "Rs. 1200", transactionId: "TXNMEM003", method: "Card" }],
+    profilePictureUrl: "https://placehold.co/200x200.png?text=PS",
   },
-   { studentId: "TS004", name: "Vikram Singh", email: "vikram.singh@example.com", phone: "9876543213", shift: "evening", seatNumber: "40", feeStatus: "Paid", activityStatus: "Active", registrationDate: "2024-04-01", lastPaymentDate: "2024-06-03", nextDueDate: "2024-07-03", amountDue: "Rs. 0", paymentHistory: [{ paymentId: "PAY_TS004_1MONTH_AGO", date: format(subMonths(new Date(),1), 'yyyy-MM-dd'), amount: "Rs. 700", transactionId: "TXN_TS004_1MAGO", method: "Cash" }], profilePictureUrl: "https://placehold.co/200x200.png?text=VS" },
-   { studentId: "TS005", name: "Neha Reddy", email: "neha.reddy@example.com", phone: "9876543214", shift: "fullday", seatNumber: "50", feeStatus: "Paid", activityStatus: "Active", registrationDate: "2024-04-05", lastPaymentDate: "2024-06-01", nextDueDate: "2024-07-01", amountDue: "Rs. 0", paymentHistory: [{ paymentId: "PAY_TS005_LAST_MONTH", date: format(subMonths(new Date(),1), 'yyyy-MM-dd'), amount: "Rs. 1200", transactionId: "TXN_TS005_LM", method: "Card" }], profilePictureUrl: "https://placehold.co/200x200.png?text=NR" },
-   { studentId: "TS006", name: "Old Overdue For Auto-Left", email: "old.overdue@example.com", phone: "9876543215", shift: "morning", seatNumber: "6", feeStatus: "Overdue", activityStatus: "Active", registrationDate: "2024-01-01", lastPaymentDate: "2024-02-01", nextDueDate: format(addMonths(new Date(), -3), 'yyyy-MM-dd'), amountDue: "Rs. 700", paymentHistory: [] },
-   { studentId: "TS007", name: "Sanya Gupta Due", email: "sanya.gupta@example.com", phone: "9876543216", shift: "morning", seatNumber: "8", feeStatus: "Due", activityStatus: "Active", registrationDate: "2024-05-01", lastPaymentDate: "2024-05-10", nextDueDate: "2024-06-10", amountDue: "Rs. 700", paymentHistory: [] },
-   { studentId: "TS008", name: "Kavita Singh Paid", email: "kavita.singh@example.com", phone: "9876543217", shift: "morning", seatNumber: "10", feeStatus: "Paid", activityStatus: "Active", registrationDate: "2024-05-10", lastPaymentDate: "2024-06-01", nextDueDate: "2024-07-01", amountDue: "Rs. 0", paymentHistory: [] },
-   { studentId: "TS012", name: "Karan Verma Long Overdue", email: "karan.verma@example.com", phone: "9876543221", shift: "evening", seatNumber: "15", feeStatus: "Overdue", activityStatus: "Active", registrationDate: "2024-01-01", lastPaymentDate: "2024-01-20", nextDueDate: format(addMonths(new Date(), -4), 'yyyy-MM-dd'), amountDue: "Rs. 700", paymentHistory: [] },
 ];
 
 const todayAtFourPM = new Date();
@@ -94,24 +74,24 @@ const todayAtFivePM = new Date();
 todayAtFivePM.setHours(17, 0, 0, 0);
 
 let attendanceRecords: AttendanceRecord[] = [
-  { recordId: "AR001B_COMPLETED_SAMPLE", studentId: "TS001", date: format(new Date(), 'yyyy-MM-dd'), checkInTime: todayAtFourPM.toISOString(), checkOutTime: todayAtFivePM.toISOString() },
-  { recordId: "AR002", studentId: "TS002", date: format(new Date(), 'yyyy-MM-dd'), checkInTime: subHours(new Date(), 1).toISOString(), checkOutTime: subMinutes(new Date(), 15).toISOString() },
-  { recordId: "AR003", studentId: "TS001", date: format(subHours(new Date(), 25), 'yyyy-MM-dd'), checkInTime: subHours(new Date(), 25).toISOString(), checkOutTime: subHours(new Date(), 20).toISOString() },
-  { recordId: "AR004", studentId: "TS001", date: format(subDays(new Date(), 1), 'yyyy-MM-dd'), checkInTime: subDays(subHours(new Date(), 5), 1).toISOString(), checkOutTime: subDays(subHours(new Date(), 2),1).toISOString() },
-  { recordId: "AR005", studentId: "TS001", date: format(subDays(new Date(), 2), 'yyyy-MM-dd'), checkInTime: subDays(subHours(new Date(), 6), 2).toISOString(), checkOutTime: subDays(subHours(new Date(), 1),2).toISOString() },
-  { recordId: "AR_TS001_TODAY_COMPLETED", studentId: "TS001", date: format(new Date(), 'yyyy-MM-dd'), checkInTime: subHours(new Date(), 5).toISOString(), checkOutTime: subHours(new Date(), 2).toISOString() },
+  { recordId: "AR001B_COMPLETED_SAMPLE", studentId: "TSMEM001", date: format(new Date(), 'yyyy-MM-dd'), checkInTime: todayAtFourPM.toISOString(), checkOutTime: todayAtFivePM.toISOString() },
+  { recordId: "AR002", studentId: "TSMEM002", date: format(new Date(), 'yyyy-MM-dd'), checkInTime: subHours(new Date(), 1).toISOString(), checkOutTime: subMinutes(new Date(), 15).toISOString() },
+  { recordId: "AR003", studentId: "TSMEM001", date: format(subHours(new Date(), 25), 'yyyy-MM-dd'), checkInTime: subHours(new Date(), 25).toISOString(), checkOutTime: subHours(new Date(), 20).toISOString() },
+  { recordId: "AR004", studentId: "TSMEM001", date: format(subDays(new Date(), 1), 'yyyy-MM-dd'), checkInTime: subDays(subHours(new Date(), 5), 1).toISOString(), checkOutTime: subDays(subHours(new Date(), 2),1).toISOString() },
+  { recordId: "AR005", studentId: "TSMEM001", date: format(subDays(new Date(), 2), 'yyyy-MM-dd'), checkInTime: subDays(subHours(new Date(), 6), 2).toISOString(), checkOutTime: subDays(subHours(new Date(), 1),2).toISOString() },
+  { recordId: "AR_TSMEM001_TODAY_COMPLETED", studentId: "TSMEM001", date: format(new Date(), 'yyyy-MM-dd'), checkInTime: subHours(new Date(), 5).toISOString(), checkOutTime: subHours(new Date(), 2).toISOString() },
 ];
 
 let feedbackItems: FeedbackItem[] = [
-    { id: "FB001", studentId: "TS002", studentName: "Priya Patel", dateSubmitted: "2024-06-28", type: "Complaint", message: "The AC in the evening shift section is not working properly. It gets very warm.", status: "Open" },
-    { id: "FB002", studentId: "TS005", studentName: "Neha Reddy", dateSubmitted: "2024-06-27", type: "Suggestion", message: "Could we have more charging points available near the window seats?", status: "Open" },
-    { id: "FB003", studentId: "TS001", studentName: "Aarav Sharma", dateSubmitted: "2024-06-26", type: "Compliment", message: "The library is always clean and quiet. Great job!", status: "Resolved" },
+    { id: "FB001", studentId: "TSMEM002", studentName: "Arjun Verma", dateSubmitted: format(subDays(new Date(),2), 'yyyy-MM-dd'), type: "Complaint", message: "The AC in the evening shift section is not working properly. It gets very warm.", status: "Open" },
+    { id: "FB002", studentId: "TSMEM003", studentName: "Priya Singh", dateSubmitted: format(subDays(new Date(),3), 'yyyy-MM-dd'), type: "Suggestion", message: "Could we have more charging points available near the window seats?", status: "Open" },
+    { id: "FB003", studentId: "TSMEM001", studentName: "Riya Sharma", dateSubmitted: format(subDays(new Date(),4), 'yyyy-MM-dd'), type: "Compliment", message: "The library is always clean and quiet. Great job!", status: "Resolved" },
 ];
 
 let alertItems: AlertItem[] = [
-  { id: "ALERT001", title: "Library Closure Notification", message: "The library will be closed on July 4th for Independence Day. We will reopen on July 5th.", dateSent: "2024-06-28", type: "closure", isRead: false },
-  { id: "ALERT002", title: "New Quiet Study Zone", message: "We've opened a new dedicated quiet study zone on the 2nd floor. Please maintain silence.", dateSent: "2024-06-25", type: "info", isRead: false },
-  { id: "ALERT003", title: "Maintenance Scheduled", message: "Network maintenance is scheduled for this Sunday from 2 AM to 4 AM. Internet services might be intermittent.", dateSent: "2024-06-20", type: "warning", isRead: false },
+  { id: "ALERT001", title: "Library Closure Notification", message: "The library will be closed on July 4th for Independence Day. We will reopen on July 5th.", dateSent: format(subDays(new Date(), 2), 'yyyy-MM-dd'), type: "closure", isRead: false },
+  { id: "ALERT002", title: "New Quiet Study Zone", message: "We've opened a new dedicated quiet study zone on the 2nd floor. Please maintain silence.", dateSent: format(subDays(new Date(), 5), 'yyyy-MM-dd'), type: "info", isRead: false },
+  { id: "ALERT003", title: "Maintenance Scheduled", message: "Network maintenance is scheduled for this Sunday from 2 AM to 4 AM. Internet services might be intermittent.", dateSent: format(subDays(new Date(), 10), 'yyyy-MM-dd'), type: "warning", isRead: false },
 ];
 
 let studentReadGeneralAlerts: Map<string, Set<string>> = new Map();
@@ -237,17 +217,38 @@ export function getStudentByEmail(email: string): Promise<Student | undefined> {
   });
 }
 
+export function getStudentByIdentifier(identifier: string): Promise<Student | undefined> {
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      const student = students.find(s => s.email === identifier || s.phone === identifier);
+      if (student) {
+        const updatedStudent = applyAutomaticStatusUpdates({...student});
+         const studentIdx = students.findIndex(s_orig => s_orig.studentId === student.studentId);
+         if (studentIdx !== -1 && (students[studentIdx].activityStatus !== updatedStudent.activityStatus ||
+            students[studentIdx].seatNumber !== updatedStudent.seatNumber ||
+            students[studentIdx].feeStatus !== updatedStudent.feeStatus)) {
+           students[studentIdx] = { ...students[studentIdx], ...updatedStudent };
+        }
+        resolve(students[studentIdx] ? {...students[studentIdx]} : undefined);
+      } else {
+        resolve(undefined);
+      }
+    }, 50);
+  });
+}
+
+
 function getNextStudentId(): string {
   const maxId = students.reduce((max, s) => {
-    if (s.studentId && s.studentId.startsWith('TS')) {
-        const idNum = parseInt(s.studentId.replace('TS', ''), 10);
+    if (s.studentId && s.studentId.startsWith('TSMEM')) {
+        const idNum = parseInt(s.studentId.replace('TSMEM', ''), 10);
         if (!isNaN(idNum)) {
           return idNum > max ? idNum : max;
         }
     }
     return max;
   }, 0);
-  return `TS${String(maxId + 1).padStart(3, '0')}`;
+  return `TSMEM${String(maxId + 1).padStart(3, '0')}`;
 }
 
 export interface AddStudentData {
@@ -257,6 +258,7 @@ export interface AddStudentData {
   shift: Shift;
   seatNumber: string;
   idCardFileName?: string;
+  // No password here, as registration might not set it directly, or it's handled separately
 }
 
 export function addStudent(studentData: AddStudentData): Promise<Student> {
@@ -287,6 +289,7 @@ export function addStudent(studentData: AddStudentData): Promise<Student> {
       const newStudent: Student = {
         ...studentData,
         studentId: getNextStudentId(),
+        password: `default${studentData.phone.slice(-4)}`, // Example default password
         feeStatus: "Due",
         activityStatus: "Active",
         registrationDate: format(today, 'yyyy-MM-dd'),
@@ -303,7 +306,7 @@ export function addStudent(studentData: AddStudentData): Promise<Student> {
   });
 }
 
-export async function updateStudent(studentId: string, studentUpdateData: Partial<Omit<Student, 'studentId'>>): Promise<Student | undefined> {
+export async function updateStudent(studentId: string, studentUpdateData: Partial<Omit<Student, 'studentId' | 'password'>>): Promise<Student | undefined> {
   return new Promise((resolve, reject) => {
     setTimeout(async () => {
       processStudentsForUpdates([...students]);
@@ -335,7 +338,8 @@ export async function updateStudent(studentId: string, studentUpdateData: Partia
         }
       }
 
-      let tempUpdatedStudentData = { ...currentStudent, ...studentUpdateData };
+      let tempUpdatedStudentData: Student = { ...currentStudent, ...studentUpdateData, password: currentStudent.password };
+
 
       if (studentUpdateData.activityStatus === 'Left' && currentStudent.activityStatus === 'Active') {
         tempUpdatedStudentData.seatNumber = null;
@@ -682,7 +686,7 @@ export function sendGeneralAlert(title: string, message: string, type: AlertItem
         message,
         type,
         dateSent: new Date().toISOString(),
-        isRead: false,
+        isRead: false, // General alerts are initially unread for all
       };
       alertItems.push(newAlert);
       resolve({...newAlert});
@@ -715,7 +719,7 @@ export async function sendAlertToStudent(
         message,
         type,
         dateSent: new Date().toISOString(),
-        isRead: false,
+        isRead: false, // Targeted alerts are initially unread for the target student
         originalFeedbackId,
         originalFeedbackMessageSnippet,
       };
@@ -732,14 +736,14 @@ export function getAlertsForStudent(studentId: string): Promise<AlertItem[]> {
 
       const contextualizedAlerts = alertItems
         .filter(alert =>
-          alert.studentId === studentId ||
-          (!alert.studentId && alert.type !== 'feedback_response')
+          alert.studentId === studentId || // Targeted alerts for this student
+          (!alert.studentId && alert.type !== 'feedback_response') // General alerts (excluding feedback responses for others)
         )
         .map(originalAlert => {
           const contextualAlert = { ...originalAlert };
-          if (!originalAlert.studentId) {
+          if (!originalAlert.studentId) { // If it's a general alert
             contextualAlert.isRead = studentSpecificReadGeneral.has(originalAlert.id);
-          } else if (originalAlert.studentId === studentId) {
+          } else if (originalAlert.studentId === studentId) { // If it's a targeted alert for this student
             contextualAlert.isRead = originalAlert.isRead;
           }
           return contextualAlert;
@@ -764,20 +768,22 @@ export function markAlertAsRead(alertId: string, studentId: string): Promise<Ale
       const alertIndex = alertItems.findIndex(alert => alert.id === alertId);
       if (alertIndex !== -1) {
         const alertToUpdate = alertItems[alertIndex];
-        if (alertToUpdate.studentId === studentId) {
+        if (alertToUpdate.studentId === studentId) { // Targeted alert for this student
           alertToUpdate.isRead = true;
-        } else if (!alertToUpdate.studentId) {
+        } else if (!alertToUpdate.studentId) { // General alert
           if (!studentReadGeneralAlerts.has(studentId)) {
             studentReadGeneralAlerts.set(studentId, new Set<string>());
           }
           studentReadGeneralAlerts.get(studentId)!.add(alertId);
         } else {
+          // This case should ideally not be hit if getAlertsForStudent filters correctly
           reject(new Error("Alert not found for this student or permission denied."));
           return;
         }
 
+        // Return the contextualized alert state for the current student
         const contextualAlert = { ...alertToUpdate };
-        if (!contextualAlert.studentId) {
+        if (!contextualAlert.studentId) { // If it was a general alert, reflect its read state for *this* student
             contextualAlert.isRead = studentReadGeneralAlerts.get(studentId)?.has(alertId) || false;
         }
         resolve(contextualAlert);
@@ -889,4 +895,3 @@ export async function calculateMonthlyStudyHours(studentId: string): Promise<num
   });
   return Math.round(totalMilliseconds / (1000 * 60 * 60)); 
 }
-
