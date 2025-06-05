@@ -18,7 +18,7 @@ import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from '@/contexts/auth-context';
-import { getStudentByEmail, updateStudent } from '@/services/student-service'; 
+import { getStudentByEmail } from '@/services/student-service'; 
 import type { Student } from '@/types/student'; 
 import { UserCircle, UploadCloud, Save, Mail, Phone, BookOpen, MapPin, Receipt, Loader2 } from 'lucide-react';
 
@@ -88,40 +88,23 @@ export default function MemberProfilePage() {
   const handleSaveProfilePicture = async () => {
     if (profilePicturePreview && selectedFile && memberDetails?.studentId) {
       setIsSavingPicture(true);
-      try {
-        // Simulate upload by using the data URI as the profilePictureUrl.
-        // In a real app, you'd upload `selectedFile` to cloud storage.
-        const updatedStudent = await updateStudent(memberDetails.studentId, {
-          profilePictureUrl: profilePicturePreview, // Using data URI for simulation
-        });
+      // Simulate client-side update without saving to Firestore to avoid size limit error.
+      // In a real app, upload `selectedFile` to cloud storage and save the URL.
+      
+      // Simulate a short delay for "saving"
+      await new Promise(resolve => setTimeout(resolve, 500));
 
-        if (updatedStudent) {
-          setMemberDetails(updatedStudent); 
-          setCurrentProfilePicture(updatedStudent.profilePictureUrl || DEFAULT_PROFILE_PLACEHOLDER);
-          toast({
-            title: "Profile Picture Updated",
-            description: "Your new profile picture has been saved.",
-          });
-        } else {
-          toast({
-            title: "Update Failed",
-            description: "Could not save profile picture.",
-            variant: "destructive",
-          });
-        }
-      } catch (error: any) {
-        toast({
-          title: "Error Saving Picture",
-          description: error.message || "An unexpected error occurred.",
-          variant: "destructive",
-        });
-      } finally {
-        setIsSavingPicture(false);
-        setProfilePicturePreview(null);
-        setSelectedFile(null);
-        if (fileInputRef.current) {
-          fileInputRef.current.value = "";
-        }
+      setCurrentProfilePicture(profilePicturePreview);
+      toast({
+        title: "Profile Picture Updated (Locally)",
+        description: "Your new profile picture is previewed. It will not be saved to the database in this demo.",
+      });
+
+      setIsSavingPicture(false);
+      setProfilePicturePreview(null);
+      setSelectedFile(null);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
       }
     }
   };
