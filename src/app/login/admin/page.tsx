@@ -16,8 +16,8 @@ import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { LoggingInDialog } from '@/components/shared/logging-in-dialog';
 
-const LOGIN_BACKGROUND_URL = "/cover.png"; // Assumes cover.png is in public folder
 const LOGO_URL = "/logo.png"; // Assumes logo.png is in public folder
+const LIBRARY_INTERIOR_URL = "/cover.png"; // Assumes cover.png is in public folder
 
 const loginFormSchema = z.object({
   identifier: z.string().min(1, { message: "Email or Phone Number is required." }),
@@ -55,9 +55,9 @@ export default function AdminLoginPage() {
             router.push('/member/dashboard');
           } else {
             toast({ title: "Login Error", description: "Unexpected user role.", variant: "destructive" });
-            router.push('/login/admin');
+            router.push('/login/admin'); 
           }
-        }, 700);
+        }, 700); 
       } else {
         setIsSubmitting(false);
       }
@@ -76,21 +76,23 @@ export default function AdminLoginPage() {
     <>
       <LoggingInDialog isOpen={showSuccessDialog} />
       <div
-        style={{ backgroundImage: `url(${LOGIN_BACKGROUND_URL})` }}
+        style={{ backgroundImage: `url(${LIBRARY_INTERIOR_URL})` }}
         className="min-h-screen flex items-center justify-center bg-cover bg-center p-4"
       >
-        <Card className="w-full max-w-md shadow-xl bg-background/70 backdrop-blur-md flex flex-col max-h-[calc(100vh-theme(space.8))] overflow-hidden rounded-lg">
-          {/* Logo Section */}
-          <div className="p-4 sm:p-6 flex flex-col items-center justify-center">
-            <Image
-              src={LOGO_URL}
-              alt="Taxshila Companion Logo"
-              width={150}
-              height={50}
-              className="object-contain mb-4 sm:mb-6"
-              data-ai-hint="logo brand"
-              priority
-            />
+        <Card className="w-full max-w-md shadow-xl bg-background/70 backdrop-blur-md max-h-[calc(100vh-theme(space.8))] overflow-y-auto rounded-lg">
+          {/* Logo Section - responsive */}
+          <div className="flex justify-center pt-6 pb-3 sm:pt-8 sm:pb-4">
+            <div className="relative w-32 h-auto sm:w-36 md:w-40"> {/* Responsive width container for logo */}
+              <Image
+                src={LOGO_URL}
+                alt="Taxshila Companion Logo"
+                width={160} // Base width for aspect ratio (e.g., 4:1 if height is 40)
+                height={40}  // Base height for aspect ratio
+                className="w-full h-auto object-contain" // Tailwind classes for responsive fill
+                data-ai-hint="logo brand"
+                priority
+              />
+            </div>
           </div>
 
           {/* Header Section */}
@@ -98,48 +100,46 @@ export default function AdminLoginPage() {
             <CardTitle className="text-xl sm:text-2xl font-headline text-foreground">Welcome Back!</CardTitle>
             <CardDescription className="text-sm text-foreground/80">Login to Taxshila Companion.</CardDescription>
           </CardHeader>
-
-          {/* Scrollable Form Area */}
-          <div className="flex-grow overflow-y-auto">
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)}>
-                <CardContent className="space-y-4 p-4 sm:p-6 pt-0">
-                  <FormField
-                    control={form.control}
-                    name="identifier"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-foreground/90">Email or Phone Number</FormLabel>
-                        <FormControl>
-                          <Input type="text" placeholder="Enter your email or phone" {...field} disabled={isSubmitting || showSuccessDialog} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="password"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-foreground/90">Password</FormLabel>
-                        <FormControl>
-                          <Input type="password" placeholder="••••••••" {...field} disabled={isSubmitting || showSuccessDialog} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </CardContent>
-                <CardFooter className="flex flex-col gap-4 p-4 sm:p-6 pt-0">
-                  <Button type="submit" className="w-full" disabled={isSubmitting || showSuccessDialog}>
-                    {isSubmitting || showSuccessDialog ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <LogIn className="mr-2 h-4 w-4" />}
-                    {isSubmitting && !showSuccessDialog ? 'Checking...' : (showSuccessDialog ? 'Logging in...' : 'Login')}
-                  </Button>
-                </CardFooter>
-              </form>
-            </Form>
-          </div>
+          
+          {/* Form Area */}
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)}>
+              <CardContent className="space-y-4 p-4 sm:p-6 pt-0">
+                <FormField
+                  control={form.control}
+                  name="identifier"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-foreground/90">Email or Phone Number</FormLabel>
+                      <FormControl>
+                        <Input type="text" placeholder="Enter your email or phone" {...field} disabled={isSubmitting || showSuccessDialog} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="password"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-foreground/90">Password</FormLabel>
+                      <FormControl>
+                        <Input type="password" placeholder="••••••••" {...field} disabled={isSubmitting || showSuccessDialog} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </CardContent>
+              <CardFooter className="flex flex-col gap-4 p-4 sm:p-6 pt-0">
+                <Button type="submit" className="w-full" disabled={isSubmitting || showSuccessDialog}>
+                  {isSubmitting || showSuccessDialog ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <LogIn className="mr-2 h-4 w-4" />}
+                  {isSubmitting && !showSuccessDialog ? 'Checking...' : (showSuccessDialog ? 'Logging in...' : 'Login')}
+                </Button>
+              </CardFooter>
+            </form>
+          </Form>
         </Card>
       </div>
     </>
