@@ -171,7 +171,6 @@ export default function MemberDashboardPage() {
         if (record.checkOutTime) {
           totalMillisecondsToday += differenceInMilliseconds(parseISO(record.checkOutTime), parseISO(record.checkInTime));
         } else if (activeCheckInData && record.recordId === activeCheckInData.recordId) {
-          // Current active session, calculate duration up to now
           totalMillisecondsToday += differenceInMilliseconds(now, parseISO(record.checkInTime));
         }
       });
@@ -208,31 +207,28 @@ export default function MemberDashboardPage() {
             
             const alertPromise = getAlertsForStudent(studentDetails.studentId);
             const studyHoursPromise = calculateMonthlyStudyHours(studentDetails.studentId);
-            const currentSessionPromise = fetchCurrentSessionData(studentDetails.studentId);
+            // Initial fetch of current session data
+            fetchCurrentSessionData(studentDetails.studentId); 
 
-
-            return Promise.all([alertPromise, studyHoursPromise, currentSessionPromise]);
+            return Promise.all([alertPromise, studyHoursPromise]);
           }
           setIsLoadingStudentData(false);
           setIsLoadingStudyHours(false); 
           setIsLoadingCurrentSession(false);
           return Promise.reject("Student not found to fetch further data"); 
         })
-        .then(([alerts, hours, _sessionData]) => {
+        .then(([alerts, hours]) => {
           setHasUnreadAlerts(alerts.some(alert => !alert.isRead));
           setMonthlyStudyHours(hours);
-          // fetchCurrentSessionData handles its own state updates for activeCheckIn and hoursStudiedToday
         })
         .catch(error => {
           if (error !== "Student not found to fetch further data") {
             console.error("Error fetching student data, alerts or study hours for dashboard:", error);
-            // toast({ title: "Error", description: "Could not load all dashboard data.", variant: "destructive" });
           }
         })
         .finally(() => {
           setIsLoadingStudentData(false);
           setIsLoadingStudyHours(false); 
-          // setIsLoadingCurrentSession(false); // fetchCurrentSessionData handles this
         });
     } else {
       setIsLoadingStudentData(false);
@@ -245,8 +241,7 @@ export default function MemberDashboardPage() {
       setActiveCheckIn(null);
       setHoursStudiedToday(null);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, toast]); // Removed fetchCurrentSessionData from dep array to avoid re-triggering fetch on its own re-creation if not memoized
+  }, [user, toast, fetchCurrentSessionData]);
 
 
   React.useEffect(() => {
@@ -318,7 +313,6 @@ export default function MemberDashboardPage() {
         toast({ title: "Checked In!", description: `Successfully checked in at ${new Date().toLocaleTimeString()}.` });
       }
       
-      // Refresh both monthly and today's data
       setIsLoadingStudyHours(true);
       calculateMonthlyStudyHours(studentId)
           .then(setMonthlyStudyHours)
@@ -328,7 +322,7 @@ export default function MemberDashboardPage() {
           })
           .finally(() => setIsLoadingStudyHours(false));
       
-      fetchCurrentSessionData(studentId); // This will also update isLoadingCurrentSession
+      fetchCurrentSessionData(studentId);
 
     } catch (error) {
       toast({ title: "Scan Error", description: "Failed to process attendance. Please try again.", variant: "destructive" });
@@ -339,23 +333,23 @@ export default function MemberDashboardPage() {
   };
   
   let activityStatisticDisplay: string | null = null;
-  let activitySummaryTileDescription: string = "Track your study hours.";
+  let activityDescription: string = "Track your study hours.";
 
   if (!isLoadingStudentData && studentId && !isLoadingStudyHours) {
     if (monthlyStudyHours !== null) {
       activityStatisticDisplay = `${monthlyStudyHours} hours`;
       if (monthlyStudyHours > 0) {
-        activitySummaryTileDescription = "studied this month";
+        activityDescription = "studied this month";
       } else {
-        activitySummaryTileDescription = "No hours recorded this month.";
+        activityDescription = "No hours recorded this month.";
       }
     } else {
-      activityStatisticDisplay = null; 
-      activitySummaryTileDescription = "Could not load study hours.";
+       activityStatisticDisplay = null; 
+      activityDescription = "Could not load study hours.";
     }
-  } else if (isLoadingStudyHours) {
-     activityStatisticDisplay = null; 
-     activitySummaryTileDescription = "Loading hours..."; 
+  } else if (isLoadingStudyHours || isLoadingStudentData) {
+     activityStatisticDisplay = null;
+     activityDescription = "Loading hours...";
   }
 
 
@@ -370,7 +364,7 @@ export default function MemberDashboardPage() {
     { 
       title: "Activity Summary", 
       statistic: activityStatisticDisplay,
-      description: activitySummaryTileDescription,
+      description: activityDescription,
       isLoadingStatistic: isLoadingStudentData || isLoadingStudyHours,
       icon: BarChart3, 
       href: "/member/attendance" 
@@ -395,7 +389,7 @@ export default function MemberDashboardPage() {
 
       <Dialog open={isScannerOpen} onOpenChange={setIsScannerOpen}>
         <DialogTrigger asChild>
-          <div className="mb-2 cursor-pointer"> {/* Reduced margin bottom */}
+          <div className="mb-2 cursor-pointer">
             <DashboardTile
               title="Mark Attendance"
               description="Scan the QR code at the library to check-in/out."
@@ -450,37 +444,37 @@ export default function MemberDashboardPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Current Session Display - Moved here and conditionally rendered */}
-      { !isLoadingStudentData && studentId && (
-        <div className="mb-6 mt-1 text-sm text-center text-muted-foreground">
+      {/* Current Session Display - Updated Styling */}
+      {!isLoadingStudentData && studentId && (
+        <div className="mt-1 mb-6 text-xs text-center text-muted-foreground">
           {isLoadingCurrentSession ? (
             <div className="flex items-center justify-center">
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              <span>Loading current session...</span>
+              <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+              <span>Loading session...</span>
             </div>
           ) : (
-            <div className="flex flex-col items-center gap-1 p-3 bg-card border rounded-md shadow-sm">
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-x-3 gap-y-1">
               {activeCheckIn ? (
-                <div className="flex items-center text-green-600 font-medium">
-                  <PlayCircle className="mr-1.5 h-4 w-4" />
+                <div className="flex items-center">
+                  <PlayCircle className="mr-1 h-3 w-3 text-green-600" />
                   <span>Checked In (since {format(parseISO(activeCheckIn.checkInTime), 'p')})</span>
                 </div>
               ) : (
-                <div className="flex items-center text-gray-600 font-medium">
-                  <CheckCircle className="mr-1.5 h-4 w-4" />
+                <div className="flex items-center">
+                  <CheckCircle className="mr-1 h-3 w-3 text-gray-500" />
                   <span>Not Currently Checked In</span>
                 </div>
               )}
               {hoursStudiedToday !== null && hoursStudiedToday > 0 && (
                 <div className="flex items-center">
-                  <Hourglass className="mr-1.5 h-4 w-4 text-blue-500" />
-                  <span>Today's Study: {hoursStudiedToday.toFixed(1)} hrs</span>
+                  <Hourglass className="mr-1 h-3 w-3 text-blue-500" />
+                  <span>Today: {hoursStudiedToday.toFixed(1)} hrs</span>
                 </div>
               )}
               {hoursStudiedToday === 0 && !activeCheckIn && (
                  <div className="flex items-center">
-                  <Hourglass className="mr-1.5 h-4 w-4 text-blue-500" />
-                  <span>No study time recorded today.</span>
+                  <Hourglass className="mr-1 h-3 w-3 text-blue-500" />
+                  <span>No study today.</span>
                 </div>
               )}
             </div>
