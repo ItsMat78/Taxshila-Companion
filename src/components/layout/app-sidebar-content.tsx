@@ -156,17 +156,17 @@ export function AppSidebarContent() {
 
   return (
     <Sidebar side="left" collapsible="icon">
-      <SidebarHeader className="p-4 flex flex-col items-start">
+      <SidebarHeader className="p-4 flex flex-col items-start w-full">
         <Link href="/" className="flex items-center gap-2 mb-4">
           <BookOpenCheck className="h-8 w-8 text-primary" />
           <h1 className="text-xl font-headline font-semibold">Taxshila Companion</h1>
         </Link>
-         <div className="flex items-center gap-2 group-data-[collapsible=icon]:hidden">
+         <div className="flex items-center gap-2 group-data-[collapsible=icon]:hidden w-full">
             <Avatar className="h-9 w-9">
               {/* <AvatarImage src="https://placehold.co/40x40.png" alt={user.email} /> */}
               <AvatarFallback>{getInitials(user.email)}</AvatarFallback>
             </Avatar>
-            <div className="flex flex-col min-w-0"> {/* Added min-w-0 here */}
+            <div className="flex flex-col min-w-0 flex-1"> {/* Added flex-1 here */}
               <span className="text-sm font-medium truncate">{user.email}</span>
               <span className="text-xs text-muted-foreground capitalize">{user.role}</span>
             </div>
