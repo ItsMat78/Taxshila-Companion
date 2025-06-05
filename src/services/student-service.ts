@@ -262,7 +262,7 @@ export interface AddStudentData {
   name: string;
   email?: string;
   phone: string;
-  password: string;
+  password?: string; // Make password optional in service to align with type
   shift: Shift;
   seatNumber: string;
   idCardFileName?: string;
@@ -291,12 +291,16 @@ export function addStudent(studentData: AddStudentData): Promise<Student> {
         reject(new Error("Invalid seat number selected."));
         return;
       }
+       if (!studentData.password) { // Ensure password is provided for new registration
+        reject(new Error("Password is required for new student registration."));
+        return;
+      }
 
       const today = new Date();
       const newStudent: Student = {
         ...studentData,
         studentId: getNextStudentId(),
-        password: studentData.password,
+        password: studentData.password, // Use provided password
         feeStatus: "Due",
         activityStatus: "Active",
         registrationDate: format(today, 'yyyy-MM-dd'),
@@ -347,14 +351,14 @@ export async function updateStudent(studentId: string, studentUpdateData: Partia
 
       let tempUpdatedStudentData: Student = { ...currentStudent, ...studentUpdateData };
       
-      // Handle password update explicitly: if not provided in update, keep existing; if empty string, it means clear (though unlikely for edit)
+      let passwordUpdated = false;
       if (studentUpdateData.password === undefined) {
-        tempUpdatedStudentData.password = currentStudent.password; // Keep existing if not in update payload
+        tempUpdatedStudentData.password = currentStudent.password; 
       } else if (studentUpdateData.password === "") {
-         // Retain old password if new password is empty string - admin should not accidentally clear passwords
          tempUpdatedStudentData.password = currentStudent.password;
       } else {
-         tempUpdatedStudentData.password = studentUpdateData.password; // Set new password
+         tempUpdatedStudentData.password = studentUpdateData.password; 
+         passwordUpdated = studentUpdateData.password !== currentStudent.password;
       }
 
 
@@ -406,13 +410,11 @@ export async function updateStudent(studentId: string, studentUpdateData: Partia
       const shiftChanged = studentUpdateData.shift && studentUpdateData.shift !== currentStudent.shift;
       const seatChanged = studentUpdateData.seatNumber !== undefined && studentUpdateData.seatNumber !== currentStudent.seatNumber && studentUpdateData.seatNumber !== null;
       const idCardChanged = studentUpdateData.idCardFileName !== undefined && studentUpdateData.idCardFileName !== currentStudent.idCardFileName;
-      const passwordChanged = studentUpdateData.password && studentUpdateData.password !== currentStudent.password && studentUpdateData.password !== "";
-
-
-      if (!alertSentDueToStatusChange && !isFeeStatusChangeOnlyToPaid && newlyUpdatedStudent.activityStatus === 'Active' && (nameChanged || emailChanged || phoneChanged || shiftChanged || seatChanged || idCardChanged || passwordChanged)) {
+      
+      if (!alertSentDueToStatusChange && !isFeeStatusChangeOnlyToPaid && newlyUpdatedStudent.activityStatus === 'Active' && (nameChanged || emailChanged || phoneChanged || shiftChanged || seatChanged || idCardChanged || passwordUpdated)) {
         try {
           let alertMessage = `Hi ${newlyUpdatedStudent.name}, your profile details have been updated by an administrator. Your current details are:\nName: ${newlyUpdatedStudent.name}\nEmail: ${newlyUpdatedStudent.email || 'N/A'}\nPhone: ${newlyUpdatedStudent.phone}\nShift: ${newlyUpdatedStudent.shift}\nSeat Number: ${newlyUpdatedStudent.seatNumber || 'N/A'}\nID Card File: ${newlyUpdatedStudent.idCardFileName || 'Not Uploaded'}`;
-          if (passwordChanged) {
+          if (passwordUpdated) {
             alertMessage += `\nYour password has also been updated.`;
           }
           alertMessage += `\nPlease review them in your profile.`;
