@@ -79,67 +79,69 @@ export default function AdminLoginPage() {
         style={{ backgroundImage: `url(${LIBRARY_INTERIOR_URL})` }}
         className="min-h-screen flex items-center justify-center bg-cover bg-center p-4"
       >
-        <Card className="w-full max-w-md shadow-xl bg-background/70 backdrop-blur-md max-h-[calc(100vh-theme(space.8))] overflow-y-auto rounded-lg">
-          {/* Logo Section - responsive */}
-          <div className="flex justify-center pt-6 pb-3 sm:pt-8 sm:pb-4">
-            <div className="relative w-24 h-auto sm:w-28 md:w-32"> {/* Adjusted width for smaller logo */}
+        <Card className="w-full max-w-md md:max-w-3xl shadow-xl bg-background/70 backdrop-blur-md rounded-lg flex flex-col md:flex-row max-h-[calc(100vh-theme(space.8))] overflow-y-auto">
+          
+          {/* Logo Section (Left Column on MD+) */}
+          <div className="flex flex-col items-center justify-center p-4 sm:p-6 md:w-1/3 md:border-r md:border-border/30">
+            <div className="relative w-20 h-auto sm:w-24 md:w-28 mb-4 md:mb-0">
               <Image
                 src={LOGO_URL}
                 alt="Taxshila Companion Logo"
-                width={150} // Intrinsic width for quality
-                height={150} // Intrinsic height for quality (1:1 aspect ratio)
-                className="w-full h-auto object-contain" // Tailwind classes for responsive fill
+                width={150} 
+                height={150} 
+                className="w-full h-auto object-contain"
                 data-ai-hint="logo brand"
                 priority
               />
             </div>
           </div>
 
-          {/* Header Section */}
-          <CardHeader className="text-center p-4 sm:p-6 pt-0 pb-4 sm:pb-6">
-            <CardTitle className="text-xl sm:text-2xl font-headline text-foreground">Welcome Back!</CardTitle>
-            <CardDescription className="text-sm text-foreground/80">Login to Taxshila Companion.</CardDescription>
-          </CardHeader>
-          
-          {/* Form Area */}
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)}>
-              <CardContent className="space-y-4 p-4 sm:p-6 pt-0">
-                <FormField
-                  control={form.control}
-                  name="identifier"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-foreground/90">Email or Phone Number</FormLabel>
-                      <FormControl>
-                        <Input type="text" placeholder="Enter your email or phone" {...field} disabled={isSubmitting || showSuccessDialog} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="password"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-foreground/90">Password</FormLabel>
-                      <FormControl>
-                        <Input type="password" placeholder="••••••••" {...field} disabled={isSubmitting || showSuccessDialog} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </CardContent>
-              <CardFooter className="flex flex-col gap-4 p-4 sm:p-6 pt-0">
-                <Button type="submit" className="w-full" disabled={isSubmitting || showSuccessDialog}>
-                  {isSubmitting || showSuccessDialog ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <LogIn className="mr-2 h-4 w-4" />}
-                  {isSubmitting && !showSuccessDialog ? 'Checking...' : (showSuccessDialog ? 'Logging in...' : 'Login')}
-                </Button>
-              </CardFooter>
-            </form>
-          </Form>
+          {/* Form Section (Right Column on MD+) */}
+          <div className="flex flex-col flex-grow md:w-2/3">
+            <CardHeader className="text-center p-4 sm:p-6 pt-2 pb-4 sm:pb-6">
+              <CardTitle className="text-xl sm:text-2xl font-headline text-foreground">Welcome Back!</CardTitle>
+              <CardDescription className="text-sm text-foreground/80">Login to Taxshila Companion.</CardDescription>
+            </CardHeader>
+            
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)}>
+                <CardContent className="space-y-4 p-4 sm:p-6 pt-0">
+                  <FormField
+                    control={form.control}
+                    name="identifier"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-foreground/90">Email or Phone Number</FormLabel>
+                        <FormControl>
+                          <Input type="text" placeholder="Enter your email or phone" {...field} disabled={isSubmitting || showSuccessDialog} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="password"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-foreground/90">Password</FormLabel>
+                        <FormControl>
+                          <Input type="password" placeholder="••••••••" {...field} disabled={isSubmitting || showSuccessDialog} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </CardContent>
+                <CardFooter className="flex flex-col gap-4 p-4 sm:p-6 pt-0">
+                  <Button type="submit" className="w-full" disabled={isSubmitting || showSuccessDialog}>
+                    {isSubmitting || showSuccessDialog ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <LogIn className="mr-2 h-4 w-4" />}
+                    {isSubmitting && !showSuccessDialog ? 'Checking...' : (showSuccessDialog ? 'Logging in...' : 'Login')}
+                  </Button>
+                </CardFooter>
+              </form>
+            </Form>
+          </div>
         </Card>
       </div>
     </>
