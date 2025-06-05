@@ -34,11 +34,22 @@ import {
   FormMessage,
   FormDescription,
 } from "@/components/ui/form";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Save, ClipboardCheck, Loader2, UserX, UserCheck, FileText, KeyRound } from 'lucide-react';
+import { ArrowLeft, Save, ClipboardCheck, Loader2, UserX, UserCheck, FileText, KeyRound, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { getStudentById, updateStudent, getAvailableSeats, recordStudentPayment } from '@/services/student-service';
+import { getStudentById, updateStudent, getAvailableSeats, recordStudentPayment, deleteStudentCompletely } from '@/services/student-service';
 import type { Student, Shift } from '@/types/student';
 import { format, addMonths } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -92,6 +103,7 @@ export default function EditStudentPage() {
   const [availableSeatOptions, setAvailableSeatOptions] = React.useState<string[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [isSaving, setIsSaving] = React.useState(false);
+  const [isDeleting, setIsDeleting] = React.useState(false);
   const [isLoadingSeats, setIsLoadingSeats] = React.useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const [isDirtyOverride, setIsDirtyOverride] = React.useState(false);
@@ -127,12 +139,14 @@ export default function EditStudentPage() {
           shift: student.shift,
           seatNumber: student.activityStatus === 'Left' ? null : student.seatNumber,
           idCardFileName: student.idCardFileName || "",
-          newPassword: "", // Always reset password fields on load
+          newPassword: "", 
           confirmNewPassword: "",
         });
       } else {
         toast({ title: "Error", description: "Student not found.", variant: "destructive" });
         setStudentData(null);
+        // Optionally redirect if student not found
+        // router.push('/students/list'); 
       }
     } catch (error) {
       console.error("Failed to fetch student data:", error);
@@ -259,7 +273,7 @@ export default function EditStudentPage() {
         setIsDirtyOverride(false); 
         toast({
           title: wasReactivated ? "Student Re-activated" : "Changes Saved",
-          description: successMessage, // Service now handles comprehensive alert details
+          description: successMessage,
         });
       } else {
          toast({ title: "Error", description: "Failed to save changes.", variant: "destructive"});
@@ -351,6 +365,28 @@ export default function EditStudentPage() {
     }
   }
 
+  const handleDeleteStudent = async () => {
+    if (!studentId || !studentData) return;
+    setIsDeleting(true);
+    try {
+      await deleteStudentCompletely(studentId);
+      toast({
+        title: "Student Deleted",
+        description: `${studentData.name} (ID: ${studentId}) has been permanently deleted from the system.`,
+      });
+      router.push('/students/list');
+    } catch (error: any) {
+      toast({
+        title: "Deletion Failed",
+        description: error.message || "An unexpected error occurred while deleting the student.",
+        variant: "destructive",
+      });
+      setIsDeleting(false);
+    }
+    // No finally setIsDeleting(false) here, as we navigate away on success.
+  };
+
+
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
@@ -400,7 +436,7 @@ export default function EditStudentPage() {
     <>
       <PageTitle title={`Edit Student: ${studentData.name}`} description={`Modifying details for Student ID: ${studentId}`}>
         <Link href="/students/list" passHref legacyBehavior>
-          <Button variant="outline" disabled={isSaving}>
+          <Button variant="outline" disabled={isSaving || isDeleting}>
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back to Student List
           </Button>
@@ -425,21 +461,21 @@ export default function EditStudentPage() {
                 </FormControl>
               </FormItem>
               <FormField control={form.control} name="name" render={({ field }) => (
-                <FormItem><FormLabel>Full Name</FormLabel><FormControl><Input placeholder="Enter student's full name" {...field} disabled={isSaving} /></FormControl><FormMessage /></FormItem>
+                <FormItem><FormLabel>Full Name</FormLabel><FormControl><Input placeholder="Enter student's full name" {...field} disabled={isSaving || isDeleting} /></FormControl><FormMessage /></FormItem>
               )} />
               <FormField control={form.control} name="email" render={({ field }) => (
-                <FormItem><FormLabel>Email Address (Optional)</FormLabel><FormControl><Input type="email" placeholder="student@example.com" {...field} disabled={isSaving} /></FormControl><FormMessage /></FormItem>
+                <FormItem><FormLabel>Email Address (Optional)</FormLabel><FormControl><Input type="email" placeholder="student@example.com" {...field} disabled={isSaving || isDeleting} /></FormControl><FormMessage /></FormItem>
               )} />
               <FormField control={form.control} name="phone" render={({ field }) => (
-                <FormItem><FormLabel>Phone Number</FormLabel><FormControl><Input type="tel" placeholder="Enter 10-digit phone number" {...field} disabled={isSaving} /></FormControl><FormMessage /></FormItem>
+                <FormItem><FormLabel>Phone Number</FormLabel><FormControl><Input type="tel" placeholder="Enter 10-digit phone number" {...field} disabled={isSaving || isDeleting} /></FormControl><FormMessage /></FormItem>
               )} />
               <FormField control={form.control} name="shift" render={({ field }) => (
                 <FormItem className="space-y-3"><FormLabel>Shift Selection</FormLabel>
                   <FormControl>
-                    <RadioGroup onValueChange={(value) => { field.onChange(value); setIsDirtyOverride(true); }} value={field.value} className="flex flex-col space-y-2" disabled={isSaving}>
+                    <RadioGroup onValueChange={(value) => { field.onChange(value); setIsDirtyOverride(true); }} value={field.value} className="flex flex-col space-y-2" disabled={isSaving || isDeleting}>
                       {shiftOptions.map(option => (
                         <FormItem key={option.value} className="flex items-center space-x-3 space-y-0">
-                          <FormControl><RadioGroupItem value={option.value} disabled={isSaving} /></FormControl>
+                          <FormControl><RadioGroupItem value={option.value} disabled={isSaving || isDeleting} /></FormControl>
                           <FormLabel className="font-normal">{option.label}</FormLabel>
                         </FormItem>
                       ))}
@@ -456,7 +492,7 @@ export default function EditStudentPage() {
                     <Select
                         onValueChange={(value) => { field.onChange(value); setIsDirtyOverride(true); }}
                         value={field.value || ""}
-                        disabled={isSaving || isLoadingSeats || !selectedShift}
+                        disabled={isSaving || isDeleting || isLoadingSeats || !selectedShift}
                     >
                       <FormControl>
                         <SelectTrigger>
@@ -489,7 +525,7 @@ export default function EditStudentPage() {
                     accept="image/*,.pdf"
                     ref={fileInputRef}
                     onChange={handleFileChange}
-                    disabled={isSaving}
+                    disabled={isSaving || isDeleting}
                     className="text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:font-semibold file:bg-primary file:text-primary-foreground hover:file:bg-primary/90"
                   />
                   {currentIdCardFilename && (
@@ -506,38 +542,67 @@ export default function EditStudentPage() {
                  <FormField control={form.control} name="newPassword" render={({ field }) => (
                   <FormItem>
                     <FormLabel className="text-xs text-muted-foreground">New Password</FormLabel>
-                    <FormControl><Input type="password" placeholder="Enter new password (min 6 chars)" {...field} disabled={isSaving} /></FormControl>
+                    <FormControl><Input type="password" placeholder="Enter new password (min 6 chars)" {...field} disabled={isSaving || isDeleting} /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )} />
                 <FormField control={form.control} name="confirmNewPassword" render={({ field }) => (
                   <FormItem>
                     <FormLabel className="text-xs text-muted-foreground">Confirm New Password</FormLabel>
-                    <FormControl><Input type="password" placeholder="Re-enter new password" {...field} disabled={isSaving} /></FormControl>
+                    <FormControl><Input type="password" placeholder="Re-enter new password" {...field} disabled={isSaving || isDeleting} /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )} />
               </div>
 
             </CardContent>
-            <CardFooter className="flex flex-col sm:flex-row justify-between items-start gap-4">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handleMarkAsLeft}
-                disabled={isSaving || isStudentLeft}
-                className={isStudentLeft ? "hidden" : ""}
-              >
-                {isSaving && !isStudentLeft ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UserX className="mr-2 h-4 w-4" />}
-                 Mark as Left
-              </Button>
+            <CardFooter className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-4">
+              <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleMarkAsLeft}
+                    disabled={isSaving || isDeleting || isStudentLeft}
+                    className={isStudentLeft ? "hidden" : ""}
+                  >
+                    {isSaving && !isStudentLeft && !isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UserX className="mr-2 h-4 w-4" />}
+                    Mark as Left
+                  </Button>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        disabled={isSaving || isDeleting}
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" /> Delete Student
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          This action cannot be undone. This will permanently delete the student
+                          ({studentData.name} - {studentId}) and all their associated data (like attendance records).
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleDeleteStudent} disabled={isDeleting} className="bg-destructive hover:bg-destructive/90">
+                          {isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                          Confirm Delete
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+              </div>
               <div className="flex flex-col sm:flex-row sm:items-center gap-2 w-full sm:w-auto justify-end">
-                <Button type="button" variant="outline" onClick={handleMarkPaymentPaid} disabled={isSaving || studentData.feeStatus === "Paid" || isStudentLeft}>
-                  {isSaving && studentData.feeStatus !== "Paid" && !isStudentLeft ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ClipboardCheck className="mr-2 h-4 w-4" />}
+                <Button type="button" variant="outline" onClick={handleMarkPaymentPaid} disabled={isSaving || isDeleting || studentData.feeStatus === "Paid" || isStudentLeft}>
+                  {isSaving && studentData.feeStatus !== "Paid" && !isStudentLeft && !isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ClipboardCheck className="mr-2 h-4 w-4" />}
                   Mark Payment as Paid
                 </Button>
-                <Button type="submit" disabled={isSaving || isLoadingSeats || (!isStudentLeft && !form.formState.isDirty && !isDirtyOverride && !form.getValues("newPassword")) }>
-                  {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : (isStudentLeft ? <UserCheck className="mr-2 h-4 w-4" /> : <Save className="mr-2 h-4 w-4" />)}
+                <Button type="submit" disabled={isSaving || isDeleting || isLoadingSeats || (!isStudentLeft && !form.formState.isDirty && !isDirtyOverride && !form.getValues("newPassword")) }>
+                  {isSaving && !isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : (isStudentLeft ? <UserCheck className="mr-2 h-4 w-4" /> : <Save className="mr-2 h-4 w-4" />)}
                   {isStudentLeft ? "Save and Re-activate" : "Save Changes"}
                 </Button>
               </div>

@@ -3,6 +3,7 @@
 
 import * as React from 'react';
 import Link from 'next/link';
+import Image from 'next/image'; // Import next/image
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
@@ -11,7 +12,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useAuth } from '@/contexts/auth-context';
-import { Loader2, ShieldCheck, Users } from 'lucide-react';
+import { Loader2, LogIn } from 'lucide-react'; // Changed ShieldCheck to LogIn
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { LoggingInDialog } from '@/components/shared/logging-in-dialog';
@@ -22,6 +23,8 @@ const loginFormSchema = z.object({
 });
 
 type LoginFormValues = z.infer<typeof loginFormSchema>;
+
+const LOGIN_IMAGE_PLACEHOLDER = "https://placehold.co/600x300.png";
 
 export default function AdminLoginPage() {
   const { login } = useAuth();
@@ -59,7 +62,7 @@ export default function AdminLoginPage() {
         setIsSubmitting(false);
       }
     } catch (error) {
-      console.error("Admin login submission error:", error);
+      console.error("Login submission error:", error);
       toast({
         title: "Login Error",
         description: "An unexpected error occurred. Please try again.",
@@ -72,15 +75,25 @@ export default function AdminLoginPage() {
   return (
     <>
       <LoggingInDialog isOpen={showSuccessDialog} />
-      <div className="min-h-screen flex items-center justify-center bg-background p-4">
-        <Card className="w-full max-w-md shadow-xl">
-          <CardHeader>
-            <CardTitle className="text-2xl text-center">Login</CardTitle>
-            <CardDescription className="text-center">Access your Taxshila Companion account.</CardDescription>
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[hsl(var(--background))] to-[hsl(var(--muted))] p-4">
+        <Card className="w-full max-w-md shadow-xl overflow-hidden">
+          <div className="bg-primary/10 p-4 flex justify-center">
+            <Image 
+              src={LOGIN_IMAGE_PLACEHOLDER} 
+              alt="Taxshila Study Hall" 
+              width={300} 
+              height={150} 
+              className="object-contain rounded-md"
+              data-ai-hint="library study"
+            />
+          </div>
+          <CardHeader className="text-center pt-4 pb-2">
+            <CardTitle className="text-2xl font-headline">Welcome to Taxshila Companion</CardTitle>
+            <CardDescription>Your dedicated portal for managing study hall activities.</CardDescription>
           </CardHeader>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)}>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-4 px-6 pb-4">
                 <FormField
                   control={form.control}
                   name="identifier"
@@ -108,9 +121,9 @@ export default function AdminLoginPage() {
                   )}
                 />
               </CardContent>
-              <CardFooter className="flex flex-col gap-4">
+              <CardFooter className="flex flex-col gap-4 p-6 pt-2">
                 <Button type="submit" className="w-full" disabled={isSubmitting || showSuccessDialog}>
-                  {isSubmitting || showSuccessDialog ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShieldCheck className="mr-2 h-4 w-4" />}
+                  {isSubmitting || showSuccessDialog ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <LogIn className="mr-2 h-4 w-4" />}
                   {isSubmitting && !showSuccessDialog ? 'Checking...' : (showSuccessDialog ? 'Logging in...' : 'Login')}
                 </Button>
               </CardFooter>
@@ -121,4 +134,3 @@ export default function AdminLoginPage() {
     </>
   );
 }
-
