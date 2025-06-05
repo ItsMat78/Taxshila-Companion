@@ -12,7 +12,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import {
   Select,
   SelectContent,
@@ -23,10 +22,10 @@ import {
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Loader2, CreditCard, ShieldCheck, IndianRupee, Verified, AlertCircle, CalendarCheck2 } from 'lucide-react';
+import { Loader2, CreditCard, ShieldCheck, IndianRupee, CalendarCheck2, Info, AlertCircle } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
-import { getStudentByEmail, recordStudentPayment } from '@/services/student-service'; 
-import type { Student } from '@/types/student'; 
+import { getStudentByEmail } from '@/services/student-service';
+import type { Student } from '@/types/student';
 import { format, parseISO, isValid, addMonths } from 'date-fns';
 import { cn } from '@/lib/utils';
 
@@ -39,18 +38,13 @@ const MONTH_OPTIONS = [
 export default function MemberPayFeesPage() {
   const { user } = useAuth();
   const { toast } = useToast();
-  
+
   const [currentStudent, setCurrentStudent] = React.useState<Student | null>(null);
   const [isLoadingStudent, setIsLoadingStudent] = React.useState(true);
-  const [isProcessingPayment, setIsProcessingPayment] = React.useState(false);
 
   const [selectedMonths, setSelectedMonths] = React.useState<number>(1);
   const [totalPayableAmount, setTotalPayableAmount] = React.useState<string>("Rs. 0");
   const [calculatedNextDueDate, setCalculatedNextDueDate] = React.useState<string | null>(null);
-  const [upiId, setUpiId] = React.useState<string>("");
-  const [isUpiVerified, setIsUpiVerified] = React.useState<boolean>(false);
-  const [upiVerificationMessage, setUpiVerificationMessage] = React.useState<string | null>(null);
-
 
   React.useEffect(() => {
     if (user?.email) {
@@ -104,74 +98,6 @@ export default function MemberPayFeesPage() {
     }
   }, [currentStudent, selectedMonths]);
 
-  const handleVerifyUpiId = () => {
-    setUpiVerificationMessage(null);
-    if (!upiId.trim()) {
-      setUpiVerificationMessage("UPI ID cannot be empty.");
-      setIsUpiVerified(false);
-      return;
-    }
-    const upiRegex = /^[a-zA-Z0-9.\-_]{2,256}@[a-zA-Z]{2,64}$/;
-    if (!upiRegex.test(upiId)) {
-      setUpiVerificationMessage("Invalid UPI ID format (e.g., yourname@bank).");
-      setIsUpiVerified(false);
-      return;
-    }
-    setIsProcessingPayment(true); 
-    setTimeout(() => {
-      setIsUpiVerified(true);
-      setUpiVerificationMessage(`UPI ID "${upiId}" verified successfully.`);
-      setIsProcessingPayment(false);
-    }, 1000);
-  };
-
-  const handlePayNowWithUpi = async () => {
-    if (!currentStudent || !currentStudent.studentId || !isUpiVerified) {
-      toast({
-        title: "Payment Error",
-        description: !isUpiVerified ? "Please verify your UPI ID first." : "Student details not found or UPI ID not verified.",
-        variant: "destructive",
-      });
-      return;
-    }
-    setIsProcessingPayment(true);
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    try {
-      const updatedStudent = await recordStudentPayment(
-        currentStudent.studentId, 
-        totalPayableAmount, 
-        "UPI",
-        selectedMonths
-      );
-      if (updatedStudent) {
-        setCurrentStudent(updatedStudent); 
-        toast({
-          title: "Payment Successful!",
-          description: `Your fee payment of ${totalPayableAmount} for ${selectedMonths} month(s) has been recorded. Next due date: ${updatedStudent.nextDueDate ? format(parseISO(updatedStudent.nextDueDate), 'PP') : 'N/A'}.`,
-          variant: "default"
-        });
-        setUpiId("");
-        setIsUpiVerified(false);
-        setSelectedMonths(1);
-        setUpiVerificationMessage(null);
-      } else {
-         toast({
-          title: "Payment Recording Failed",
-          description: "Could not update your payment status. Please contact admin.",
-          variant: "destructive",
-        });
-      }
-    } catch (error: any) {
-       toast({
-          title: "Payment Error",
-          description: error.message || "An unexpected error occurred while recording your payment.",
-          variant: "destructive",
-        });
-    } finally {
-      setIsProcessingPayment(false);
-    }
-  };
-  
   const getFeeStatusDisplay = () => {
     if (isLoadingStudent) {
       return <div className="flex items-center justify-center py-2"><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading fee details...</div>;
@@ -213,7 +139,7 @@ export default function MemberPayFeesPage() {
 
   return (
     <>
-      <PageTitle title="Pay Your Fees" description="Securely pay your membership fees using UPI." />
+      <PageTitle title="Pay Your Fees" description="Information about your fee payment." />
 
       <Card className="mb-6 shadow-md bg-muted/30">
         <CardHeader className="pb-2 pt-4">
@@ -229,17 +155,17 @@ export default function MemberPayFeesPage() {
           <CardHeader>
             <CardTitle className="flex items-center">
               <IndianRupee className="mr-2 h-5 w-5" />
-              Pay with UPI
+              Fee Payment Details
             </CardTitle>
-            <CardDescription>Select months, verify UPI ID, and proceed to pay.</CardDescription>
+            <CardDescription>Review your payable amount. Payments are currently accepted at the desk.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             <div>
-              <Label htmlFor="select-months">Select Number of Months</Label>
+              <Label htmlFor="select-months">Select Number of Months to Pay</Label>
               <Select
                 value={String(selectedMonths)}
                 onValueChange={(value) => setSelectedMonths(Number(value))}
-                disabled={isProcessingPayment || !canPay || isLoadingStudent}
+                disabled={!canPay || isLoadingStudent}
               >
                 <SelectTrigger id="select-months" className="w-full mt-1">
                   <SelectValue placeholder="Select months" />
@@ -260,77 +186,45 @@ export default function MemberPayFeesPage() {
               {calculatedNextDueDate && canPay && !isLoadingStudent && (
                 <p className="text-xs text-green-600 flex items-center mt-1">
                   <CalendarCheck2 className="mr-1 h-3 w-3" />
-                  Fees will be paid up to: {calculatedNextDueDate}
+                  If paid, fees will be covered up to: {calculatedNextDueDate}
                 </p>
               )}
             </div>
-
-            <div>
-              <Label htmlFor="upi-id">Your UPI ID</Label>
-              <div className="flex items-center gap-2 mt-1">
-                <Input 
-                  id="upi-id" 
-                  placeholder="yourname@bank" 
-                  value={upiId}
-                  onChange={(e) => {
-                    setUpiId(e.target.value);
-                    setIsUpiVerified(false); 
-                    setUpiVerificationMessage(null);
-                  }}
-                  disabled={isProcessingPayment || !canPay || isLoadingStudent}
-                  className="flex-grow"
-                />
-                <Button 
-                  onClick={handleVerifyUpiId} 
-                  variant="outline" 
-                  disabled={isProcessingPayment || !upiId.trim() || isUpiVerified || !canPay || isLoadingStudent}
-                >
-                  {isProcessingPayment && !isUpiVerified ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                  {isUpiVerified ? <Verified className="mr-2 h-4 w-4 text-green-500" /> : null}
-                  Verify
-                </Button>
-              </div>
-              {upiVerificationMessage && (
-                <p className={`text-xs mt-1 ${isUpiVerified ? 'text-green-600' : 'text-red-600'}`}>
-                  {isUpiVerified ? <Verified className="inline h-3 w-3 mr-1"/> : <AlertCircle className="inline h-3 w-3 mr-1"/>}
-                  {upiVerificationMessage}
-                </p>
-              )}
-            </div>
+             <Alert>
+                <Info className="h-4 w-4" />
+                <AlertTitle>Payment Instructions</AlertTitle>
+                <AlertDescription>
+                  <p className="font-semibold">Online UPI Payments are coming soon!</p>
+                  <p className="mt-1">For now, please pay your fees at the library reception desk.</p>
+                  <p className="mt-1">An admin will update your payment status in the system after you've paid.</p>
+                </AlertDescription>
+            </Alert>
           </CardContent>
-          <CardFooter>
-            <Button 
-              onClick={handlePayNowWithUpi} 
-              className="w-full" 
-              disabled={isProcessingPayment || !isUpiVerified || !canPay || isLoadingStudent}
-            >
-              {isProcessingPayment ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CreditCard className="mr-2 h-4 w-4" />}
-              {isProcessingPayment ? 'Processing Payment...' : `Pay ${totalPayableAmount} Now`}
-            </Button>
-          </CardFooter>
+          {/* Footer removed as no direct pay action here */}
         </Card>
 
         <Card className="shadow-lg">
           <CardHeader>
             <CardTitle className="flex items-center">
               <ShieldCheck className="mr-2 h-5 w-5" />
-              Other Payment Information
+              Payment Information
             </CardTitle>
-            <CardDescription>Alternative ways to pay or get help.</CardDescription>
+            <CardDescription>How to pay your fees.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <Alert>
-              <IndianRupee className="h-4 w-4" />
-              <AlertTitle>Pay at Desk</AlertTitle>
+            <Alert variant="default" className="border-primary/30 bg-primary/5">
+              <IndianRupee className="h-4 w-4 text-primary" />
+              <AlertTitle className="text-primary">Pay at Desk</AlertTitle>
               <AlertDescription>
-                You can also pay your fees directly at the library reception desk via cash or other available methods.
+                Please pay your fees at the library reception desk. You can pay via cash or other methods available at the desk.
+                Your payment status will be updated by an admin shortly after.
               </AlertDescription>
             </Alert>
              <Alert variant="destructive">
               <CreditCard className="h-4 w-4" />
               <AlertTitle>Online Gateway (Coming Soon)</AlertTitle>
               <AlertDescription>
-                Secure online payments via Credit/Debit Card or Net Banking will be available in a future update.
+                Secure online payments via UPI, Credit/Debit Card, or Net Banking will be available in a future update.
               </AlertDescription>
             </Alert>
             <p className="text-sm text-muted-foreground">
