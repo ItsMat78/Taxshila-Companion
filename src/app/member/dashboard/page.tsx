@@ -269,13 +269,13 @@ export default function MemberDashboardPage() {
       const config = {
           fps: 10,
           qrbox: (viewfinderWidth: number, viewfinderHeight: number) => {
-            const edgePercentage = 0.7; // Use 70% of the smaller dimension
+            const edgePercentage = 0.7; 
             const edgeLength = Math.min(viewfinderWidth, viewfinderHeight) * edgePercentage;
             return { width: edgeLength, height: edgeLength };
           },
           supportedScanTypes: [Html5QrcodeScanType.SCAN_TYPE_CAMERA],
           formatsToSupport: formatsToSupport,
-          rememberLastUsedCamera: true,
+          rememberLastUsedCamera: false, // Changed to false
       };
 
       const scanner = new Html5QrcodeScanner( DASHBOARD_QR_SCANNER_ELEMENT_ID, config, false );
@@ -291,8 +291,8 @@ export default function MemberDashboardPage() {
 
         if (decodedText === LIBRARY_QR_CODE_PAYLOAD) {
           try {
-            if (studentId) {
-                const currentActiveCheckIn = await getActiveCheckIn(studentId); // Fetch latest status
+            if (studentId) { // Ensure studentId is still valid here
+                const currentActiveCheckIn = await getActiveCheckIn(studentId); 
                 if (currentActiveCheckIn) {
                   await addCheckOut(currentActiveCheckIn.recordId);
                   toast({ title: "Checked Out!", description: `Successfully checked out at ${new Date().toLocaleTimeString()}.` });
@@ -300,7 +300,7 @@ export default function MemberDashboardPage() {
                   await addCheckIn(studentId);
                   toast({ title: "Checked In!", description: `Successfully checked in at ${new Date().toLocaleTimeString()}.` });
                 }
-                await fetchAllDashboardData();
+                await fetchAllDashboardData(); // Refresh dashboard data
             } else {
                 toast({ title: "Error", description: "Student ID not available for scan processing.", variant: "destructive"});
             }
@@ -310,57 +310,73 @@ export default function MemberDashboardPage() {
           }
         } else {
           toast({ title: "Invalid QR Code", description: "Please scan the official library QR code.", variant: "destructive" });
-          setTimeout(() => {
+          setTimeout(() => { // Add delay before resuming scanner
             if (html5QrcodeScannerRef.current ) {
               try {
-                if (html5QrcodeScannerRef.current.getState() === 2 /* PAUSED */) {
+                if (html5QrcodeScannerRef.current.getState() === 2 /* PAUSED */) { // Check if scanner is PAUSED
                    html5QrcodeScannerRef.current.resume();
                 }
               } catch(e) { console.warn("Scanner resume error", e); }
             }
-          }, 1000);
+          }, 1000); // Resume after 1 second
         }
         setIsProcessingQr(false);
-        setIsScannerOpen(false);
+        setIsScannerOpen(false); // Close dialog on any scan attempt outcome
       };
 
       const onScanFailure = (errorMessage: string, errorObject?: any) => {
         let detailedMessage = typeof errorMessage === 'string' ? errorMessage : JSON.stringify(errorMessage);
+        const errorMsgLower = detailedMessage.toLowerCase();
         
-        if (detailedMessage.toLowerCase().includes("permission denied") ||
-            detailedMessage.toLowerCase().includes("notallowederror") ||
-            detailedMessage.toLowerCase().includes("notfounderror") ||
-            (errorObject && typeof errorObject.message === 'string' && errorObject.message.toLowerCase().includes("permission denied"))) {
-          setHasCameraPermission(false);
-          toast({
-            variant: 'destructive',
-            title: 'Camera Access Denied or Not Found',
-            description: 'Please enable camera permissions and ensure a camera is connected.',
-          });
-           setIsScannerOpen(false);
-        } else {
-           console.warn("Dashboard QR Scan Failure (non-critical):", detailedMessage, errorObject);
+        // Only set hasCameraPermission to false for critical errors
+        if (
+            errorMsgLower.includes("permission denied") ||
+            errorMsgLower.includes("notallowederror") ||
+            errorMsgLower.includes("notfounderror") || // Camera not found by the browser
+            errorMsgLower.includes("aborterror") ||
+            (errorObject && typeof errorObject.message === 'string' && errorObject.message.toLowerCase().includes("permission denied"))
+        ) {
+            if (!errorMsgLower.includes("no qr code")) { // Don't treat "no QR found" as a critical camera failure
+                setHasCameraPermission(false);
+                toast({
+                    variant: 'destructive',
+                    title: 'Camera or Scanner Error',
+                    description: 'Could not start QR scanner. Please ensure camera permissions are enabled and no other app is using the camera. Try again.',
+                });
+                setIsScannerOpen(false); // Close on critical error
+            }
+        } else if (!errorMsgLower.includes("no qr code")) {
+            console.warn("Dashboard QR Scan Failure (non-critical, e.g. format error):", detailedMessage, errorObject);
         }
+        // Do NOT set isProcessingQr to false here, as this callback might be called multiple times for non-QR detection
       };
-
+      
       try {
         scanner.render(onScanSuccess, onScanFailure);
-        setHasCameraPermission(true); // Optimistically set if render doesn't throw
+        setHasCameraPermission(true); 
       } catch (err: any) {
-            console.error("Error rendering scanner (Dashboard):", err);
+            console.error("Error rendering scanner (Dashboard - render call failed):", err);
             setHasCameraPermission(false);
-            toast({ variant: 'destructive', title: 'Camera Error', description: err.message || 'Could not initialize camera for QR scanning.'});
-            setIsScannerOpen(false);
+            toast({ variant: 'destructive', title: 'Camera Initialization Error', description: err.message || 'Could not initialize camera for QR scanning.'});
+            setIsScannerOpen(false); // Close dialog if render fails
       }
     } else if (!isScannerOpen && html5QrcodeScannerRef.current) {
-        try { html5QrcodeScannerRef.current.clear(); } 
+        try { 
+          if (html5QrcodeScannerRef.current.getState() !== 0 /* NOT_STARTED */) {
+            html5QrcodeScannerRef.current.clear(); 
+          }
+        } 
         catch(e) { console.error("Error clearing scanner (Dashboard):", e); }
         html5QrcodeScannerRef.current = null;
     }
 
     return () => {
       if (html5QrcodeScannerRef.current) {
-        try { html5QrcodeScannerRef.current.clear(); } 
+        try { 
+          if (html5QrcodeScannerRef.current.getState() !== 0 /* NOT_STARTED */) {
+            html5QrcodeScannerRef.current.clear(); 
+          }
+        } 
         catch (e) { console.error("Cleanup: Error clearing scanner (Dashboard):", e); }
         html5QrcodeScannerRef.current = null;
       }
@@ -373,7 +389,8 @@ export default function MemberDashboardPage() {
         toast({title: "Error", description: "Cannot mark attendance. Student details not loaded.", variant: "destructive"});
         return;
     }
-    setHasCameraPermission(null);
+    setHasCameraPermission(null); // Reset for "Initializing..." message
+    setIsProcessingQr(false); // Ensure processing is reset
     setIsScannerOpen(true);
   };
 
@@ -490,7 +507,7 @@ export default function MemberDashboardPage() {
     <>
       <PageTitle title={pageTitleText} description="Your Taxshila Companion dashboard." />
 
-      <Dialog open={isScannerOpen} onOpenChange={(open) => { if(!open) handleCloseScanner(); else setIsScannerOpen(true);}}>
+      <Dialog open={isScannerOpen} onOpenChange={(open) => { if(!open) handleCloseScanner(); else handleOpenScanner();}}>
         <DialogTrigger asChild>
           <div className="mb-2 cursor-pointer">
             <DashboardTile
@@ -503,17 +520,17 @@ export default function MemberDashboardPage() {
             />
           </div>
         </DialogTrigger>
-        <DialogContent className="w-[90vw] max-w-xs sm:max-w-sm md:max-w-md">
-          <DialogHeader>
+        <DialogContent className="w-[90vw] max-w-xs sm:max-w-sm md:max-w-md p-4 overflow-hidden flex flex-col">
+          <DialogHeader className="flex-shrink-0">
             <ShadcnDialogTitle className="flex items-center"><Camera className="mr-2"/>Scan Library QR Code</ShadcnDialogTitle>
             <DialogDescription>
               Point your camera at the QR code provided at the library desk.
             </DialogDescription>
           </DialogHeader>
-
-          <div className="space-y-4 my-4">
+          
+          <div className="flex-grow flex flex-col gap-3 mt-3 min-h-0">
             {hasCameraPermission === false && (
-              <Alert variant="destructive">
+              <Alert variant="destructive" className="flex-shrink-0">
                 <XCircle className="h-4 w-4" />
                 <ShadcnAlertTitle>Camera Access Denied</ShadcnAlertTitle>
                 <AlertDescription>
@@ -522,23 +539,26 @@ export default function MemberDashboardPage() {
               </Alert>
             )}
 
-            <div id={DASHBOARD_QR_SCANNER_ELEMENT_ID} className="w-full h-[250px] sm:h-[300px] bg-muted rounded-md overflow-hidden border" />
+            <div 
+              id={DASHBOARD_QR_SCANNER_ELEMENT_ID} 
+              className="w-full flex-shrink-0 h-[200px] sm:h-[220px] md:h-[250px] bg-muted rounded-md overflow-hidden border" 
+            />
 
-            {hasCameraPermission === null && !isProcessingQr && (
-                 <div className="flex items-center justify-center text-muted-foreground">
+            {(hasCameraPermission === null && !isProcessingQr) && (
+                 <div className="flex items-center justify-center text-muted-foreground text-sm py-2 flex-shrink-0">
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     Initializing camera...
                 </div>
             )}
              {isProcessingQr && (
-                <div className="flex items-center justify-center text-muted-foreground">
+                <div className="flex items-center justify-center text-muted-foreground text-sm py-2 flex-shrink-0">
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     Processing QR code...
                 </div>
             )}
           </div>
-
-          <div className="flex flex-col sm:flex-row gap-2 mt-4">
+          
+          <div className="flex flex-col sm:flex-row gap-2 mt-auto pt-4 flex-shrink-0">
               <Button variant="outline" onClick={handleCloseScanner} className="w-full" disabled={isProcessingQr}>
                 Cancel
               </Button>
