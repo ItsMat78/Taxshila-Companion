@@ -83,7 +83,7 @@ export default function AdminLoginPage() {
           
           {/* Logo Section (Left Column on MD+) */}
           <div className="flex flex-col items-center justify-center p-4 sm:p-6 md:w-1/3 md:border-r md:border-border/30">
-            <div className="relative w-16 h-auto sm:w-24 md:w-28 mb-4 md:mb-0"> {/* Adjusted w-20 to w-16 for smaller logo on mobile */}
+            <div className="relative w-16 h-auto sm:w-24 md:w-28 mb-2 md:mb-0"> {/* Reduced mb-4 to mb-2 */}
               <Image
                 src={LOGO_URL}
                 alt="Taxshila Companion Logo"
