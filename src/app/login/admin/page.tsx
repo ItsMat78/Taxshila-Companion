@@ -82,7 +82,7 @@ export default function AdminLoginPage() {
         <Card className="w-full max-w-md md:max-w-3xl shadow-xl bg-background/70 backdrop-blur-md rounded-lg flex flex-col md:flex-row max-h-[calc(100vh_-_theme(space.8))] overflow-y-auto">
 
           {/* Logo Section (Left Column on MD+) */}
-          <div className="flex flex-col items-center justify-center px-4 pt-4 pb-0 sm:p-6 md:w-1/3 md:border-r md:border-border/30 md:p-4">
+          <div className="flex flex-col items-center justify-center px-4 pt-4 pb-0 sm:p-6 md:w-1/3 md:border-r md:border-border/30 md:p-0">
             <div className="relative w-16 h-auto sm:w-24 md:w-28 mb-2 md:mb-0">
               <Image
                 src={LOGO_URL}
@@ -98,14 +98,14 @@ export default function AdminLoginPage() {
 
           {/* Form Section (Right Column on MD+) */}
           <div className="flex flex-col flex-grow md:w-2/3">
-            <CardHeader className="text-center px-4 pb-4 pt-0 sm:p-6 md:px-4 md:pt-4 md:pb-2">
-              <CardTitle className="text-base sm:text-lg md:text-xl font-headline text-foreground">Welcome Back!</CardTitle>
-              <CardDescription className="text-xs sm:text-xs md:text-sm text-foreground/80">Login to Taxshila Companion.</CardDescription>
+            <CardHeader className="text-center px-4 pb-4 pt-0 sm:p-6 md:px-0 md:pt-0 md:pb-0">
+              <CardTitle className="text-base sm:text-lg md:text-xl font-headline text-foreground pt-4 md:pt-6">Welcome Back!</CardTitle>
+              <CardDescription className="text-xs sm:text-xs md:text-sm text-foreground/80 pb-2 md:pb-4">Login to Taxshila Companion.</CardDescription>
             </CardHeader>
 
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)}>
-                <CardContent className="space-y-4 px-4 sm:px-6 pt-0 md:px-4 md:pt-2">
+                <CardContent className="space-y-4 px-4 sm:px-6 pt-0 md:px-6 md:pt-0">
                   <FormField
                     control={form.control}
                     name="identifier"
@@ -133,7 +133,7 @@ export default function AdminLoginPage() {
                     )}
                   />
                 </CardContent>
-                <CardFooter className="flex flex-col gap-4 px-4 pb-4 pt-0 sm:p-6 sm:pt-0 md:px-4 md:pt-2 md:pb-4">
+                <CardFooter className="flex flex-col gap-4 px-4 pb-4 pt-0 sm:p-6 sm:pt-0 md:px-6 md:pt-4 md:pb-6">
                   <Button type="submit" className="w-full" disabled={isSubmitting || showSuccessDialog} size="sm">
                     {isSubmitting || showSuccessDialog ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <LogIn className="mr-2 h-4 w-4" />}
                     {isSubmitting && !showSuccessDialog ? 'Checking...' : (showSuccessDialog ? 'Logging in...' : 'Login')}
