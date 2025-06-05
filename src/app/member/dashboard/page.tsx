@@ -17,7 +17,7 @@ import {
 import { Alert, AlertDescription, AlertTitle as ShadcnAlertTitle } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/auth-context';
-import { Camera, QrCode, Receipt, IndianRupee, MessageSquare, Bell, ScrollText, Star, Loader2, XCircle, Home } from 'lucide-react';
+import { Camera, QrCode, Receipt, IndianRupee, MessageSquare, Bell, ScrollText, Star, Loader2, XCircle, Home, BarChart3 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getStudentByEmail, getAlertsForStudent } from '@/services/student-service'; // Added getAlertsForStudent
 import type { AlertItem } from '@/types/communication'; // Added AlertItem
@@ -206,7 +206,7 @@ export default function MemberDashboardPage() {
 
   const coreActionTiles: DashboardTileProps[] = [
     { title: "View Alerts", description: "Catch up on announcements.", icon: Bell, href: "/member/alerts", hasNew: isLoadingStudentData ? false : hasUnreadAlerts },
-    { title: "My Fees", description: "Check fee status & history.", icon: Receipt, href: "/member/fees" },
+    { title: "Activity Summary", description: "Track your study hours.", icon: BarChart3, href: "/member/attendance" },
     { title: "Pay Fees", description: "Settle your outstanding dues.", icon: IndianRupee, href: "/member/pay" },
     { title: "Submit Feedback", description: "Share suggestions or issues.", icon: MessageSquare, href: "/member/feedback" },
   ];
