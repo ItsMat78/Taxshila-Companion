@@ -13,7 +13,7 @@ import {
   arrayUnion,
   deleteDoc, 
   orderBy,
-  limit, // Added limit to imports
+  limit, 
   serverTimestamp
 } from '@/lib/firebase';
 import type { Student, Shift, FeeStatus, PaymentRecord, ActivityStatus, AttendanceRecord } from '@/types/student';
@@ -41,8 +41,8 @@ const studentFromDoc = (docSnapshot: any): Student => {
     ...data,
     firestoreId: docSnapshot.id, // Store Firestore document ID
     registrationDate: data.registrationDate instanceof Timestamp ? format(data.registrationDate.toDate(), 'yyyy-MM-dd') : data.registrationDate,
-    lastPaymentDate: data.lastPaymentDate instanceof Timestamp ? format(data.lastPaymentDate.toDate(), 'yyyy-MM-dd') : data.lastPaymentDate,
-    nextDueDate: data.nextDueDate instanceof Timestamp ? format(data.nextDueDate.toDate(), 'yyyy-MM-dd') : data.nextDueDate,
+    lastPaymentDate: data.lastPaymentDate instanceof Timestamp ? format(data.lastPaymentDate.toDate(), 'yyyy-MM-dd') : (data.lastPaymentDate === null ? undefined : data.lastPaymentDate),
+    nextDueDate: data.nextDueDate instanceof Timestamp ? format(data.nextDueDate.toDate(), 'yyyy-MM-dd') : (data.nextDueDate === null ? undefined : data.nextDueDate),
     paymentHistory: (data.paymentHistory || []).map((p: any) => ({
       ...p,
       date: p.date instanceof Timestamp ? format(p.date.toDate(), 'yyyy-MM-dd') : p.date,
@@ -57,7 +57,7 @@ const attendanceRecordFromDoc = (docSnapshot: any): AttendanceRecord => {
     firestoreId: docSnapshot.id,
     date: data.date instanceof Timestamp ? format(data.date.toDate(), 'yyyy-MM-dd') : data.date,
     checkInTime: data.checkInTime instanceof Timestamp ? data.checkInTime.toDate().toISOString() : data.checkInTime,
-    checkOutTime: data.checkOutTime instanceof Timestamp ? data.checkOutTime.toDate().toISOString() : data.checkOutTime,
+    checkOutTime: data.checkOutTime instanceof Timestamp ? data.checkOutTime.toDate().toISOString() : (data.checkOutTime === null ? undefined : data.checkOutTime),
   } as AttendanceRecord;
 };
 
@@ -106,11 +106,11 @@ async function applyAutomaticStatusUpdates(studentData: Student): Promise<Studen
         if (updatedStudent.firestoreId) {
              await updateDoc(doc(db, STUDENTS_COLLECTION, updatedStudent.firestoreId), {
                 activityStatus: 'Left',
-                seatNumber: null, // Use null for Firestore
+                seatNumber: null, 
                 feeStatus: "N/A",
                 amountDue: "N/A",
-                lastPaymentDate: null, // Use null
-                nextDueDate: null, // Use null
+                lastPaymentDate: null, 
+                nextDueDate: null, 
              });
         }
       }
@@ -141,8 +141,8 @@ export async function getAllStudents(): Promise<Student[]> {
   const q = query(collection(db, STUDENTS_COLLECTION));
   const querySnapshot = await getDocs(q);
   let studentsList: Student[] = [];
-  querySnapshot.forEach((doc) => {
-    studentsList.push(studentFromDoc(doc));
+  querySnapshot.forEach((docSnap) => {
+    studentsList.push(studentFromDoc(docSnap));
   });
   // Apply updates after fetching all
   studentsList = await Promise.all(studentsList.map(s => applyAutomaticStatusUpdates(s)));
@@ -227,7 +227,7 @@ export async function addStudent(studentData: AddStudentData): Promise<Student> 
     throw new Error(`Generated Student ID ${customStudentId} already exists. Please try again.`);
   }
   // Check if email already exists
-  if (studentData.email) {
+  if (studentData.email && studentData.email.trim() !== "") {
     const existingStudentByEmail = await getStudentByEmail(studentData.email);
     if (existingStudentByEmail) {
       throw new Error(`Email ${studentData.email} is already registered.`);
@@ -252,34 +252,67 @@ export async function addStudent(studentData: AddStudentData): Promise<Student> 
   }
 
   const today = new Date();
-  const newStudentData: Omit<Student, 'firestoreId'> = {
+  // Initial data for Student type, dates are strings here
+  const newStudentDataTypeConsistent: Omit<Student, 'firestoreId'> = {
     studentId: customStudentId,
     name: studentData.name,
-    email: studentData.email ? studentData.email.toLowerCase() : undefined,
+    email: studentData.email && studentData.email.trim() !== "" ? studentData.email.toLowerCase() : undefined,
     phone: studentData.phone,
     password: studentData.password,
     shift: studentData.shift,
     seatNumber: studentData.seatNumber,
-    idCardFileName: studentData.idCardFileName || undefined,
+    idCardFileName: studentData.idCardFileName && studentData.idCardFileName.trim() !== "" ? studentData.idCardFileName : undefined,
     feeStatus: "Due",
     activityStatus: "Active",
-    registrationDate: format(today, 'yyyy-MM-dd'), // Store as string
+    registrationDate: format(today, 'yyyy-MM-dd'),
     amountDue: studentData.shift === "fullday" ? "Rs. 1200" : "Rs. 700",
-    nextDueDate: format(addMonths(today, 1), 'yyyy-MM-dd'), // Store as string
+    nextDueDate: format(addMonths(today, 1), 'yyyy-MM-dd'),
     profilePictureUrl: "https://placehold.co/200x200.png",
     paymentHistory: [],
-    readGeneralAlertIds: [], // Initialize for Firestore
+    readGeneralAlertIds: [],
   };
 
-  // Convert dates to Timestamps for Firestore
-  const firestoreReadyData = {
-    ...newStudentData,
-    registrationDate: Timestamp.fromDate(parseISO(newStudentData.registrationDate)),
-    nextDueDate: newStudentData.nextDueDate ? Timestamp.fromDate(parseISO(newStudentData.nextDueDate)) : null,
+  // Prepare data for Firestore (convert dates to Timestamps, ensure no 'undefined' values)
+  const firestoreReadyData: any = {
+    studentId: newStudentDataTypeConsistent.studentId,
+    name: newStudentDataTypeConsistent.name,
+    phone: newStudentDataTypeConsistent.phone,
+    password: newStudentDataTypeConsistent.password,
+    shift: newStudentDataTypeConsistent.shift,
+    seatNumber: newStudentDataTypeConsistent.seatNumber,
+    feeStatus: newStudentDataTypeConsistent.feeStatus,
+    activityStatus: newStudentDataTypeConsistent.activityStatus,
+    registrationDate: Timestamp.fromDate(parseISO(newStudentDataTypeConsistent.registrationDate)),
+    amountDue: newStudentDataTypeConsistent.amountDue,
+    nextDueDate: newStudentDataTypeConsistent.nextDueDate ? Timestamp.fromDate(parseISO(newStudentDataTypeConsistent.nextDueDate)) : null,
+    profilePictureUrl: newStudentDataTypeConsistent.profilePictureUrl,
+    paymentHistory: newStudentDataTypeConsistent.paymentHistory,
+    readGeneralAlertIds: newStudentDataTypeConsistent.readGeneralAlertIds,
   };
+
+  if (newStudentDataTypeConsistent.email) {
+    firestoreReadyData.email = newStudentDataTypeConsistent.email;
+  } else {
+    firestoreReadyData.email = null; // Explicitly set to null if not provided
+  }
+
+  if (newStudentDataTypeConsistent.idCardFileName) {
+    firestoreReadyData.idCardFileName = newStudentDataTypeConsistent.idCardFileName;
+  } else {
+    firestoreReadyData.idCardFileName = null; // Explicitly set to null if not provided
+  }
+
 
   const docRef = await addDoc(collection(db, STUDENTS_COLLECTION), firestoreReadyData);
-  return { ...newStudentData, firestoreId: docRef.id };
+  
+  // Return data consistent with Student type (dates as strings)
+  return { 
+    ...newStudentDataTypeConsistent, 
+    firestoreId: docRef.id,
+    // Ensure optional fields are indeed optional if they were null in firestoreReadyData
+    email: firestoreReadyData.email === null ? undefined : firestoreReadyData.email,
+    idCardFileName: firestoreReadyData.idCardFileName === null ? undefined : firestoreReadyData.idCardFileName,
+  };
 }
 
 export async function updateStudent(customStudentId: string, studentUpdateData: Partial<Student>): Promise<Student | undefined> {
@@ -290,22 +323,21 @@ export async function updateStudent(customStudentId: string, studentUpdateData: 
 
   const studentDocRef = doc(db, STUDENTS_COLLECTION, studentToUpdate.firestoreId);
 
-  // Prepare update payload, converting dates to Timestamps
   const payload: any = { ...studentUpdateData };
-  delete payload.firestoreId; // Don't try to write firestoreId back
-  delete payload.studentId; // Don't allow changing the custom studentId
+  delete payload.firestoreId; 
+  delete payload.studentId; 
 
   if (payload.registrationDate && typeof payload.registrationDate === 'string') {
     payload.registrationDate = Timestamp.fromDate(parseISO(payload.registrationDate));
   }
   if (payload.lastPaymentDate && typeof payload.lastPaymentDate === 'string') {
     payload.lastPaymentDate = Timestamp.fromDate(parseISO(payload.lastPaymentDate));
-  } else if (payload.lastPaymentDate === undefined && studentUpdateData.hasOwnProperty('lastPaymentDate')) {
+  } else if (payload.hasOwnProperty('lastPaymentDate') && payload.lastPaymentDate === undefined) {
     payload.lastPaymentDate = null;
   }
   if (payload.nextDueDate && typeof payload.nextDueDate === 'string') {
     payload.nextDueDate = Timestamp.fromDate(parseISO(payload.nextDueDate));
-  } else if (payload.nextDueDate === undefined && studentUpdateData.hasOwnProperty('nextDueDate')) {
+  } else if (payload.hasOwnProperty('nextDueDate') && payload.nextDueDate === undefined) {
     payload.nextDueDate = null;
   }
   if (payload.paymentHistory) {
@@ -314,8 +346,13 @@ export async function updateStudent(customStudentId: string, studentUpdateData: 
       date: typeof p.date === 'string' ? Timestamp.fromDate(parseISO(p.date)) : p.date,
     }));
   }
-   if (payload.email) {
+   if (payload.email && typeof payload.email === 'string') {
     payload.email = payload.email.toLowerCase();
+  } else if (payload.hasOwnProperty('email') && (payload.email === undefined || payload.email === "")) {
+    payload.email = null;
+  }
+  if (payload.hasOwnProperty('idCardFileName') && (payload.idCardFileName === undefined || payload.idCardFileName === "")) {
+    payload.idCardFileName = null;
   }
 
 
@@ -324,9 +361,9 @@ export async function updateStudent(customStudentId: string, studentUpdateData: 
   const newSeatNumber = studentUpdateData.seatNumber !== undefined ? studentUpdateData.seatNumber : studentToUpdate.seatNumber;
 
   if (newSeatNumber && (newSeatNumber !== studentToUpdate.seatNumber || newShift !== studentToUpdate.shift || (studentUpdateData.activityStatus === 'Active' && studentToUpdate.activityStatus === 'Left'))) {
-      const allCurrentStudents = await getAllStudents();
+      const allCurrentStudents = await getAllStudents(); // This already filters for active with seats in its logic
       const isSeatTakenForShift = allCurrentStudents.some(s =>
-        s.studentId !== customStudentId && // Exclude current student
+        s.studentId !== customStudentId && 
         s.activityStatus === "Active" &&
         s.seatNumber === newSeatNumber &&
         (s.shift === "fullday" || newShift === "fullday" || s.shift === newShift)
@@ -354,12 +391,12 @@ export async function updateStudent(customStudentId: string, studentUpdateData: 
     payload.amountDue = newShift === "fullday" ? "Rs. 1200" : "Rs. 700";
     payload.lastPaymentDate = null;
     payload.nextDueDate = Timestamp.fromDate(addMonths(new Date(), 1));
-    payload.paymentHistory = []; // Reset payment history on reactivation
+    payload.paymentHistory = []; 
   }
 
   await updateDoc(studentDocRef, payload);
-  const updatedDoc = await getDoc(studentDocRef);
-  let updatedStudent = studentFromDoc(updatedDoc);
+  const updatedDocSnap = await getDoc(studentDocRef);
+  let updatedStudent = studentFromDoc(updatedDocSnap);
 
   // Send alerts for status changes or significant profile updates
   const passwordUpdated = studentUpdateData.password && studentUpdateData.password !== studentToUpdate.password && studentUpdateData.password !== "";
@@ -371,11 +408,11 @@ export async function updateStudent(customStudentId: string, studentUpdateData: 
      await sendAlertToStudent(customStudentId, "Account Status Update", `Hi ${updatedStudent.name}, your student account has been marked as 'Left'.`, "info");
   } else if (updatedStudent.activityStatus === 'Active') {
       const profileChanged = (studentUpdateData.name && studentUpdateData.name !== studentToUpdate.name) ||
-                             (studentUpdateData.email !== undefined && studentUpdateData.email !== studentToUpdate.email) ||
+                             (payload.email !== studentToUpdate.email) || // compare with potentially nulled payload.email
                              (studentUpdateData.phone && studentUpdateData.phone !== studentToUpdate.phone) ||
                              (studentUpdateData.shift && studentUpdateData.shift !== studentToUpdate.shift) ||
                              (studentUpdateData.seatNumber !== undefined && studentUpdateData.seatNumber !== studentToUpdate.seatNumber) ||
-                             (studentUpdateData.idCardFileName !== undefined && studentUpdateData.idCardFileName !== studentToUpdate.idCardFileName) ||
+                             (payload.idCardFileName !== studentToUpdate.idCardFileName) || // compare with potentially nulled payload.idCardFileName
                              passwordUpdated;
 
       if (profileChanged) {
@@ -405,12 +442,12 @@ export async function getAvailableSeats(shiftToConsider: Shift): Promise<string[
 
 // --- Attendance Service Functions ---
 export async function getActiveCheckIn(studentId: string): Promise<AttendanceRecord | undefined> {
-  const todayStr = format(new Date(), 'yyyy-MM-dd'); // Stored as string
+  const todayStr = format(new Date(), 'yyyy-MM-dd'); 
   const q = query(
     collection(db, ATTENDANCE_COLLECTION),
     where("studentId", "==", studentId),
     where("date", "==", todayStr),
-    where("checkOutTime", "==", null), // Firestore way to check for non-existence or null
+    where("checkOutTime", "==", null), 
     orderBy("checkInTime", "desc"),
     limit(1)
   );
@@ -451,14 +488,14 @@ export async function addCheckIn(studentId: string): Promise<AttendanceRecord> {
 
   const newRecordData = {
     studentId,
-    date: format(now, 'yyyy-MM-dd'), // Store as string
+    date: format(now, 'yyyy-MM-dd'), 
     checkInTime: Timestamp.fromDate(now),
-    checkOutTime: null, // Explicitly null for Firestore
+    checkOutTime: null, 
   };
   const docRef = await addDoc(collection(db, ATTENDANCE_COLLECTION), newRecordData);
-  // To return AttendanceRecord, convert Timestamps back
+  
   return {
-    recordId: docRef.id, // Use Firestore ID as recordId
+    recordId: docRef.id, 
     studentId: newRecordData.studentId,
     date: newRecordData.date,
     checkInTime: newRecordData.checkInTime.toDate().toISOString(),
@@ -522,13 +559,12 @@ export async function recordStudentPayment(
 
   const newPaymentRecord: PaymentRecord = {
     paymentId: newPaymentId,
-    date: format(today, 'yyyy-MM-dd'), // Store as string for consistency in array
+    date: format(today, 'yyyy-MM-dd'), 
     amount: totalAmountPaidString,
     transactionId: newTransactionId,
     method: paymentMethod === "Admin Recorded" ? "Desk Payment" : paymentMethod,
   };
   
-  // Convert date to Timestamp for storing in Firestore array if necessary
   const firestorePaymentRecord = {
       ...newPaymentRecord,
       date: Timestamp.fromDate(parseISO(newPaymentRecord.date)) 
@@ -544,12 +580,12 @@ export async function recordStudentPayment(
     lastPaymentDate: Timestamp.fromDate(today),
     nextDueDate: Timestamp.fromDate(addMonths(baseDateForNextDue, numberOfMonthsPaid)),
     amountDue: "Rs. 0",
-    paymentHistory: arrayUnion(firestorePaymentRecord), // Add to array
+    paymentHistory: arrayUnion(firestorePaymentRecord), 
   };
 
   await updateDoc(studentDocRef, updatedFeeData);
-  const updatedDoc = await getDoc(studentDocRef);
-  const updatedStudent = studentFromDoc(updatedDoc);
+  const updatedDocSnap = await getDoc(studentDocRef);
+  const updatedStudent = studentFromDoc(updatedDocSnap);
 
   try {
     await sendAlertToStudent(
@@ -597,7 +633,7 @@ export async function calculateMonthlyRevenue(): Promise<string> {
     if (student.paymentHistory) {
       student.paymentHistory.forEach(payment => {
         try {
-          const paymentDate = parseISO(payment.date); // Dates in student.paymentHistory are strings
+          const paymentDate = parseISO(payment.date); 
           if (isValid(paymentDate) && isWithinInterval(paymentDate, { start: currentMonthStart, end: currentMonthEnd })) {
             const amountString = payment.amount.replace('Rs. ', '').trim();
             const amountValue = parseInt(amountString, 10);
@@ -626,7 +662,7 @@ export async function getMonthlyRevenueHistory(): Promise<MonthlyRevenueData[]> 
     if (student.paymentHistory) {
       student.paymentHistory.forEach(payment => {
         try {
-          const paymentDate = parseISO(payment.date); // Dates in paymentHistory are strings
+          const paymentDate = parseISO(payment.date); 
           if (isValid(paymentDate)) {
             const monthKey = format(paymentDate, 'yyyy-MM');
             const amountString = payment.amount.replace('Rs. ', '').trim();
@@ -656,14 +692,14 @@ export async function getMonthlyRevenueHistory(): Promise<MonthlyRevenueData[]> 
 
 // --- Communication Service Functions (Feedback & Alerts) ---
 export async function submitFeedback(
-  studentId: string | undefined, // custom student ID
+  studentId: string | undefined, 
   studentName: string | undefined,
   message: string,
   type: FeedbackType
 ): Promise<FeedbackItem> {
   const newFeedbackData = {
-    studentId,
-    studentName,
+    studentId: studentId || null, // Store null if undefined
+    studentName: studentName || null, // Store null if undefined
     message,
     type,
     dateSubmitted: Timestamp.fromDate(new Date()),
@@ -671,9 +707,11 @@ export async function submitFeedback(
   };
   const docRef = await addDoc(collection(db, FEEDBACK_COLLECTION), newFeedbackData);
   return { 
-    id: docRef.id, // Use Firestore ID
+    id: docRef.id, 
     ...newFeedbackData,
-    dateSubmitted: newFeedbackData.dateSubmitted.toDate().toISOString(), // Convert back for return type
+    studentId: newFeedbackData.studentId === null ? undefined : newFeedbackData.studentId,
+    studentName: newFeedbackData.studentName === null ? undefined : newFeedbackData.studentName,
+    dateSubmitted: newFeedbackData.dateSubmitted.toDate().toISOString(), 
    };
 }
 
@@ -686,8 +724,8 @@ export async function getAllFeedback(): Promise<FeedbackItem[]> {
 export async function updateFeedbackStatus(feedbackId: string, status: FeedbackStatus): Promise<FeedbackItem | undefined> {
   const feedbackDocRef = doc(db, FEEDBACK_COLLECTION, feedbackId);
   await updateDoc(feedbackDocRef, { status });
-  const updatedDoc = await getDoc(feedbackDocRef);
-  return updatedDoc.exists() ? feedbackItemFromDoc(updatedDoc) : undefined;
+  const updatedDocSnap = await getDoc(feedbackDocRef);
+  return updatedDocSnap.exists() ? feedbackItemFromDoc(updatedDocSnap) : undefined;
 }
 
 export async function sendGeneralAlert(title: string, message: string, type: AlertItem['type']): Promise<AlertItem> {
@@ -696,19 +734,20 @@ export async function sendGeneralAlert(title: string, message: string, type: Ale
     message,
     type,
     dateSent: Timestamp.fromDate(new Date()),
-    isRead: false, // Default for new general alert
-    studentId: null, // Explicitly set studentId to null for general alerts
+    isRead: false, 
+    studentId: null, 
   };
   const docRef = await addDoc(collection(db, ALERTS_COLLECTION), newAlertData);
   return { 
     id: docRef.id, 
     ...newAlertData,
+    studentId: undefined, // Ensure it's undefined for the AlertItem type
     dateSent: newAlertData.dateSent.toDate().toISOString(),
   };
 }
 
 export async function sendAlertToStudent(
-  customStudentId: string, // This is the TSMEMXXX ID
+  customStudentId: string, 
   title: string,
   message: string,
   type: AlertItem['type'],
@@ -722,7 +761,7 @@ export async function sendAlertToStudent(
       console.warn(`Attempted to send targeted alert to non-existent student ID: ${customStudentId} for title: "${title}"`);
   }
 
-  const newAlertData: any = {
+  const newAlertDataForFirestore: any = {
     studentId: customStudentId, 
     title,
     message,
@@ -730,15 +769,24 @@ export async function sendAlertToStudent(
     dateSent: Timestamp.fromDate(new Date()),
     isRead: false, 
   };
-  if (originalFeedbackId) newAlertData.originalFeedbackId = originalFeedbackId;
-  if (originalFeedbackMessageSnippet) newAlertData.originalFeedbackMessageSnippet = originalFeedbackMessageSnippet;
+  if (originalFeedbackId) newAlertDataForFirestore.originalFeedbackId = originalFeedbackId;
+  if (originalFeedbackMessageSnippet) newAlertDataForFirestore.originalFeedbackMessageSnippet = originalFeedbackMessageSnippet;
   
-  const docRef = await addDoc(collection(db, ALERTS_COLLECTION), newAlertData);
-  return { 
+  const docRef = await addDoc(collection(db, ALERTS_COLLECTION), newAlertDataForFirestore);
+  
+  // Construct the AlertItem for return, ensuring correct optional types
+  const newAlertDataForReturn: AlertItem = {
     id: docRef.id,
-    ...newAlertData,
-    dateSent: newAlertData.dateSent.toDate().toISOString(),
+    studentId: newAlertDataForFirestore.studentId,
+    title: newAlertDataForFirestore.title,
+    message: newAlertDataForFirestore.message,
+    type: newAlertDataForFirestore.type,
+    dateSent: newAlertDataForFirestore.dateSent.toDate().toISOString(),
+    isRead: newAlertDataForFirestore.isRead,
+    ...(originalFeedbackId && { originalFeedbackId }),
+    ...(originalFeedbackMessageSnippet && { originalFeedbackMessageSnippet }),
   };
+  return newAlertDataForReturn;
 }
 
 export async function getAlertsForStudent(customStudentId: string): Promise<AlertItem[]> {
@@ -766,7 +814,7 @@ export async function getAlertsForStudent(customStudentId: string): Promise<Aler
   const generalAlertsSnapshot = await getDocs(generalAlertsQuery);
   const generalAlerts = generalAlertsSnapshot.docs
       .map(alertItemFromDoc)
-      .filter(alert => alert.type !== 'feedback_response'); // Feedback responses should always be targeted
+      .filter(alert => alert.type !== 'feedback_response'); 
 
 
   const contextualizedAlerts = [
@@ -797,11 +845,11 @@ export async function markAlertAsRead(alertId: string, customStudentId: string):
     }
     const alertData = alertItemFromDoc(alertSnap);
 
-    if (alertData.studentId === customStudentId) {
+    if (alertData.studentId === customStudentId) { // Targeted alert for this student
         await updateDoc(alertDocRef, { isRead: true });
         return { ...alertData, isRead: true };
     } 
-    else if (alertData.studentId === null) { // General alert
+    else if (alertData.studentId === undefined || alertData.studentId === null) { // General alert
         const student = await getStudentByCustomId(customStudentId);
         if (student && student.firestoreId) {
             const studentDocRef = doc(db, STUDENTS_COLLECTION, student.firestoreId);
@@ -815,7 +863,7 @@ export async function markAlertAsRead(alertId: string, customStudentId: string):
     }
     else { // Targeted alert for a different student
         console.warn(`Attempt to mark alert ${alertId} as read by wrong student ${customStudentId}. Alert belongs to ${alertData.studentId}`);
-        return alertData; // Return original alert data, no change
+        return alertData; 
     }
 }
 
