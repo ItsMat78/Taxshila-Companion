@@ -23,9 +23,9 @@ const loginFormSchema = z.object({
 
 type LoginFormValues = z.infer<typeof loginFormSchema>;
 
-// Placeholder URLs - Replace with your actual direct image URLs
-const LOGO_URL = "https://placehold.co/200x67.png?text=Taxshila+Logo";
-const LIBRARY_INTERIOR_URL = "https://placehold.co/360x270.png?text=Library+Interior";
+// Update these paths to point to your images in the 'public' folder
+const LOGO_URL = "/logo.png"; // Assumes logo.png is in public/
+const LIBRARY_INTERIOR_URL = "/cover.png"; // Assumes cover.png is in public/
 
 export default function AdminLoginPage() {
   const { login } = useAuth();
@@ -105,7 +105,7 @@ export default function AdminLoginPage() {
             {/* Logo for small screens */}
             <div className="md:hidden flex flex-col items-center mb-6">
               <Image
-                src={LOGO_URL} // Using the same logo, adjust size with width/height
+                src={LOGO_URL} 
                 alt="Taxshila Companion Logo"
                 width={150}
                 height={50}
