@@ -10,6 +10,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  CardFooter,
 } from "@/components/ui/card";
 import { Button } from '@/components/ui/button';
 import {
@@ -20,11 +21,40 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { List, UserCog, Loader2, LogIn, LogOut, Clock } from 'lucide-react';
+import { List, UserCog, Loader2, LogIn, LogOut, Clock, User, Mail, BarChart3, Settings2, Eye } from 'lucide-react';
 import { getAllStudents, getAttendanceForDate } from '@/services/student-service';
 import type { Student, AttendanceRecord } from '@/types/student';
 import { format, parseISO } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
+
+// Mobile Card Item for Student List
+const StudentAttendanceCardItem = ({ student, onSelectStudent, isSelected }: {
+  student: Student;
+  onSelectStudent: (student: Student) => void;
+  isSelected: boolean;
+}) => (
+  <Card className={`w-full shadow-md cursor-pointer hover:bg-muted/50 ${isSelected ? 'ring-2 ring-primary bg-primary/5' : ''}`} onClick={() => onSelectStudent(student)}>
+    <CardHeader className="pb-2">
+      <CardTitle className="text-md break-words">{student.name}</CardTitle>
+      <CardDescription className="text-xs break-words">ID: {student.studentId}</CardDescription>
+    </CardHeader>
+    <CardContent className="text-xs space-y-1 pb-3">
+      <p className="flex items-center truncate"><Mail className="mr-2 h-3 w-3 text-muted-foreground" />{student.email || 'N/A'}</p>
+      <p><span className="font-medium">Shift:</span> <span className="capitalize">{student.shift}</span></p>
+    </CardContent>
+    <CardFooter className="py-2 border-t">
+      <Button
+        variant={isSelected ? "default" : "outline"}
+        size="sm"
+        className="w-full"
+        onClick={(e) => { e.stopPropagation(); onSelectStudent(student); }}
+      >
+        <Eye className="mr-2 h-4 w-4" /> View Calendar
+      </Button>
+    </CardFooter>
+  </Card>
+);
+
 
 export default function AdminAttendanceOverviewPage() {
   const { toast } = useToast();
@@ -42,7 +72,7 @@ export default function AdminAttendanceOverviewPage() {
       setIsLoadingStudents(true);
       try {
         const students = await getAllStudents();
-        setAllStudents(students.filter(s => s.activityStatus === "Active")); // Show only active students for attendance view
+        setAllStudents(students.filter(s => s.activityStatus === "Active").sort((a,b) => a.name.localeCompare(b.name)));
       } catch (error) {
         toast({
           title: "Error Fetching Students",
@@ -58,7 +88,7 @@ export default function AdminAttendanceOverviewPage() {
 
   const handleStudentSelect = (student: Student) => {
     setSelectedStudent(student);
-    setDate(new Date()); // Reset date to today when a new student is selected
+    setDate(new Date()); 
   };
 
   const fetchAttendanceForSelectedDate = React.useCallback(async () => {
@@ -95,7 +125,7 @@ export default function AdminAttendanceOverviewPage() {
 
       <Card className="mb-6 shadow-lg w-full">
         <CardHeader>
-          <CardTitle className="flex items-center"><List className="mr-2 h-5 w-5" />Active Students</CardTitle>
+          <CardTitle className="flex items-center"><List className="mr-2 h-5 w-5" />Active Students ({allStudents.length})</CardTitle>
           <CardDescription>Click on a student to view their attendance calendar.</CardDescription>
         </CardHeader>
         <CardContent>
@@ -105,43 +135,63 @@ export default function AdminAttendanceOverviewPage() {
               <p className="ml-2 text-muted-foreground">Loading students...</p>
             </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Student ID</TableHead>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Shift</TableHead>
-                  <TableHead>Action</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {allStudents.map((student) => (
-                  <TableRow
-                    key={student.studentId}
-                    className={`cursor-pointer hover:bg-muted/50 ${selectedStudent?.studentId === student.studentId ? 'bg-primary/10' : ''}`}
-                    onClick={() => handleStudentSelect(student)}
-                  >
-                    <TableCell>{student.studentId}</TableCell>
-                    <TableCell className="font-medium">{student.name}</TableCell>
-                    <TableCell>{student.email || 'N/A'}</TableCell>
-                    <TableCell className="capitalize">{student.shift}</TableCell>
-                    <TableCell>
-                      <Button
-                        variant={selectedStudent?.studentId === student.studentId ? "default" : "outline"}
-                        size="sm"
-                        onClick={(e) => { e.stopPropagation(); handleStudentSelect(student); }}
+            <>
+              {/* Mobile Card View */}
+              <div className="md:hidden space-y-3">
+                {allStudents.length === 0 ? (
+                   <p className="py-4 text-center text-muted-foreground">No active students found.</p>
+                ) : (
+                  allStudents.map((student) => (
+                    <StudentAttendanceCardItem 
+                      key={student.studentId} 
+                      student={student} 
+                      onSelectStudent={handleStudentSelect}
+                      isSelected={selectedStudent?.studentId === student.studentId}
+                    />
+                  ))
+                )}
+              </div>
+              {/* Desktop Table View */}
+              <div className="hidden md:block">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Student ID</TableHead>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Email</TableHead>
+                      <TableHead>Shift</TableHead>
+                      <TableHead>Action</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {allStudents.map((student) => (
+                      <TableRow
+                        key={student.studentId}
+                        className={`cursor-pointer hover:bg-muted/50 ${selectedStudent?.studentId === student.studentId ? 'bg-primary/10' : ''}`}
+                        onClick={() => handleStudentSelect(student)}
                       >
-                        View Calendar
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-          {!isLoadingStudents && allStudents.length === 0 && (
-            <p className="py-4 text-center text-muted-foreground">No active students found.</p>
+                        <TableCell>{student.studentId}</TableCell>
+                        <TableCell className="font-medium">{student.name}</TableCell>
+                        <TableCell>{student.email || 'N/A'}</TableCell>
+                        <TableCell className="capitalize">{student.shift}</TableCell>
+                        <TableCell>
+                          <Button
+                            variant={selectedStudent?.studentId === student.studentId ? "default" : "outline"}
+                            size="sm"
+                            onClick={(e) => { e.stopPropagation(); handleStudentSelect(student); }}
+                          >
+                            View Calendar
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+                {!isLoadingStudents && allStudents.length === 0 && (
+                   <p className="py-4 text-center text-muted-foreground">No active students found.</p>
+                )}
+              </div>
+            </>
           )}
         </CardContent>
       </Card>

@@ -7,6 +7,7 @@ import {
   Card,
   CardContent,
   CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -20,7 +21,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { MailWarning, MessageSquare, Archive, CheckCircle, Loader2, Send, Reply } from 'lucide-react';
+import { MailWarning, MessageSquare, Archive, CheckCircle, Loader2, Send, Reply, User, Calendar, Type, ListFilter } from 'lucide-react';
 import { getAllFeedback, updateFeedbackStatus as updateFeedbackStatusService, sendAlertToStudent } from '@/services/student-service';
 import type { FeedbackItem, FeedbackStatus, FeedbackType } from '@/types/communication';
 import { useToast } from '@/hooks/use-toast';
@@ -35,7 +36,15 @@ import {
 } from "@/components/ui/dialog";
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from "@/components/ui/label";
-import { useNotificationContext } from '@/contexts/notification-context'; // Import context hook
+import { useNotificationContext } from '@/contexts/notification-context';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface FeedbackResponseDialogProps {
   feedbackItem: FeedbackItem | null;
@@ -109,13 +118,99 @@ function FeedbackResponseDialog({ feedbackItem, isOpen, onClose, onSendResponse 
   );
 }
 
+const getFeedbackTypeBadge = (type: FeedbackType, size: "sm" | "xs" = "sm") => {
+  const baseClass = size === "xs" ? "text-xs px-1.5 py-0.5" : "";
+  switch (type) {
+    case "Suggestion": return <Badge variant="secondary" className={`${baseClass} bg-blue-100 text-blue-700`}>{type}</Badge>;
+    case "Complaint": return <Badge variant="secondary" className={`${baseClass} bg-red-100 text-red-700`}>{type}</Badge>;
+    case "Issue": return <Badge variant="secondary" className={`${baseClass} bg-yellow-100 text-yellow-700`}>{type}</Badge>;
+    case "Compliment": return <Badge variant="secondary" className={`${baseClass} bg-green-100 text-green-700`}>{type}</Badge>;
+    default: return <Badge variant="outline" className={baseClass}>{type}</Badge>;
+  }
+};
+
+const getFeedbackStatusBadge = (status: FeedbackStatus, size: "sm" | "xs" = "sm") => {
+  const baseClass = size === "xs" ? "text-xs px-1.5 py-0.5" : "";
+  switch (status) {
+    case "Open": return <Badge className={`${baseClass} bg-orange-400 hover:bg-orange-500 text-white`}>{status}</Badge>;
+    case "Resolved": return <Badge className={`${baseClass} bg-green-500 hover:bg-green-600 text-white`}>{status}</Badge>;
+    case "Archived": return <Badge variant="secondary" className={baseClass}>{status}</Badge>;
+    default: return <Badge variant="outline" className={baseClass}>{status}</Badge>;
+  }
+};
+
+// Mobile Card Item
+const FeedbackCardItem = ({ item, onOpenResponseDialog, onArchiveFeedback, updatingFeedbackId, selectedFeedbackForResponse }: {
+  item: FeedbackItem;
+  onOpenResponseDialog: (item: FeedbackItem) => void;
+  onArchiveFeedback: (id: string) => void;
+  updatingFeedbackId: string | null;
+  selectedFeedbackForResponse: FeedbackItem | null;
+}) => (
+  <Card className="w-full shadow-md">
+    <CardHeader className="pb-2">
+      <div className="flex justify-between items-start gap-2">
+        <div className="flex-grow">
+          {getFeedbackTypeBadge(item.type, "xs")}
+        </div>
+        {getFeedbackStatusBadge(item.status, "xs")}
+      </div>
+      <CardDescription className="text-xs pt-1">
+        {format(parseISO(item.dateSubmitted), 'MMM d, yyyy, p')}
+      </CardDescription>
+    </CardHeader>
+    <CardContent className="pb-3 space-y-1.5">
+      <p className="text-sm font-medium">
+        {item.studentName || 'Anonymous'}
+        {item.studentId && <span className="text-xs text-muted-foreground ml-1">({item.studentId})</span>}
+      </p>
+      <p className="text-sm text-foreground line-clamp-3">{item.message}</p>
+    </CardContent>
+    <CardFooter className="flex justify-end space-x-2 py-3 border-t">
+      {item.status === "Open" && item.studentId && (
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => onOpenResponseDialog(item)}
+          disabled={updatingFeedbackId === item.id}
+          className="px-2 sm:px-3"
+        >
+          {updatingFeedbackId === item.id && selectedFeedbackForResponse?.id === item.id ? (
+            <Loader2 className="h-3 w-3 animate-spin sm:mr-1" />
+          ) : (
+            <Reply className="h-3 w-3 sm:mr-1" />
+          )}
+          <span className="hidden sm:inline">Resolve</span>
+        </Button>
+      )}
+      {item.status !== "Archived" && (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => onArchiveFeedback(item.id)}
+          disabled={updatingFeedbackId === item.id && selectedFeedbackForResponse?.id !== item.id}
+          className="text-muted-foreground hover:text-destructive px-2 sm:px-3"
+        >
+          {updatingFeedbackId === item.id && selectedFeedbackForResponse?.id !== item.id ? (
+            <Loader2 className="h-3 w-3 animate-spin sm:mr-1" />
+          ) : (
+            <Archive className="h-3 w-3 sm:mr-1" />
+          )}
+          <span className="hidden sm:inline">Archive</span>
+        </Button>
+      )}
+    </CardFooter>
+  </Card>
+);
+
 
 export default function AdminFeedbackPage() {
   const { toast } = useToast();
-  const { refreshNotifications } = useNotificationContext(); // Consume refresh function
-  const [feedbackList, setFeedbackList] = React.useState<FeedbackItem[]>([]);
+  const { refreshNotifications } = useNotificationContext();
+  const [allFeedbackList, setAllFeedbackList] = React.useState<FeedbackItem[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [updatingFeedbackId, setUpdatingFeedbackId] = React.useState<string | null>(null);
+  const [filterStatus, setFilterStatus] = React.useState<FeedbackStatus | "All">("Open");
 
   const [isResponseDialogOpen, setIsResponseDialogOpen] = React.useState(false);
   const [selectedFeedbackForResponse, setSelectedFeedbackForResponse] = React.useState<FeedbackItem | null>(null);
@@ -124,7 +219,7 @@ export default function AdminFeedbackPage() {
     setIsLoading(true);
     try {
       const items = await getAllFeedback();
-      setFeedbackList(items);
+      setAllFeedbackList(items);
     } catch (error) {
       toast({ title: "Error", description: "Could not load feedback.", variant: "destructive" });
     } finally {
@@ -135,6 +230,11 @@ export default function AdminFeedbackPage() {
   React.useEffect(() => {
     fetchFeedback();
   }, [fetchFeedback]);
+
+  const filteredFeedbackList = React.useMemo(() => {
+    if (filterStatus === "All") return allFeedbackList;
+    return allFeedbackList.filter(item => item.status === filterStatus);
+  }, [allFeedbackList, filterStatus]);
 
   const handleUpdateStatus = async (feedbackId: string, status: FeedbackStatus, responseMessage?: string, originalMessage?: string) => {
     setUpdatingFeedbackId(feedbackId);
@@ -155,7 +255,7 @@ export default function AdminFeedbackPage() {
         toast({ title: "Feedback Updated", description: `Status changed to ${status}.` });
       }
       await fetchFeedback();
-      refreshNotifications(); // Trigger notification count refresh
+      refreshNotifications(); 
     } catch (error: any) {
       toast({ title: "Update Failed", description: error.message || "Could not update feedback status.", variant: "destructive" });
     } finally {
@@ -177,26 +277,7 @@ export default function AdminFeedbackPage() {
     handleUpdateStatus(feedbackId, "Archived");
   };
 
-  const getFeedbackTypeBadge = (type: FeedbackType) => {
-    switch (type) {
-      case "Suggestion": return <Badge variant="secondary" className="bg-blue-100 text-blue-700">{type}</Badge>;
-      case "Complaint": return <Badge variant="secondary" className="bg-red-100 text-red-700">{type}</Badge>;
-      case "Issue": return <Badge variant="secondary" className="bg-yellow-100 text-yellow-700">{type}</Badge>;
-      case "Compliment": return <Badge variant="secondary" className="bg-green-100 text-green-700">{type}</Badge>;
-      default: return <Badge variant="outline">{type}</Badge>;
-    }
-  };
-
-  const getFeedbackStatusBadge = (status: FeedbackStatus) => {
-    switch (status) {
-      case "Open": return <Badge className="bg-orange-400 hover:bg-orange-500 text-white">{status}</Badge>;
-      case "Resolved": return <Badge className="bg-green-500 hover:bg-green-600 text-white">{status}</Badge>;
-      case "Archived": return <Badge variant="secondary">{status}</Badge>;
-      default: return <Badge variant="outline">{status}</Badge>;
-    }
-  };
-
-  if (isLoading) {
+  if (isLoading && allFeedbackList.length === 0) {
     return (
       <>
         <PageTitle title="Member Feedback & Suggestions" description="Review and manage feedback submitted by students." />
@@ -210,86 +291,135 @@ export default function AdminFeedbackPage() {
 
   return (
     <>
-      <PageTitle title="Member Feedback & Suggestions" description="Review and manage feedback submitted by students." />
+      <PageTitle title="Member Feedback & Suggestions" description="Review and manage feedback submitted by students.">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline">
+              <ListFilter className="mr-2 h-4 w-4" />
+              Filter: {filterStatus}
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuRadioGroup value={filterStatus} onValueChange={(value) => setFilterStatus(value as FeedbackStatus | "All")}>
+              <DropdownMenuRadioItem value="All">All</DropdownMenuRadioItem>
+              <DropdownMenuRadioItem value="Open">Open</DropdownMenuRadioItem>
+              <DropdownMenuRadioItem value="Resolved">Resolved</DropdownMenuRadioItem>
+              <DropdownMenuRadioItem value="Archived">Archived</DropdownMenuRadioItem>
+            </DropdownMenuRadioGroup>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </PageTitle>
       <Card className="shadow-lg w-full">
         <CardHeader>
           <CardTitle className="flex items-center">
             <MessageSquare className="mr-2 h-5 w-5" />
-            Feedback Inbox
+            Feedback Inbox ({filteredFeedbackList.length})
           </CardTitle>
           <CardDescription>
-            Showing all feedback. Use actions to resolve or archive.
+            Showing {filterStatus.toLowerCase()} feedback. Use actions to resolve or archive.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="whitespace-nowrap">Date</TableHead>
-                <TableHead>Student</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Message</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {feedbackList.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={6} className="text-center text-muted-foreground py-4">
+          {isLoading && filteredFeedbackList.length === 0 ? (
+             <div className="flex items-center justify-center py-10">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+             </div>
+          ) : (
+            <>
+              {/* Mobile Card View */}
+              <div className="md:hidden space-y-3">
+                {filteredFeedbackList.length === 0 ? (
+                  <div className="text-center text-muted-foreground py-4">
                     <MailWarning className="mx-auto mb-2 h-8 w-8 text-muted-foreground" />
-                    No feedback submissions yet.
-                  </TableCell>
-                </TableRow>
-              ) : (
-                feedbackList.map((item) => (
-                  <TableRow key={item.id}>
-                    <TableCell className="text-xs whitespace-nowrap">{format(parseISO(item.dateSubmitted), 'MMM d, yyyy')}</TableCell>
-                    <TableCell>
-                        {item.studentName || 'Anonymous'}
-                        {item.studentId && <span className="block text-xs text-muted-foreground">({item.studentId})</span>}
-                    </TableCell>
-                    <TableCell>{getFeedbackTypeBadge(item.type)}</TableCell>
-                    <TableCell className="text-sm">{item.message}</TableCell>
-                    <TableCell>{getFeedbackStatusBadge(item.status)}</TableCell>
-                    <TableCell className="text-right space-x-1 whitespace-nowrap">
-                      {item.status === "Open" && item.studentId && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleOpenResponseDialog(item)}
-                          disabled={updatingFeedbackId === item.id}
-                        >
-                          {updatingFeedbackId === item.id && selectedFeedbackForResponse?.id === item.id ? (
-                            <Loader2 className="mr-1 h-3 w-3 animate-spin" />
-                          ) : (
-                            <Reply className="mr-1 h-3 w-3" />
-                          )}
-                          Resolve
-                        </Button>
-                      )}
-                      {item.status !== "Archived" && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleArchiveFeedback(item.id)}
-                          disabled={updatingFeedbackId === item.id && selectedFeedbackForResponse?.id !== item.id}
-                          className="text-muted-foreground hover:text-destructive"
-                        >
-                          {updatingFeedbackId === item.id && selectedFeedbackForResponse?.id !== item.id ? (
-                            <Loader2 className="mr-1 h-3 w-3 animate-spin" />
-                          ) : (
-                            <Archive className="mr-1 h-3 w-3" />
-                          )}
-                          Archive
-                        </Button>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+                    No {filterStatus !== "All" ? filterStatus.toLowerCase() : ""} feedback submissions found.
+                  </div>
+                ) : (
+                  filteredFeedbackList.map((item) => (
+                    <FeedbackCardItem
+                      key={item.id}
+                      item={item}
+                      onOpenResponseDialog={handleOpenResponseDialog}
+                      onArchiveFeedback={handleArchiveFeedback}
+                      updatingFeedbackId={updatingFeedbackId}
+                      selectedFeedbackForResponse={selectedFeedbackForResponse}
+                    />
+                  ))
+                )}
+              </div>
+
+              {/* Desktop Table View */}
+              <div className="hidden md:block">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Student</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead>Message</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredFeedbackList.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={6} className="text-center text-muted-foreground py-4">
+                          <MailWarning className="mx-auto mb-2 h-8 w-8 text-muted-foreground" />
+                          No {filterStatus !== "All" ? filterStatus.toLowerCase() : ""} feedback submissions found.
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      filteredFeedbackList.map((item) => (
+                        <TableRow key={item.id}>
+                          <TableCell className="text-xs whitespace-nowrap">{format(parseISO(item.dateSubmitted), 'MMM d, yyyy')}</TableCell>
+                          <TableCell>
+                              {item.studentName || 'Anonymous'}
+                              {item.studentId && <span className="block text-xs text-muted-foreground">({item.studentId})</span>}
+                          </TableCell>
+                          <TableCell>{getFeedbackTypeBadge(item.type)}</TableCell>
+                          <TableCell className="text-sm">{item.message}</TableCell>
+                          <TableCell>{getFeedbackStatusBadge(item.status)}</TableCell>
+                          <TableCell className="text-right space-x-1 whitespace-nowrap">
+                            {item.status === "Open" && item.studentId && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleOpenResponseDialog(item)}
+                                disabled={updatingFeedbackId === item.id}
+                              >
+                                {updatingFeedbackId === item.id && selectedFeedbackForResponse?.id === item.id ? (
+                                  <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                                ) : (
+                                  <Reply className="mr-1 h-3 w-3" />
+                                )}
+                                Resolve
+                              </Button>
+                            )}
+                            {item.status !== "Archived" && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleArchiveFeedback(item.id)}
+                                disabled={updatingFeedbackId === item.id && selectedFeedbackForResponse?.id !== item.id}
+                                className="text-muted-foreground hover:text-destructive"
+                              >
+                                {updatingFeedbackId === item.id && selectedFeedbackForResponse?.id !== item.id ? (
+                                  <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                                ) : (
+                                  <Archive className="mr-1 h-3 w-3" />
+                                )}
+                                Archive
+                              </Button>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </>
+          )}
         </CardContent>
       </Card>
       <FeedbackResponseDialog
