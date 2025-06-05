@@ -16,14 +16,15 @@ import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { LoggingInDialog } from '@/components/shared/logging-in-dialog';
 
+const LOGIN_BACKGROUND_URL = "/cover.png"; // Assumes cover.png is in public folder
+const LOGO_URL = "/logo.png"; // Assumes logo.png is in public folder
+
 const loginFormSchema = z.object({
   identifier: z.string().min(1, { message: "Email or Phone Number is required." }),
   password: z.string().min(1, { message: "Password is required." }),
 });
 
 type LoginFormValues = z.infer<typeof loginFormSchema>;
-
-const LOGO_URL = "/logo.png"; 
 
 export default function AdminLoginPage() {
   const { login } = useAuth();
@@ -54,7 +55,7 @@ export default function AdminLoginPage() {
             router.push('/member/dashboard');
           } else {
             toast({ title: "Login Error", description: "Unexpected user role.", variant: "destructive" });
-            router.push('/login/admin'); 
+            router.push('/login/admin');
           }
         }, 700);
       } else {
@@ -74,14 +75,12 @@ export default function AdminLoginPage() {
   return (
     <>
       <LoggingInDialog isOpen={showSuccessDialog} />
-      {/* Outer container for full page background */}
       <div
+        style={{ backgroundImage: `url(${LOGIN_BACKGROUND_URL})` }}
         className="min-h-screen flex items-center justify-center bg-cover bg-center p-4"
-        style={{ backgroundImage: "url('/cover.png')" }}
       >
-        {/* Login Card with backdrop blur */}
-        <Card className="w-full max-w-md shadow-xl overflow-hidden bg-background/70 backdrop-blur-md">
-          {/* Logo at the top of the card */}
+        <Card className="w-full max-w-md shadow-xl bg-background/70 backdrop-blur-md flex flex-col max-h-[calc(100vh-theme(space.8))] overflow-hidden rounded-lg">
+          {/* Logo Section */}
           <div className="p-4 sm:p-6 flex flex-col items-center justify-center">
             <Image
               src={LOGO_URL}
@@ -94,49 +93,53 @@ export default function AdminLoginPage() {
             />
           </div>
 
-          <CardHeader className="text-center p-0 px-4 sm:px-6 pb-4 sm:pb-6">
+          {/* Header Section */}
+          <CardHeader className="text-center p-4 sm:p-6 pt-0 pb-4 sm:pb-6">
             <CardTitle className="text-xl sm:text-2xl font-headline text-foreground">Welcome Back!</CardTitle>
             <CardDescription className="text-sm text-foreground/80">Login to Taxshila Companion.</CardDescription>
           </CardHeader>
 
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)}>
-              <CardContent className="space-y-4 p-4 sm:p-6 pt-0">
-                <FormField
-                  control={form.control}
-                  name="identifier"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-foreground/90">Email or Phone Number</FormLabel>
-                      <FormControl>
-                        <Input type="text" placeholder="Enter your email or phone" {...field} disabled={isSubmitting || showSuccessDialog} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="password"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-foreground/90">Password</FormLabel>
-                      <FormControl>
-                        <Input type="password" placeholder="••••••••" {...field} disabled={isSubmitting || showSuccessDialog} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </CardContent>
-              <CardFooter className="flex flex-col gap-4 p-4 sm:p-6 pt-0">
-                <Button type="submit" className="w-full" disabled={isSubmitting || showSuccessDialog}>
-                  {isSubmitting || showSuccessDialog ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <LogIn className="mr-2 h-4 w-4" />}
-                  {isSubmitting && !showSuccessDialog ? 'Checking...' : (showSuccessDialog ? 'Logging in...' : 'Login')}
-                </Button>
-              </CardFooter>
-            </form>
-          </Form>
+          {/* Scrollable Form Area */}
+          <div className="flex-grow overflow-y-auto">
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)}>
+                <CardContent className="space-y-4 p-4 sm:p-6 pt-0">
+                  <FormField
+                    control={form.control}
+                    name="identifier"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-foreground/90">Email or Phone Number</FormLabel>
+                        <FormControl>
+                          <Input type="text" placeholder="Enter your email or phone" {...field} disabled={isSubmitting || showSuccessDialog} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="password"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-foreground/90">Password</FormLabel>
+                        <FormControl>
+                          <Input type="password" placeholder="••••••••" {...field} disabled={isSubmitting || showSuccessDialog} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </CardContent>
+                <CardFooter className="flex flex-col gap-4 p-4 sm:p-6 pt-0">
+                  <Button type="submit" className="w-full" disabled={isSubmitting || showSuccessDialog}>
+                    {isSubmitting || showSuccessDialog ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <LogIn className="mr-2 h-4 w-4" />}
+                    {isSubmitting && !showSuccessDialog ? 'Checking...' : (showSuccessDialog ? 'Logging in...' : 'Login')}
+                  </Button>
+                </CardFooter>
+              </form>
+            </Form>
+          </div>
         </Card>
       </div>
     </>
