@@ -283,13 +283,25 @@ export default function MemberDashboardPage() {
     }
   };
   
-  let activitySummaryTileDescription = "Track your study hours.";
+  let activityStatisticDisplay: string | null = null;
+  let activitySummaryTileDescription: string = "Track your study hours.";
+
   if (!isLoadingStudentData && studentId && !isLoadingStudyHours) {
-    if (monthlyStudyHours !== null && monthlyStudyHours > 0) {
-        activitySummaryTileDescription = "hours studied this month";
-    } else if (monthlyStudyHours === 0) {
-        activitySummaryTileDescription = "No hours yet this month";
+    if (monthlyStudyHours !== null) {
+      activityStatisticDisplay = `${monthlyStudyHours} hours`;
+      if (monthlyStudyHours > 0) {
+        activitySummaryTileDescription = "studied this month";
+      } else {
+        activitySummaryTileDescription = "No hours recorded this month.";
+      }
+    } else {
+      // If monthlyStudyHours is null but not loading (e.g. error or no student record)
+      activityStatisticDisplay = null; // Or "N/A" if you want to show it large
+      activitySummaryTileDescription = "Could not load study hours.";
     }
+  } else if (isLoadingStudyHours) {
+     activityStatisticDisplay = null; // Loader will be shown by DashboardTile
+     activitySummaryTileDescription = "Loading hours..."; // This will be shown below the loader if statistic is null
   }
 
 
@@ -303,8 +315,8 @@ export default function MemberDashboardPage() {
     },
     { 
       title: "Activity Summary", 
-      description: activitySummaryTileDescription, 
-      statistic: (isLoadingStudentData || isLoadingStudyHours) ? null : monthlyStudyHours,
+      description: activitySummaryTileDescription,
+      statistic: activityStatisticDisplay,
       isLoadingStatistic: isLoadingStudentData || isLoadingStudyHours,
       icon: BarChart3, 
       href: "/member/attendance" 
@@ -400,5 +412,3 @@ export default function MemberDashboardPage() {
     </>
   );
 }
-
-    
