@@ -3,7 +3,7 @@
 
 import * as React from 'react';
 import Image from 'next/image';
-import Link from 'next/link'; // Import Link
+import Link from 'next/link'; 
 import { PageTitle } from '@/components/shared/page-title';
 import { Button } from "@/components/ui/button";
 import {
@@ -65,6 +65,17 @@ export default function MemberProfilePage() {
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
+      if (file.size > 2 * 1024 * 1024) { // Limit file size to 2MB
+        toast({
+          title: "File Too Large",
+          description: "Please select an image smaller than 2MB.",
+          variant: "destructive",
+        });
+        if(fileInputRef.current) fileInputRef.current.value = "";
+        setSelectedFile(null);
+        setProfilePicturePreview(null);
+        return;
+      }
       setSelectedFile(file);
       const reader = new FileReader();
       reader.onloadend = () => {
@@ -78,18 +89,18 @@ export default function MemberProfilePage() {
     if (profilePicturePreview && selectedFile && memberDetails?.studentId) {
       setIsSavingPicture(true);
       try {
-        // In a real app, you'd upload selectedFile to a storage service (e.g., Firebase Storage)
-        // and get back a URL. For this simulation, profilePicturePreview (a data URI) will be used.
+        // Simulate upload by using the data URI as the profilePictureUrl.
+        // In a real app, you'd upload `selectedFile` to cloud storage.
         const updatedStudent = await updateStudent(memberDetails.studentId, {
-          profilePictureUrl: profilePicturePreview,
+          profilePictureUrl: profilePicturePreview, // Using data URI for simulation
         });
 
         if (updatedStudent) {
-          setMemberDetails(updatedStudent); // Update local state with the full updated student
+          setMemberDetails(updatedStudent); 
           setCurrentProfilePicture(updatedStudent.profilePictureUrl || DEFAULT_PROFILE_PLACEHOLDER);
           toast({
             title: "Profile Picture Updated",
-            description: "Your new profile picture has been saved (simulated).",
+            description: "Your new profile picture has been saved.",
           });
         } else {
           toast({
@@ -100,7 +111,7 @@ export default function MemberProfilePage() {
         }
       } catch (error: any) {
         toast({
-          title: "Error",
+          title: "Error Saving Picture",
           description: error.message || "An unexpected error occurred.",
           variant: "destructive",
         });
@@ -173,6 +184,7 @@ export default function MemberProfilePage() {
                 Preview: {selectedFile?.name}
               </p>
             )}
+             <p className="text-xs text-muted-foreground">Max file size: 2MB.</p>
           </CardContent>
           <CardFooter>
             <Button 

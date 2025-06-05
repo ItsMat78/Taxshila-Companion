@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { ArrowLeft, CreditCard, CalendarDays, Receipt, Loader2, UserCircle, Briefcase, History as HistoryIcon, LogIn, LogOut, Clock, FileText, Download, Mail, Phone } from 'lucide-react';
+import { ArrowLeft, CreditCard, CalendarDays, Receipt, Loader2, UserCircle, Briefcase, History as HistoryIcon, LogIn, LogOut, Clock, FileText, Download, Mail, Phone, Edit } from 'lucide-react'; // Added Edit
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -159,7 +159,7 @@ export default function StudentDetailPage() {
         <div className="flex items-center space-x-2">
           <Link href={`/admin/students/edit/${student.studentId}`} passHref legacyBehavior>
             <Button variant="outline">
-              <UserCircle className="mr-2 h-4 w-4" />
+              <Edit className="mr-2 h-4 w-4" />
               Edit Student
             </Button>
           </Link>
@@ -365,4 +365,3 @@ export default function StudentDetailPage() {
     </>
   );
 }
-

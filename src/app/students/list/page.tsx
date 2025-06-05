@@ -23,7 +23,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { ArrowRight, Edit, Loader2, Users, UserX, UserCheck, Search as SearchIcon, Phone, Mail, BarChart3, Settings2 } from 'lucide-react';
+import { Eye, Edit, Loader2, Users, UserX, UserCheck, Search as SearchIcon, Phone, Mail } from 'lucide-react'; // Changed ArrowRight to Eye
 import { getAllStudents } from '@/services/student-service';
 import type { Student as StudentData } from '@/types/student';
 import { cn } from '@/lib/utils';
@@ -50,7 +50,7 @@ const StudentCardItem = ({ student, isLeftTable, getStatusBadge }: { student: St
       <CardFooter className="flex justify-end space-x-2 py-3 px-4 border-t">
         <Link href={`/students/profiles/${student.studentId}`} passHref legacyBehavior>
           <Button variant="outline" size="sm" title="View Profile" className="px-2 sm:px-3">
-            <ArrowRight className="h-4 w-4" /> <span className="hidden sm:inline ml-1">View</span>
+            <Eye className="h-4 w-4" /> <span className="hidden sm:inline ml-1">View</span>
           </Button>
         </Link>
         {isLeftTable ? (
@@ -186,7 +186,7 @@ export default function StudentListPage() {
                       <TableCell className="space-x-1 text-right whitespace-nowrap">
                         <Link href={`/students/profiles/${student.studentId}`} passHref legacyBehavior>
                           <Button variant="outline" size="sm" title="View Profile">
-                            <ArrowRight className="h-4 w-4" />
+                            <Eye className="h-4 w-4" />
                           </Button>
                         </Link>
                         {isLeftTable ? (
