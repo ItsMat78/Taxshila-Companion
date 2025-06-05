@@ -485,7 +485,7 @@ export default function MemberDashboardPage() {
 
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
         {coreActionTiles.map((tile) => (
-          <DashboardTile key={tile.title} {...tile} className="aspect-square" />
+          <DashboardTile key={tile.title} {...tile} />
         ))}
       </div>
 

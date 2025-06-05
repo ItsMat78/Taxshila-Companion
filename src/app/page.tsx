@@ -304,7 +304,7 @@ function AdminDashboardContent() {
           return (
             <Link href={tile.href} key={tile.title} className="block no-underline focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-lg h-full">
               <Card className={cn(
-                "shadow-md hover:shadow-lg transition-shadow h-full flex flex-col aspect-square",
+                "shadow-md hover:shadow-lg transition-shadow h-full flex flex-col",
                 currentHasNew && "border-destructive ring-2 ring-destructive/50"
               )}>
                 <CardHeader className="p-3 pb-1 relative">

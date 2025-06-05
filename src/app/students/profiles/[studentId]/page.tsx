@@ -183,7 +183,7 @@ export default function StudentDetailPage() {
                 <div className="pt-2">
                     <p className="text-sm font-medium">ID Card:</p>
                     <div className="mt-1 p-2 border rounded-md bg-muted/50">
-                        <Image src={ID_CARD_PLACEHOLDER} alt="ID Card Preview" width={150} height={100} className="rounded-md" data-ai-hint="document id card" />
+                        <Image src={ID_CARD_PLACEHOLDER} alt="ID Card Preview" width={150} height={100} className="rounded-md max-w-full object-contain" data-ai-hint="document id card" />
                         <p className="text-xs text-muted-foreground pt-1">{student.idCardFileName} (Preview)</p>
                     </div>
                 </div>

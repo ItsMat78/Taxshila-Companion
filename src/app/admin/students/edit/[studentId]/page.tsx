@@ -259,7 +259,7 @@ export default function EditStudentPage() {
         setIsDirtyOverride(false); 
         toast({
           title: wasReactivated ? "Student Re-activated" : "Changes Saved",
-          description: successMessage,
+          description: successMessage, // Service now handles comprehensive alert details
         });
       } else {
          toast({ title: "Error", description: "Failed to save changes.", variant: "destructive"});
@@ -494,7 +494,7 @@ export default function EditStudentPage() {
                   />
                   {currentIdCardFilename && (
                     <div className="mt-2 p-2 border rounded-md bg-muted/50 inline-block">
-                        <Image src={ID_CARD_PLACEHOLDER_EDIT} alt="ID Card Preview" width={100} height={67} className="rounded-md" data-ai-hint="document id card" />
+                        <Image src={ID_CARD_PLACEHOLDER_EDIT} alt="ID Card Preview" width={100} height={67} className="rounded-md max-w-full object-contain" data-ai-hint="document id card" />
                         <p className="text-xs text-muted-foreground pt-1 truncate max-w-[100px]">{currentIdCardFilename} (Preview)</p>
                     </div>
                   )}
@@ -548,5 +548,3 @@ export default function EditStudentPage() {
     </>
   );
 }
-
-    
