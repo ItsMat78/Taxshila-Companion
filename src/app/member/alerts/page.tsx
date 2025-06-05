@@ -169,8 +169,8 @@ export default function MemberAlertsPage() {
     let badgeColorClass: string;
     let badgeLabel: string;
 
-    const mainIconBaseClasses = "h-5 w-5"; // Removed mr-2, handle spacing in JSX
-    const badgeIconBaseClasses = "h-3 w-3"; // Removed mr-1
+    const mainIconBaseClasses = "h-5 w-5"; 
+    const badgeIconBaseClasses = "h-3 w-3"; 
 
     if (!alert.isRead) {
       cardClasses += " border-primary/50 ring-1 ring-primary/30";
@@ -222,6 +222,10 @@ export default function MemberAlertsPage() {
     );
   }
 
+  // --- TEMPORARY DEBUGGING ---
+  const encounteredIds = new Set();
+  // --- END TEMPORARY DEBUGGING ---
+
   return (
     <>
       <PageTitle title="Notifications & Alerts" description="Stay updated with important announcements from the library." />
@@ -237,6 +241,18 @@ export default function MemberAlertsPage() {
       ) : (
         <div className="space-y-4">
           {alertsList.map((alert) => {
+            // --- TEMPORARY DEBUGGING ---
+            if (alert.id === null || alert.id === undefined) {
+              console.warn('WARNING: Alert found with null or undefined ID:', alert);
+            }
+            if (encounteredIds.has(alert.id)) {
+              console.warn('WARNING: Duplicate Alert ID found:', alert.id, 'Title:', alert.title);
+            } else {
+              encounteredIds.add(alert.id);
+            }
+            console.log('Rendering Alert - ID:', alert.id, 'Title:', alert.title);
+            // --- END TEMPORARY DEBUGGING ---
+
             const { mainIcon, cardClasses, titleClasses, badgeColorClass, badgeLabel, badgeIconElement } = getAlertInfo(alert);
             return (
               <Card 
@@ -245,8 +261,8 @@ export default function MemberAlertsPage() {
                 onClick={() => handleOpenAlertDetails(alert)}
               >
                 <CardHeader className="pb-3">
-                  <div className="flex items-start justify-between"> {/* Flex container for title area and badge */}
-                    <div className="flex items-start space-x-3"> {/* Existing title and icon area */}
+                  <div className="flex items-start justify-between"> 
+                    <div className="flex items-start space-x-3"> 
                       <div className="flex-shrink-0 pt-1 relative">
                         {React.cloneElement(mainIcon, { className: cn(mainIcon.props.className, "mr-2")})}
                         {!alert.isRead && (
@@ -287,4 +303,3 @@ export default function MemberAlertsPage() {
     </>
   );
 }
-
