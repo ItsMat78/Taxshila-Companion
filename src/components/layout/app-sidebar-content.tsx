@@ -166,7 +166,7 @@ export function AppSidebarContent() {
               {/* <AvatarImage src="https://placehold.co/40x40.png" alt={user.email} /> */}
               <AvatarFallback>{getInitials(user.email)}</AvatarFallback>
             </Avatar>
-            <div className="flex flex-col">
+            <div className="flex flex-col min-w-0"> {/* Added min-w-0 here */}
               <span className="text-sm font-medium truncate">{user.email}</span>
               <span className="text-xs text-muted-foreground capitalize">{user.role}</span>
             </div>
