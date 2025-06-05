@@ -21,8 +21,9 @@ import { Camera, QrCode, Receipt, IndianRupee, MessageSquare, Bell, ScrollText, 
 import { cn } from '@/lib/utils';
 import { getStudentByEmail, getAlertsForStudent, calculateMonthlyStudyHours, addCheckIn, addCheckOut, getActiveCheckIn, getAttendanceForDate } from '@/services/student-service';
 import type { AlertItem } from '@/types/communication';
-import type { AttendanceRecord } from '@/types/student';
-import { format, parseISO, differenceInMilliseconds } from 'date-fns';
+import type { Student, AttendanceRecord, FeeStatus } from '@/types/student';
+import { format, parseISO, differenceInMilliseconds, isValid } from 'date-fns';
+import { usePathname } from 'next/navigation';
 
 type DashboardTileProps = {
   title: string;
@@ -36,6 +37,9 @@ type DashboardTileProps = {
   isPrimaryAction?: boolean;
   external?: boolean;
   hasNew?: boolean;
+  isUrgent?: boolean; // Added for urgent styling like fees due
+  isLoadingAction?: boolean;
+  onClickTile?: () => void;
 };
 
 const DashboardTile: React.FC<DashboardTileProps> = ({
@@ -49,31 +53,40 @@ const DashboardTile: React.FC<DashboardTileProps> = ({
   className = "",
   isPrimaryAction = false,
   external = false,
-  hasNew = false
+  hasNew = false,
+  isUrgent = false, // Added prop
+  isLoadingAction = false,
+  onClickTile,
 }) => {
+  const ActualIcon = isLoadingAction ? Loader2 : Icon;
+  const iconProps = isLoadingAction ? { className: cn(isPrimaryAction ? "h-5 w-5 sm:h-6 sm:w-6 animate-spin" : "h-5 w-5 sm:h-6 sm:w-6 mb-1 animate-spin") } : {};
+
   const content = (
     <Card className={cn(
       "shadow-lg hover:shadow-xl transition-shadow h-full flex flex-col",
       isPrimaryAction ? 'bg-primary text-primary-foreground hover:bg-primary/90' : 'hover:bg-muted/50',
-      className,
       {
-        'border-destructive ring-2 ring-destructive/50': hasNew && !isPrimaryAction,
-      }
+        'border-destructive ring-1 ring-destructive/30': (hasNew || isUrgent) && !isPrimaryAction,
+      },
+      className
     )}>
       <CardHeader className={cn(
         "relative",
         isPrimaryAction ? "p-3 sm:p-4 pb-1 sm:pb-2" : "p-2 sm:p-3 pb-0 sm:pb-1"
       )}>
-        {hasNew && !isPrimaryAction && (
+        {(hasNew || isUrgent) && !isPrimaryAction && ( // Show dot for new or urgent
           <span className="absolute top-1 right-1 block h-2.5 w-2.5 rounded-full bg-destructive ring-1 ring-white" />
         )}
         <div className={cn(
           "flex items-center gap-2",
            isPrimaryAction ? "" : "flex-col text-center"
         )}>
-          <Icon className={cn(
-            isPrimaryAction ? "h-5 w-5 sm:h-6 sm:w-6" : "h-5 w-5 sm:h-6 sm:w-6 mb-1"
-          )} />
+          <ActualIcon className={cn(
+            isPrimaryAction ? "h-5 w-5 sm:h-6 sm:w-6" : "h-5 w-5 sm:h-6 sm:w-6 mb-1",
+            isLoadingAction && "animate-spin"
+          )}
+          {...iconProps}
+           />
           <ShadcnCardTitle className={cn(
             "break-words",
             isPrimaryAction ? 'text-lg sm:text-xl font-bold' : 'text-sm sm:text-base font-semibold',
@@ -92,7 +105,8 @@ const DashboardTile: React.FC<DashboardTileProps> = ({
           <>
             <div className={cn(
               "text-xl sm:text-2xl font-bold break-words",
-               isPrimaryAction ? 'text-primary-foreground' : 'text-foreground'
+               isPrimaryAction ? 'text-primary-foreground' : 'text-foreground',
+               isUrgent && !isPrimaryAction && 'text-destructive' // Make statistic text red if urgent
             )}>
               {statistic}
             </div>
@@ -113,6 +127,12 @@ const DashboardTile: React.FC<DashboardTileProps> = ({
 
   const linkClasses = "block h-full no-underline focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-lg";
 
+  const handleClick = () => {
+    if (onClickTile) {
+      onClickTile();
+    }
+  };
+
   if (href) {
     return (
       <Link
@@ -120,6 +140,7 @@ const DashboardTile: React.FC<DashboardTileProps> = ({
         target={external ? '_blank' : undefined}
         rel={external ? 'noopener noreferrer' : undefined}
         className={cn(linkClasses, className)}
+        onClick={handleClick}
       >
         {content}
       </Link>
@@ -127,7 +148,7 @@ const DashboardTile: React.FC<DashboardTileProps> = ({
   }
 
   if (action) {
-    return <button onClick={action} className={cn("block w-full h-full text-left", linkClasses, className)}>{content}</button>;
+    return <button onClick={() => { handleClick(); action(); }} className={cn("block w-full h-full text-left", linkClasses, className)}>{content}</button>;
   }
 
   return <div className={className}>{content}</div>;
@@ -155,6 +176,21 @@ export default function MemberDashboardPage() {
   const [hoursStudiedToday, setHoursStudiedToday] = React.useState<number | null>(null);
   const [isLoadingCurrentSession, setIsLoadingCurrentSession] = React.useState(true);
 
+  const [studentFeeStatus, setStudentFeeStatus] = React.useState<FeeStatus | null>(null);
+  const [studentNextDueDate, setStudentNextDueDate] = React.useState<string | null>(null);
+
+  const [navigatingTo, setNavigatingTo] = React.useState<string | null>(null);
+  const pathname = usePathname();
+
+  React.useEffect(() => {
+    // Reset navigatingTo when pathname changes (navigation is complete)
+    if (navigatingTo) {
+      setNavigatingTo(null);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname]);
+
+
   const fetchCurrentSessionData = React.useCallback(async (currentStudentId: string) => {
     setIsLoadingCurrentSession(true);
     setActiveCheckIn(null);
@@ -170,9 +206,9 @@ export default function MemberDashboardPage() {
       let totalMillisecondsToday = 0;
       const now = new Date();
       todayAttendanceData.forEach(record => {
-        if (record.checkOutTime) {
+        if (record.checkOutTime && record.checkInTime && isValid(parseISO(record.checkOutTime)) && isValid(parseISO(record.checkInTime))) {
           totalMillisecondsToday += differenceInMilliseconds(parseISO(record.checkOutTime), parseISO(record.checkInTime));
-        } else if (activeCheckInData && record.recordId === activeCheckInData.recordId) {
+        } else if (activeCheckInData && record.recordId === activeCheckInData.recordId && record.checkInTime && isValid(parseISO(record.checkInTime))) {
           totalMillisecondsToday += differenceInMilliseconds(now, parseISO(record.checkInTime));
         }
       });
@@ -200,16 +236,20 @@ export default function MemberDashboardPage() {
       setHasUnreadAlerts(false);
       setActiveCheckIn(null);
       setHoursStudiedToday(null);
+      setStudentFeeStatus(null);
+      setStudentNextDueDate(null);
 
       getStudentByEmail(user.email)
         .then(studentDetails => {
           if (studentDetails) {
             setStudentId(studentDetails.studentId);
             setStudentFirstName(studentDetails.name ? studentDetails.name.split(' ')[0] : null);
+            setStudentFeeStatus(studentDetails.feeStatus);
+            setStudentNextDueDate(studentDetails.nextDueDate || null);
+
 
             const alertPromise = getAlertsForStudent(studentDetails.studentId);
             const studyHoursPromise = calculateMonthlyStudyHours(studentDetails.studentId);
-            // Initial fetch of current session data
             fetchCurrentSessionData(studentDetails.studentId);
 
             return Promise.all([alertPromise, studyHoursPromise]);
@@ -230,7 +270,7 @@ export default function MemberDashboardPage() {
         })
         .finally(() => {
           setIsLoadingStudentData(false);
-          setIsLoadingStudyHours(false);
+          // Note: isLoadingStudyHours and isLoadingCurrentSession are handled by their respective fetches
         });
     } else {
       setIsLoadingStudentData(false);
@@ -242,6 +282,8 @@ export default function MemberDashboardPage() {
       setHasUnreadAlerts(false);
       setActiveCheckIn(null);
       setHoursStudiedToday(null);
+      setStudentFeeStatus(null);
+      setStudentNextDueDate(null);
     }
   }, [user, toast, fetchCurrentSessionData]);
 
@@ -250,11 +292,12 @@ export default function MemberDashboardPage() {
     const getCameraPermission = async () => {
       if (isScannerOpen) {
         try {
-          const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+          const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
           streamRef.current = stream;
           setHasCameraPermission(true);
           if (videoRef.current) {
             videoRef.current.srcObject = stream;
+            videoRef.current.playsInline = true;
           }
         } catch (error) {
           console.error('Error accessing camera:', error);
@@ -354,30 +397,89 @@ export default function MemberDashboardPage() {
      activityDescription = "Loading hours...";
   }
 
+  const generateCoreActionTiles = (): DashboardTileProps[] => {
+    let payFeesTileDesc = "Settle your outstanding dues.";
+    let payFeesTileStat: string | null = null;
+    let payFeesTileIsUrgent = false;
 
-  const coreActionTiles: DashboardTileProps[] = [
-    {
-      title: "View Alerts",
-      description: "Catch up on announcements.",
-      icon: Bell,
-      href: "/member/alerts",
-      hasNew: isLoadingStudentData ? false : hasUnreadAlerts
-    },
-    {
-      title: "Activity Summary",
-      statistic: activityStatisticDisplay,
-      description: activityDescription,
-      isLoadingStatistic: isLoadingStudentData || isLoadingStudyHours,
-      icon: BarChart3,
-      href: "/member/attendance"
-    },
-    { title: "Pay Fees", description: "Settle your outstanding dues.", icon: IndianRupee, href: "/member/pay" },
-    { title: "Submit Feedback", description: "Share suggestions or issues.", icon: MessageSquare, href: "/member/feedback" },
-  ];
+    if (isLoadingStudentData) {
+      payFeesTileDesc = "Loading fee status...";
+    } else if (studentId) {
+      if (studentFeeStatus === "Due" || studentFeeStatus === "Overdue") {
+        payFeesTileIsUrgent = true;
+        payFeesTileStat = `Due: ${studentNextDueDate && isValid(parseISO(studentNextDueDate)) ? format(parseISO(studentNextDueDate), 'PP') : 'N/A'}`;
+        payFeesTileDesc = `Status: ${studentFeeStatus}`;
+      } else if (studentFeeStatus === "Paid") {
+        payFeesTileDesc = `Fees paid up to ${studentNextDueDate && isValid(parseISO(studentNextDueDate)) ? format(parseISO(studentNextDueDate), 'PP') : 'N/A'}.`;
+      } else if (studentFeeStatus) { // e.g. N/A
+         payFeesTileDesc = `Fee status: ${studentFeeStatus}.`;
+      }
+    }
+
+
+    return [
+      {
+        title: "View Alerts",
+        description: "Catch up on announcements.",
+        icon: Bell,
+        href: "/member/alerts",
+        hasNew: isLoadingStudentData ? false : hasUnreadAlerts,
+        isLoadingAction: navigatingTo === "/member/alerts",
+        onClickTile: () => setNavigatingTo("/member/alerts"),
+      },
+      {
+        title: "Activity Summary",
+        statistic: activityStatisticDisplay,
+        description: activityDescription,
+        isLoadingStatistic: isLoadingStudentData || isLoadingStudyHours,
+        icon: BarChart3,
+        href: "/member/attendance",
+        isLoadingAction: navigatingTo === "/member/attendance",
+        onClickTile: () => setNavigatingTo("/member/attendance"),
+      },
+      {
+        title: "Pay Fees",
+        description: payFeesTileDesc,
+        statistic: payFeesTileStat,
+        isLoadingStatistic: isLoadingStudentData,
+        icon: IndianRupee,
+        href: "/member/pay",
+        isUrgent: payFeesTileIsUrgent,
+        isLoadingAction: navigatingTo === "/member/pay",
+        onClickTile: () => setNavigatingTo("/member/pay"),
+      },
+      {
+        title: "Submit Feedback",
+        description: "Share suggestions or issues.",
+        icon: MessageSquare,
+        href: "/member/feedback",
+        isLoadingAction: navigatingTo === "/member/feedback",
+        onClickTile: () => setNavigatingTo("/member/feedback"),
+      },
+    ];
+  };
+  
+  const coreActionTiles = generateCoreActionTiles();
+
 
   const otherResourcesTiles: DashboardTileProps[] = [
-    { title: "Library Rules", description: "Familiarize yourself with guidelines.", icon: ScrollText, href: "/member/rules" },
-    { title: "Rate Us", description: "Love our space? Let others know!", icon: Star, href: "https://www.google.com/maps/search/?api=1&query=Taxshila+Study+Hall+Pune", external: true },
+    { 
+      title: "Library Rules", 
+      description: "Familiarize yourself with guidelines.", 
+      icon: ScrollText, 
+      href: "/member/rules",
+      isLoadingAction: navigatingTo === "/member/rules",
+      onClickTile: () => setNavigatingTo("/member/rules"),
+    },
+    { 
+      title: "Rate Us", 
+      description: "Love our space? Let others know!", 
+      icon: Star, 
+      href: "https://www.google.com/maps/search/?api=1&query=Taxshila+Study+Hall+Pune", 
+      external: true,
+      isLoadingAction: navigatingTo === "https://www.google.com/maps/search/?api=1&query=Taxshila+Study+Hall+Pune", // External links won't show loading well this way
+      onClickTile: () => setNavigatingTo("https://www.google.com/maps/search/?api=1&query=Taxshila+Study+Hall+Pune"), // But we can still try
+    },
   ];
 
   const defaultWelcomeName = user?.email?.split('@')[0] || 'Member';
@@ -458,7 +560,7 @@ export default function MemberDashboardPage() {
               {activeCheckIn ? (
                 <div className="flex items-center">
                   <PlayCircle className="mr-1 h-3 w-3 text-green-600" />
-                  <span>Checked In (since {format(parseISO(activeCheckIn.checkInTime), 'p')})</span>
+                  <span>Checked In (since {activeCheckIn.checkInTime && isValid(parseISO(activeCheckIn.checkInTime)) ? format(parseISO(activeCheckIn.checkInTime), 'p') : 'N/A'})</span>
                 </div>
               ) : (
                 <div className="flex items-center">
@@ -499,4 +601,3 @@ export default function MemberDashboardPage() {
     </>
   );
 }
-
