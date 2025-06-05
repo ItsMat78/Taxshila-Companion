@@ -16,8 +16,8 @@ import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { LoggingInDialog } from '@/components/shared/logging-in-dialog';
 
-const LOGO_URL = "/logo.png"; // Assumes logo.png is in public folder
-const LIBRARY_INTERIOR_URL = "/cover.png"; // Assumes cover.png is in public folder
+const LOGO_URL = "/logo.png"; 
+const LIBRARY_INTERIOR_URL = "/cover.png";
 
 const loginFormSchema = z.object({
   identifier: z.string().min(1, { message: "Email or Phone Number is required." }),
@@ -86,8 +86,8 @@ export default function AdminLoginPage() {
               <Image
                 src={LOGO_URL}
                 alt="Taxshila Companion Logo"
-                width={160} // Base width for aspect ratio (e.g., 4:1 if height is 40)
-                height={40}  // Base height for aspect ratio
+                width={100} // Adjusted for 1:1 aspect ratio
+                height={100} // Adjusted for 1:1 aspect ratio
                 className="w-full h-auto object-contain" // Tailwind classes for responsive fill
                 data-ai-hint="logo brand"
                 priority
