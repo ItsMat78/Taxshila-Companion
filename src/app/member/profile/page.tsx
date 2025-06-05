@@ -18,11 +18,12 @@ import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from '@/contexts/auth-context';
-import { getStudentByEmail } from '@/services/student-service'; // Import service
-import type { Student } from '@/types/student'; // Import Student type
+import { getStudentByEmail, updateStudent } from '@/services/student-service'; 
+import type { Student } from '@/types/student'; 
 import { UserCircle, UploadCloud, Save, Mail, Phone, BookOpen, MapPin, Receipt, Loader2 } from 'lucide-react';
 
 const DEFAULT_PROFILE_PLACEHOLDER = "https://placehold.co/200x200.png";
+const ID_CARD_PLACEHOLDER = "https://placehold.co/300x200.png?text=ID+Card";
 
 export default function MemberProfilePage() {
   const { user } = useAuth();
@@ -30,6 +31,7 @@ export default function MemberProfilePage() {
 
   const [memberDetails, setMemberDetails] = React.useState<Student | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
+  const [isSavingPicture, setIsSavingPicture] = React.useState(false);
 
   const [currentProfilePicture, setCurrentProfilePicture] = React.useState(DEFAULT_PROFILE_PLACEHOLDER);
   const [profilePicturePreview, setProfilePicturePreview] = React.useState<string | null>(null);
@@ -56,7 +58,7 @@ export default function MemberProfilePage() {
           setIsLoading(false);
         });
     } else {
-      setIsLoading(false); // Not logged in or no email
+      setIsLoading(false); 
     }
   }, [user, toast]);
 
@@ -72,24 +74,44 @@ export default function MemberProfilePage() {
     }
   };
 
-  const handleSaveProfilePicture = () => {
-    if (profilePicturePreview && selectedFile) {
-      console.log("Saving profile picture (simulated):", selectedFile.name);
-      setCurrentProfilePicture(profilePicturePreview); // Update displayed picture
-      // In a real app, you'd call a service to upload the file and update student's profilePictureUrl
-      // For this prototype, we'll also update the local memberDetails state if it exists
-      if (memberDetails) {
-        setMemberDetails(prev => prev ? { ...prev, profilePictureUrl: profilePicturePreview } : null);
+  const handleSaveProfilePicture = async () => {
+    if (profilePicturePreview && selectedFile && memberDetails?.studentId) {
+      setIsSavingPicture(true);
+      try {
+        // In a real app, you'd upload selectedFile to a storage service (e.g., Firebase Storage)
+        // and get back a URL. For this simulation, profilePicturePreview (a data URI) will be used.
+        const updatedStudent = await updateStudent(memberDetails.studentId, {
+          profilePictureUrl: profilePicturePreview,
+        });
+
+        if (updatedStudent) {
+          setMemberDetails(updatedStudent); // Update local state with the full updated student
+          setCurrentProfilePicture(updatedStudent.profilePictureUrl || DEFAULT_PROFILE_PLACEHOLDER);
+          toast({
+            title: "Profile Picture Updated",
+            description: "Your new profile picture has been saved (simulated).",
+          });
+        } else {
+          toast({
+            title: "Update Failed",
+            description: "Could not save profile picture.",
+            variant: "destructive",
+          });
+        }
+      } catch (error: any) {
+        toast({
+          title: "Error",
+          description: error.message || "An unexpected error occurred.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsSavingPicture(false);
+        setProfilePicturePreview(null);
+        setSelectedFile(null);
+        if (fileInputRef.current) {
+          fileInputRef.current.value = "";
+        }
       }
-      setProfilePicturePreview(null);
-      setSelectedFile(null);
-      if(fileInputRef.current) {
-        fileInputRef.current.value = "";
-      }
-      toast({
-        title: "Profile Picture Updated (Simulated)",
-        description: "Your new profile picture has been set for this session.",
-      });
     }
   };
 
@@ -143,6 +165,7 @@ export default function MemberProfilePage() {
               ref={fileInputRef}
               onChange={handleFileChange}
               accept="image/png, image/jpeg, image/jpg"
+              disabled={isSavingPicture}
               className="text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-primary-foreground hover:file:bg-primary/90"
             />
              {profilePicturePreview && (
@@ -154,11 +177,11 @@ export default function MemberProfilePage() {
           <CardFooter>
             <Button 
               onClick={handleSaveProfilePicture} 
-              disabled={!profilePicturePreview}
+              disabled={!profilePicturePreview || isSavingPicture}
               className="w-full"
             >
-              <Save className="mr-2 h-4 w-4" />
-              Save Profile Picture
+              {isSavingPicture ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+              {isSavingPicture ? "Saving..." : "Save Profile Picture"}
             </Button>
           </CardFooter>
         </Card>
@@ -171,23 +194,23 @@ export default function MemberProfilePage() {
           <CardContent className="space-y-4">
             <div className="flex items-center">
               <UserCircle className="mr-3 h-5 w-5 text-muted-foreground" />
-              <div>
+              <div className="min-w-0">
                 <p className="text-sm text-muted-foreground">Full Name</p>
-                <p className="font-medium">{displayName}</p>
+                <p className="font-medium break-words">{displayName}</p>
               </div>
             </div>
             <div className="flex items-center">
-              <Mail className="mr-3 h-5 w-5 text-muted-foreground" />
-              <div>
+              <Mail className="mr-3 h-5 w-5 text-muted-foreground flex-shrink-0" />
+              <div className="min-w-0">
                 <p className="text-sm text-muted-foreground">Email Address</p>
-                <p className="font-medium">{memberDetails.email || user?.email}</p>
+                <p className="font-medium break-words">{memberDetails.email || user?.email}</p>
               </div>
             </div>
             <div className="flex items-center">
-              <Phone className="mr-3 h-5 w-5 text-muted-foreground" />
-              <div>
+              <Phone className="mr-3 h-5 w-5 text-muted-foreground flex-shrink-0" />
+              <div className="min-w-0">
                 <p className="text-sm text-muted-foreground">Phone Number</p>
-                <p className="font-medium">{memberDetails.phone}</p>
+                <p className="font-medium break-words">{memberDetails.phone}</p>
               </div>
             </div>
              <div className="flex items-center">
@@ -204,6 +227,15 @@ export default function MemberProfilePage() {
                 <p className="font-medium">{memberDetails.seatNumber || "N/A (Not Assigned / Left)"}</p>
               </div>
             </div>
+             {memberDetails.idCardFileName && (
+                <div className="pt-2">
+                    <p className="text-sm font-medium">ID Card:</p>
+                    <div className="mt-1 p-2 border rounded-md bg-muted/50 inline-block">
+                        <Image src={ID_CARD_PLACEHOLDER} alt="ID Card Preview" width={150} height={100} className="rounded-md max-w-full object-contain" data-ai-hint="document id card" />
+                        <p className="text-xs text-muted-foreground pt-1 truncate max-w-[150px]">{memberDetails.idCardFileName} (Preview)</p>
+                    </div>
+                </div>
+            )}
           </CardContent>
            <CardFooter>
              <Link href="/member/fees" passHref legacyBehavior>
