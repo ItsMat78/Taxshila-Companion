@@ -143,9 +143,10 @@ export default function MemberAttendancePage() {
           supportedScanTypes: [Html5QrcodeScanType.SCAN_TYPE_CAMERA],
           formatsToSupport: formatsToSupport,
           rememberLastUsedCamera: true,
-          videoConstraints: { // Prefer rear camera
+          videoConstraints: { 
             facingMode: "environment" 
-          }
+          },
+          verbose: false, // Added to prevent header message errors
         };
 
         const scanner = new Html5QrcodeScanner( QR_SCANNER_ELEMENT_ID_ATTENDANCE, config );
