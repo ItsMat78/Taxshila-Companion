@@ -1,13 +1,14 @@
 
 import { NextResponse, type NextRequest } from 'next/server';
 import * as admin from 'firebase-admin';
+import { FieldValue } from 'firebase-admin/firestore'; // Import FieldValue for arrayRemove
 
 interface AlertPayload {
   alertId: string;
   title: string;
   message: string;
   type: string;
-  studentId?: string; 
+  studentId?: string;
   originalFeedbackId?: string;
   originalFeedbackMessageSnippet?: string;
 }
@@ -54,7 +55,7 @@ export async function POST(request: NextRequest) {
     console.error("API Route: Firebase Admin SDK is not initialized. Cannot process request. Check Vercel environment variables (FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY) and ensure they are correct, especially the private key format (including \\n).");
     return NextResponse.json({ success: false, error: "Firebase Admin SDK not initialized on server. Check Vercel logs and environment variables." }, { status: 500 });
   }
-  
+
   let db;
   try {
     db = getDb();
@@ -62,7 +63,7 @@ export async function POST(request: NextRequest) {
     console.error("API Route: Error getting Firestore instance:", dbError.message);
     return NextResponse.json({ success: false, error: "Failed to connect to database." }, { status: 500 });
   }
-  
+
   let alertPayload: AlertPayload;
 
   try {
@@ -88,7 +89,7 @@ export async function POST(request: NextRequest) {
         const studentDoc = studentQuery.docs[0];
         const student = studentDoc.data() as StudentDoc;
         if (student.fcmTokens && student.fcmTokens.length > 0) {
-          tokens = student.fcmTokens.filter(token => typeof token === 'string' && token.length > 0); // Ensure tokens are valid strings
+          tokens = student.fcmTokens.filter(token => typeof token === 'string' && token.length > 0);
           console.log(`API Route: Tokens found for student ${alertPayload.studentId}:`, tokens);
         } else {
           console.log(`API Route: Student ${alertPayload.studentId} found, but no FCM tokens or empty tokens array.`);
@@ -125,11 +126,10 @@ export async function POST(request: NextRequest) {
     const fcmPayloadData: { [key: string]: string } = {
       title: alertPayload.title,
       body: alertPayload.message,
-      icon: "/logo.png", 
-      url: "/member/alerts", 
+      icon: "/logo.png",
+      url: "/member/alerts",
       alertId: alertPayload.alertId,
       alertType: alertPayload.type,
-      // Add other custom data fields if needed
     };
     if (alertPayload.originalFeedbackId) {
         fcmPayloadData.originalFeedbackId = alertPayload.originalFeedbackId;
@@ -137,42 +137,47 @@ export async function POST(request: NextRequest) {
     if (alertPayload.originalFeedbackMessageSnippet) {
         fcmPayloadData.originalFeedbackMessageSnippet = alertPayload.originalFeedbackMessageSnippet;
     }
-    
+
     console.log("API Route: Sending FCM message via Admin SDK. Data payload:", JSON.stringify(fcmPayloadData, null, 2));
-    
+
     const messageToSend: admin.messaging.MulticastMessage = {
         tokens: uniqueTokens,
         data: fcmPayloadData,
-        // You can also add 'notification' field here if you want FCM to handle display when app is in background for some platforms
-        // notification: {
-        //   title: alertPayload.title,
-        //   body: alertPayload.message,
-        //   icon: "/logo.png",
-        // },
-        // android: { // Example: Android specific config
-        //   priority: "high",
-        // },
-        // apns: { // Example: APNS specific config
-        //   payload: {
-        //     aps: {
-        //       sound: "default",
-        //       badge: 1, // Example badge count
-        //     },
-        //   },
-        // },
     };
 
     const response = await admin.messaging().sendEachForMulticast(messageToSend);
-    
+
     console.log("API Route: FCM send response: Successes:", response.successCount, "Failures:", response.failureCount);
-    
-    response.responses.forEach((result, index) => {
+
+    response.responses.forEach(async (result, index) => {
+        const currentToken = uniqueTokens[index];
         if (result.success) {
-            console.log(`API Route: Successfully sent to token (index ${index}): ${uniqueTokens[index].substring(0,10)}... Message ID: ${result.messageId}`);
+            console.log(`API Route: Successfully sent to token (index ${index}): ${currentToken.substring(0,10)}... Message ID: ${result.messageId}`);
         } else {
             const errorCode = result.error?.code;
-            console.error(`API Route: Failed to send to token (index ${index}): ${uniqueTokens[index].substring(0,10)}... Error: ${errorCode} - ${result.error?.message}`);
-            // Potentially handle token cleanup here if error indicates token is invalid (e.g., 'messaging/invalid-registration-token')
+            console.error(`API Route: Failed to send to token (index ${index}): ${currentToken.substring(0,10)}... Error: ${errorCode} - ${result.error?.message}`);
+
+            if (errorCode === 'messaging/registration-token-not-registered' ||
+                errorCode === 'messaging/invalid-registration-token') {
+                console.log(`API Route: Invalid token ${currentToken.substring(0,10)}... detected. Attempting to remove from Firestore.`);
+                try {
+                    const studentsWithTokenQuery = db.collection('students').where('fcmTokens', 'array-contains', currentToken);
+                    const querySnapshot = await studentsWithTokenQuery.get();
+                    if (!querySnapshot.empty) {
+                        const batch = db.batch();
+                        querySnapshot.forEach(doc => {
+                            console.log(`API Route: Removing invalid token from student document ${doc.id}`);
+                            batch.update(doc.ref, { fcmTokens: FieldValue.arrayRemove(currentToken) });
+                        });
+                        await batch.commit();
+                        console.log(`API Route: Invalid token ${currentToken.substring(0,10)}... removed from relevant student documents.`);
+                    } else {
+                        console.log(`API Route: No student found with the invalid token ${currentToken.substring(0,10)}... in their fcmTokens array.`);
+                    }
+                } catch (cleanupError: any) {
+                    console.error(`API Route: Error cleaning up invalid token ${currentToken.substring(0,10)}...: `, cleanupError.message);
+                }
+            }
         }
     });
 
@@ -183,3 +188,5 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: false, error: error.message || "An unexpected server error occurred." }, { status: 500 });
   }
 }
+
+    
