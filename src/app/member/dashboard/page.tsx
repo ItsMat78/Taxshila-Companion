@@ -81,7 +81,7 @@ const DashboardTile: React.FC<DashboardTileProps> = ({
         )}>
           <Icon className={cn(
             isPrimaryAction ? "h-5 w-5 sm:h-6 sm:w-6" : "h-5 w-5 sm:h-6 sm:w-6 mb-1",
-            isPrimaryAction && isLoadingStatistic && "animate-spin" 
+            isPrimaryAction && isLoadingStatistic && "animate-spin"
           )}
            />
           <ShadcnCardTitle className={cn(
@@ -96,7 +96,7 @@ const DashboardTile: React.FC<DashboardTileProps> = ({
         "flex-grow flex flex-col items-center justify-center",
         isPrimaryAction ? "p-3 sm:p-4 pt-1 sm:pt-2" : "p-2 sm:p-3 pt-0 sm:pt-1"
       )}>
-        {isLoadingStatistic && !isPrimaryAction ? ( 
+        {isLoadingStatistic && !isPrimaryAction ? (
           <Loader2 className="h-6 w-6 sm:h-8 sm:w-8 animate-spin text-primary my-2" />
         ) : statistic !== null && statistic !== undefined ? (
           <>
@@ -291,20 +291,20 @@ export default function MemberDashboardPage() {
              finally { html5QrcodeScannerRef.current = null; }
           }
         }
-        
+
         const formatsToSupport = [ Html5QrcodeSupportedFormats.QR_CODE ];
         const config = {
             fps: 10,
              qrbox: (viewfinderWidth: number, viewfinderHeight: number) => {
-              const edgePercentage = 0.7; 
+              const edgePercentage = 0.7;
               const edgeLength = Math.min(viewfinderWidth, viewfinderHeight) * edgePercentage;
               return { width: edgeLength, height: edgeLength };
             },
             supportedScanTypes: [Html5QrcodeScanType.SCAN_TYPE_CAMERA],
             formatsToSupport: formatsToSupport,
             rememberLastUsedCamera: true,
-            videoConstraints: { 
-              facingMode: "environment" 
+            videoConstraints: {
+              facingMode: "environment"
             },
             verbose: false, // Added to prevent header message errors
         };
@@ -315,25 +315,25 @@ export default function MemberDashboardPage() {
         const onScanSuccess = async (decodedText: string, decodedResult: any) => {
           if (isProcessingQr) return;
           setIsProcessingQr(true);
-          
+
           if (html5QrcodeScannerRef.current && html5QrcodeScannerRef.current.getState() === 2 /* PAUSED */) {
               // Already paused, no need to pause again, just proceed.
           } else if (html5QrcodeScannerRef.current) {
-              try { await html5QrcodeScannerRef.current.pause(true); } 
+              try { await html5QrcodeScannerRef.current.pause(true); }
               catch(e) { console.warn("Scanner pause error", e); }
           }
 
           if (decodedText === LIBRARY_QR_CODE_PAYLOAD) {
             try {
-              if (studentId) { 
-                  const currentActiveCheckIn = await getActiveCheckIn(studentId); 
+              if (studentId) {
+                  const currentActiveCheckIn = await getActiveCheckIn(studentId);
                   if (currentActiveCheckIn) {
                     toast({ title: "Already Checked In", description: `You are already checked in. Use the 'Check Out' button.`, variant: "default" });
                   } else {
                     await addCheckIn(studentId);
                     toast({ title: "Checked In!", description: `Successfully checked in at ${new Date().toLocaleTimeString()}.` });
                   }
-                  await fetchAllDashboardData(); 
+                  await fetchAllDashboardData();
               } else {
                   toast({ title: "Error", description: "Student ID not available for scan processing.", variant: "destructive"});
               }
@@ -343,17 +343,17 @@ export default function MemberDashboardPage() {
             }
           } else {
             toast({ title: "Invalid QR Code", description: "Please scan the official library QR code.", variant: "destructive" });
-            setTimeout(async () => { 
+            setTimeout(async () => {
               if (html5QrcodeScannerRef.current ) {
                 try {
-                  if (html5QrcodeScannerRef.current.getState() === 2 /* PAUSED */) { 
+                  if (html5QrcodeScannerRef.current.getState() === 2 /* PAUSED */) {
                      html5QrcodeScannerRef.current.resume();
                   }
                 } catch(e) { console.warn("Scanner resume error", e); }
               }
-            }, 1000); 
+            }, 1000);
           }
-          
+
           if (html5QrcodeScannerRef.current && typeof html5QrcodeScannerRef.current.clear === 'function') {
             try {
                 if (html5QrcodeScannerRef.current.getState() !== 0) await html5QrcodeScannerRef.current.clear();
@@ -364,18 +364,18 @@ export default function MemberDashboardPage() {
             }
           }
           setIsProcessingQr(false);
-          setIsScannerOpen(false); 
+          setIsScannerOpen(false);
         };
 
         const onScanFailure = async (errorPayload: any) => {
           let errorMessage = typeof errorPayload === 'string' ? errorPayload : (errorPayload?.message || JSON.stringify(errorPayload));
           const errorMsgLower = errorMessage.toLowerCase();
-          
-          if (!errorMsgLower.includes("no qr code found")) { 
+
+          if (!errorMsgLower.includes("no qr code found")) {
             if (
                 errorMsgLower.includes("permission denied") ||
                 errorMsgLower.includes("notallowederror") ||
-                errorMsgLower.includes("notfounderror") || 
+                errorMsgLower.includes("notfounderror") ||
                 errorMsgLower.includes("aborterror")
             ) {
                 setHasCameraPermission(false);
@@ -390,10 +390,10 @@ export default function MemberDashboardPage() {
             }
           }
         };
-        
+
         try {
           scanner.render(onScanSuccess, onScanFailure);
-          setHasCameraPermission(true); 
+          setHasCameraPermission(true);
         } catch (err: any) {
               console.error("Error rendering scanner (Dashboard - render call failed):", err);
               setHasCameraPermission(false);
@@ -423,12 +423,12 @@ export default function MemberDashboardPage() {
         toast({title: "Error", description: "Cannot mark attendance. Student details not loaded.", variant: "destructive"});
         return;
     }
-    if (activeCheckInRecord) { 
+    if (activeCheckInRecord) {
         toast({title: "Already Checked In", description: "You are already checked in. Use the 'Check Out' button.", variant: "default"});
         return;
     }
-    setHasCameraPermission(null); 
-    setIsProcessingQr(false); 
+    setHasCameraPermission(null);
+    setIsProcessingQr(false);
     setIsScannerOpen(true);
   }, [studentId, activeCheckInRecord, toast]);
 
@@ -445,7 +445,7 @@ export default function MemberDashboardPage() {
         title: "Checked Out!",
         description: `Successfully checked out at ${new Date().toLocaleTimeString()}.`,
       });
-      await fetchAllDashboardData(); 
+      await fetchAllDashboardData();
     } catch (error: any) {
       console.error("Error during dashboard check-out:", error);
       toast({ title: "Check-out Error", description: error.message || "Failed to process check-out. Please try again.", variant: "destructive" });
@@ -549,7 +549,7 @@ export default function MemberDashboardPage() {
       title: "Rate Us",
       description: "Love our space? Let others know!",
       icon: Star,
-      href: "https://www.google.com/maps/search/?api=1&query=Taxshila+Study+Hall+Pune",
+      href: "https://g.page/r/CS-yYFo4JxNXEBM/review", // Corrected Rate Us link
       external: true,
     },
   ];
@@ -580,7 +580,7 @@ export default function MemberDashboardPage() {
   return (
     <>
       <PageTitle title={pageTitleText} description="Your Taxshila Companion dashboard." />
-      
+
        <div className="mt-1 mb-4 text-xs text-center text-muted-foreground">
           <div className="flex flex-col sm:flex-row items-center justify-center gap-x-3 gap-y-1">
             {isLoadingCurrentSession ? (
@@ -621,17 +621,17 @@ export default function MemberDashboardPage() {
           description={activeCheckInRecord ? "You are currently checked in." : "Scan the library QR code for attendance."}
           icon={primaryAttendanceIcon}
           action={primaryAttendanceAction}
-          isPrimaryAction={!primaryAttendanceDisabled} 
+          isPrimaryAction={!primaryAttendanceDisabled}
           isLoadingStatistic={isLoadingCurrentSession && primaryAttendanceIcon === Loader2}
           disabled={primaryAttendanceDisabled}
           className={cn(
-            (activeCheckInRecord && !isProcessingCheckout && !isLoadingCurrentSession && !primaryAttendanceDisabled) 
-              ? 'bg-green-600 hover:bg-green-700' 
+            (activeCheckInRecord && !isProcessingCheckout && !isLoadingCurrentSession && !primaryAttendanceDisabled)
+              ? 'bg-green-600 hover:bg-green-700'
               : ''
           )}
         />
       </div>
-      
+
        <Dialog open={isScannerOpen} onOpenChange={(open) => { if(!open) handleCloseScanner(); else if (!activeCheckInRecord) handleOpenScanner();}}>
          <DialogContent className="w-[90vw] max-w-xs sm:max-w-sm md:max-w-md p-4 flex flex-col overflow-hidden">
             <DialogHeader className="flex-shrink-0">
@@ -640,7 +640,7 @@ export default function MemberDashboardPage() {
                 Point your camera at the QR code provided at the library desk to check-in.
               </DialogDescription>
             </DialogHeader>
-            
+
             <div className="flex-grow flex flex-col gap-3 mt-3 min-h-0">
               {hasCameraPermission === false && (
                 <Alert variant="destructive" className="flex-shrink-0">
@@ -652,9 +652,9 @@ export default function MemberDashboardPage() {
                 </Alert>
               )}
 
-              <div 
-                id={DASHBOARD_QR_SCANNER_ELEMENT_ID} 
-                className="w-full aspect-square bg-muted rounded-md overflow-hidden border" 
+              <div
+                id={DASHBOARD_QR_SCANNER_ELEMENT_ID}
+                className="w-full aspect-square bg-muted rounded-md overflow-hidden border"
               />
 
               {(hasCameraPermission === null && !isProcessingQr) && (
@@ -670,7 +670,7 @@ export default function MemberDashboardPage() {
                   </div>
               )}
             </div>
-            
+
             <div className="flex flex-col sm:flex-row gap-2 mt-auto pt-4 flex-shrink-0">
                 <Button variant="outline" onClick={handleCloseScanner} className="w-full" disabled={isProcessingQr}>
                   Cancel

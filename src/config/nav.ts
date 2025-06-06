@@ -165,7 +165,7 @@ export const mainNav: NavItem[] = [
     roles: ['member'],
   },
   {
-    title: 'My Profile', 
+    title: 'My Profile',
     href: '/member/profile',
     icon: UserCircle,
     roles: ['member'],
@@ -208,7 +208,7 @@ export const mainNav: NavItem[] = [
   },
   {
     title: 'Rate Us',
-    href: 'https://g.page/r/CS-yYFo4JxNXEBM/review', // Updated Rate Us link
+    href: 'https://g.page/r/CS-yYFo4JxNXEBM/review', // Corrected Rate Us link
     icon: Star,
     roles: ['member'],
     external: true,
