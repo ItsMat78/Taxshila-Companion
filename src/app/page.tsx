@@ -67,7 +67,7 @@ function AdminDashboardContent() {
   const { count: openFeedbackCount, isLoadingCount: isLoadingFeedbackCount } = useNotificationCounts();
 
   React.useEffect(() => {
-    console.log("[AdminDashboardContent] Feedback count updated in dashboard:", { openFeedbackCount, isLoadingFeedbackCount });
+    console.log("[AdminDashboardContent] Feedback count or loading state changed:", { openFeedbackCount, isLoadingFeedbackCount });
   }, [openFeedbackCount, isLoadingFeedbackCount]);
 
 
@@ -154,29 +154,20 @@ function AdminDashboardContent() {
     fetchDashboardData();
   }, []);
 
-  const adminActionTiles = React.useMemo(() => {
-    let feedbackTileTitle = "View Feedback";
-    if (isLoadingFeedbackCount) {
-      feedbackTileTitle = "Feedback (Loading...)";
-    } else if (openFeedbackCount > 0) {
-      feedbackTileTitle = `View Feedback (${openFeedbackCount} Open)`;
-    }
-
-    return [
-      { title: "Manage Students", icon: Users, description: "View, edit student details.", href: "/students/list" },
-      { title: "Register Student", icon: UserPlus, description: "Add new students to system.", href: "/students/register" },
-      { title: "Attendance Overview", icon: CalendarDays, description: "Check student attendance logs.", href: "/attendance/calendar" },
-      { title: "Send Alert", icon: SendIcon, description: "Broadcast to all members.", href: "/admin/alerts/send" },
+  const staticAdminActionTiles = [
+      { baseTitle: "Manage Students", icon: Users, description: "View, edit student details.", href: "/students/list" },
+      { baseTitle: "Register Student", icon: UserPlus, description: "Add new students to system.", href: "/students/register" },
+      { baseTitle: "Attendance Overview", icon: CalendarDays, description: "Check student attendance logs.", href: "/attendance/calendar" },
+      { baseTitle: "Send Alert", icon: SendIcon, description: "Broadcast to all members.", href: "/admin/alerts/send" },
       { 
-        title: feedbackTileTitle, 
+        baseTitle: "View Feedback", 
         icon: Inbox, 
         description: "Review member suggestions.", 
         href: "/admin/feedback",
-        hasNew: !isLoadingFeedbackCount && openFeedbackCount > 0,
+        isFeedbackTile: true, // Marker for the feedback tile
       }, 
-      { title: "Seat Dashboard", icon: Eye, description: "View current seat status.", href: "/seats/availability" },
-    ];
-  }, [openFeedbackCount, isLoadingFeedbackCount]);
+      { baseTitle: "Seat Dashboard", icon: Eye, description: "View current seat status.", href: "/seats/availability" },
+  ];
 
   const totalRegisteredStudents = morningShiftStudentCount + eveningShiftStudentCount + fullDayShiftStudentCount;
 
@@ -298,25 +289,39 @@ function AdminDashboardContent() {
 
       <h2 className="text-lg font-headline font-semibold tracking-tight mb-4">Quick Actions</h2>
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-        {adminActionTiles.map((tile) => {
-          const Icon = tile.icon;
+        {staticAdminActionTiles.map((tileConfig) => {
+          const Icon = tileConfig.icon;
+          let currentTitle = tileConfig.baseTitle;
+          let hasNewBadge = false;
+
+          if (tileConfig.isFeedbackTile) {
+            if (isLoadingFeedbackCount) {
+              currentTitle = "Feedback (Loading...)";
+            } else if (openFeedbackCount > 0) {
+              currentTitle = `View Feedback (${openFeedbackCount} Open)`;
+              hasNewBadge = true;
+            } else {
+              currentTitle = "View Feedback";
+            }
+          }
+
           return (
-            <Link href={tile.href} key={tile.title} className="block no-underline focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-lg h-full">
+            <Link href={tileConfig.href} key={tileConfig.baseTitle} className="block no-underline focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-lg h-full">
               <Card className={cn(
                 "shadow-md hover:shadow-lg transition-shadow h-full flex flex-col",
-                (tile.href === "/admin/feedback" && tile.hasNew) && "border-destructive ring-2 ring-destructive/50"
+                (tileConfig.isFeedbackTile && hasNewBadge) && "border-destructive ring-2 ring-destructive/50"
               )}>
                 <CardHeader className="p-3 pb-1 relative">
-                   {(tile.href === "/admin/feedback" && tile.hasNew) && (
+                   {(tileConfig.isFeedbackTile && hasNewBadge) && (
                      <span className="absolute top-1 right-1 block h-2.5 w-2.5 rounded-full bg-destructive ring-1 ring-white" />
                    )}
                   <div className="flex items-center gap-2">
                     <Icon className="h-6 w-6 text-primary" /> 
-                    <ShadcnCardTitle className="text-base font-semibold">{tile.title}</ShadcnCardTitle>
+                    <ShadcnCardTitle className="text-base font-semibold">{currentTitle}</ShadcnCardTitle>
                   </div>
                 </CardHeader>
                 <CardContent className="p-3 pt-0 flex-grow flex flex-col items-center justify-center">
-                  <ShadcnCardDescription className="text-xs text-muted-foreground text-center">{tile.description}</ShadcnCardDescription>
+                  <ShadcnCardDescription className="text-xs text-muted-foreground text-center">{tileConfig.description}</ShadcnCardDescription>
                 </CardContent>
               </Card>
             </Link>

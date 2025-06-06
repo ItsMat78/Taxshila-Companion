@@ -81,7 +81,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   React.useEffect(() => {
     const setupPush = async () => {
       if (user && user.role === 'member' && user.email && typeof window !== 'undefined' && 'serviceWorker' in navigator) {
-        // Check if VAPID_KEY is correctly imported and not a placeholder
+        
         if (!VAPID_KEY_FROM_CLIENT_LIB || VAPID_KEY_FROM_CLIENT_LIB.includes("REPLACE THIS")) {
             console.warn("[AppLayout] VAPID_KEY is not configured in firebase-messaging-client.ts. Push notifications for members will not be initialized.");
             return;
@@ -106,7 +106,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     }
   }, [user, isAuthLoading]);
 
-  // Listen for foreground push notification events (for member alerts)
+  
   React.useEffect(() => {
     const handleForegroundMessage = (event: Event) => {
       const customEvent = event as CustomEvent;
@@ -126,13 +126,13 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     };
   }, [toast, refreshNotifications]);
 
-  // Listen for new feedback submission events (for admin)
+  
   React.useEffect(() => {
     const handleNewFeedback = (event: Event) => {
-      console.log("[AppLayout] 'new-feedback-submitted' event caught in AppLayout."); // DEBUG
-      // const customEvent = event as CustomEvent; // feedbackId is in customEvent.detail.feedbackId
+      const customEvent = event as CustomEvent;
+      console.log("[AppLayout] 'new-feedback-submitted' event caught in AppLayout. Detail:", customEvent.detail); 
       if (user && user.role === 'admin') {
-        console.log("[AppLayout] Admin detected, showing toast and refreshing notifications for new feedback."); // DEBUG
+        console.log("[AppLayout] Admin detected for new feedback, showing toast and refreshing notifications."); 
         toast({
           title: "New Feedback Received",
           description: "A member has submitted new feedback. Please check the feedback section.",
