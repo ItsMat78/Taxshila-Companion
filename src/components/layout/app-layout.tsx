@@ -13,7 +13,7 @@ import { useNotificationCounts } from '@/hooks/use-notification-counts';
 import { NotificationBadge } from '@/components/shared/notification-badge';
 import { cn } from '@/lib/utils';
 import { TopProgressBar } from '@/components/shared/top-progress-bar';
-import { initPushNotifications } from '@/lib/firebase-messaging-client';
+import { initPushNotifications, VAPID_KEY_FROM_CLIENT_LIB } from '@/lib/firebase-messaging-client';
 import { getStudentByEmail } from '@/services/student-service';
 import { useToast } from '@/hooks/use-toast';
 import { useNotificationContext } from '@/contexts/notification-context';
@@ -81,18 +81,23 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   React.useEffect(() => {
     const setupPush = async () => {
       if (user && user.role === 'member' && user.email && typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+        // Check if VAPID_KEY is correctly imported and not a placeholder
+        if (!VAPID_KEY_FROM_CLIENT_LIB || VAPID_KEY_FROM_CLIENT_LIB.includes("REPLACE THIS")) {
+            console.warn("[AppLayout] VAPID_KEY is not configured in firebase-messaging-client.ts. Push notifications for members will not be initialized.");
+            return;
+        }
         try {
           const student = await getStudentByEmail(user.email);
           if (student?.firestoreId) {
-            console.log("AppLayout: Attempting to initialize push notifications for member:", student.studentId);
+            console.log("[AppLayout] Attempting to initialize push notifications for member:", student.studentId);
             await initPushNotifications(student.firestoreId);
           } else if (student) {
-             console.warn("AppLayout: Member found, but Firestore ID missing. Cannot init push.");
+             console.warn("[AppLayout] Member found, but Firestore ID missing. Cannot init push.");
           } else {
-             console.warn("AppLayout: Member record not found by email. Cannot init push.");
+             console.warn("[AppLayout] Member record not found by email. Cannot init push.");
           }
         } catch (error) {
-          console.error("AppLayout: Error during push notification setup for member:", error);
+          console.error("[AppLayout] Error during push notification setup for member:", error);
         }
       }
     };
@@ -106,6 +111,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     const handleForegroundMessage = (event: Event) => {
       const customEvent = event as CustomEvent;
       const notificationPayload = customEvent.detail;
+      console.log("[AppLayout] Foreground message event received:", notificationPayload);
       if (notificationPayload && notificationPayload.title && notificationPayload.body) {
         toast({
           title: notificationPayload.title,
@@ -123,8 +129,10 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   // Listen for new feedback submission events (for admin)
   React.useEffect(() => {
     const handleNewFeedback = (event: Event) => {
+      console.log("[AppLayout] 'new-feedback-submitted' event caught in AppLayout."); // DEBUG
       // const customEvent = event as CustomEvent; // feedbackId is in customEvent.detail.feedbackId
       if (user && user.role === 'admin') {
+        console.log("[AppLayout] Admin detected, showing toast and refreshing notifications for new feedback."); // DEBUG
         toast({
           title: "New Feedback Received",
           description: "A member has submitted new feedback. Please check the feedback section.",

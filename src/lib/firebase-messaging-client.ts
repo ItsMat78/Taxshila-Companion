@@ -4,10 +4,13 @@ import { app as firebaseApp } from './firebase'; // Your main firebase app insta
 import { saveStudentFCMToken } from '@/services/student-service'; 
 
 // ==========================================================================================
-// !!! IMPORTANT: REPLACE THIS VAPID_KEY WITH YOUR ACTUAL FIREBASE PROJECT'S VAPID KEY !!!
+// !!! CRITICAL: REPLACE THIS VAPID_KEY WITH YOUR ACTUAL FIREBASE PROJECT'S VAPID KEY !!!
 // Find this in: Firebase Project settings > Cloud Messaging > Web Push certificates (Key pair)
+// YOUR APP WILL NOT RECEIVE PUSH NOTIFICATIONS WITHOUT THIS KEY BEING CORRECT.
+// DO NOT LEAVE THIS AS A PLACEHOLDER.
 // ==========================================================================================
-const VAPID_KEY = "BLAPRl0mUm8t7H6QXbenonbltEVU51wxXfwQN8Aw0jCdPbBE8XIDS7u41wpfQAWb7NTsTjU8zp7nb6D8nO1Dt_c"; // REPLACE THIS!
+export const VAPID_KEY_FROM_CLIENT_LIB = "BLAPRl0mUm8t7H6QXbenonbltEVU51wxXfwQN8Aw0jCdPbBE8XIDS7u41wpfQAWb7NTsTjU8zp7nb6D8nO1Dt_c"; // <<< --- !!! REPLACE THIS! !!! --- >>>
+// Note: Renamed to VAPID_KEY_FROM_CLIENT_LIB to avoid confusion if another VAPID_KEY exists elsewhere
 
 let messagingInstance = null;
 try {
@@ -30,14 +33,17 @@ export const initPushNotifications = async (studentFirestoreId: string | null | 
     console.warn('[FCM Client] Service workers are not supported in this browser.');
     return null;
   }
+  console.log('[FCM Client] Service worker is supported.');
+
 
   if (!('PushManager' in window)) {
     console.warn('[FCM Client] Push messaging is not supported in this browser.');
     return null;
   }
+  console.log('[FCM Client] PushManager is supported.');
 
   try {
-    const registration = await navigator.serviceWorker.register('/sw.js'); // Ensure sw.js is in public folder
+    const registration = await navigator.serviceWorker.register('/sw.js'); 
     console.log('[FCM Client] Service Worker registered with scope:', registration.scope);
 
     if (Notification.permission === 'granted') {
@@ -45,7 +51,7 @@ export const initPushNotifications = async (studentFirestoreId: string | null | 
       const currentToken = await getFCMToken(registration, studentFirestoreId);
       return currentToken;
     } else if (Notification.permission === 'denied') {
-      console.warn('[FCM Client] Notification permission was previously denied.');
+      console.warn('[FCM Client] Notification permission was previously denied. User must manually re-enable it in browser settings.');
       return null;
     } else {
       console.log('[FCM Client] Requesting notification permission...');
@@ -70,69 +76,66 @@ const getFCMToken = async (registration: ServiceWorkerRegistration, studentFires
      console.warn("[FCM Client] Messaging instance not available for getFCMToken.");
      return null;
   }
-  if (!VAPID_KEY || VAPID_KEY === "YOUR_VAPID_KEY_HERE" || VAPID_KEY.includes("REPLACE THIS")) {
-    console.error("[FCM Client] VAPID_KEY is not set or is still a placeholder. Please update it in firebase-messaging-client.ts.");
-    alert("Push notification setup error: VAPID Key missing. Contact support if this persists."); // User-facing alert for this critical error
+  if (!VAPID_KEY_FROM_CLIENT_LIB || VAPID_KEY_FROM_CLIENT_LIB.includes("REPLACE THIS")) {
+    console.error("[FCM Client] VAPID_KEY IS NOT SET OR IS STILL A PLACEHOLDER. PUSH NOTIFICATIONS WILL FAIL. Please update it in src/lib/firebase-messaging-client.ts.");
     return null;
   }
+  console.log("[FCM Client] Attempting to get FCM token. VAPID_KEY is present (ensure it's correct):", VAPID_KEY_FROM_CLIENT_LIB ? 'Yes' : 'NO (THIS IS A PROBLEM)');
+
   try {
-    console.log("[FCM Client] Attempting to get FCM token with VAPID key set.");
     const currentToken = await getToken(messagingInstance, {
-      vapidKey: VAPID_KEY,
+      vapidKey: VAPID_KEY_FROM_CLIENT_LIB,
       serviceWorkerRegistration: registration,
     });
     if (currentToken) {
-      console.log('[FCM Client] FCM Token obtained:', currentToken);
+      console.log('[FCM Client] FCM Token obtained:', currentToken.substring(0,15) + "..."); // Log only prefix
       if (studentFirestoreId) {
         console.log('[FCM Client] Saving token for studentFirestoreId:', studentFirestoreId);
         await saveStudentFCMToken(studentFirestoreId, currentToken);
       } else {
-        console.warn("[FCM Client] Student Firestore ID not available, token not saved to DB yet. This is okay if it's a new user registration flow.");
+        console.warn("[FCM Client] Student Firestore ID not available, token not saved to DB yet. This is okay if it's a new user registration flow or if the user is not a student (e.g., admin).");
       }
       return currentToken;
     } else {
-      console.warn('[FCM Client] No registration token available. Request permission to generate one.');
-      // This can happen if Notification.requestPermission() was denied or dismissed.
+      console.warn('[FCM Client] No registration token available. Request permission to generate one. This usually means permission was denied or dismissed.');
       return null;
     }
   } catch (err) {
     console.error('[FCM Client] An error occurred while retrieving token: ', err);
-    // Log the error type for more specific debugging
     if (err instanceof Error) {
         console.error('[FCM Client] Error name:', err.name, 'Error message:', err.message);
+         if (err.message.includes("service worker") || err.message.includes("ServiceWorker") || err.message.includes("Registration failed")) {
+            console.error("[FCM Client] Hint: This error often relates to issues with sw.js (not found, not in public root, or incorrect Firebase config within sw.js).");
+        }
+        if (err.message.includes("messaging/invalid-vapid-key")) {
+            console.error("[FCM Client] Hint: The VAPID key is invalid. Ensure it matches the one from your Firebase project settings.");
+        }
     }
-    // Common errors:
-    // - "DOMException: Failed to execute 'subscribe' on 'PushManager': Subscription failed - no active Service Worker" (sw.js issue)
-    // - "FirebaseError: Messaging: We are unable to register the default service worker. (messaging/failed-serviceworker-registration)." (sw.js issue or path)
-    // - "FirebaseError: Messaging: Missing App configuration value: \"apiKey\" (messaging/missing-app-config-values)." (firebase config in sw.js)
-    // - Issues with VAPID key or project setup.
     return null;
   }
 };
 
-// Handle foreground messages
 if (messagingInstance) {
   onMessage(messagingInstance, (payload) => {
     console.log('[FCM Client] Message received in foreground: ', payload);
-    // Dispatch a custom event to be handled by the AppLayout
-    if (payload.notification) { // Standard FCM notification payload
-      window.dispatchEvent(new CustomEvent('show-foreground-message', { 
-        detail: { 
-          title: payload.notification.title, 
-          body: payload.notification.body,
-          data: payload.data // Include data payload if present
-        } 
-      }));
-    } else if (payload.data && payload.data.title && payload.data.body) { // Data-only message with title/body in data
+    if (payload.data && payload.data.title && payload.data.body) {
        window.dispatchEvent(new CustomEvent('show-foreground-message', { 
         detail: { 
           title: payload.data.title, 
           body: payload.data.body,
+          data: payload.data // Pass along the full data payload too
+        } 
+      }));
+    } else if (payload.notification) { // Fallback for standard FCM notification field
+      window.dispatchEvent(new CustomEvent('show-foreground-message', { 
+        detail: { 
+          title: payload.notification.title, 
+          body: payload.notification.body,
           data: payload.data
         } 
       }));
     } else {
-      console.log('[FCM Client] Foreground message received without a displayable notification/data payload. Data:', payload.data);
+      console.log('[FCM Client] Foreground message received without a displayable title/body in data or notification payload. Data:', payload.data);
     }
   });
 } else {

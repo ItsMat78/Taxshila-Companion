@@ -4,7 +4,7 @@
 import Link from 'next/link';
 import Image from 'next/image'; // Import Image component
 import { usePathname } from 'next/navigation';
-import { BookOpenCheck, LogOut, ChevronDown } from 'lucide-react'; 
+import { BookOpenCheck, LogOut, ChevronDown } from 'lucide-react';
 import * as React from "react";
 
 import { mainNav, type NavItem } from '@/config/nav';
@@ -24,20 +24,22 @@ import {
 } from '@/components/ui/sidebar';
 import { useAuth } from '@/contexts/auth-context';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { useNotificationCounts } from '@/hooks/use-notification-counts'; // Import the hook
 
 const ACTUAL_LOGO_URL = '/logo.png'; // Use the actual logo path
 
 function NavListItem({ item }: { item: NavItem }) {
   const pathname = usePathname();
-  const { isMobile, setOpenMobile } = useSidebar(); 
+  const { isMobile, setOpenMobile } = useSidebar();
   const [isSubMenuOpen, setIsSubMenuOpen] = React.useState(
     !!item.items && item.items.some(subItem => pathname.startsWith(subItem.href))
   );
 
   const { user } = useAuth();
+  const { count: notificationCount, isLoadingCount } = useNotificationCounts(); // Get notification count
 
   const closeMobileSidebar = () => {
-    if (isMobile) { 
+    if (isMobile) {
       setOpenMobile(false);
     }
   };
@@ -45,10 +47,19 @@ function NavListItem({ item }: { item: NavItem }) {
   if (item.roles && user && !item.roles.includes(user.role)) {
     return null;
   }
-  
-  const visibleSubItems = item.items?.filter(subItem => 
+
+  const visibleSubItems = item.items?.filter(subItem =>
     !subItem.roles || (user && subItem.roles.includes(user.role))
   );
+
+  const shouldShowBadge =
+    !isLoadingCount &&
+    notificationCount > 0 &&
+    user &&
+    ((user.role === 'admin' && item.href === '/admin/feedback') ||
+     (user.role === 'member' && item.href === '/member/alerts'));
+
+  const displayCount = notificationCount > 9 ? '9+' : String(notificationCount);
 
   if (item.external) {
     return (
@@ -58,8 +69,8 @@ function NavListItem({ item }: { item: NavItem }) {
           target="_blank"
           rel="noopener noreferrer"
           className={cn(
-            sidebarMenuButtonVariants({variant: "default", size: "default"}), 
-            "w-full" 
+            sidebarMenuButtonVariants({variant: "default", size: "default"}),
+            "w-full"
           )}
           onClick={closeMobileSidebar}
         >
@@ -94,7 +105,7 @@ function NavListItem({ item }: { item: NavItem }) {
             {visibleSubItems.map((subItem) => (
               <SidebarMenuSubItem key={subItem.href}>
                 <Link href={subItem.href} passHref legacyBehavior>
-                  <SidebarMenuSubButton 
+                  <SidebarMenuSubButton
                     isActive={pathname === subItem.href}
                     onClick={closeMobileSidebar}
                   >
@@ -117,12 +128,19 @@ function NavListItem({ item }: { item: NavItem }) {
     return (
       <SidebarMenuItem>
         <Link href={item.href} passHref legacyBehavior>
-          <SidebarMenuButton 
+          <SidebarMenuButton
             isActive={pathname === item.href}
             onClick={closeMobileSidebar}
           >
-            {item.icon && <item.icon className="h-4 w-4" />}
-            <span className="truncate">{item.title}</span>
+            <span className="flex items-center gap-2"> {/* Ensure icon and title are grouped */}
+              {item.icon && <item.icon className="h-4 w-4" />}
+              <span className="truncate">{item.title}</span>
+            </span>
+            {shouldShowBadge && (
+              <span className="ml-auto inline-flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold text-destructive-foreground">
+                {displayCount}
+              </span>
+            )}
           </SidebarMenuButton>
         </Link>
       </SidebarMenuItem>
@@ -138,7 +156,7 @@ const sidebarMenuButtonVariants = ({variant, size}: {variant?: string, size?: st
 export function AppSidebarContent() {
   const { user, logout } = useAuth();
 
-  if (!user) return null; 
+  if (!user) return null;
 
   const getInitials = (email?: string) => {
     if (!email) return 'U';
@@ -149,21 +167,21 @@ export function AppSidebarContent() {
     <Sidebar side="left" collapsible="icon">
       <SidebarHeader className="p-4 flex flex-col items-start w-full">
         <Link href="/" className="flex items-center gap-2 mb-4 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:w-full">
-          <Image 
-            src={ACTUAL_LOGO_URL} 
-            alt="Taxshila Logo Icon" 
-            width={64} 
-            height={64} 
+          <Image
+            src={ACTUAL_LOGO_URL}
+            alt="Taxshila Logo Icon"
+            width={64}
+            height={64}
             className="object-contain group-data-[collapsible=icon]:block hidden h-8 w-8"
             data-ai-hint="logo brand"
             priority
           />
-           <Image 
-            src={ACTUAL_LOGO_URL} 
-            alt="Taxshila Logo" 
-            width={120} 
-            height={120} 
-            className="object-contain group-data-[collapsible=icon]:hidden h-8 w-auto" 
+           <Image
+            src={ACTUAL_LOGO_URL}
+            alt="Taxshila Logo"
+            width={120}
+            height={120}
+            className="object-contain group-data-[collapsible=icon]:hidden h-8 w-auto"
             data-ai-hint="logo brand"
             priority
           />
@@ -174,7 +192,7 @@ export function AppSidebarContent() {
               <AvatarImage src={user.profilePictureUrl || undefined} alt={user.email} data-ai-hint="profile person" />
               <AvatarFallback>{getInitials(user.email)}</AvatarFallback>
             </Avatar>
-            <div className="flex flex-col min-w-0 flex-1"> 
+            <div className="flex flex-col min-w-0 flex-1">
               <span className="text-sm font-medium truncate">{user.email}</span>
               <span className="text-xs text-muted-foreground capitalize">{user.role}</span>
             </div>

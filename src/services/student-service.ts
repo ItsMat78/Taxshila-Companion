@@ -854,6 +854,7 @@ export async function submitFeedback(
 
   // Dispatch custom event for admin notification
   if (typeof window !== 'undefined') {
+    console.log("[StudentService] Dispatching new-feedback-submitted event for ID:", docRef.id);
     window.dispatchEvent(new CustomEvent('new-feedback-submitted', { detail: { feedbackId: docRef.id } }));
   }
 
@@ -892,7 +893,7 @@ export async function sendGeneralAlert(title: string, message: string, type: Ale
   
   // Call Vercel API route to trigger push notification
   try {
-    console.log("Calling API to send general alert notification for alert ID:", docRef.id);
+    console.log("[StudentService] Calling API to send general alert notification for alert ID:", docRef.id);
     await fetch('/api/send-alert-notification', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -905,7 +906,7 @@ export async function sendGeneralAlert(title: string, message: string, type: Ale
       }),
     });
   } catch (apiError) {
-    console.error("Failed to trigger API for push notification (general alert):", apiError);
+    console.error("[StudentService] Failed to trigger API for push notification (general alert):", apiError);
     // Non-critical, alert is saved. Log or handle as needed.
   }
 
@@ -933,7 +934,7 @@ export async function sendAlertToStudent(
       throw new Error(`Student with ID ${customStudentId} not found for feedback response.`);
   } else if (!student) {
     // Log a warning but proceed to save the alert. Notification might not be sent if no tokens.
-    console.warn(`Student with ID ${customStudentId} not found when sending targeted alert. Alert will be saved.`);
+    console.warn(`[StudentService] Student with ID ${customStudentId} not found when sending targeted alert. Alert will be saved.`);
   }
 
   const newAlertDataForFirestore: any = {
@@ -951,7 +952,7 @@ export async function sendAlertToStudent(
 
   // Call Vercel API route to trigger push notification
   try {
-    console.log(`Calling API to send targeted alert notification for student ${customStudentId}, alert ID: ${docRef.id}`);
+    console.log(`[StudentService] Calling API to send targeted alert notification for student ${customStudentId}, alert ID: ${docRef.id}`);
     await fetch('/api/send-alert-notification', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -966,7 +967,7 @@ export async function sendAlertToStudent(
       }),
     });
   } catch (apiError) {
-    console.error(`Failed to trigger API for push notification (student ${customStudentId}):`, apiError);
+    console.error(`[StudentService] Failed to trigger API for push notification (student ${customStudentId}):`, apiError);
     // Non-critical, alert is saved. Log or handle as needed.
   }
 
@@ -1353,7 +1354,7 @@ export async function getAllStudentsWithPaymentHistory(): Promise<Student[]> {
 // --- FCM Token Management ---
 export async function saveStudentFCMToken(studentFirestoreId: string, token: string): Promise<void> {
   if (!studentFirestoreId) {
-    console.warn("Cannot save FCM token without student Firestore ID.");
+    console.warn("[StudentService] Cannot save FCM token without student Firestore ID.");
     return;
   }
   const studentDocRef = doc(db, STUDENTS_COLLECTION, studentFirestoreId);
@@ -1361,15 +1362,31 @@ export async function saveStudentFCMToken(studentFirestoreId: string, token: str
     await updateDoc(studentDocRef, {
       fcmTokens: arrayUnion(token) // Add new token to the array
     });
-    console.log("FCM token saved for student:", studentFirestoreId, token);
+    console.log("[StudentService] FCM token saved for student:", studentFirestoreId, token.substring(0,10) + "...");
   } catch (error) {
-    console.error("Error saving FCM token for student:", studentFirestoreId, error);
-    // Optional: Consider removing the token if it's known to be invalid or causing issues,
-    // but be careful with this logic to avoid removing valid tokens.
-    // Example: await updateDoc(studentDocRef, { fcmTokens: arrayRemove(token) });
+    console.error("[StudentService] Error saving FCM token for student:", studentFirestoreId, error);
   }
 }
-// TODO: Add a function to remove an FCM token if it becomes invalid (e.g., on 'messaging/invalid-registration-token' error from FCM server)
+
+export async function removeFCMTokenForStudent(studentFirestoreId: string, tokenToRemove: string): Promise<void> {
+  if (!studentFirestoreId) {
+    console.warn("[StudentService] Cannot remove FCM token without student Firestore ID.");
+    return;
+  }
+  if (!tokenToRemove) {
+    console.warn("[StudentService] No token provided for removal for student:", studentFirestoreId);
+    return;
+  }
+  const studentDocRef = doc(db, STUDENTS_COLLECTION, studentFirestoreId);
+  try {
+    await updateDoc(studentDocRef, {
+      fcmTokens: arrayRemove(tokenToRemove)
+    });
+    console.log("[StudentService] FCM token removed for student:", studentFirestoreId, tokenToRemove.substring(0,10) + "...");
+  } catch (error) {
+    console.error("[StudentService] Error removing FCM token for student:", studentFirestoreId, error);
+  }
+}
 
 
 declare module '@/types/student' {
