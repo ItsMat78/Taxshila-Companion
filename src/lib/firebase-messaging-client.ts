@@ -5,7 +5,7 @@ import { saveStudentFCMToken } from '@/services/student-service'; // We'll creat
 
 // IMPORTANT: Replace this with your VAPID key from Firebase console
 // Firebase Project settings > Cloud Messaging > Web Push certificates
-const VAPID_KEY = "YOUR_PUBLIC_VAPID_KEY_HERE";
+const VAPID_KEY = "BLAPRl0mUm8t7H6QXbenonbltEVU51wxXfwQN8Aw0jCdPbBE8XIDS7u41wpfQAWb7NTsTjU8zp7nb6D8nO1Dt_c";
 
 let messagingInstance = null;
 try {
