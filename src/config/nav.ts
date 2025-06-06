@@ -53,7 +53,7 @@ export const mainNav: NavItem[] = [
     roles: ['admin'],
   },
   {
-    title: 'Students',
+    title: 'Manage Students', // Renamed
     href: '#',
     icon: Users,
     roles: ['admin'],
@@ -73,7 +73,7 @@ export const mainNav: NavItem[] = [
     ]
   },
   {
-    title: 'Seat Management',
+    title: 'Manage Seats', // Renamed
     href: '#',
     icon: Armchair,
     roles: ['admin'],
@@ -87,7 +87,7 @@ export const mainNav: NavItem[] = [
     ]
   },
   {
-    title: 'Attendance Overview',
+    title: 'Check Student Attendance', // Renamed
     href: '/attendance/calendar',
     icon: CalendarDays,
     roles: ['admin'],
@@ -208,7 +208,7 @@ export const mainNav: NavItem[] = [
   },
   {
     title: 'Rate Us',
-    href: 'https://www.google.com/maps/search/?api=1&query=Taxshila+Study+Hall+Pune',
+    href: 'https://www.google.com/maps/search/?api=1&query=Taxshila+Study+Hall+Pune', // Kept current link
     icon: Star,
     roles: ['member'],
     external: true,

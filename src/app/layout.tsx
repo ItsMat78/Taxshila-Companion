@@ -26,6 +26,7 @@ export default function RootLayout({
         <link href="https://fonts.googleapis.com/css2?family=PT+Sans:wght@400;700&display=swap" rel="stylesheet" />
         {/* Ensure theme-color matches manifest for consistency */}
         <meta name="theme-color" content="#30475E" />
+        <link rel="icon" href="/logo.png" /> {/* Added favicon link */}
       </head>
       <body className="font-body antialiased">
         <AuthProvider>
