@@ -2,11 +2,11 @@
 {
   "name": "Taxshila Companion",
   "short_name": "Taxshila",
+  "description": "Your companion app for Taxshila study hall.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#D6D5D8",
   "theme_color": "#30475E",
-  "description": "Your companion app for Taxshila study hall.",
   "icons": [
     {
       "src": "/android-chrome-192x192.png",
