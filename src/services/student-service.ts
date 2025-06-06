@@ -873,13 +873,13 @@ export async function submitFeedback(
     status: "Open" as FeedbackStatus,
   };
   const docRef = await addDoc(collection(db, FEEDBACK_COLLECTION), newFeedbackData);
-  console.log("[StudentService] New feedback submitted, ID:", docRef.id, "Data:", newFeedbackData); 
+  console.log("[StudentService] New feedback submitted, ID:", docRef.id, "Data:", newFeedbackData);
 
   // TODO: Fetch admin FCM tokens (e.g., from a separate 'admins' collection or config)
   // Example: const adminTokens = await getAllAdminFCMTokens();
   // TODO: For each admin token, call the /api/send-alert-notification endpoint with a specific payload for new feedback
   // Example: for (const token of adminTokens) { /* send notification */ }
-  
+
   // Dispatch custom event for admin notification
   if (typeof window !== 'undefined') {
     console.log("[StudentService] Dispatching new-feedback-submitted event for ID:", docRef.id);
@@ -914,11 +914,11 @@ export async function sendGeneralAlert(title: string, message: string, type: Ale
     message,
     type,
     dateSent: Timestamp.fromDate(new Date()),
-    isRead: false, 
-    studentId: null, 
+    isRead: false,
+    studentId: null,
   };
   const docRef = await addDoc(collection(db, ALERTS_COLLECTION), newAlertData);
-  
+
   const apiPayload = {
     alertId: docRef.id,
     title,
@@ -944,7 +944,7 @@ export async function sendGeneralAlert(title: string, message: string, type: Ale
 
   return {
     id: docRef.id,
-    studentId: undefined, 
+    studentId: undefined,
     title: newAlertData.title,
     message: newAlertData.message,
     type: newAlertData.type,
@@ -969,12 +969,12 @@ export async function sendAlertToStudent(
   }
 
   const newAlertDataForFirestore: any = {
-    studentId: customStudentId, 
+    studentId: customStudentId,
     title,
     message,
     type,
     dateSent: Timestamp.fromDate(new Date()),
-    isRead: false, 
+    isRead: false,
   };
   if (originalFeedbackId) newAlertDataForFirestore.originalFeedbackId = originalFeedbackId;
   if (originalFeedbackMessageSnippet) newAlertDataForFirestore.originalFeedbackMessageSnippet = originalFeedbackMessageSnippet;
@@ -1502,5 +1502,3 @@ declare module '@/types/communication' {
     firestoreId?: string;
   }
 }
-
-```
