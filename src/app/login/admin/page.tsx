@@ -202,12 +202,14 @@ export default function AdminLoginPage() {
         {/* --- PWA Install Simulation Button --- */}
         {/* This button is always visible for testing the simulated prompt */}
         <Card className="w-full max-w-md md:max-w-sm shadow-xl bg-background/80 backdrop-blur-md rounded-lg">
-          <CardContent className="p-3 flex flex-col items-center text-center"> {/* Reduced padding p-4 to p-3 */}
-            <Smartphone className="h-6 w-6 text-primary mb-1" /> {/* Reduced icon size and margin */}
-            <p className="text-sm font-medium text-foreground mb-1"> {/* Reduced margin */}
-              Install Taxshila Companion App?
-            </p>
-            <p className="text-xs text-muted-foreground mb-2"> {/* Reduced margin */}
+          <CardContent className="p-3 flex flex-col items-center text-center">
+            <div className="flex items-center gap-2 mb-1">
+              <Smartphone className="h-5 w-5 text-primary" />
+              <p className="text-sm font-medium text-foreground">
+                Install Taxshila Companion App?
+              </p>
+            </div>
+            <p className="text-xs text-muted-foreground mb-2">
               Get faster access and an optimized experience by installing the app on your device. (Simulation)
             </p>
             <Button onClick={handleSimulatedInstallClick} className="w-full" size="sm">
