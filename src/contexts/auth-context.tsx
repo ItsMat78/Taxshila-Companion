@@ -10,7 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 interface User {
   email: string;
   role: UserRole;
-  profilePictureUrl?: string; // Added profilePictureUrl
+  profilePictureUrl?: string; 
 }
 
 interface AuthContextType {
@@ -36,7 +36,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   React.useEffect(() => {
     const mockSessionCheck = setTimeout(() => {
-      const storedUser = sessionStorage.getItem('taxshilaUser');
+      const storedUser = localStorage.getItem('taxshilaUser'); // Changed to localStorage
       if (storedUser) {
         setUser(JSON.parse(storedUser));
       }
@@ -60,7 +60,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (admin) {
       const userData: User = { email: admin.email, role: admin.role, profilePictureUrl: admin.profilePictureUrl };
       setUser(userData);
-      sessionStorage.setItem('taxshilaUser', JSON.stringify(userData));
+      localStorage.setItem('taxshilaUser', JSON.stringify(userData)); // Changed to localStorage
       setIsLoading(false);
       return userData; 
     }
@@ -75,7 +75,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
         const userData: User = { email: member.email, role: 'member' as UserRole, profilePictureUrl: member.profilePictureUrl };
         setUser(userData);
-        sessionStorage.setItem('taxshilaUser', JSON.stringify(userData));
+        localStorage.setItem('taxshilaUser', JSON.stringify(userData)); // Changed to localStorage
         setIsLoading(false);
         return userData; 
       } else if (member && member.password !== passwordAttempt) {
@@ -96,7 +96,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = () => {
     setUser(null);
-    sessionStorage.removeItem('taxshilaUser');
+    localStorage.removeItem('taxshilaUser'); // Changed to localStorage
     router.push('/login');
   };
 

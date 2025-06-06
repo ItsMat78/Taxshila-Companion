@@ -16,7 +16,7 @@ const libraryRules = [
   "Library Timings 7am to 2pm & 3pm to 10pm (Mon-Sat).",
   "Attendance is mandatory. Fill out your own attendance only.",
   "Girls will be seated separately.",
-  "Single Shift fee ₹600. Both Shifts fee ₹1000. Subjected to change according to season.",
+  "Single Shift fee Rs. 600. Both Shifts fee Rs. 1000. Subjected to change according to season.",
   "Demo will be given only for 1 day.",
   "Library will remain open on Sundays until 2 pm only.",
   "Remove shoes outside on the shoe rack. Do not litter.",

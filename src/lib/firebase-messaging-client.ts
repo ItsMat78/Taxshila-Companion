@@ -90,13 +90,14 @@ const getFCMToken = async (registration: ServiceWorkerRegistration): Promise<str
 if (messagingInstance) {
   onMessage(messagingInstance, (payload) => {
     console.log('Message received in foreground. ', payload);
-    // Customize how you want to handle the foreground message
-    // e.g., show a custom in-app notification or update UI
+    // Dispatch a custom event to be handled by the AppLayout
     if (payload.notification) {
-        // You might want to use a custom toast or in-app notification UI here
-        // instead of the browser's default Notification API for foreground messages.
-        // For simplicity, we'll log it. You can use useToast hook here if desired.
-        alert(`Foreground Message: ${payload.notification.title}\n${payload.notification.body}`);
+      window.dispatchEvent(new CustomEvent('show-foreground-message', { 
+        detail: { 
+          title: payload.notification.title, 
+          body: payload.notification.body 
+        } 
+      }));
     }
   });
 }

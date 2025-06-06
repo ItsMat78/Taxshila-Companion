@@ -13,8 +13,9 @@ import { useNotificationCounts } from '@/hooks/use-notification-counts';
 import { NotificationBadge } from '@/components/shared/notification-badge'; 
 import { cn } from '@/lib/utils';
 import { TopProgressBar } from '@/components/shared/top-progress-bar';
-import { initPushNotifications } from '@/lib/firebase-messaging-client'; // Import push init
-import { getStudentByEmail } from '@/services/student-service'; // To get student Firestore ID
+import { initPushNotifications } from '@/lib/firebase-messaging-client';
+import { getStudentByEmail } from '@/services/student-service';
+import { useToast } from '@/hooks/use-toast'; // Import useToast
 
 function NotificationIconArea() {
   const { user } = useAuth();
@@ -56,6 +57,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const [isRouteLoading, setIsRouteLoading] = React.useState(false);
   const prevPathnameRef = React.useRef(pathname);
+  const { toast } = useToast(); // Initialize useToast
 
 
   React.useEffect(() => {
@@ -75,12 +77,10 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     }
   }, [pathname]);
 
-  // Initialize Push Notifications
   React.useEffect(() => {
     const setupPush = async () => {
       if (user && user.role === 'member' && user.email && typeof window !== 'undefined' && 'serviceWorker' in navigator) {
         try {
-          // We need the student's Firestore ID to save the token
           const student = await getStudentByEmail(user.email);
           if (student?.firestoreId) {
             console.log("AppLayout: Attempting to initialize push notifications for member:", student.studentId);
@@ -94,13 +94,29 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           console.error("AppLayout: Error during push notification setup for member:", error);
         }
       }
-      // TODO: Handle push notification setup for admin users if needed.
-      // This would likely involve a different way to get their user ID/document for token storage.
     };
     if (!isAuthLoading && user) {
       setupPush();
     }
   }, [user, isAuthLoading]);
+
+  // Listen for foreground push notification events
+  React.useEffect(() => {
+    const handleForegroundMessage = (event: Event) => {
+      const customEvent = event as CustomEvent;
+      const notificationPayload = customEvent.detail;
+      if (notificationPayload && notificationPayload.title && notificationPayload.body) {
+        toast({
+          title: notificationPayload.title,
+          description: notificationPayload.body,
+        });
+      }
+    };
+    window.addEventListener('show-foreground-message', handleForegroundMessage);
+    return () => {
+      window.removeEventListener('show-foreground-message', handleForegroundMessage);
+    };
+  }, [toast]); // Add toast to dependency array
 
 
   if (isAuthLoading) {
