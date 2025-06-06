@@ -10,10 +10,17 @@ export const metadata: Metadata = {
   title: 'Taxshila Companion',
   description: 'Your companion app for Taxshila study hall.',
   manifest: '/manifest.json',
-  themeColor: '#30475E',
+  themeColor: '#30475E', // This is good here
   icons: {
-    icon: '/logo.png', // Standard favicon
-    apple: '/logo.png', // Apple touch icon
+    icon: [ // Provide an array for different sizes/types if needed
+      { url: '/logo.png', type: 'image/png' }, // General purpose
+      { url: '/logo.png', sizes: '16x16', type: 'image/png' },
+      { url: '/logo.png', sizes: '32x32', type: 'image/png' },
+    ],
+    apple: [ // Can also be an array or an object for different Apple icon sizes
+      { url: '/logo.png', type: 'image/png' },
+    ],
+    shortcut: '/logo.png' // Often used for PWAs
   },
 };
 
