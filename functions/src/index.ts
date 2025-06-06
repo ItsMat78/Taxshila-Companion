@@ -46,8 +46,8 @@ export const sendAlertNotification = functions.firestore
         if (student.fcmTokens && student.fcmTokens.length > 0) {
           tokens = student.fcmTokens;
           functions.logger.log(
-            `Targeted alert for student ${alertData.studentId}. Found tokens:`,
-            tokens.length
+            `Targeted alert for student ${alertData.studentId}. `,
+            `Found tokens: ${tokens.length}`
           );
         } else {
           functions.logger.log(
@@ -68,7 +68,10 @@ export const sendAlertNotification = functions.firestore
           tokens.push(...student.fcmTokens);
         }
       });
-      functions.logger.log(`General alert. Total tokens found:`, tokens.length);
+      functions.logger.log(
+        "General alert. Total tokens found:",
+        tokens.length
+      );
     }
 
     if (tokens.length === 0) {
@@ -79,19 +82,26 @@ export const sendAlertNotification = functions.firestore
     const uniqueTokens = [...new Set(tokens)];
 
     const payload = {
-      data: {
+      data:{
         title: alertData.title,
         body: alertData.message,
         icon: "/logo.png",
         url: "/member/alerts",
         alertId: alertId,
         alertType: alertData.type,
-        ...(alertData.originalFeedbackId && { originalFeedbackId: alertData.originalFeedbackId }),
-        ...(alertData.originalFeedbackMessageSnippet && { originalFeedbackMessageSnippet: alertData.originalFeedbackMessageSnippet }),
+        ...(alertData.originalFeedbackId &&
+          {originalFeedbackId: alertData.originalFeedbackId}),
+        ...(alertData.originalFeedbackMessageSnippet &&
+          {originalFeedbackMessageSnippet: alertData.originalFeedbackMessageSnippet}),
       },
     };
 
-    functions.logger.log("Sending FCM message with payload:", JSON.stringify(payload), "to tokens count:", uniqueTokens.length);
+    functions.logger.log(
+      "Sending FCM message with payload:",
+      JSON.stringify(payload),
+      "to tokens count:",
+      uniqueTokens.length
+    );
 
     try {
       const response = await admin.messaging().sendToDevice(uniqueTokens, payload);
@@ -110,15 +120,7 @@ export const sendAlertNotification = functions.firestore
             error.code === "messaging/invalid-registration-token" ||
             error.code === "messaging/registration-token-not-registered"
           ) {
-            // Consider removing the invalid token from the student's record here
-            // This requires querying for the student with this token and updating their document.
-            // For example:
-            // const studentRef = db.collection('students').where('fcmTokens', 'array-contains', uniqueTokens[index]);
-            // studentRef.get().then(querySnapshot => {
-            //   querySnapshot.forEach(doc => {
-            //     doc.ref.update({ fcmTokens: admin.firestore.FieldValue.arrayRemove(uniqueTokens[index]) });
-            //   });
-            // });
+            // Consider removing the invalid token
           }
         }
       });
