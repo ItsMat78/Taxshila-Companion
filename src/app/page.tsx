@@ -66,6 +66,10 @@ function AdminDashboardContent() {
 
   const { count: openFeedbackCount, isLoadingCount: isLoadingFeedbackCount } = useNotificationCounts();
 
+  React.useEffect(() => {
+    console.log("[AdminDashboardContent] Feedback count updated in dashboard:", { openFeedbackCount, isLoadingFeedbackCount });
+  }, [openFeedbackCount, isLoadingFeedbackCount]);
+
 
   React.useEffect(() => {
     const fetchDashboardData = async () => {
@@ -153,7 +157,7 @@ function AdminDashboardContent() {
   const adminActionTiles = React.useMemo(() => {
     let feedbackTileTitle = "View Feedback";
     if (isLoadingFeedbackCount) {
-      // feedbackTileTitle remains "View Feedback" or could be "Loading Feedback..."
+      feedbackTileTitle = "Feedback (Loading...)";
     } else if (openFeedbackCount > 0) {
       feedbackTileTitle = `View Feedback (${openFeedbackCount} Open)`;
     }
@@ -164,11 +168,11 @@ function AdminDashboardContent() {
       { title: "Attendance Overview", icon: CalendarDays, description: "Check student attendance logs.", href: "/attendance/calendar" },
       { title: "Send Alert", icon: SendIcon, description: "Broadcast to all members.", href: "/admin/alerts/send" },
       { 
-        title: feedbackTileTitle, // Use dynamic title
+        title: feedbackTileTitle, 
         icon: Inbox, 
         description: "Review member suggestions.", 
         href: "/admin/feedback",
-        hasNew: !isLoadingFeedbackCount && openFeedbackCount > 0, // Add hasNew prop
+        hasNew: !isLoadingFeedbackCount && openFeedbackCount > 0,
       }, 
       { title: "Seat Dashboard", icon: Eye, description: "View current seat status.", href: "/seats/availability" },
     ];

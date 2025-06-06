@@ -851,7 +851,11 @@ export async function submitFeedback(
     status: "Open" as FeedbackStatus,
   };
   const docRef = await addDoc(collection(db, FEEDBACK_COLLECTION), newFeedbackData);
+  console.log("[StudentService] New feedback submitted, ID:", docRef.id); // Added log
 
+  // TODO: Fetch admin FCM tokens (e.g., from a separate 'admins' collection or config)
+  // TODO: For each admin token, call the /api/send-alert-notification endpoint with a specific payload for new feedback
+  
   // Dispatch custom event for admin notification
   if (typeof window !== 'undefined') {
     console.log("[StudentService] Dispatching new-feedback-submitted event for ID:", docRef.id);

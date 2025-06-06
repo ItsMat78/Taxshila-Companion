@@ -27,6 +27,7 @@ export function useNotificationCounts() {
         const feedbackItems: FeedbackItem[] = await getAllFeedback();
         const openFeedbackCount = feedbackItems.filter(item => item.status === "Open").length;
         setCount(openFeedbackCount);
+        console.log("[useNotificationCounts] Admin: Open feedback count set to:", openFeedbackCount); // DEBUG
       } else if (user.role === 'member' && user.email) {
         const student = await getStudentByEmail(user.email);
         if (student && student.studentId) {
