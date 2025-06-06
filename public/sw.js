@@ -1,141 +1,122 @@
 
-// Firebase V9 Service Worker
-import { initializeApp } from 'firebase/app';
-import { getMessaging, onBackgroundMessage } from 'firebase/messaging/sw';
+// Service Worker for Firebase Cloud Messaging (FCM)
 
-// IMPORTANT: REPLACE THESE WITH YOUR ACTUAL FIREBASE CONFIG VALUES
-// These values should be directly embedded here.
-// The service worker CANNOT access process.env or any dynamic environment variables.
+// Give the service worker access to Firebase Messaging.
+// Note that you can only use Firebase Messaging here, other Firebase libraries
+// are not available in the service worker.
+importScripts('https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js');
+importScripts('https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js');
+
+// =====================================================================================
+// !!! IMPORTANT: INITIALIZE FIREBASE IN THE SERVICE WORKER
+// You MUST replace the following config object with your Firebase project's
+// configuration. You can find this in your Firebase project settings.
+// =====================================================================================
 const firebaseConfig = {
-  apiKey: "%NEXT_PUBLIC_FIREBASE_API_KEY%",
-  authDomain: "%NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN%",
-  projectId: "%NEXT_PUBLIC_FIREBASE_PROJECT_ID%",
-  storageBucket: "%NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET%",
-  messagingSenderId: "%NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID%",
-  appId: "%NEXT_PUBLIC_FIREBASE_APP_ID%",
+  apiKey: "YOUR_API_KEY", // REPLACE THIS
+  authDomain: "YOUR_AUTH_DOMAIN", // REPLACE THIS
+  projectId: "YOUR_PROJECT_ID", // REPLACE THIS
+  storageBucket: "YOUR_STORAGE_BUCKET", // REPLACE THIS
+  messagingSenderId: "YOUR_MESSAGING_SENDER_ID", // REPLACE THIS
+  appId: "YOUR_APP_ID", // REPLACE THIS
+  // measurementId: "YOUR_MEASUREMENT_ID" // Optional, if you use Analytics
 };
 
-// Initialize the Firebase app in the service worker
-let app;
+// Initialize Firebase
 try {
-  app = initializeApp(firebaseConfig);
-} catch (e) {
-  console.error('Service Worker: Firebase app initialization error', e);
-}
-
-let messaging;
-if (app) {
-  try {
-    messaging = getMessaging(app);
-    console.log('Service Worker: Firebase Messaging initialized.');
-  } catch (e) {
-    console.error('Service Worker: Firebase Messaging initialization error', e);
+  if (!firebase.apps.length) {
+    firebase.initializeApp(firebaseConfig);
+    console.log('[Service Worker] Firebase initialized.');
+  } else {
+    firebase.app(); // if already initialized, use that one
+    console.log('[Service Worker] Firebase app already initialized.');
   }
-} else {
-  console.error('Service Worker: Firebase app not initialized, messaging cannot be set up.');
+} catch (e) {
+  console.error('[Service Worker] Error initializing Firebase:', e);
 }
 
+
+let messaging = null;
+if (firebase.messaging.isSupported()) {
+    try {
+        messaging = firebase.messaging();
+        console.log('[Service Worker] Firebase Messaging initialized in SW.');
+    } catch (e) {
+        console.error('[Service Worker] Error initializing Firebase Messaging in SW:', e);
+    }
+} else {
+    console.log('[Service Worker] Firebase Messaging is not supported in this browser (in SW).');
+}
+
+
+// If you want to customize the background notification handling:
 if (messaging) {
-  onBackgroundMessage(messaging, (payload) => {
-    console.log('[sw.js] Received background message: ', payload);
+  messaging.onBackgroundMessage((payload) => {
+    console.log('[Service Worker] Received background message ', payload);
 
-    // --- Customize notification here ---
-    // The server should send a 'data' payload with 'title', 'body', and optionally 'icon' and 'url'.
-    // The 'notification' payload from FCM is often handled differently by browsers or might be ignored
-    // if the app is in the background on some platforms, so relying on 'data' is more robust.
-
-    const notificationData = payload.data || {}; // Use data payload
-    const notificationTitle = notificationData.title || 'New Notification';
+    // Customize notification here
+    // The payload.data will contain the data sent from your server.
+    const notificationTitle = payload.data?.title || 'New Notification';
     const notificationOptions = {
-      body: notificationData.body || 'You have a new update.',
-      icon: notificationData.icon || '/logo.png', // Default icon
-      image: notificationData.image, // Optional image
-      badge: notificationData.badge || '/badge-icon.png', // Optional: monochrome icon for status bar
-      vibrate: notificationData.vibrate || [200, 100, 200], // Optional vibration pattern
-      data: { // Pass along data for click handling
-        url: notificationData.url || '/', // URL to open on click, defaults to root
-        // ...any other data you want to associate with the notification
+      body: payload.data?.body || 'You have a new update.',
+      icon: payload.data?.icon || '/logo.png', // Ensure this icon path is correct from public root
+      data: {
+        url: payload.data?.url || '/', // URL to open on click
+        // Add any other data you want to pass to the click handler
       },
-      // tag: notificationData.tag, // Optional: for replacing existing notifications
-      // renotify: notificationData.renotify === 'true', // Optional
-      // requireInteraction: notificationData.requireInteraction === 'true', // Optional
-      // actions: payload.data.actions ? JSON.parse(payload.data.actions) : [] // Optional: for notification actions
     };
 
-    // Fallback to payload.notification if payload.data is not structured as expected
-    if (!payload.data && payload.notification) {
-      console.log('[sw.js] Using payload.notification as fallback for title/body.');
-      notificationOptions.body = payload.notification.body || notificationOptions.body;
-      if (payload.notification.title) {
-        // Overwrite title only if present in payload.notification
-         (notificationOptions as any).title = payload.notification.title;
-      }
-      if (payload.notification.icon) {
-        notificationOptions.icon = payload.notification.icon;
-      }
-      if (payload.notification.image) {
-        notificationOptions.image = payload.notification.image;
-      }
-      if (payload.notification.click_action) {
-        notificationOptions.data.url = payload.notification.click_action;
-      }
+    // Check if service worker has permission to show notifications
+    if (self.registration.scope && Notification.permission === 'granted') {
+        self.registration.showNotification(notificationTitle, notificationOptions)
+          .then(() => console.log('[Service Worker] Notification shown.'))
+          .catch(err => console.error('[Service Worker] Error showing notification:', err));
+    } else {
+        console.warn('[Service Worker] Notification permission not granted or scope unavailable.');
     }
-
-
-    self.registration.showNotification(notificationTitle, notificationOptions)
-      .catch(err => console.error("Error showing notification: ", err));
   });
-} else {
-  console.log('Service Worker: Firebase Messaging not available, onBackgroundMessage not set.');
 }
 
+// Optional: Handle notification click
 self.addEventListener('notificationclick', (event) => {
-  console.log('[sw.js] Notification click Received.', event.notification);
+  console.log('[Service Worker] Notification click Received.', event.notification.data);
   event.notification.close(); // Close the notification
 
-  const notificationData = event.notification.data || {};
-  const urlToOpen = notificationData.url || '/'; // Default to opening the root of your app
+  const urlToOpen = event.notification.data?.url || '/';
 
+  // This looks to see if the current is already open and focuses it.
   event.waitUntil(
-    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
-      // Check if there's already a tab open with the target URL
+    clients.matchAll({
+      type: 'window',
+      includeUncontrolled: true,
+    }).then((clientList) => {
       for (let i = 0; i < clientList.length; i++) {
         const client = clientList[i];
-        // Use a more flexible URL check if needed, e.g., client.url.endsWith(urlToOpen.pathname)
-        if (client.url === self.location.origin + urlToOpen && 'focus' in client) {
-          return client.focus();
+        // Check if the client URL matches or is a base of the notification URL
+        if (client.url === urlToOpen || (client.url.startsWith(self.location.origin) && urlToOpen.startsWith('/'))) {
+          try {
+            return client.focus();
+          } catch (focusError) {
+            console.warn('[Service Worker] Could not focus existing client:', focusError);
+            // Fallback to opening a new window if focus fails
+            return clients.openWindow(urlToOpen);
+          }
         }
       }
-      // If no tab is open, open a new one
       if (clients.openWindow) {
         return clients.openWindow(urlToOpen);
       }
+    }).catch(err => {
+        console.error('[Service Worker] Error handling notification click:', err);
+        if (clients.openWindow) {
+            return clients.openWindow(urlToOpen); // Fallback if matchAll fails
+        }
     })
   );
 });
 
-self.addEventListener('install', (event) => {
-  console.log('[sw.js] Service Worker installing.');
-  // Perform install steps, like caching assets (optional)
-  // event.waitUntil(self.skipWaiting()); // Activate worker immediately
-});
-
-self.addEventListener('activate', (event) => {
-  console.log('[sw.js] Service Worker activating.');
-  // Perform activate steps, like cleaning up old caches (optional)
-  // event.waitUntil(clients.claim()); // Take control of open pages immediately
-});
-
 self.addEventListener('pushsubscriptionchange', (event) => {
-  console.log('[sw.js] Push subscription changed.');
-  // Here you might want to re-subscribe or send the new subscription to your server
-  // For example:
-  // event.waitUntil(
-  //   self.registration.pushManager.subscribe(event.oldSubscription.options)
-  //   .then(subscription => {
-  //     // Send new subscription to your server
-  //     console.log('New subscription: ', subscription);
-  //     // return fetch('/update-subscription', { method: 'POST', ... });
-  //   })
-  // );
+  console.log('[Service Worker] Push subscription changed.');
+  // Here you might want to re-subscribe or re-send the new subscription to your server.
+  // For this app, token refresh is handled by the client-side `firebase-messaging-client.ts` when the app is active.
 });
