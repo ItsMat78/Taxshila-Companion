@@ -52,13 +52,6 @@ function NavListItem({ item }: { item: NavItem }) {
     !subItem.roles || (user && subItem.roles.includes(user.role))
   );
 
-  const shouldShowBadge =
-    !isLoadingCount &&
-    notificationCount > 0 &&
-    user &&
-    ((user.role === 'admin' && item.href === '/admin/feedback') ||
-     (user.role === 'member' && item.href === '/member/alerts'));
-
   const displayCount = notificationCount > 9 ? '9+' : String(notificationCount);
 
   if (item.external) {
@@ -102,19 +95,38 @@ function NavListItem({ item }: { item: NavItem }) {
         </SidebarMenuButton>
         {isSubMenuOpen && (
           <SidebarMenuSub>
-            {visibleSubItems.map((subItem) => (
-              <SidebarMenuSubItem key={subItem.href}>
-                <Link href={subItem.href} passHref legacyBehavior>
-                  <SidebarMenuSubButton
-                    isActive={pathname === subItem.href}
-                    onClick={closeMobileSidebar}
-                  >
-                    {subItem.icon && <subItem.icon className="h-4 w-4" />}
-                    <span className="truncate">{subItem.title}</span>
-                  </SidebarMenuSubButton>
-                </Link>
-              </SidebarMenuSubItem>
-            ))}
+            {visibleSubItems.map((subItem) => {
+              const shouldShowSubItemBadge =
+                !isLoadingCount &&
+                notificationCount > 0 &&
+                user &&
+                (
+                  (user.role === 'admin' && subItem.href === '/admin/feedback') ||
+                  (user.role === 'member' && subItem.href === '/member/alerts')
+                );
+
+              return (
+                <SidebarMenuSubItem key={subItem.href}>
+                  <Link href={subItem.href} passHref legacyBehavior>
+                    <SidebarMenuSubButton
+                      isActive={pathname === subItem.href}
+                      onClick={closeMobileSidebar}
+                      className="justify-between w-full" // Ensure button takes full width for badge positioning
+                    >
+                      <span className="flex items-center gap-2">
+                        {subItem.icon && <subItem.icon className="h-4 w-4" />}
+                        <span className="truncate">{subItem.title}</span>
+                      </span>
+                      {shouldShowSubItemBadge && (
+                        <span className="ml-auto inline-flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold text-destructive-foreground">
+                          {displayCount}
+                        </span>
+                      )}
+                    </SidebarMenuSubButton>
+                  </Link>
+                </SidebarMenuSubItem>
+              );
+            })}
           </SidebarMenuSub>
         )}
       </SidebarMenuItem>
@@ -125,18 +137,28 @@ function NavListItem({ item }: { item: NavItem }) {
      if (item.roles && user && !item.roles.includes(user.role)) {
         return null;
      }
+     const shouldShowTopLevelBadge =
+        !isLoadingCount &&
+        notificationCount > 0 &&
+        user &&
+        (
+          (user.role === 'admin' && item.href === '/admin/feedback') || // This condition might not apply for top-level if feedback is always a sub-item
+          (user.role === 'member' && item.href === '/member/alerts')
+        );
+
     return (
       <SidebarMenuItem>
         <Link href={item.href} passHref legacyBehavior>
           <SidebarMenuButton
             isActive={pathname === item.href}
             onClick={closeMobileSidebar}
+            className="justify-between w-full" // Ensure button takes full width
           >
-            <span className="flex items-center gap-2"> {/* Ensure icon and title are grouped */}
+            <span className="flex items-center gap-2">
               {item.icon && <item.icon className="h-4 w-4" />}
               <span className="truncate">{item.title}</span>
             </span>
-            {shouldShowBadge && (
+            {shouldShowTopLevelBadge && (
               <span className="ml-auto inline-flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold text-destructive-foreground">
                 {displayCount}
               </span>
