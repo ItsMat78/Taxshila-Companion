@@ -1,3 +1,4 @@
+
 import {
   db,
   collection,
@@ -884,18 +885,38 @@ export async function sendGeneralAlert(title: string, message: string, type: Ale
     message,
     type,
     dateSent: Timestamp.fromDate(new Date()),
-    isRead: false,
-    studentId: null,
+    isRead: false, // Not directly relevant for general alert storage, but good for consistency
+    studentId: null, // Explicitly null for general alerts
   };
   const docRef = await addDoc(collection(db, ALERTS_COLLECTION), newAlertData);
   
-  // Firebase Function will listen to alertItems collection creation to send push notification
+  // Call Vercel API route to trigger push notification
+  try {
+    console.log("Calling API to send general alert notification for alert ID:", docRef.id);
+    await fetch('/api/send-alert-notification', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        alertId: docRef.id,
+        title,
+        message,
+        type,
+        // No studentId for general alerts
+      }),
+    });
+  } catch (apiError) {
+    console.error("Failed to trigger API for push notification (general alert):", apiError);
+    // Non-critical, alert is saved. Log or handle as needed.
+  }
 
   return {
     id: docRef.id,
-    ...newAlertData,
     studentId: undefined, 
+    title: newAlertData.title,
+    message: newAlertData.message,
+    type: newAlertData.type,
     dateSent: newAlertData.dateSent.toDate().toISOString(),
+    isRead: newAlertData.isRead,
   };
 }
 
@@ -911,23 +932,43 @@ export async function sendAlertToStudent(
   if (!student && type === 'feedback_response') {
       throw new Error(`Student with ID ${customStudentId} not found for feedback response.`);
   } else if (!student) {
-    console.warn(`Student with ID ${customStudentId} not found when sending targeted alert. Alert will be saved but might not reach user via direct push until token is available.`);
+    // Log a warning but proceed to save the alert. Notification might not be sent if no tokens.
+    console.warn(`Student with ID ${customStudentId} not found when sending targeted alert. Alert will be saved.`);
   }
 
   const newAlertDataForFirestore: any = {
-    studentId: customStudentId,
+    studentId: customStudentId, // Use the custom student ID here for targeting
     title,
     message,
     type,
     dateSent: Timestamp.fromDate(new Date()),
-    isRead: false,
+    isRead: false, // Default for new alerts
   };
   if (originalFeedbackId) newAlertDataForFirestore.originalFeedbackId = originalFeedbackId;
   if (originalFeedbackMessageSnippet) newAlertDataForFirestore.originalFeedbackMessageSnippet = originalFeedbackMessageSnippet;
 
   const docRef = await addDoc(collection(db, ALERTS_COLLECTION), newAlertDataForFirestore);
 
-  // Firebase Function will listen to alertItems collection creation to send push notification
+  // Call Vercel API route to trigger push notification
+  try {
+    console.log(`Calling API to send targeted alert notification for student ${customStudentId}, alert ID: ${docRef.id}`);
+    await fetch('/api/send-alert-notification', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        alertId: docRef.id,
+        studentId: customStudentId, // Pass studentId for targeting
+        title,
+        message,
+        type,
+        originalFeedbackId,
+        originalFeedbackMessageSnippet
+      }),
+    });
+  } catch (apiError) {
+    console.error(`Failed to trigger API for push notification (student ${customStudentId}):`, apiError);
+    // Non-critical, alert is saved. Log or handle as needed.
+  }
 
   const newAlertDataForReturn: AlertItem = {
     id: docRef.id,
