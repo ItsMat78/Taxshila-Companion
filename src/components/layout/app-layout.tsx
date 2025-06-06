@@ -16,7 +16,7 @@ import { TopProgressBar } from '@/components/shared/top-progress-bar';
 import { initPushNotifications } from '@/lib/firebase-messaging-client';
 import { getStudentByEmail } from '@/services/student-service';
 import { useToast } from '@/hooks/use-toast';
-import { useNotificationContext } from '@/contexts/notification-context'; // Import notification context
+import { useNotificationContext } from '@/contexts/notification-context';
 
 function NotificationIconArea() {
   const { user } = useAuth();
@@ -59,7 +59,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const [isRouteLoading, setIsRouteLoading] = React.useState(false);
   const prevPathnameRef = React.useRef(pathname);
   const { toast } = useToast();
-  const { refreshNotifications } = useNotificationContext(); // Get refreshNotifications
+  const { refreshNotifications } = useNotificationContext();
 
   React.useEffect(() => {
     if (!isAuthLoading && !user && !pathname.startsWith('/login')) {
@@ -101,7 +101,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     }
   }, [user, isAuthLoading]);
 
-  // Listen for foreground push notification events
+  // Listen for foreground push notification events (for member alerts)
   React.useEffect(() => {
     const handleForegroundMessage = (event: Event) => {
       const customEvent = event as CustomEvent;
@@ -111,14 +111,32 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           title: notificationPayload.title,
           description: notificationPayload.body,
         });
-        refreshNotifications(); // Refresh data when a new notification comes in
+        refreshNotifications();
       }
     };
     window.addEventListener('show-foreground-message', handleForegroundMessage);
     return () => {
       window.removeEventListener('show-foreground-message', handleForegroundMessage);
     };
-  }, [toast, refreshNotifications]); // Add refreshNotifications to dependency array
+  }, [toast, refreshNotifications]);
+
+  // Listen for new feedback submission events (for admin)
+  React.useEffect(() => {
+    const handleNewFeedback = (event: Event) => {
+      // const customEvent = event as CustomEvent; // feedbackId is in customEvent.detail.feedbackId
+      if (user && user.role === 'admin') {
+        toast({
+          title: "New Feedback Received",
+          description: "A member has submitted new feedback. Please check the feedback section.",
+        });
+        refreshNotifications();
+      }
+    };
+    window.addEventListener('new-feedback-submitted', handleNewFeedback);
+    return () => {
+      window.removeEventListener('new-feedback-submitted', handleNewFeedback);
+    };
+  }, [user, toast, refreshNotifications]);
 
 
   if (isAuthLoading) {

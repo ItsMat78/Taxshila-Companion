@@ -16,12 +16,12 @@ import {
   limit,
   serverTimestamp,
   writeBatch,
-  runTransaction, 
+  runTransaction,
   storage,
   storageRef,
   uploadBytesResumable,
   getDownloadURL,
-  arrayRemove // Added arrayRemove
+  arrayRemove
 } from '@/lib/firebase';
 import type { Student, Shift, FeeStatus, PaymentRecord, ActivityStatus, AttendanceRecord, FeeStructure, AttendanceImportData, PaymentImportData } from '@/types/student';
 import type { FeedbackItem, FeedbackType, FeedbackStatus, AlertItem } from '@/types/communication';
@@ -32,8 +32,8 @@ const STUDENTS_COLLECTION = "students";
 const ATTENDANCE_COLLECTION = "attendanceRecords";
 const FEEDBACK_COLLECTION = "feedbackItems";
 const ALERTS_COLLECTION = "alertItems";
-const APP_CONFIG_COLLECTION = "appConfiguration"; 
-const FEE_SETTINGS_DOC_ID = "feeSettings"; 
+const APP_CONFIG_COLLECTION = "appConfiguration";
+const FEE_SETTINGS_DOC_ID = "feeSettings";
 
 export const ALL_SEAT_NUMBERS: string[] = [];
 for (let i = 1; i <= 85; i++) {
@@ -115,7 +115,7 @@ const alertItemFromDoc = (docSnapshot: any): AlertItem => {
   const data = docSnapshot.data();
   return {
     ...data,
-    id: docSnapshot.id, 
+    id: docSnapshot.id,
     firestoreId: docSnapshot.id,
     studentId: data.studentId === null ? undefined : data.studentId,
     dateSent: data.dateSent instanceof Timestamp ? data.dateSent.toDate().toISOString() : data.dateSent,
@@ -297,7 +297,7 @@ export interface AddStudentData {
 
 export async function addStudent(studentData: AddStudentData): Promise<Student> {
   const customStudentId = await getNextCustomStudentId();
-  const fees = await getFeeStructure(); 
+  const fees = await getFeeStructure();
 
   const existingStudentById = await getStudentByCustomId(customStudentId);
   if (existingStudentById) {
@@ -332,7 +332,7 @@ export async function addStudent(studentData: AddStudentData): Promise<Student> 
     case "morning": amountDueForShift = `Rs. ${fees.morningFee}`; break;
     case "evening": amountDueForShift = `Rs. ${fees.eveningFee}`; break;
     case "fullday": amountDueForShift = `Rs. ${fees.fullDayFee}`; break;
-    default: amountDueForShift = "Rs. 0"; 
+    default: amountDueForShift = "Rs. 0";
   }
 
   const newStudentDataTypeConsistent: Omit<Student, 'firestoreId' | 'id'> = {
@@ -533,7 +533,7 @@ export async function deleteStudentCompletely(customStudentId: string): Promise<
   targetedAlertsSnapshot.forEach(docSnap => {
     batch.delete(doc(db, ALERTS_COLLECTION, docSnap.id));
   });
-  
+
   const feedbackQuery = query(collection(db, FEEDBACK_COLLECTION), where("studentId", "==", customStudentId));
   const feedbackSnapshot = await getDocs(feedbackQuery);
   feedbackSnapshot.forEach(docSnap => {
@@ -691,7 +691,7 @@ export async function recordStudentPayment(
         throw new Error("Invalid payment amount provided in string.");
     }
   }
-  
+
   if (paymentMethod !== "Admin Recorded" && amountToPayNumeric < (expectedMonthlyFee * numberOfMonthsPaid)) {
     // This condition might be too strict if allowing partial payments.
     // For now, if not admin recorded, it expects full payment for the number of months.
@@ -706,7 +706,7 @@ export async function recordStudentPayment(
   const newPaymentRecord: PaymentRecord = {
     paymentId: newPaymentId,
     date: format(today, 'yyyy-MM-dd'),
-    amount: `Rs. ${amountToPayNumeric}`, 
+    amount: `Rs. ${amountToPayNumeric}`,
     transactionId: newTransactionId,
     method: paymentMethod === "Admin Recorded" ? "Desk Payment" : paymentMethod,
   };
@@ -852,6 +852,12 @@ export async function submitFeedback(
     status: "Open" as FeedbackStatus,
   };
   const docRef = await addDoc(collection(db, FEEDBACK_COLLECTION), newFeedbackData);
+
+  // Dispatch custom event for admin notification
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('new-feedback-submitted', { detail: { feedbackId: docRef.id } }));
+  }
+
   return {
     id: docRef.id,
     ...newFeedbackData,
@@ -989,13 +995,13 @@ export async function markAlertAsRead(alertId: string, customStudentId: string):
     }
     const alertData = alertItemFromDoc(alertSnap);
 
-    if (alertData.studentId === customStudentId) { 
+    if (alertData.studentId === customStudentId) {
         if (!alertData.isRead) {
             await updateDoc(alertDocRef, { isRead: true });
             return { ...alertData, isRead: true };
         }
-        return alertData; 
-    } else if (!alertData.studentId) { 
+        return alertData;
+    } else if (!alertData.studentId) {
         const student = await getStudentByCustomId(customStudentId);
         if (student && student.firestoreId) {
             const studentDocRef = doc(db, STUDENTS_COLLECTION, student.firestoreId);
@@ -1008,7 +1014,7 @@ export async function markAlertAsRead(alertId: string, customStudentId: string):
                     readGeneralAlertIds: arrayUnion(alertId)
                 });
             }
-            return { ...alertData, isRead: true }; 
+            return { ...alertData, isRead: true };
         } else {
             throw new Error("Student not found to mark general alert as read.");
         }
@@ -1029,7 +1035,7 @@ export async function uploadProfilePictureToStorage(studentFirestoreId: string, 
   }
 
   const fileExtension = file.name.split('.').pop();
-  const fileName = `profilePicture.${fileExtension}`; 
+  const fileName = `profilePicture.${fileExtension}`;
   const imageRef = storageRef(storage, `profilePictures/${studentFirestoreId}/${fileName}`);
 
   return new Promise((resolve, reject) => {
@@ -1125,7 +1131,7 @@ export async function batchImportAttendance(recordsToImport: AttendanceImportDat
           errorCount++;
           continue;
       }
-      
+
       let checkInDateTime: Date;
       const timeRegex = /^\d{2}:\d{2}:\d{2}$/;
       if (timeRegex.test(record['Check-In Time'])) {
@@ -1152,7 +1158,7 @@ export async function batchImportAttendance(recordsToImport: AttendanceImportDat
           continue;
         }
       }
-      
+
       if (checkOutDateTime && checkOutDateTime <= checkInDateTime) {
         errors.push(`Row ${i+2}: Check-Out Time must be after Check-In Time for Student ID ${record['Student ID']}.`);
         errorCount++;
@@ -1162,16 +1168,16 @@ export async function batchImportAttendance(recordsToImport: AttendanceImportDat
       const newRecordRef = doc(collection(db, ATTENDANCE_COLLECTION));
       batch.set(newRecordRef, {
         studentId: record['Student ID'],
-        date: format(parsedDate, 'yyyy-MM-dd'), 
+        date: format(parsedDate, 'yyyy-MM-dd'),
         checkInTime: Timestamp.fromDate(checkInDateTime),
         checkOutTime: checkOutDateTime ? Timestamp.fromDate(checkOutDateTime) : null,
       });
       operationCount++;
       successCount++;
 
-      if (operationCount >= 499) { 
+      if (operationCount >= 499) {
         await batch.commit();
-        // batch = writeBatch(db); 
+        // batch = writeBatch(db);
         operationCount = 0;
       }
 
@@ -1210,7 +1216,7 @@ export async function batchImportPayments(recordsToImport: PaymentImportData[]):
         errorCount++;
         continue;
       }
-      
+
       let parsedDate: Date;
       if (isValid(parseISO(record['Date']))) {
           parsedDate = parseISO(record['Date']);
@@ -1238,7 +1244,7 @@ export async function batchImportPayments(recordsToImport: PaymentImportData[]):
         transactionId: newTransactionId,
         method: method as PaymentRecord['method'],
       };
-      
+
       const firestorePaymentRecord = {
           ...paymentRecord,
           date: Timestamp.fromDate(parsedDate)
@@ -1250,7 +1256,7 @@ export async function batchImportPayments(recordsToImport: PaymentImportData[]):
       });
       operationCount++;
       successCount++;
-      
+
       if (operationCount >= 499) {
         await batch.commit();
         // batch = writeBatch(db);
