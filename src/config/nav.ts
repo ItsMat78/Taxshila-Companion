@@ -87,7 +87,7 @@ export const mainNav: NavItem[] = [
     ]
   },
   {
-    title: 'Check Attendance', // Changed from "Check Student Attendance"
+    title: 'Check Attendance',
     href: '/attendance/calendar',
     icon: CalendarDays,
     roles: ['admin'],
@@ -208,7 +208,7 @@ export const mainNav: NavItem[] = [
   },
   {
     title: 'Rate Us',
-    href: 'https://g.page/r/CYj3qV43F1OaEBM/review', // Updated Rate Us link
+    href: 'https://g.page/r/CS-yYFo4JxNXEBM/review', // Updated Rate Us link
     icon: Star,
     roles: ['member'],
     external: true,
