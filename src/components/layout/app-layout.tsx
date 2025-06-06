@@ -12,7 +12,9 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useNotificationCounts } from '@/hooks/use-notification-counts'; 
 import { NotificationBadge } from '@/components/shared/notification-badge'; 
 import { cn } from '@/lib/utils';
-import { TopProgressBar } from '@/components/shared/top-progress-bar'; // Import TopProgressBar
+import { TopProgressBar } from '@/components/shared/top-progress-bar';
+import { initPushNotifications } from '@/lib/firebase-messaging-client'; // Import push init
+import { getStudentByEmail } from '@/services/student-service'; // To get student Firestore ID
 
 function NotificationIconArea() {
   const { user } = useAuth();
@@ -63,18 +65,42 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   }, [user, isAuthLoading, pathname, router]);
 
   React.useEffect(() => {
-    // On initial load, prevPathnameRef.current === pathname, so loader doesn't show.
-    // On subsequent route changes, this condition will be true.
     if (prevPathnameRef.current !== pathname) {
       setIsRouteLoading(true);
-      prevPathnameRef.current = pathname; // Update the ref to the new pathname
+      prevPathnameRef.current = pathname;
       const timer = setTimeout(() => {
         setIsRouteLoading(false);
-      }, 250); // Reduced duration to 250ms
-
-      return () => clearTimeout(timer); // Cleanup timer on unmount or if pathname changes again quickly
+      }, 250);
+      return () => clearTimeout(timer);
     }
   }, [pathname]);
+
+  // Initialize Push Notifications
+  React.useEffect(() => {
+    const setupPush = async () => {
+      if (user && user.role === 'member' && user.email && typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+        try {
+          // We need the student's Firestore ID to save the token
+          const student = await getStudentByEmail(user.email);
+          if (student?.firestoreId) {
+            console.log("AppLayout: Attempting to initialize push notifications for member:", student.studentId);
+            await initPushNotifications(student.firestoreId);
+          } else if (student) {
+             console.warn("AppLayout: Member found, but Firestore ID missing. Cannot init push.");
+          } else {
+             console.warn("AppLayout: Member record not found by email. Cannot init push.");
+          }
+        } catch (error) {
+          console.error("AppLayout: Error during push notification setup for member:", error);
+        }
+      }
+      // TODO: Handle push notification setup for admin users if needed.
+      // This would likely involve a different way to get their user ID/document for token storage.
+    };
+    if (!isAuthLoading && user) {
+      setupPush();
+    }
+  }, [user, isAuthLoading]);
 
 
   if (isAuthLoading) {

@@ -20,7 +20,8 @@ import {
   storage,
   storageRef,
   uploadBytesResumable,
-  getDownloadURL
+  getDownloadURL,
+  arrayRemove // Added arrayRemove
 } from '@/lib/firebase';
 import type { Student, Shift, FeeStatus, PaymentRecord, ActivityStatus, AttendanceRecord, FeeStructure, AttendanceImportData, PaymentImportData } from '@/types/student';
 import type { FeedbackItem, FeedbackType, FeedbackStatus, AlertItem } from '@/types/communication';
@@ -56,6 +57,7 @@ const studentFromDoc = (docSnapshot: any): Student => {
       ...p,
       date: p.date instanceof Timestamp ? format(p.date.toDate(), 'yyyy-MM-dd') : p.date,
     })),
+    fcmTokens: data.fcmTokens || [], // Ensure fcmTokens is an array
   } as Student;
 };
 
@@ -350,6 +352,7 @@ export async function addStudent(studentData: AddStudentData): Promise<Student> 
     profilePictureUrl: "https://placehold.co/200x200.png",
     paymentHistory: [],
     readGeneralAlertIds: [],
+    fcmTokens: [], // Initialize fcmTokens
   };
 
   const firestoreReadyData: any = {
@@ -367,6 +370,7 @@ export async function addStudent(studentData: AddStudentData): Promise<Student> 
     profilePictureUrl: newStudentDataTypeConsistent.profilePictureUrl,
     paymentHistory: newStudentDataTypeConsistent.paymentHistory,
     readGeneralAlertIds: newStudentDataTypeConsistent.readGeneralAlertIds,
+    fcmTokens: newStudentDataTypeConsistent.fcmTokens, // Add fcmTokens to Firestore data
     email: newStudentDataTypeConsistent.email || null,
     idCardFileName: newStudentDataTypeConsistent.idCardFileName || null,
   };
@@ -422,6 +426,10 @@ export async function updateStudent(customStudentId: string, studentUpdateData: 
   }
   if (payload.hasOwnProperty('idCardFileName') && (payload.idCardFileName === undefined || payload.idCardFileName === "")) {
     payload.idCardFileName = null;
+  }
+  // Do not automatically convert fcmTokens to Timestamp
+  if (payload.fcmTokens && Array.isArray(payload.fcmTokens)) {
+    // Ensure it's just an array of strings if it's being updated directly
   }
 
 
@@ -1287,6 +1295,27 @@ export async function getAllStudentsWithPaymentHistory(): Promise<Student[]> {
   return getAllStudents();
 }
 
+// --- FCM Token Management ---
+export async function saveStudentFCMToken(studentFirestoreId: string, token: string): Promise<void> {
+  if (!studentFirestoreId) {
+    console.warn("Cannot save FCM token without student Firestore ID.");
+    return;
+  }
+  const studentDocRef = doc(db, STUDENTS_COLLECTION, studentFirestoreId);
+  try {
+    await updateDoc(studentDocRef, {
+      fcmTokens: arrayUnion(token) // Add new token to the array
+    });
+    console.log("FCM token saved for student:", studentFirestoreId, token);
+  } catch (error) {
+    console.error("Error saving FCM token for student:", studentFirestoreId, error);
+    // Optional: Consider removing the token if it's known to be invalid or causing issues,
+    // but be careful with this logic to avoid removing valid tokens.
+    // Example: await updateDoc(studentDocRef, { fcmTokens: arrayRemove(token) });
+  }
+}
+// TODO: Add a function to remove an FCM token if it becomes invalid (e.g., on 'messaging/invalid-registration-token' error from FCM server)
+
 
 declare module '@/types/student' {
   interface Student {
@@ -1303,6 +1332,3 @@ declare module '@/types/communication' {
     firestoreId?: string;
   }
 }
-
-
-    
