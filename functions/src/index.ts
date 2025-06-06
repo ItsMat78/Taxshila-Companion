@@ -49,7 +49,7 @@ export const sendAlertNotification = functions.firestore
         if (student.fcmTokens && student.fcmTokens.length > 0) {
           tokens = student.fcmTokens;
           functions.logger.log(
-            `Targeted alert for ${alertData.studentId}. Tokens: ${tokens.length}`
+            `Targeted for ${alertData.studentId}. Tokens: ${tokens.length}`
           );
         } else {
           functions.logger.log(
@@ -92,7 +92,7 @@ export const sendAlertNotification = functions.firestore
         alertId: alertId,
         alertType: alertData.type,
         ...(alertData.originalFeedbackId &&
-          {originalFeedbackId:alertData.originalFeedbackId}),
+          {originalFeedbackId: alertData.originalFeedbackId}),
         ...(alertData.originalFeedbackMessageSnippet &&
           {originalFeedbackMessageSnippet:
             alertData.originalFeedbackMessageSnippet}),
@@ -105,14 +105,18 @@ export const sendAlertNotification = functions.firestore
     );
 
     try {
-      const response = await admin.messaging().sendToDevice(uniqueTokens, payload);
+      const response = await admin.messaging().sendToDevice(
+        uniqueTokens,
+        payload
+      );
       functions.logger.log("FCM send response:", response);
 
       response.results.forEach((result, index) => {
         const error = result.error;
         if (error) {
           functions.logger.error(
-            "FCM Fail:", uniqueTokens[index].substring(0,10)+"...", error.code
+            "FCM Fail:", uniqueTokens[index].substring(0, 10) + "...",
+            error.code
           );
           if (
             error.code === "messaging/invalid-registration-token" ||
@@ -128,4 +132,3 @@ export const sendAlertNotification = functions.firestore
       return null;
     }
   });
-
