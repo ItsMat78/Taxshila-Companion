@@ -10,17 +10,10 @@ export const metadata: Metadata = {
   title: 'Taxshila Companion',
   description: 'Your companion app for Taxshila study hall.',
   manifest: '/manifest.json',
-  themeColor: '#30475E', // Matches primary color
+  themeColor: '#30475E',
   icons: {
-    icon: [
-      { url: '/favicon.ico', type: 'image/x-icon', sizes: 'any' },
-      { url: '/favicon-16x16.png', type: 'image/png', sizes: '16x16' },
-      { url: '/favicon-32x32.png', type: 'image/png', sizes: '32x32' },
-    ],
-    apple: [
-      { url: '/apple-touch-icon.png', type: 'image/png' },
-    ],
-    shortcut: '/favicon.ico',
+    icon: '/favicon.ico', // Directly specify favicon.ico
+    apple: '/apple-touch-icon.png', // Keep Apple touch icon
   },
 };
 
