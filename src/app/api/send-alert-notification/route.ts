@@ -1,15 +1,13 @@
 
 import { NextResponse, type NextRequest } from 'next/server';
 import * as admin from 'firebase-admin';
-// import { Timestamp } from 'firebase-admin/firestore'; // Not strictly needed here unless constructing new Timestamps
 
-// Define types for expected request and Firestore data
 interface AlertPayload {
   alertId: string;
   title: string;
   message: string;
   type: string;
-  studentId?: string; // For targeted alerts
+  studentId?: string; 
   originalFeedbackId?: string;
   originalFeedbackMessageSnippet?: string;
 }
@@ -17,22 +15,16 @@ interface AlertPayload {
 interface StudentDoc {
   studentId: string;
   fcmTokens?: string[];
-  // other fields
 }
 
-// Initialize Firebase Admin SDK
-// Ensure your service account JSON is handled via environment variables on Vercel
-// FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY
-// For FIREBASE_PRIVATE_KEY, when pasting into Vercel, ensure newlines `\n` are preserved literally.
 try {
   if (!admin.apps.length) {
     const privateKeyRaw = process.env.FIREBASE_PRIVATE_KEY;
     if (!privateKeyRaw) {
       throw new Error("FIREBASE_PRIVATE_KEY environment variable is not set.");
     }
-    // Replace literal \n with actual newlines for the private key
     const privateKey = privateKeyRaw.replace(/\\n/g, '\n');
-
+    console.log("API Route: Attempting to initialize Firebase Admin SDK...");
     admin.initializeApp({
       credential: admin.credential.cert({
         projectId: process.env.FIREBASE_PROJECT_ID,
@@ -40,40 +32,44 @@ try {
         privateKey: privateKey,
       }),
     });
-    console.log("Firebase Admin SDK initialized in API route /api/send-alert-notification.");
+    console.log("API Route: Firebase Admin SDK initialized successfully.");
   }
 } catch (e: any) {
-  console.error('Firebase Admin SDK initialization error in API route /api/send-alert-notification:', e.message);
-  // Do not throw here, allow the POST handler to respond with an error if SDK isn't ready
+  console.error('API Route: Firebase Admin SDK initialization error:', e.message);
 }
 
 const getDb = () => {
   if (!admin.apps.length) {
-    // This case should ideally not be hit if initialization was successful.
-    // Log an error and potentially re-attempt initialization or throw a more specific error.
-    console.error("Firebase Admin SDK not initialized when getDb() was called.");
-    // You might re-attempt initialization here or throw if it's critical.
-    // For now, we'll let it proceed and Firestore calls will likely fail if not initialized.
+    console.error("API Route: Firebase Admin SDK not initialized when getDb() was called.");
+    throw new Error("Firebase Admin SDK not initialized.");
   }
   return admin.firestore();
 };
 
 
 export async function POST(request: NextRequest) {
+  console.log("API Route: /api/send-alert-notification POST request received.");
   if (!admin.apps.length) {
-    console.error("API route called but Firebase Admin SDK is not initialized.");
-    return NextResponse.json({ success: false, error: "Firebase Admin SDK not initialized. Check server logs." }, { status: 500 });
+    console.error("API Route: Firebase Admin SDK is not initialized. Cannot process request.");
+    return NextResponse.json({ success: false, error: "Firebase Admin SDK not initialized on server. Check Vercel logs and environment variables." }, { status: 500 });
   }
+  
   const db = getDb();
+  let alertPayload: AlertPayload;
 
   try {
-    const alertPayload = (await request.json()) as AlertPayload;
-    console.log("API route /api/send-alert-notification received alert payload:", alertPayload);
+    alertPayload = (await request.json()) as AlertPayload;
+    console.log("API Route: Received alert payload:", JSON.stringify(alertPayload));
+  } catch (parseError: any) {
+    console.error("API Route: Error parsing request JSON:", parseError.message);
+    return NextResponse.json({ success: false, error: "Invalid request body." }, { status: 400 });
+  }
 
+  try {
     let tokens: string[] = [];
 
     if (alertPayload.studentId) {
-      // Targeted alert
+      console.log(`API Route: Targeted alert for student ${alertPayload.studentId}. Fetching token...`);
       const studentQuery = await db
         .collection("students")
         .where("studentId", "==", alertPayload.studentId)
@@ -85,16 +81,16 @@ export async function POST(request: NextRequest) {
         const student = studentDoc.data() as StudentDoc;
         if (student.fcmTokens && student.fcmTokens.length > 0) {
           tokens = student.fcmTokens;
-          console.log(`Targeted alert for student ${alertPayload.studentId}. Tokens found:`, tokens.length);
+          console.log(`API Route: Tokens found for student ${alertPayload.studentId}: ${tokens.length}`);
         } else {
-          console.log(`Student ${alertPayload.studentId} found, but no FCM tokens.`);
+          console.log(`API Route: Student ${alertPayload.studentId} found, but no FCM tokens.`);
         }
       } else {
-        console.log(`Student ${alertPayload.studentId} not found for targeted alert.`);
-        return NextResponse.json({ message: `Student ${alertPayload.studentId} not found, notification not sent.` }, { status: 200 });
+        console.log(`API Route: Student ${alertPayload.studentId} not found for targeted alert.`);
+        return NextResponse.json({ success: true, message: `Student ${alertPayload.studentId} not found, notification not sent.` }, { status: 200 });
       }
     } else {
-      // General alert
+      console.log("API Route: General alert. Fetching tokens for all students...");
       const allStudentsSnapshot = await db.collection("students").get();
       allStudentsSnapshot.forEach((studentDoc) => {
         const student = studentDoc.data() as StudentDoc;
@@ -102,21 +98,22 @@ export async function POST(request: NextRequest) {
           tokens.push(...student.fcmTokens);
         }
       });
-      console.log("General alert. Total tokens found:", tokens.length);
+      console.log("API Route: Total tokens found for general alert:", tokens.length);
     }
 
     if (tokens.length === 0) {
-      console.log("No FCM tokens found to send notification to.");
-      return NextResponse.json({ message: "No FCM tokens found for any recipients." }, { status: 200 });
+      console.log("API Route: No FCM tokens found to send notification to.");
+      return NextResponse.json({ success: true, message: "No FCM tokens found for any recipients." }, { status: 200 });
     }
 
     const uniqueTokens = [...new Set(tokens)];
+    console.log("API Route: Unique tokens to send to:", uniqueTokens.length);
 
     const fcmPayloadData: { [key: string]: string } = {
       title: alertPayload.title,
       body: alertPayload.message,
-      icon: "/logo.png",
-      url: "/member/alerts",
+      icon: "/logo.png", // Ensure this path is accessible by the service worker
+      url: "/member/alerts", // Path for your app to open on click
       alertId: alertPayload.alertId,
       alertType: alertPayload.type,
     };
@@ -127,50 +124,26 @@ export async function POST(request: NextRequest) {
         fcmPayloadData.originalFeedbackMessageSnippet = alertPayload.originalFeedbackMessageSnippet;
     }
     
-    const fcmMessagePayload = {
-      data: fcmPayloadData,
-      // notification: { // Optional: if you want FCM to display notification directly when app is in background
-      //   title: alertPayload.title,
-      //   body: alertPayload.message,
-      //   icon: "/logo.png",
-      // }
-    };
-
-    console.log("Sending FCM message via Admin SDK to", uniqueTokens.length, "tokens. Payload (data part):", JSON.stringify(fcmPayloadData).substring(0,100) + "...");
+    console.log("API Route: Sending FCM message via Admin SDK. Data payload:", JSON.stringify(fcmPayloadData));
     
-    // Using sendEachForMulticast for better error handling per token
     const response = await admin.messaging().sendEachForMulticast({
         tokens: uniqueTokens,
         data: fcmPayloadData,
-        // notification: fcmMessagePayload.notification // if you use it
     });
     
-    console.log("FCM send response: Successes:", response.successCount, "Failures:", response.failureCount);
+    console.log("API Route: FCM send response: Successes:", response.successCount, "Failures:", response.failureCount);
     
-    // Basic token cleanup (can be more sophisticated if needed)
-    const tokensToRemovePromises: Promise<void>[] = [];
     response.responses.forEach((result, index) => {
         if (!result.success) {
             const errorCode = result.error?.code;
-            console.error(`Failed to send to token (index ${index}): ${uniqueTokens[index].substring(0,10)}... Error: ${errorCode} - ${result.error?.message}`);
-            if (
-              errorCode === 'messaging/invalid-registration-token' ||
-              errorCode === 'messaging/registration-token-not-registered'
-            ) {
-              // This token is invalid, find the student and remove it
-              // This is a simplified example; a more robust solution might involve a specific function
-              // to find and remove the token from the student's fcmTokens array.
-              // For now, we'll just log it.
-              console.log(`Consider removing invalid token: ${uniqueTokens[index]}`);
-            }
+            console.error(`API Route: Failed to send to token (index ${index}): ${uniqueTokens[index].substring(0,10)}... Error: ${errorCode} - ${result.error?.message}`);
         }
     });
-    // await Promise.all(tokensToRemovePromises); // If you implement actual removal
 
-    return NextResponse.json({ success: true, message: `Notifications sent: ${response.successCount}, Failed: ${response.failureCount}.` });
+    return NextResponse.json({ success: true, message: `Notifications attempt summary: Successes: ${response.successCount}, Failures: ${response.failureCount}.` });
 
   } catch (error: any) {
-    console.error("Error in /api/send-alert-notification:", error.message, error.stack);
-    return NextResponse.json({ success: false, error: error.message || "An unexpected error occurred." }, { status: 500 });
+    console.error("API Route: Error processing send-alert-notification:", error.message, error.stack);
+    return NextResponse.json({ success: false, error: error.message || "An unexpected server error occurred." }, { status: 500 });
   }
 }
