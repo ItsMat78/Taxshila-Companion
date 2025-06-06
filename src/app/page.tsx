@@ -45,7 +45,7 @@ type CheckedInStudentInfo = Student & {
   isOutsideShift?: boolean;
 };
 
-const staticAdminActionTiles = [
+const staticAdminActionTilesConfig = [
     { baseTitle: "Manage Students", icon: Users, description: "View, edit student details.", href: "/students/list" },
     { baseTitle: "Register Student", icon: UserPlus, description: "Add new students to system.", href: "/students/register" },
     { baseTitle: "Attendance Overview", icon: CalendarDays, description: "Check student attendance logs.", href: "/attendance/calendar" },
@@ -290,7 +290,7 @@ function AdminDashboardContent() {
 
       <h2 className="text-lg font-headline font-semibold tracking-tight mb-4">Quick Actions</h2>
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-        {staticAdminActionTiles.map((tileConfig) => {
+        {staticAdminActionTilesConfig.map((tileConfig) => {
           const Icon = tileConfig.icon;
           let currentTitle = tileConfig.baseTitle;
           let hasNewBadge = false;
@@ -376,3 +376,5 @@ export default function MainPage() {
       </div>
   );
 }
+
+    
