@@ -7,8 +7,10 @@ import { saveStudentFCMToken } from '@/services/student-service';
 // !!! CRITICAL: REPLACE THIS VAPID_KEY WITH YOUR ACTUAL FIREBASE PROJECT'S VAPID KEY !!!
 // Find this in: Firebase Project settings > Cloud Messaging > Web Push certificates (Key pair)
 // YOUR APP WILL NOT RECEIVE PUSH NOTIFICATIONS WITHOUT THIS KEY BEING CORRECT.
+// DO NOT LEAVE THIS AS A PLACEHOLDER.
 // ==========================================================================================
-const VAPID_KEY = "BLAPRl0mUm8t7H6QXbenonbltEVU51wxXfwQN8Aw0jCdPbBE8XIDS7u41wpfQAWb7NTsTjU8zp7nb6D8nO1Dt_c"; // <<< --- !!! REPLACE THIS! !!! --- >>>
+export const VAPID_KEY_FROM_CLIENT_LIB = "BLAPRl0mUm8t7H6QXbenonbltEVU51wxXfwQN8Aw0jCdPbBE8XIDS7u41wpfQAWb7NTsTjU8zp7nb6D8nO1Dt_c"; // <<< --- !!! REPLACE THIS! !!! --- >>>
+// Note: Renamed to VAPID_KEY_FROM_CLIENT_LIB to avoid confusion if another VAPID_KEY exists elsewhere
 
 let messagingInstance = null;
 try {
@@ -74,21 +76,19 @@ const getFCMToken = async (registration: ServiceWorkerRegistration, studentFires
      console.warn("[FCM Client] Messaging instance not available for getFCMToken.");
      return null;
   }
-  if (!VAPID_KEY || VAPID_KEY.includes("REPLACE THIS")) {
+  if (!VAPID_KEY_FROM_CLIENT_LIB || VAPID_KEY_FROM_CLIENT_LIB.includes("REPLACE THIS")) {
     console.error("[FCM Client] VAPID_KEY IS NOT SET OR IS STILL A PLACEHOLDER. PUSH NOTIFICATIONS WILL FAIL. Please update it in src/lib/firebase-messaging-client.ts.");
-    // Consider showing a more user-facing error or alert if this is a critical part of your app's UX
-    // alert("Critical setup error: Push notification key missing. Contact support.");
     return null;
   }
-  console.log("[FCM Client] Attempting to get FCM token. VAPID_KEY is present (ensure it's correct).");
+  console.log("[FCM Client] Attempting to get FCM token. VAPID_KEY is present (ensure it's correct):", VAPID_KEY_FROM_CLIENT_LIB ? 'Yes' : 'NO (THIS IS A PROBLEM)');
 
   try {
     const currentToken = await getToken(messagingInstance, {
-      vapidKey: VAPID_KEY,
+      vapidKey: VAPID_KEY_FROM_CLIENT_LIB,
       serviceWorkerRegistration: registration,
     });
     if (currentToken) {
-      console.log('[FCM Client] FCM Token obtained:', currentToken);
+      console.log('[FCM Client] FCM Token obtained:', currentToken.substring(0,15) + "..."); // Log only prefix
       if (studentFirestoreId) {
         console.log('[FCM Client] Saving token for studentFirestoreId:', studentFirestoreId);
         await saveStudentFCMToken(studentFirestoreId, currentToken);

@@ -13,13 +13,12 @@ importScripts('https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-com
 // configuration. You can find this in your Firebase project settings.
 // =====================================================================================
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY", // REPLACE THIS
-  authDomain: "YOUR_AUTH_DOMAIN", // REPLACE THIS
-  projectId: "YOUR_PROJECT_ID", // REPLACE THIS
-  storageBucket: "YOUR_STORAGE_BUCKET", // REPLACE THIS
-  messagingSenderId: "YOUR_MESSAGING_SENDER_ID", // REPLACE THIS
-  appId: "YOUR_APP_ID", // REPLACE THIS
-  // measurementId: "YOUR_MEASUREMENT_ID" // Optional, if you use Analytics
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
 // Initialize Firebase
