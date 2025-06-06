@@ -49,8 +49,7 @@ export const sendAlertNotification = functions.firestore
         if (student.fcmTokens && student.fcmTokens.length > 0) {
           tokens = student.fcmTokens;
           functions.logger.log(
-            `Targeted alert for student ${alertData.studentId}. `,
-            `Found tokens: ${tokens.length}`
+            `Targeted alert for ${alertData.studentId}. Tokens: ${tokens.length}`
           );
         } else {
           functions.logger.log(
@@ -93,17 +92,16 @@ export const sendAlertNotification = functions.firestore
         alertId: alertId,
         alertType: alertData.type,
         ...(alertData.originalFeedbackId &&
-          {originalFeedbackId: alertData.originalFeedbackId}),
+          {originalFeedbackId:alertData.originalFeedbackId}),
         ...(alertData.originalFeedbackMessageSnippet &&
-          {originalFeedbackMessageSnippet: alertData.originalFeedbackMessageSnippet}),
+          {originalFeedbackMessageSnippet:
+            alertData.originalFeedbackMessageSnippet}),
       },
     };
 
     functions.logger.log(
-      "Sending FCM message with payload:",
-      JSON.stringify(payload),
-      "to tokens count:",
-      uniqueTokens.length
+      "Sending FCM. Payload:", JSON.stringify(payload).substring(0, 30) + "...",
+      "Tokens count:", uniqueTokens.length
     );
 
     try {
@@ -114,10 +112,7 @@ export const sendAlertNotification = functions.firestore
         const error = result.error;
         if (error) {
           functions.logger.error(
-            "Failure sending to token:",
-            uniqueTokens[index],
-            "Error:",
-            error.code
+            "FCM Fail:", uniqueTokens[index].substring(0,10)+"...", error.code
           );
           if (
             error.code === "messaging/invalid-registration-token" ||
@@ -133,3 +128,4 @@ export const sendAlertNotification = functions.firestore
       return null;
     }
   });
+
