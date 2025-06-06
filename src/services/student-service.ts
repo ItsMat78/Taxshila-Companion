@@ -834,28 +834,6 @@ export async function getMonthlyRevenueHistory(): Promise<MonthlyRevenueData[]> 
     .sort((a, b) => compareDesc(a.monthDate, b.monthDate));
 }
 
-// Helper function to call the Vercel API route for sending notifications
-async function triggerNotificationAPI(alertId: string, targetStudentId?: string) {
-  try {
-    const response = await fetch('/api/send-alert-notification', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ alertId, targetStudentId }),
-    });
-    if (!response.ok) {
-      const errorData = await response.json();
-      console.error('Failed to trigger notification API:', response.status, errorData.error);
-    } else {
-      const result = await response.json();
-      console.log('Notification API triggered successfully:', result);
-    }
-  } catch (error) {
-    console.error('Error calling notification API:', error);
-  }
-}
-
 // --- Communication Service Functions (Feedback & Alerts) ---
 export async function submitFeedback(
   studentId: string | undefined,
@@ -906,18 +884,17 @@ export async function sendGeneralAlert(title: string, message: string, type: Ale
     message,
     type,
     dateSent: Timestamp.fromDate(new Date()),
-    isRead: false, // isRead for general alerts is managed per-student in their document
-    studentId: null, // Explicitly null for general alerts
+    isRead: false,
+    studentId: null,
   };
   const docRef = await addDoc(collection(db, ALERTS_COLLECTION), newAlertData);
   
-  // After saving, trigger the notification API
-  triggerNotificationAPI(docRef.id); // No targetStudentId for general alerts
+  // Firebase Function will listen to alertItems collection creation to send push notification
 
   return {
     id: docRef.id,
     ...newAlertData,
-    studentId: undefined, // Consistent with AlertItem type
+    studentId: undefined, 
     dateSent: newAlertData.dateSent.toDate().toISOString(),
   };
 }
@@ -934,8 +911,7 @@ export async function sendAlertToStudent(
   if (!student && type === 'feedback_response') {
       throw new Error(`Student with ID ${customStudentId} not found for feedback response.`);
   } else if (!student) {
-    // For other types, maybe proceed but log a warning or handle as needed
-    console.warn(`Student with ID ${customStudentId} not found when sending targeted alert. Alert will be saved but might not reach user.`);
+    console.warn(`Student with ID ${customStudentId} not found when sending targeted alert. Alert will be saved but might not reach user via direct push until token is available.`);
   }
 
   const newAlertDataForFirestore: any = {
@@ -944,15 +920,14 @@ export async function sendAlertToStudent(
     message,
     type,
     dateSent: Timestamp.fromDate(new Date()),
-    isRead: false, // isRead for targeted alerts is on the alert document itself
+    isRead: false,
   };
   if (originalFeedbackId) newAlertDataForFirestore.originalFeedbackId = originalFeedbackId;
   if (originalFeedbackMessageSnippet) newAlertDataForFirestore.originalFeedbackMessageSnippet = originalFeedbackMessageSnippet;
 
   const docRef = await addDoc(collection(db, ALERTS_COLLECTION), newAlertDataForFirestore);
 
-  // After saving, trigger the notification API
-  triggerNotificationAPI(docRef.id, customStudentId);
+  // Firebase Function will listen to alertItems collection creation to send push notification
 
   const newAlertDataForReturn: AlertItem = {
     id: docRef.id,
