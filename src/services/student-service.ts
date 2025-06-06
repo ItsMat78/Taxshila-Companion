@@ -49,10 +49,8 @@ interface AdminUserFirestore {
 
 
 export const ALL_SEAT_NUMBERS: string[] = [];
-for (let i = 1; i <= 85; i++) {
-  if (i !== 17) {
-    ALL_SEAT_NUMBERS.push(String(i));
-  }
+for (let i = 1; i <= 83; i++) {
+    ALL_SEAT_NUMBERS.push(String(i));  
 }
 ALL_SEAT_NUMBERS.sort((a, b) => parseInt(a) - parseInt(b));
 
