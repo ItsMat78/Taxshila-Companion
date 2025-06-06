@@ -6,16 +6,17 @@ import Link from 'next/link';
 import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar';
 import { AppSidebarContent } from './app-sidebar-content';
 import { Button } from '@/components/ui/button';
-import { PanelLeft, Inbox, Bell, Loader2 } from 'lucide-react'; 
+import { PanelLeft, Inbox, Bell, Loader2 } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useNotificationCounts } from '@/hooks/use-notification-counts'; 
-import { NotificationBadge } from '@/components/shared/notification-badge'; 
+import { useNotificationCounts } from '@/hooks/use-notification-counts';
+import { NotificationBadge } from '@/components/shared/notification-badge';
 import { cn } from '@/lib/utils';
 import { TopProgressBar } from '@/components/shared/top-progress-bar';
 import { initPushNotifications } from '@/lib/firebase-messaging-client';
 import { getStudentByEmail } from '@/services/student-service';
-import { useToast } from '@/hooks/use-toast'; // Import useToast
+import { useToast } from '@/hooks/use-toast';
+import { useNotificationContext } from '@/contexts/notification-context'; // Import notification context
 
 function NotificationIconArea() {
   const { user } = useAuth();
@@ -27,7 +28,7 @@ function NotificationIconArea() {
   }
 
   let href = "/";
-  let IconComponent = Inbox; 
+  let IconComponent = Inbox;
 
   if (user.role === 'admin') {
     href = "/admin/feedback";
@@ -46,8 +47,8 @@ function NotificationIconArea() {
       </Link>
     );
   }
-  
-  return null; 
+
+  return null;
 }
 
 
@@ -57,8 +58,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const [isRouteLoading, setIsRouteLoading] = React.useState(false);
   const prevPathnameRef = React.useRef(pathname);
-  const { toast } = useToast(); // Initialize useToast
-
+  const { toast } = useToast();
+  const { refreshNotifications } = useNotificationContext(); // Get refreshNotifications
 
   React.useEffect(() => {
     if (!isAuthLoading && !user && !pathname.startsWith('/login')) {
@@ -110,13 +111,14 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           title: notificationPayload.title,
           description: notificationPayload.body,
         });
+        refreshNotifications(); // Refresh data when a new notification comes in
       }
     };
     window.addEventListener('show-foreground-message', handleForegroundMessage);
     return () => {
       window.removeEventListener('show-foreground-message', handleForegroundMessage);
     };
-  }, [toast]); // Add toast to dependency array
+  }, [toast, refreshNotifications]); // Add refreshNotifications to dependency array
 
 
   if (isAuthLoading) {
@@ -128,9 +130,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       </div>
     );
   }
-  
+
   if (!user && !pathname.startsWith('/login')) {
-    return null; 
+    return null;
   }
 
   if (pathname.startsWith('/login')) {
@@ -141,7 +143,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       </>
     );
   }
-  
+
   return (
     <SidebarProvider defaultOpen>
       <TopProgressBar isLoading={isRouteLoading} />

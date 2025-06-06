@@ -87,7 +87,7 @@ function AlertDetailsDialog({ isOpen, onClose, alertItem }: AlertDetailsDialogPr
 export default function MemberAlertsPage() {
   const { user } = useAuth();
   const { toast } = useToast();
-  const { refreshNotifications } = useNotificationContext();
+  const { refreshNotifications, refreshKey } = useNotificationContext(); // Get refreshKey
   const [alertsList, setAlertsList] = React.useState<AlertItem[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [studentId, setStudentId] = React.useState<string | null>(null);
@@ -97,23 +97,23 @@ export default function MemberAlertsPage() {
 
   React.useEffect(() => {
     if (user?.email) {
-      setIsLoading(true); 
-      setStudentId(null); 
-      setAlertsList([]);  
+      setIsLoading(true);
+      setStudentId(null);
+      setAlertsList([]);
       getStudentByEmail(user.email)
         .then(student => {
           if (student) {
-            setStudentId(student.studentId); 
+            setStudentId(student.studentId);
           } else {
             toast({ title: "Error", description: "Could not find your student record.", variant: "destructive" });
-            setIsLoading(false); 
+            setIsLoading(false);
           }
         })
         .catch(error => {
           toast({ title: "Error", description: "Failed to fetch your details.", variant: "destructive" });
-          setIsLoading(false); 
+          setIsLoading(false);
         });
-    } else if (!user) { 
+    } else if (!user) {
       setStudentId(null);
       setAlertsList([]);
       setIsLoading(false);
@@ -127,17 +127,17 @@ export default function MemberAlertsPage() {
       setAlertsList(fetchedAlerts);
     } catch (error) {
       toast({ title: "Error", description: "Could not load alerts.", variant: "destructive" });
-      setAlertsList([]); 
+      setAlertsList([]);
     }
-  }, [toast]); 
+  }, [toast]);
 
   React.useEffect(() => {
     if (studentId) {
       fetchAlerts(studentId).finally(() => {
-          setIsLoading(false); 
+          setIsLoading(false);
       });
     }
-  }, [studentId, fetchAlerts]);
+  }, [studentId, fetchAlerts, refreshKey]); // Add refreshKey to dependency array
 
 
   const handleOpenAlertDetails = async (alertItem: AlertItem) => {
@@ -145,9 +145,9 @@ export default function MemberAlertsPage() {
     setIsAlertDetailsOpen(true);
     if (!alertItem.isRead && studentId && alertItem.id) { // Ensure alertItem.id is present
       try {
-        await markAlertAsRead(alertItem.id, studentId); 
-        await fetchAlerts(studentId); 
-        refreshNotifications(); 
+        await markAlertAsRead(alertItem.id, studentId);
+        await fetchAlerts(studentId);
+        refreshNotifications();
       } catch (error) {
         toast({ title: "Error", description: "Could not mark alert as read.", variant: "destructive" });
       }
@@ -169,8 +169,8 @@ export default function MemberAlertsPage() {
     let badgeColorClass: string;
     let badgeLabel: string;
 
-    const mainIconBaseClasses = "h-5 w-5"; 
-    const badgeIconBaseClasses = "h-3 w-3"; 
+    const mainIconBaseClasses = "h-5 w-5";
+    const badgeIconBaseClasses = "h-3 w-3";
 
     if (!alert.isRead) {
       cardClasses += " border-primary/50 ring-1 ring-primary/30";
@@ -225,7 +225,7 @@ export default function MemberAlertsPage() {
   return (
     <>
       <PageTitle title="Notifications & Alerts" description="Stay updated with important announcements from the library." />
-      
+
       {alertsList.length === 0 ? (
         <Card className="shadow-lg">
           <CardContent className="pt-6 flex flex-col items-center justify-center text-center">
@@ -245,14 +245,14 @@ export default function MemberAlertsPage() {
             }
             const { mainIcon, cardClasses, titleClasses, badgeColorClass, badgeLabel, badgeIconElement } = getAlertInfo(alert);
             return (
-              <Card 
-                key={alert.id} 
+              <Card
+                key={alert.id}
                 className={cardClasses}
                 onClick={() => handleOpenAlertDetails(alert)}
               >
                 <CardHeader className="pb-3">
-                  <div className="flex items-start justify-between"> 
-                    <div className="flex items-start space-x-3"> 
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-start space-x-3">
                       <div className="flex-shrink-0 pt-1 relative">
                         {React.cloneElement(mainIcon, { className: cn(mainIcon.props.className, "mr-2")})}
                         {!alert.isRead && (
@@ -293,4 +293,3 @@ export default function MemberAlertsPage() {
     </>
   );
 }
-
