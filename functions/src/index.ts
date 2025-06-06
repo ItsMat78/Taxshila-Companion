@@ -2,17 +2,18 @@
 import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
 
+// Initialize Firebase Admin SDK
 admin.initializeApp();
 
 const db = admin.firestore();
 
 interface AlertItem {
   id: string;
-  studentId?: string;
+  studentId?: string; // Optional: for targeted alerts
   title: string;
   message: string;
   type: "info" | "warning" | "closure" | "feedback_response";
-  dateSent: admin.firestore.Timestamp;
+  dateSent: admin.firestore.Timestamp; // Firestore Timestamp
   isRead?: boolean;
   originalFeedbackId?: string;
   originalFeedbackMessageSnippet?: string;
@@ -20,9 +21,10 @@ interface AlertItem {
 
 interface Student {
   studentId: string;
-  fcmTokens?: string[];
+  fcmTokens?: string[]; // Array of FCM registration tokens
 }
 
+// Function to send notification for a new alert
 export const sendAlertNotification = functions.firestore
   .document("alertItems/{alertId}")
   .onCreate(async (snapshot, context) => {
@@ -34,6 +36,7 @@ export const sendAlertNotification = functions.firestore
     let tokens: string[] = [];
 
     if (alertData.studentId) {
+      // Targeted alert
       const studentQuery = await db
         .collection("students")
         .where("studentId", "==", alertData.studentId)
@@ -82,7 +85,7 @@ export const sendAlertNotification = functions.firestore
     const uniqueTokens = [...new Set(tokens)];
 
     const payload = {
-      data:{
+      data: {
         title: alertData.title,
         body: alertData.message,
         icon: "/logo.png",
@@ -111,10 +114,10 @@ export const sendAlertNotification = functions.firestore
         const error = result.error;
         if (error) {
           functions.logger.error(
-            "Failure sending notification to token:",
+            "Failure sending to token:",
             uniqueTokens[index],
-            "Error info:",
-            error
+            "Error:",
+            error.code
           );
           if (
             error.code === "messaging/invalid-registration-token" ||
