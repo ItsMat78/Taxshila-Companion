@@ -4,7 +4,7 @@
 import type { UserRole } from '@/types/auth';
 import * as React from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { getStudentByIdentifier, getStudentByEmail, removeFCMTokenForStudent } from '@/services/student-service';
+import { getStudentByIdentifier, getStudentByEmail, removeFCMTokenForStudent, getAdminByEmail, removeAdminFCMToken } from '@/services/student-service'; // Added admin functions
 import { useToast } from "@/hooks/use-toast";
 import { getMessaging, getToken, deleteToken } from 'firebase/messaging';
 import { app as firebaseApp } from '@/lib/firebase'; // For messaging
@@ -14,7 +14,7 @@ interface User {
   email: string;
   role: UserRole;
   profilePictureUrl?: string;
-  firestoreId?: string; // Add for easier token management
+  firestoreId?: string;
 }
 
 interface AuthContextType {
@@ -26,9 +26,9 @@ interface AuthContextType {
 
 const AuthContext = React.createContext<AuthContextType | undefined>(undefined);
 
-const adminUsers = [
-  { name: "Shreyash Rai", email: 'shreyashrai078@gmail.com', phone: '8210183751', password: 'meowmeow123', role: 'admin' as UserRole, profilePictureUrl: undefined, firestoreId: 'admin_shreyash' }, // Example firestoreId for admin
-  { name: "Kritika Rai", email: 'kritigrace@gmail.com', phone: '9621678184', password: 'meowmeow123', role: 'admin' as UserRole, profilePictureUrl: undefined, firestoreId: 'admin_kritika' }, // Example firestoreId for admin
+const hardcodedAdminUsers = [
+  { name: "Shreyash Rai", email: 'shreyashrai078@gmail.com', phone: '8210183751', password: 'meowmeow123', role: 'admin' as UserRole, profilePictureUrl: undefined },
+  { name: "Kritika Rai", email: 'kritigrace@gmail.com', phone: '9621678184', password: 'meowmeow123', role: 'admin' as UserRole, profilePictureUrl: undefined },
 ];
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -58,15 +58,45 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = async (identifier: string, passwordAttempt: string): Promise<User | null> => {
     setIsLoading(true);
 
-    const admin = adminUsers.find(
+    const matchedHardcodedAdmin = hardcodedAdminUsers.find(
       (u) => (u.email.toLowerCase() === identifier.toLowerCase() || u.phone === identifier) && u.password === passwordAttempt
     );
-    if (admin) {
-      const userData: User = { email: admin.email, role: admin.role, profilePictureUrl: admin.profilePictureUrl, firestoreId: admin.firestoreId };
-      setUser(userData);
-      localStorage.setItem('taxshilaUser', JSON.stringify(userData));
-      setIsLoading(false);
-      return userData;
+
+    if (matchedHardcodedAdmin) {
+      console.log("[AuthContext] Admin login attempt for:", matchedHardcodedAdmin.email);
+      try {
+        const adminFromDb = await getAdminByEmail(matchedHardcodedAdmin.email);
+        if (adminFromDb) {
+          console.log("[AuthContext] Admin details fetched from Firestore:", adminFromDb.firestoreId);
+          const userData: User = {
+            email: adminFromDb.email,
+            role: adminFromDb.role,
+            profilePictureUrl: matchedHardcodedAdmin.profilePictureUrl, // Keep using hardcoded one if any
+            firestoreId: adminFromDb.firestoreId,
+          };
+          setUser(userData);
+          localStorage.setItem('taxshilaUser', JSON.stringify(userData));
+          setIsLoading(false);
+          return userData;
+        } else {
+          // Admin exists in hardcoded list but not in Firestore 'admins' collection
+          // Log them in with hardcoded details but without firestoreId for now.
+          // This means they won't get FCM tokens saved until their DB entry is created.
+          console.warn(`[AuthContext] Admin ${matchedHardcodedAdmin.email} found in hardcoded list but not in Firestore 'admins' collection. FCM tokens won't be saved.`);
+          const userData: User = { email: matchedHardcodedAdmin.email, role: matchedHardcodedAdmin.role, profilePictureUrl: matchedHardcodedAdmin.profilePictureUrl, firestoreId: undefined };
+          setUser(userData);
+          localStorage.setItem('taxshilaUser', JSON.stringify(userData));
+          setIsLoading(false);
+          return userData;
+        }
+      } catch (dbError) {
+        console.error("[AuthContext] Error fetching admin from Firestore, logging in with hardcoded details only:", dbError);
+        const userData: User = { email: matchedHardcodedAdmin.email, role: matchedHardcodedAdmin.role, profilePictureUrl: matchedHardcodedAdmin.profilePictureUrl, firestoreId: undefined };
+        setUser(userData);
+        localStorage.setItem('taxshilaUser', JSON.stringify(userData));
+        setIsLoading(false);
+        return userData;
+      }
     }
 
     try {
@@ -91,7 +121,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.error("Member login error:", error);
     }
 
-    if(!admin){
+    if(!matchedHardcodedAdmin){ // Only show this if it wasn't an admin attempt
       toast({ title: "Login Failed", description: "Invalid credentials or user not found.", variant: "destructive" });
     }
     setIsLoading(false);
@@ -99,26 +129,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const logout = async () => {
-    if (user && user.role === 'member' && user.firestoreId && typeof window !== 'undefined') {
+    if (user && user.firestoreId && typeof window !== 'undefined') {
       try {
         const messaging = getMessaging(firebaseApp);
         if (VAPID_KEY_FROM_CLIENT_LIB && !VAPID_KEY_FROM_CLIENT_LIB.includes("REPLACE THIS")) {
-          // Attempt to get current token to remove it
           const currentToken = await getToken(messaging, { vapidKey: VAPID_KEY_FROM_CLIENT_LIB }).catch(() => null);
           if (currentToken) {
-            console.log("[AuthContext] Attempting to remove FCM token on logout:", currentToken);
-            await removeFCMTokenForStudent(user.firestoreId, currentToken);
-            // Optionally, also delete the token from FCM to stop messages completely for this instance
+            if (user.role === 'member') {
+              console.log("[AuthContext] Attempting to remove FCM token for member on logout:", currentToken.substring(0,15)+"...");
+              await removeFCMTokenForStudent(user.firestoreId, currentToken);
+            } else if (user.role === 'admin') {
+              console.log("[AuthContext] Attempting to remove FCM token for admin on logout:", currentToken.substring(0,15)+"...");
+              await removeAdminFCMToken(user.firestoreId, currentToken);
+            }
             await deleteToken(messaging).catch(err => console.warn("[AuthContext] Failed to delete token from FCM:", err));
-            console.log("[AuthContext] FCM token removed/deleted for student:", user.firestoreId);
+            console.log("[AuthContext] FCM token removed/deleted for user:", user.firestoreId);
           } else {
-            console.log("[AuthContext] No current FCM token found on logout, or VAPID key issue.");
+            console.log("[AuthContext] No current FCM token found on logout, or VAPID key issue for user:", user.email);
           }
         } else {
-            console.warn("[AuthContext] VAPID_KEY not configured in firebase-messaging-client.ts, cannot reliably get token for removal on logout.");
+            console.warn("[AuthContext] VAPID_KEY not configured. Cannot reliably get token for removal on logout for user:", user.email);
         }
       } catch (error) {
-        console.error("[AuthContext] Error removing FCM token on logout:", error);
+        console.error("[AuthContext] Error removing FCM token on logout for user:", user.email, error);
       }
     }
 

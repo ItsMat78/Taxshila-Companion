@@ -29,11 +29,24 @@ import { format, parseISO, differenceInDays, isPast, addMonths, subHours, subMin
 
 // --- Collections ---
 const STUDENTS_COLLECTION = "students";
+const ADMINS_COLLECTION = "admins"; // New collection for admins
 const ATTENDANCE_COLLECTION = "attendanceRecords";
 const FEEDBACK_COLLECTION = "feedbackItems";
 const ALERTS_COLLECTION = "alertItems";
 const APP_CONFIG_COLLECTION = "appConfiguration";
 const FEE_SETTINGS_DOC_ID = "feeSettings";
+
+// Simplified Admin User type for Firestore interaction
+interface AdminUserFirestore {
+  firestoreId: string;
+  email: string;
+  name: string;
+  role: 'admin';
+  fcmTokens?: string[];
+  // password field is intentionally omitted from here as we won't fetch it directly for this purpose.
+  // Auth still relies on hardcoded passwords for now.
+}
+
 
 export const ALL_SEAT_NUMBERS: string[] = [];
 for (let i = 1; i <= 85; i++) {
@@ -60,6 +73,15 @@ const studentFromDoc = (docSnapshot: any): Student => {
     fcmTokens: data.fcmTokens || [], // Ensure fcmTokens is an array
   } as Student;
 };
+
+const adminUserFromDoc = (docSnapshot: any): AdminUserFirestore => {
+  const data = docSnapshot.data();
+  return {
+    ...data,
+    firestoreId: docSnapshot.id,
+    fcmTokens: data.fcmTokens || [],
+  } as AdminUserFirestore;
+}
 
 const attendanceRecordFromDoc = (docSnapshot: any): AttendanceRecord => {
   const data = docSnapshot.data();
@@ -854,7 +876,9 @@ export async function submitFeedback(
   console.log("[StudentService] New feedback submitted, ID:", docRef.id, "Data:", newFeedbackData); 
 
   // TODO: Fetch admin FCM tokens (e.g., from a separate 'admins' collection or config)
+  // Example: const adminTokens = await getAllAdminFCMTokens();
   // TODO: For each admin token, call the /api/send-alert-notification endpoint with a specific payload for new feedback
+  // Example: for (const token of adminTokens) { /* send notification */ }
   
   // Dispatch custom event for admin notification
   if (typeof window !== 'undefined') {
@@ -890,8 +914,8 @@ export async function sendGeneralAlert(title: string, message: string, type: Ale
     message,
     type,
     dateSent: Timestamp.fromDate(new Date()),
-    isRead: false, // Not directly relevant for general alert storage, but good for consistency
-    studentId: null, // Explicitly null for general alerts
+    isRead: false, 
+    studentId: null, 
   };
   const docRef = await addDoc(collection(db, ALERTS_COLLECTION), newAlertData);
   
@@ -905,11 +929,15 @@ export async function sendGeneralAlert(title: string, message: string, type: Ale
 
   try {
     console.log("[StudentService] Calling API to send general alert notification for alert ID:", docRef.id);
-    await fetch('/api/send-alert-notification', {
+    const response = await fetch('/api/send-alert-notification', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(apiPayload),
     });
+    if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: "Unknown API error" }));
+        console.error("[StudentService] API error for general alert:", response.status, errorData);
+    }
   } catch (apiError) {
     console.error("[StudentService] Failed to trigger API for push notification (general alert):", apiError);
   }
@@ -966,11 +994,15 @@ export async function sendAlertToStudent(
 
   try {
     console.log(`[StudentService] Calling API to send targeted alert notification for student ${customStudentId}, alert ID: ${docRef.id}`);
-    await fetch('/api/send-alert-notification', {
+    const response = await fetch('/api/send-alert-notification', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(apiPayload),
     });
+    if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: "Unknown API error" }));
+        console.error(`[StudentService] API error for targeted alert (student ${customStudentId}):`, response.status, errorData);
+    }
   } catch (apiError) {
     console.error(`[StudentService] Failed to trigger API for push notification (student ${customStudentId}):`, apiError);
   }
@@ -1332,6 +1364,7 @@ export async function batchImportPayments(recordsToImport: PaymentImportData[]):
 export async function deleteAllData(): Promise<void> {
   const collectionsToDelete = [
     STUDENTS_COLLECTION,
+    ADMINS_COLLECTION, // Include admins collection for deletion
     ATTENDANCE_COLLECTION,
     FEEDBACK_COLLECTION,
     ALERTS_COLLECTION,
@@ -1341,6 +1374,10 @@ export async function deleteAllData(): Promise<void> {
   for (const collectionName of collectionsToDelete) {
     const collectionRef = collection(db, collectionName);
     const snapshot = await getDocs(collectionRef);
+    if (snapshot.empty) {
+        console.log(`Collection ${collectionName} is already empty.`);
+        continue;
+    }
     const batch = writeBatch(db);
     snapshot.docs.forEach((docSnap) => {
       batch.delete(docSnap.ref);
@@ -1361,7 +1398,7 @@ export async function saveStudentFCMToken(studentFirestoreId: string, token: str
     console.warn("[StudentService] Cannot save FCM token without student Firestore ID.");
     return;
   }
-  console.log("[StudentService] saveStudentFCMToken: Received studentFirestoreId:", studentFirestoreId, "token:", token.substring(0,15) + "...");
+  console.log("[StudentService] saveStudentFCMToken: Received studentFirestoreId:", studentFirestoreId, "token:", token ? token.substring(0,15) + "..." : "NULL_TOKEN");
   const studentDocRef = doc(db, STUDENTS_COLLECTION, studentFirestoreId);
   try {
     await updateDoc(studentDocRef, {
@@ -1375,13 +1412,14 @@ export async function saveStudentFCMToken(studentFirestoreId: string, token: str
 
 export async function removeFCMTokenForStudent(studentFirestoreId: string, tokenToRemove: string): Promise<void> {
   if (!studentFirestoreId) {
-    console.warn("[StudentService] Cannot remove FCM token without student Firestore ID.");
+    console.warn("[StudentService] Cannot remove student FCM token without student Firestore ID.");
     return;
   }
   if (!tokenToRemove) {
     console.warn("[StudentService] No token provided for removal for student:", studentFirestoreId);
     return;
   }
+  console.log("[StudentService] removeFCMTokenForStudent: studentFirestoreId:", studentFirestoreId, "tokenToRemove:", tokenToRemove.substring(0,15) + "...");
   const studentDocRef = doc(db, STUDENTS_COLLECTION, studentFirestoreId);
   try {
     await updateDoc(studentDocRef, {
@@ -1390,6 +1428,61 @@ export async function removeFCMTokenForStudent(studentFirestoreId: string, token
     console.log("[StudentService] FCM token removed for student:", studentFirestoreId, tokenToRemove.substring(0,10) + "...");
   } catch (error) {
     console.error("[StudentService] Error removing FCM token for student:", studentFirestoreId, error);
+  }
+}
+
+// --- Admin FCM Token Management ---
+export async function getAdminByEmail(email: string): Promise<AdminUserFirestore | undefined> {
+  console.log("[StudentService] getAdminByEmail called for:", email);
+  const q = query(collection(db, ADMINS_COLLECTION), where("email", "==", email.toLowerCase()));
+  const querySnapshot = await getDocs(q);
+  if (querySnapshot.empty) {
+    console.log("[StudentService] No admin found with email:", email);
+    return undefined;
+  }
+  const adminData = adminUserFromDoc(querySnapshot.docs[0]);
+  console.log("[StudentService] Admin found:", adminData.email, "Firestore ID:", adminData.firestoreId);
+  return adminData;
+}
+
+export async function saveAdminFCMToken(adminFirestoreId: string, token: string): Promise<void> {
+  if (!adminFirestoreId) {
+    console.warn("[StudentService] Cannot save FCM token without admin Firestore ID.");
+    return;
+  }
+   console.log("[StudentService] saveAdminFCMToken: Received adminFirestoreId:", adminFirestoreId, "token:", token ? token.substring(0,15) + "..." : "NULL_TOKEN");
+  const adminDocRef = doc(db, ADMINS_COLLECTION, adminFirestoreId);
+  try {
+    await updateDoc(adminDocRef, {
+      fcmTokens: arrayUnion(token)
+    });
+    console.log("[StudentService] FCM token saved successfully for admin:", adminFirestoreId, token.substring(0,10) + "...");
+  } catch (error) {
+    console.error("[StudentService] Error saving FCM token for admin:", adminFirestoreId, error);
+    // It's possible the admin doc doesn't exist yet if not manually created.
+    // For a robust system, you might create it here if it doesn't exist.
+    // For now, we assume it's manually created as per instructions.
+  }
+}
+
+export async function removeAdminFCMToken(adminFirestoreId: string, tokenToRemove: string): Promise<void> {
+  if (!adminFirestoreId) {
+    console.warn("[StudentService] Cannot remove admin FCM token without admin Firestore ID.");
+    return;
+  }
+  if (!tokenToRemove) {
+    console.warn("[StudentService] No token provided for removal for admin:", adminFirestoreId);
+    return;
+  }
+  console.log("[StudentService] removeAdminFCMToken: adminFirestoreId:", adminFirestoreId, "tokenToRemove:", tokenToRemove.substring(0,15) + "...");
+  const adminDocRef = doc(db, ADMINS_COLLECTION, adminFirestoreId);
+  try {
+    await updateDoc(adminDocRef, {
+      fcmTokens: arrayRemove(tokenToRemove)
+    });
+    console.log("[StudentService] FCM token removed for admin:", adminFirestoreId, tokenToRemove.substring(0,10) + "...");
+  } catch (error) {
+    console.error("[StudentService] Error removing FCM token for admin:", adminFirestoreId, error);
   }
 }
 
@@ -1409,3 +1502,5 @@ declare module '@/types/communication' {
     firestoreId?: string;
   }
 }
+
+```

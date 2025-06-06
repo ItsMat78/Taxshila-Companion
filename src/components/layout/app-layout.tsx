@@ -1,4 +1,3 @@
-
 "use client";
 import * as React from 'react';
 import { usePathname, useRouter } from 'next/navigation';
@@ -14,7 +13,7 @@ import { NotificationBadge } from '@/components/shared/notification-badge';
 import { cn } from '@/lib/utils';
 import { TopProgressBar } from '@/components/shared/top-progress-bar';
 import { initPushNotifications, VAPID_KEY_FROM_CLIENT_LIB } from '@/lib/firebase-messaging-client';
-import { getStudentByEmail } from '@/services/student-service';
+// Removed getStudentByEmail as it's no longer directly needed here for admin token check
 import { useToast } from '@/hooks/use-toast';
 import { useNotificationContext } from '@/contexts/notification-context';
 
@@ -80,31 +79,27 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
   React.useEffect(() => {
     const setupPush = async () => {
-      if (user && user.role === 'member' && user.email && typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+      if (user && user.firestoreId && typeof window !== 'undefined' && 'serviceWorker' in navigator) {
         
         if (!VAPID_KEY_FROM_CLIENT_LIB || VAPID_KEY_FROM_CLIENT_LIB.includes("REPLACE THIS")) {
-            console.warn("[AppLayout] VAPID_KEY is not configured in firebase-messaging-client.ts. Push notifications for members will not be initialized.");
+            console.warn("[AppLayout] VAPID_KEY is not configured in firebase-messaging-client.ts. Push notifications will not be initialized.");
             return;
         }
         try {
-          const student = await getStudentByEmail(user.email);
-          if (student?.firestoreId) {
-            console.log("[AppLayout] Attempting to initialize push notifications for member:", student.studentId);
-            await initPushNotifications(student.firestoreId);
-          } else if (student) {
-             console.warn("[AppLayout] Member found, but Firestore ID missing. Cannot init push.");
-          } else {
-             console.warn("[AppLayout] Member record not found by email. Cannot init push.");
-          }
+          // Pass both firestoreId and role to initPushNotifications
+          console.log(`[AppLayout] Attempting to initialize push notifications for ${user.role}:`, user.firestoreId);
+          await initPushNotifications(user.firestoreId, user.role);
         } catch (error) {
-          console.error("[AppLayout] Error during push notification setup for member:", error);
+          console.error(`[AppLayout] Error during push notification setup for ${user.role}:`, error);
         }
+      } else if (user && !user.firestoreId && user.role === 'admin') {
+        console.warn("[AppLayout] Admin user logged in but no firestoreId found in auth context. FCM token cannot be saved. Ensure admin user exists in 'admins' Firestore collection.");
       }
     };
     if (!isAuthLoading && user) {
       setupPush();
     }
-  }, [user, isAuthLoading]);
+  }, [user, isAuthLoading]); // Depend on user to re-run if user object (with firestoreId) changes
 
   
   React.useEffect(() => {
@@ -130,9 +125,10 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   React.useEffect(() => {
     const handleNewFeedback = (event: Event) => {
       const customEvent = event as CustomEvent;
-      console.log("[AppLayout] 'new-feedback-submitted' event caught in AppLayout. Detail:", customEvent.detail); 
+      const feedbackId = customEvent.detail?.feedbackId;
+      console.log(`[AppLayout] 'new-feedback-submitted' event caught. Feedback ID: ${feedbackId}. User role: ${user?.role}.`);
       if (user && user.role === 'admin') {
-        console.log("[AppLayout] Admin detected for new feedback, showing toast and refreshing notifications."); 
+        console.log("[AppLayout] Admin detected, showing toast for new feedback and refreshing notifications.");
         toast({
           title: "New Feedback Received",
           description: "A member has submitted new feedback. Please check the feedback section.",

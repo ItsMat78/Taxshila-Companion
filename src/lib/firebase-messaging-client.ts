@@ -1,7 +1,8 @@
 
 import { getMessaging, getToken, onMessage } from 'firebase/messaging';
 import { app as firebaseApp } from './firebase'; // Your main firebase app instance
-import { saveStudentFCMToken } from '@/services/student-service'; 
+import { saveStudentFCMToken, saveAdminFCMToken } from '@/services/student-service';
+import type { UserRole } from '@/types/auth';
 
 // ==========================================================================================
 // !!! CRITICAL: REPLACE THIS VAPID_KEY WITH YOUR ACTUAL FIREBASE PROJECT'S VAPID KEY !!!
@@ -23,7 +24,7 @@ try {
 }
 
 
-export const initPushNotifications = async (studentFirestoreId: string | null | undefined): Promise<string | null> => {
+export const initPushNotifications = async (firestoreId: string | null | undefined, userRole: UserRole | null | undefined): Promise<string | null> => {
   if (!messagingInstance) {
     console.warn("[FCM Client] Firebase Messaging not initialized. Push notifications disabled.");
     return null;
@@ -43,12 +44,12 @@ export const initPushNotifications = async (studentFirestoreId: string | null | 
   console.log('[FCM Client] PushManager is supported.');
 
   try {
-    const registration = await navigator.serviceWorker.register('/sw.js'); 
+    const registration = await navigator.serviceWorker.register('/sw.js');
     console.log('[FCM Client] Service Worker registered with scope:', registration.scope);
 
     if (Notification.permission === 'granted') {
       console.log('[FCM Client] Notification permission already granted.');
-      const currentToken = await getFCMToken(registration, studentFirestoreId);
+      const currentToken = await getFCMToken(registration, firestoreId, userRole);
       return currentToken;
     } else if (Notification.permission === 'denied') {
       console.warn('[FCM Client] Notification permission was previously denied. User must manually re-enable it in browser settings.');
@@ -58,7 +59,7 @@ export const initPushNotifications = async (studentFirestoreId: string | null | 
       const permission = await Notification.requestPermission();
       if (permission === 'granted') {
         console.log('[FCM Client] Notification permission granted by user.');
-        const currentToken = await getFCMToken(registration, studentFirestoreId);
+        const currentToken = await getFCMToken(registration, firestoreId, userRole);
         return currentToken;
       } else {
         console.warn('[FCM Client] Notification permission denied by user.');
@@ -71,7 +72,7 @@ export const initPushNotifications = async (studentFirestoreId: string | null | 
   }
 };
 
-const getFCMToken = async (registration: ServiceWorkerRegistration, studentFirestoreId: string | null | undefined): Promise<string | null> => {
+const getFCMToken = async (registration: ServiceWorkerRegistration, firestoreId: string | null | undefined, userRole: UserRole | null | undefined): Promise<string | null> => {
   if (!messagingInstance) {
      console.warn("[FCM Client] Messaging instance not available for getFCMToken.");
      return null;
@@ -80,7 +81,7 @@ const getFCMToken = async (registration: ServiceWorkerRegistration, studentFires
     console.error("[FCM Client] VAPID_KEY IS NOT SET OR IS STILL A PLACEHOLDER. PUSH NOTIFICATIONS WILL FAIL. Please update it in src/lib/firebase-messaging-client.ts.");
     return null;
   }
-  console.log("[FCM Client] Attempting to get FCM token. VAPID_KEY is present (ensure it's correct):", VAPID_KEY_FROM_CLIENT_LIB ? 'Yes' : 'NO (THIS IS A PROBLEM)', "studentFirestoreId:", studentFirestoreId);
+  console.log("[FCM Client] Attempting to get FCM token. VAPID_KEY is present. Firestore ID:", firestoreId, "Role:", userRole);
 
   try {
     const currentToken = await getToken(messagingInstance, {
@@ -88,12 +89,17 @@ const getFCMToken = async (registration: ServiceWorkerRegistration, studentFires
       serviceWorkerRegistration: registration,
     });
     if (currentToken) {
-      console.log('[FCM Client] FCM Token obtained:', currentToken.substring(0,15) + "..."); 
-      if (studentFirestoreId) {
-        console.log('[FCM Client] Attempting to save FCM token for studentFirestoreId:', studentFirestoreId, "Token:", currentToken.substring(0,15) + "...");
-        await saveStudentFCMToken(studentFirestoreId, currentToken);
+      console.log('[FCM Client] FCM Token obtained:', currentToken.substring(0,15) + "...");
+      if (firestoreId && userRole) {
+        if (userRole === 'member') {
+          console.log('[FCM Client] Attempting to save FCM token for member FirestoreId:', firestoreId, "token:", currentToken.substring(0,15) + "...");
+          await saveStudentFCMToken(firestoreId, currentToken);
+        } else if (userRole === 'admin') {
+          console.log('[FCM Client] Attempting to save FCM token for admin FirestoreId:', firestoreId, "token:", currentToken.substring(0,15) + "...");
+          await saveAdminFCMToken(firestoreId, currentToken);
+        }
       } else {
-        console.warn("[FCM Client] Student Firestore ID not available, token not saved to DB yet. This is okay if it's a new user registration flow or if the user is not a student (e.g., admin).");
+        console.warn("[FCM Client] Firestore ID or user role not available, token not saved to DB yet. This is okay if it's a new user registration flow or if user details are not yet fully loaded.");
       }
       return currentToken;
     } else {
@@ -119,20 +125,20 @@ if (messagingInstance) {
   onMessage(messagingInstance, (payload) => {
     console.log('[FCM Client] Message received in foreground: ', payload);
     if (payload.data && payload.data.title && payload.data.body) {
-       window.dispatchEvent(new CustomEvent('show-foreground-message', { 
-        detail: { 
-          title: payload.data.title, 
+       window.dispatchEvent(new CustomEvent('show-foreground-message', {
+        detail: {
+          title: payload.data.title,
           body: payload.data.body,
           data: payload.data // Pass along the full data payload too
-        } 
+        }
       }));
     } else if (payload.notification) { // Fallback for standard FCM notification field
-      window.dispatchEvent(new CustomEvent('show-foreground-message', { 
-        detail: { 
-          title: payload.notification.title, 
+      window.dispatchEvent(new CustomEvent('show-foreground-message', {
+        detail: {
+          title: payload.notification.title,
           body: payload.notification.body,
           data: payload.data
-        } 
+        }
       }));
     } else {
       console.log('[FCM Client] Foreground message received without a displayable title/body in data or notification payload. Data:', payload.data);
