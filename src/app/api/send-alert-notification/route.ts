@@ -76,12 +76,15 @@ export async function POST(request: NextRequest) {
 
   try {
     let tokens: string[] = [];
+    const studentIdToQuery = alertPayload.studentId; // studentId from payload is the custom ID
+    console.log("API Route: studentIdToQuery for tokens:", studentIdToQuery);
 
-    if (alertPayload.studentId) {
-      console.log(`API Route: Targeted alert for student ${alertPayload.studentId}. Fetching token...`);
+
+    if (studentIdToQuery) {
+      console.log(`API Route: Targeted alert for student ${studentIdToQuery}. Fetching token...`);
       const studentQuery = await db
         .collection("students")
-        .where("studentId", "==", alertPayload.studentId)
+        .where("studentId", "==", studentIdToQuery) // Query by custom studentId field
         .limit(1)
         .get();
 
@@ -90,13 +93,14 @@ export async function POST(request: NextRequest) {
         const student = studentDoc.data() as StudentDoc;
         if (student.fcmTokens && student.fcmTokens.length > 0) {
           tokens = student.fcmTokens.filter(token => typeof token === 'string' && token.length > 0);
-          console.log(`API Route: Tokens found for student ${alertPayload.studentId}:`, tokens);
+          console.log(`API Route: Tokens found for student ${studentIdToQuery}:`, tokens);
         } else {
-          console.log(`API Route: Student ${alertPayload.studentId} found, but no FCM tokens or empty tokens array.`);
+          console.log(`API Route: Student ${studentIdToQuery} found, but no FCM tokens or empty tokens array.`);
         }
       } else {
-        console.log(`API Route: Student ${alertPayload.studentId} not found for targeted alert.`);
-        return NextResponse.json({ success: true, message: `Student ${alertPayload.studentId} not found, notification not sent.` }, { status: 200 });
+        console.log(`API Route: Student ${studentIdToQuery} not found for targeted alert.`);
+        // It's okay if a student isn't found, alert is still saved. Notification won't be sent.
+        return NextResponse.json({ success: true, message: `Student ${studentIdToQuery} not found, notification not sent.` }, { status: 200 });
       }
     } else {
       console.log("API Route: General alert. Fetching tokens for all students...");
@@ -161,8 +165,10 @@ export async function POST(request: NextRequest) {
                 errorCode === 'messaging/invalid-registration-token') {
                 console.log(`API Route: Invalid token ${currentToken.substring(0,10)}... detected. Attempting to remove from Firestore.`);
                 try {
+                    // Find all student documents that contain this invalid token
                     const studentsWithTokenQuery = db.collection('students').where('fcmTokens', 'array-contains', currentToken);
                     const querySnapshot = await studentsWithTokenQuery.get();
+                    
                     if (!querySnapshot.empty) {
                         const batch = db.batch();
                         querySnapshot.forEach(doc => {

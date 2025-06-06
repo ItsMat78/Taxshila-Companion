@@ -851,7 +851,7 @@ export async function submitFeedback(
     status: "Open" as FeedbackStatus,
   };
   const docRef = await addDoc(collection(db, FEEDBACK_COLLECTION), newFeedbackData);
-  console.log("[StudentService] New feedback submitted, ID:", docRef.id); // Added log
+  console.log("[StudentService] New feedback submitted, ID:", docRef.id, "Data:", newFeedbackData); 
 
   // TODO: Fetch admin FCM tokens (e.g., from a separate 'admins' collection or config)
   // TODO: For each admin token, call the /api/send-alert-notification endpoint with a specific payload for new feedback
@@ -895,23 +895,23 @@ export async function sendGeneralAlert(title: string, message: string, type: Ale
   };
   const docRef = await addDoc(collection(db, ALERTS_COLLECTION), newAlertData);
   
-  // Call Vercel API route to trigger push notification
+  const apiPayload = {
+    alertId: docRef.id,
+    title,
+    message,
+    type,
+  };
+  console.log("[StudentService] Preparing to send general alert notification. API Payload:", apiPayload);
+
   try {
     console.log("[StudentService] Calling API to send general alert notification for alert ID:", docRef.id);
     await fetch('/api/send-alert-notification', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        alertId: docRef.id,
-        title,
-        message,
-        type,
-        // No studentId for general alerts
-      }),
+      body: JSON.stringify(apiPayload),
     });
   } catch (apiError) {
     console.error("[StudentService] Failed to trigger API for push notification (general alert):", apiError);
-    // Non-critical, alert is saved. Log or handle as needed.
   }
 
   return {
@@ -937,42 +937,42 @@ export async function sendAlertToStudent(
   if (!student && type === 'feedback_response') {
       throw new Error(`Student with ID ${customStudentId} not found for feedback response.`);
   } else if (!student) {
-    // Log a warning but proceed to save the alert. Notification might not be sent if no tokens.
     console.warn(`[StudentService] Student with ID ${customStudentId} not found when sending targeted alert. Alert will be saved.`);
   }
 
   const newAlertDataForFirestore: any = {
-    studentId: customStudentId, // Use the custom student ID here for targeting
+    studentId: customStudentId, 
     title,
     message,
     type,
     dateSent: Timestamp.fromDate(new Date()),
-    isRead: false, // Default for new alerts
+    isRead: false, 
   };
   if (originalFeedbackId) newAlertDataForFirestore.originalFeedbackId = originalFeedbackId;
   if (originalFeedbackMessageSnippet) newAlertDataForFirestore.originalFeedbackMessageSnippet = originalFeedbackMessageSnippet;
 
   const docRef = await addDoc(collection(db, ALERTS_COLLECTION), newAlertDataForFirestore);
 
-  // Call Vercel API route to trigger push notification
+  const apiPayload = {
+    alertId: docRef.id,
+    studentId: customStudentId,
+    title,
+    message,
+    type,
+    originalFeedbackId,
+    originalFeedbackMessageSnippet
+  };
+  console.log(`[StudentService] Preparing to send targeted alert to student ${customStudentId}. API Payload:`, apiPayload);
+
   try {
     console.log(`[StudentService] Calling API to send targeted alert notification for student ${customStudentId}, alert ID: ${docRef.id}`);
     await fetch('/api/send-alert-notification', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        alertId: docRef.id,
-        studentId: customStudentId, // Pass studentId for targeting
-        title,
-        message,
-        type,
-        originalFeedbackId,
-        originalFeedbackMessageSnippet
-      }),
+      body: JSON.stringify(apiPayload),
     });
   } catch (apiError) {
     console.error(`[StudentService] Failed to trigger API for push notification (student ${customStudentId}):`, apiError);
-    // Non-critical, alert is saved. Log or handle as needed.
   }
 
   const newAlertDataForReturn: AlertItem = {
@@ -1361,12 +1361,13 @@ export async function saveStudentFCMToken(studentFirestoreId: string, token: str
     console.warn("[StudentService] Cannot save FCM token without student Firestore ID.");
     return;
   }
+  console.log("[StudentService] saveStudentFCMToken: Received studentFirestoreId:", studentFirestoreId, "token:", token.substring(0,15) + "...");
   const studentDocRef = doc(db, STUDENTS_COLLECTION, studentFirestoreId);
   try {
     await updateDoc(studentDocRef, {
       fcmTokens: arrayUnion(token) // Add new token to the array
     });
-    console.log("[StudentService] FCM token saved for student:", studentFirestoreId, token.substring(0,10) + "...");
+    console.log("[StudentService] FCM token saved successfully for student:", studentFirestoreId, token.substring(0,10) + "...");
   } catch (error) {
     console.error("[StudentService] Error saving FCM token for student:", studentFirestoreId, error);
   }

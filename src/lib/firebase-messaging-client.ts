@@ -80,7 +80,7 @@ const getFCMToken = async (registration: ServiceWorkerRegistration, studentFires
     console.error("[FCM Client] VAPID_KEY IS NOT SET OR IS STILL A PLACEHOLDER. PUSH NOTIFICATIONS WILL FAIL. Please update it in src/lib/firebase-messaging-client.ts.");
     return null;
   }
-  console.log("[FCM Client] Attempting to get FCM token. VAPID_KEY is present (ensure it's correct):", VAPID_KEY_FROM_CLIENT_LIB ? 'Yes' : 'NO (THIS IS A PROBLEM)');
+  console.log("[FCM Client] Attempting to get FCM token. VAPID_KEY is present (ensure it's correct):", VAPID_KEY_FROM_CLIENT_LIB ? 'Yes' : 'NO (THIS IS A PROBLEM)', "studentFirestoreId:", studentFirestoreId);
 
   try {
     const currentToken = await getToken(messagingInstance, {
@@ -88,9 +88,9 @@ const getFCMToken = async (registration: ServiceWorkerRegistration, studentFires
       serviceWorkerRegistration: registration,
     });
     if (currentToken) {
-      console.log('[FCM Client] FCM Token obtained:', currentToken.substring(0,15) + "..."); // Log only prefix
+      console.log('[FCM Client] FCM Token obtained:', currentToken.substring(0,15) + "..."); 
       if (studentFirestoreId) {
-        console.log('[FCM Client] Saving token for studentFirestoreId:', studentFirestoreId);
+        console.log('[FCM Client] Attempting to save FCM token for studentFirestoreId:', studentFirestoreId, "Token:", currentToken.substring(0,15) + "...");
         await saveStudentFCMToken(studentFirestoreId, currentToken);
       } else {
         console.warn("[FCM Client] Student Firestore ID not available, token not saved to DB yet. This is okay if it's a new user registration flow or if the user is not a student (e.g., admin).");
