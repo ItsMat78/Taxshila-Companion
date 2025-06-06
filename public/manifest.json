@@ -2,24 +2,23 @@
 {
   "name": "Taxshila Companion",
   "short_name": "Taxshila",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#D6D5D8",
+  "theme_color": "#30475E",
   "description": "Your companion app for Taxshila study hall.",
   "icons": [
     {
-      "src": "/logo.png",
+      "src": "/android-chrome-192x192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "/logo.png",
+      "src": "/android-chrome-512x512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
     }
-  ],
-  "start_url": "/",
-  "display": "standalone",
-  "background_color": "#30475E",
-  "theme_color": "#30475E",
-  "scope": "/"
+  ]
 }
