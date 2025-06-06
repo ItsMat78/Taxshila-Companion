@@ -11,23 +11,11 @@ import * as z from "zod";
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useAuth } from '@/contexts/auth-context';
 import { Loader2, Download, Smartphone } from 'lucide-react';
 import { LoggingInDialog } from '@/components/shared/logging-in-dialog';
 import { useToast } from '@/hooks/use-toast';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
 
 const COVER_IMAGE_URL = '/cover.png';
 const LOGO_URL = '/logo.png';
@@ -39,16 +27,15 @@ const loginFormSchema = z.object({
 
 type LoginFormValues = z.infer<typeof loginFormSchema>;
 
-// --- PWA Install Simulation Logic ---
-// The real BeforeInstallPromptEvent logic is commented out for simulation.
-// interface BeforeInstallPromptEvent extends Event {
-//   readonly platforms: Array<string>;
-//   readonly userChoice: Promise<{
-//     outcome: 'accepted' | 'dismissed';
-//     platform: string;
-//   }>;
-//   prompt(): Promise<void>;
-// }
+// --- PWA Install Logic ---
+interface BeforeInstallPromptEvent extends Event {
+  readonly platforms: Array<string>;
+  readonly userChoice: Promise<{
+    outcome: 'accepted' | 'dismissed';
+    platform: string;
+  }>;
+  prompt(): Promise<void>;
+}
 
 export default function AdminLoginPage() {
   const router = useRouter();
@@ -57,44 +44,41 @@ export default function AdminLoginPage() {
   const [isLoggingIn, setIsLoggingIn] = React.useState(false);
   const [showLoggingInDialog, setShowLoggingInDialog] = React.useState(false);
 
-  // --- PWA Install Simulation State ---
-  const [showSimulatedInstallDialog, setShowSimulatedInstallDialog] = React.useState(false);
-  // const [deferredPrompt, setDeferredPrompt] = React.useState<BeforeInstallPromptEvent | null>(null);
-  // const [canInstallPWA, setCanInstallPWA] = React.useState(false);
+  // --- PWA Install State ---
+  const [deferredPrompt, setDeferredPrompt] = React.useState<BeforeInstallPromptEvent | null>(null);
+  const [canInstallPWA, setCanInstallPWA] = React.useState(false);
 
-  // React.useEffect(() => {
-  //   const handleBeforeInstallPrompt = (e: Event) => {
-  //     e.preventDefault();
-  //     setDeferredPrompt(e as BeforeInstallPromptEvent);
-  //     setCanInstallPWA(true);
-  //   };
-  //   window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-  //   return () => {
-  //     window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-  //   };
-  // }, []);
+  React.useEffect(() => {
+    const handleBeforeInstallPrompt = (e: Event) => {
+      e.preventDefault(); // Prevent the mini-infobar from appearing on mobile
+      setDeferredPrompt(e as BeforeInstallPromptEvent);
+      setCanInstallPWA(true); // Show the install button
+      console.log("beforeinstallprompt event fired and captured.");
+    };
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    };
+  }, []);
 
-  // const handleActualInstallClick = async () => {
-  //   if (!deferredPrompt) return;
-  //   deferredPrompt.prompt();
-  //   const { outcome } = await deferredPrompt.userChoice;
-  //   if (outcome === 'accepted') {
-  //     toast({ title: "App Installed!", description: "Taxshila Companion has been added to your device." });
-  //   }
-  //   setDeferredPrompt(null);
-  //   setCanInstallPWA(false);
-  // };
-
-  const handleSimulatedInstallClick = () => {
-    setShowSimulatedInstallDialog(true);
-  };
-
-  const handleSimulatedInstallConfirm = () => {
-    toast({
-      title: "Simulated Install",
-      description: "PWA installation prompt simulated successfully!",
-    });
-    setShowSimulatedInstallDialog(false);
+  const handleInstallClick = async () => {
+    if (!deferredPrompt) {
+      console.log("Deferred prompt not available.");
+      return;
+    }
+    // Show the install prompt
+    deferredPrompt.prompt();
+    // Wait for the user to respond to the prompt
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === 'accepted') {
+      console.log('User accepted the PWA installation');
+      toast({ title: "App Installed!", description: "Taxshila Companion has been added to your device." });
+    } else {
+      console.log('User dismissed the PWA installation');
+    }
+    // We've used the prompt, and can't use it again, disable the button
+    setDeferredPrompt(null);
+    setCanInstallPWA(false);
   };
 
   const form = useForm<LoginFormValues>({
@@ -199,48 +183,27 @@ export default function AdminLoginPage() {
           </div>
         </Card>
 
-        {/* --- PWA Install Simulation Button --- */}
-        {/* This button is always visible for testing the simulated prompt */}
-        <Card className="w-full max-w-md md:max-w-sm shadow-xl bg-background/80 backdrop-blur-md rounded-lg">
-          <CardContent className="p-3 flex flex-col items-center text-center">
-            <div className="flex items-center gap-2 mb-1">
-              <Smartphone className="h-5 w-5 text-primary" />
-              <p className="text-sm font-medium text-foreground">
-                Install Taxshila Companion App?
+        {/* --- PWA Install Button --- */}
+        {canInstallPWA && deferredPrompt && (
+          <Card className="w-full max-w-md md:max-w-sm shadow-xl bg-background/80 backdrop-blur-md rounded-lg">
+            <CardContent className="p-3 flex flex-col items-center text-center">
+              <div className="flex items-center gap-2 mb-1">
+                <Smartphone className="h-5 w-5 text-primary" />
+                <p className="text-sm font-medium text-foreground">
+                  Install Taxshila Companion App?
+                </p>
+              </div>
+              <p className="text-xs text-muted-foreground mb-2">
+                Get faster access and an optimized experience by installing the app on your device.
               </p>
-            </div>
-            <p className="text-xs text-muted-foreground mb-2">
-              Get faster access and an optimized experience by installing the app on your device. (Simulation)
-            </p>
-            <Button onClick={handleSimulatedInstallClick} className="w-full" size="sm">
-              <Download className="mr-2 h-4 w-4" />
-              Test Install App
-            </Button>
-          </CardContent>
-        </Card>
+              <Button onClick={handleInstallClick} className="w-full" size="sm">
+                <Download className="mr-2 h-4 w-4" />
+                Install App
+              </Button>
+            </CardContent>
+          </Card>
+        )}
       </div>
-
-      {/* --- Simulated PWA Install Dialog --- */}
-      <AlertDialog open={showSimulatedInstallDialog} onOpenChange={setShowSimulatedInstallDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center">
-              <Image src={LOGO_URL} alt="App Logo" width={24} height={24} className="mr-2 rounded-sm" data-ai-hint="logo" />
-              Install App?
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              Add Taxshila Companion to your Home screen for quick and easy access. This is a simulation.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setShowSimulatedInstallDialog(false)}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleSimulatedInstallConfirm}>
-              Install
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
       <LoggingInDialog isOpen={showLoggingInDialog} />
     </>
   )
