@@ -27,7 +27,7 @@ interface Student {
 // Function to send notification for a new alert
 export const sendAlertNotification = functions.firestore
   .document("alertItems/{alertId}")
-  .onCreate(async (snapshot, context) => {
+  .onCreate(async (snapshot: functions.firestore.DocumentSnapshot, context: functions.EventContext) => {
     const alertData = snapshot.data() as AlertItem;
     const alertId = context.params.alertId;
 
@@ -49,16 +49,23 @@ export const sendAlertNotification = functions.firestore
         if (student.fcmTokens && student.fcmTokens.length > 0) {
           tokens = student.fcmTokens;
           functions.logger.log(
-            `Targeted for ${alertData.studentId}. Tokens: ${tokens.length}`
+            "Targeted alert for student",
+            alertData.studentId,
+            ". Tokens:",
+            tokens.length
           );
         } else {
           functions.logger.log(
-            `Student ${alertData.studentId} found, but no FCM tokens.`
+            "Student",
+            alertData.studentId,
+            "found, but no FCM tokens."
           );
         }
       } else {
         functions.logger.log(
-          `Student ${alertData.studentId} not found for targeted alert.`
+          "Student",
+          alertData.studentId,
+          "not found for targeted alert."
         );
         return null;
       }
@@ -100,8 +107,10 @@ export const sendAlertNotification = functions.firestore
     };
 
     functions.logger.log(
-      "Sending FCM. Payload:", JSON.stringify(payload).substring(0, 30) + "...",
-      "Tokens count:", uniqueTokens.length
+      "Sending FCM. Payload:",
+      JSON.stringify(payload).substring(0,30) + "...",
+      "Tokens count:",
+      uniqueTokens.length
     );
 
     try {
@@ -115,7 +124,8 @@ export const sendAlertNotification = functions.firestore
         const error = result.error;
         if (error) {
           functions.logger.error(
-            "FCM Fail:", uniqueTokens[index].substring(0, 10) + "...",
+            "FCM Fail:",
+            uniqueTokens[index].substring(0,10) + "...",
             error.code
           );
           if (
