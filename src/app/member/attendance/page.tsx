@@ -143,9 +143,13 @@ export default function MemberAttendancePage() {
           supportedScanTypes: [Html5QrcodeScanType.SCAN_TYPE_CAMERA],
           formatsToSupport: formatsToSupport,
           rememberLastUsedCamera: true,
+          videoConstraints: { 
+            facingMode: "environment" 
+          },
+          verbose: false, // Added to prevent header message errors
         };
 
-        const scanner = new Html5QrcodeScanner( QR_SCANNER_ELEMENT_ID_ATTENDANCE, config ); // Defaults to verbose: true (removed explicit false)
+        const scanner = new Html5QrcodeScanner( QR_SCANNER_ELEMENT_ID_ATTENDANCE, config );
         html5QrcodeScannerRef.current = scanner;
 
         const onScanSuccess = async (decodedText: string, decodedResult: any) => {
@@ -174,7 +178,7 @@ export default function MemberAttendancePage() {
              setTimeout(() => {
                if (html5QrcodeScannerRef.current ) {
                   try {
-                    if (html5QrcodeScannerRef.current.getState() === 2 /* PAUSED */) { // Assuming 2 is PAUSED
+                    if (html5QrcodeScannerRef.current.getState() === 2 /* PAUSED */) { 
                        html5QrcodeScannerRef.current.resume();
                     }
                   } catch(e) { console.warn("Scanner resume error", e)}
@@ -326,7 +330,7 @@ export default function MemberAttendancePage() {
                     </AlertDescription>
                   </Alert>
                 )}
-                <div id={QR_SCANNER_ELEMENT_ID_ATTENDANCE} className="w-full h-[250px] sm:h-[300px] bg-muted rounded-md overflow-hidden border" />
+                <div id={QR_SCANNER_ELEMENT_ID_ATTENDANCE} className="w-full aspect-square bg-muted rounded-md overflow-hidden border" />
                 {(hasCameraPermission === null && !isProcessingQr) && (
                      <div className="flex items-center justify-center text-muted-foreground">
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -450,4 +454,3 @@ export default function MemberAttendancePage() {
     </>
   );
 }
-

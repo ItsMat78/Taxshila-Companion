@@ -81,7 +81,7 @@ const DashboardTile: React.FC<DashboardTileProps> = ({
         )}>
           <Icon className={cn(
             isPrimaryAction ? "h-5 w-5 sm:h-6 sm:w-6" : "h-5 w-5 sm:h-6 sm:w-6 mb-1",
-            isPrimaryAction && isLoadingStatistic && "animate-spin" // Spin icon if primary action and loading
+            isPrimaryAction && isLoadingStatistic && "animate-spin" 
           )}
            />
           <ShadcnCardTitle className={cn(
@@ -96,7 +96,7 @@ const DashboardTile: React.FC<DashboardTileProps> = ({
         "flex-grow flex flex-col items-center justify-center",
         isPrimaryAction ? "p-3 sm:p-4 pt-1 sm:pt-2" : "p-2 sm:p-3 pt-0 sm:pt-1"
       )}>
-        {isLoadingStatistic && !isPrimaryAction ? ( // Show loader in content only if not primary action's icon
+        {isLoadingStatistic && !isPrimaryAction ? ( 
           <Loader2 className="h-6 w-6 sm:h-8 sm:w-8 animate-spin text-primary my-2" />
         ) : statistic !== null && statistic !== undefined ? (
           <>
@@ -302,7 +302,11 @@ export default function MemberDashboardPage() {
             },
             supportedScanTypes: [Html5QrcodeScanType.SCAN_TYPE_CAMERA],
             formatsToSupport: formatsToSupport,
-            rememberLastUsedCamera: true, 
+            rememberLastUsedCamera: true,
+            videoConstraints: { 
+              facingMode: "environment" 
+            },
+            verbose: false, // Added to prevent header message errors
         };
 
         const scanner = new Html5QrcodeScanner(DASHBOARD_QR_SCANNER_ELEMENT_ID, config, true);
@@ -360,7 +364,7 @@ export default function MemberDashboardPage() {
             }
           }
           setIsProcessingQr(false);
-          setIsScannerOpen(false); // Ensure dialog closes
+          setIsScannerOpen(false); 
         };
 
         const onScanFailure = async (errorPayload: any) => {
@@ -622,7 +626,7 @@ export default function MemberDashboardPage() {
           disabled={primaryAttendanceDisabled}
           className={cn(
             (activeCheckInRecord && !isProcessingCheckout && !isLoadingCurrentSession && !primaryAttendanceDisabled) 
-              ? 'bg-green-600 hover:bg-green-700' // Removed text-primary-foreground, isPrimaryAction will handle it
+              ? 'bg-green-600 hover:bg-green-700' 
               : ''
           )}
         />
@@ -650,7 +654,7 @@ export default function MemberDashboardPage() {
 
               <div 
                 id={DASHBOARD_QR_SCANNER_ELEMENT_ID} 
-                className="w-full flex-shrink-0 h-[200px] sm:h-[220px] md:h-[250px] bg-muted rounded-md overflow-hidden border" 
+                className="w-full aspect-square bg-muted rounded-md overflow-hidden border" 
               />
 
               {(hasCameraPermission === null && !isProcessingQr) && (
@@ -696,4 +700,3 @@ export default function MemberDashboardPage() {
     </>
   );
 }
-

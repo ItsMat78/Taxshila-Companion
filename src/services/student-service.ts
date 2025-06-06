@@ -16,12 +16,12 @@ import {
   limit,
   serverTimestamp,
   writeBatch,
-  runTransaction, 
+  runTransaction,
   storage,
   storageRef,
   uploadBytesResumable,
   getDownloadURL,
-  arrayRemove // Added arrayRemove
+  arrayRemove
 } from '@/lib/firebase';
 import type { Student, Shift, FeeStatus, PaymentRecord, ActivityStatus, AttendanceRecord, FeeStructure, AttendanceImportData, PaymentImportData } from '@/types/student';
 import type { FeedbackItem, FeedbackType, FeedbackStatus, AlertItem } from '@/types/communication';
@@ -32,8 +32,8 @@ const STUDENTS_COLLECTION = "students";
 const ATTENDANCE_COLLECTION = "attendanceRecords";
 const FEEDBACK_COLLECTION = "feedbackItems";
 const ALERTS_COLLECTION = "alertItems";
-const APP_CONFIG_COLLECTION = "appConfiguration"; 
-const FEE_SETTINGS_DOC_ID = "feeSettings"; 
+const APP_CONFIG_COLLECTION = "appConfiguration";
+const FEE_SETTINGS_DOC_ID = "feeSettings";
 
 export const ALL_SEAT_NUMBERS: string[] = [];
 for (let i = 1; i <= 85; i++) {
@@ -115,7 +115,7 @@ const alertItemFromDoc = (docSnapshot: any): AlertItem => {
   const data = docSnapshot.data();
   return {
     ...data,
-    id: docSnapshot.id, 
+    id: docSnapshot.id,
     firestoreId: docSnapshot.id,
     studentId: data.studentId === null ? undefined : data.studentId,
     dateSent: data.dateSent instanceof Timestamp ? data.dateSent.toDate().toISOString() : data.dateSent,
@@ -297,7 +297,7 @@ export interface AddStudentData {
 
 export async function addStudent(studentData: AddStudentData): Promise<Student> {
   const customStudentId = await getNextCustomStudentId();
-  const fees = await getFeeStructure(); 
+  const fees = await getFeeStructure();
 
   const existingStudentById = await getStudentByCustomId(customStudentId);
   if (existingStudentById) {
@@ -332,7 +332,7 @@ export async function addStudent(studentData: AddStudentData): Promise<Student> 
     case "morning": amountDueForShift = `Rs. ${fees.morningFee}`; break;
     case "evening": amountDueForShift = `Rs. ${fees.eveningFee}`; break;
     case "fullday": amountDueForShift = `Rs. ${fees.fullDayFee}`; break;
-    default: amountDueForShift = "Rs. 0"; 
+    default: amountDueForShift = "Rs. 0";
   }
 
   const newStudentDataTypeConsistent: Omit<Student, 'firestoreId' | 'id'> = {
@@ -533,7 +533,7 @@ export async function deleteStudentCompletely(customStudentId: string): Promise<
   targetedAlertsSnapshot.forEach(docSnap => {
     batch.delete(doc(db, ALERTS_COLLECTION, docSnap.id));
   });
-  
+
   const feedbackQuery = query(collection(db, FEEDBACK_COLLECTION), where("studentId", "==", customStudentId));
   const feedbackSnapshot = await getDocs(feedbackQuery);
   feedbackSnapshot.forEach(docSnap => {
@@ -691,7 +691,7 @@ export async function recordStudentPayment(
         throw new Error("Invalid payment amount provided in string.");
     }
   }
-  
+
   if (paymentMethod !== "Admin Recorded" && amountToPayNumeric < (expectedMonthlyFee * numberOfMonthsPaid)) {
     // This condition might be too strict if allowing partial payments.
     // For now, if not admin recorded, it expects full payment for the number of months.
@@ -706,7 +706,7 @@ export async function recordStudentPayment(
   const newPaymentRecord: PaymentRecord = {
     paymentId: newPaymentId,
     date: format(today, 'yyyy-MM-dd'),
-    amount: `Rs. ${amountToPayNumeric}`, 
+    amount: `Rs. ${amountToPayNumeric}`,
     transactionId: newTransactionId,
     method: paymentMethod === "Admin Recorded" ? "Desk Payment" : paymentMethod,
   };
@@ -835,7 +835,6 @@ export async function getMonthlyRevenueHistory(): Promise<MonthlyRevenueData[]> 
     .sort((a, b) => compareDesc(a.monthDate, b.monthDate));
 }
 
-
 // --- Communication Service Functions (Feedback & Alerts) ---
 export async function submitFeedback(
   studentId: string | undefined,
@@ -852,6 +851,12 @@ export async function submitFeedback(
     status: "Open" as FeedbackStatus,
   };
   const docRef = await addDoc(collection(db, FEEDBACK_COLLECTION), newFeedbackData);
+
+  // Dispatch custom event for admin notification
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('new-feedback-submitted', { detail: { feedbackId: docRef.id } }));
+  }
+
   return {
     id: docRef.id,
     ...newFeedbackData,
@@ -880,15 +885,38 @@ export async function sendGeneralAlert(title: string, message: string, type: Ale
     message,
     type,
     dateSent: Timestamp.fromDate(new Date()),
-    isRead: false,
-    studentId: null,
+    isRead: false, // Not directly relevant for general alert storage, but good for consistency
+    studentId: null, // Explicitly null for general alerts
   };
   const docRef = await addDoc(collection(db, ALERTS_COLLECTION), newAlertData);
+  
+  // Call Vercel API route to trigger push notification
+  try {
+    console.log("Calling API to send general alert notification for alert ID:", docRef.id);
+    await fetch('/api/send-alert-notification', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        alertId: docRef.id,
+        title,
+        message,
+        type,
+        // No studentId for general alerts
+      }),
+    });
+  } catch (apiError) {
+    console.error("Failed to trigger API for push notification (general alert):", apiError);
+    // Non-critical, alert is saved. Log or handle as needed.
+  }
+
   return {
     id: docRef.id,
-    ...newAlertData,
-    studentId: undefined,
+    studentId: undefined, 
+    title: newAlertData.title,
+    message: newAlertData.message,
+    type: newAlertData.type,
     dateSent: newAlertData.dateSent.toDate().toISOString(),
+    isRead: newAlertData.isRead,
   };
 }
 
@@ -904,20 +932,43 @@ export async function sendAlertToStudent(
   if (!student && type === 'feedback_response') {
       throw new Error(`Student with ID ${customStudentId} not found for feedback response.`);
   } else if (!student) {
+    // Log a warning but proceed to save the alert. Notification might not be sent if no tokens.
+    console.warn(`Student with ID ${customStudentId} not found when sending targeted alert. Alert will be saved.`);
   }
 
   const newAlertDataForFirestore: any = {
-    studentId: customStudentId,
+    studentId: customStudentId, // Use the custom student ID here for targeting
     title,
     message,
     type,
     dateSent: Timestamp.fromDate(new Date()),
-    isRead: false,
+    isRead: false, // Default for new alerts
   };
   if (originalFeedbackId) newAlertDataForFirestore.originalFeedbackId = originalFeedbackId;
   if (originalFeedbackMessageSnippet) newAlertDataForFirestore.originalFeedbackMessageSnippet = originalFeedbackMessageSnippet;
 
   const docRef = await addDoc(collection(db, ALERTS_COLLECTION), newAlertDataForFirestore);
+
+  // Call Vercel API route to trigger push notification
+  try {
+    console.log(`Calling API to send targeted alert notification for student ${customStudentId}, alert ID: ${docRef.id}`);
+    await fetch('/api/send-alert-notification', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        alertId: docRef.id,
+        studentId: customStudentId, // Pass studentId for targeting
+        title,
+        message,
+        type,
+        originalFeedbackId,
+        originalFeedbackMessageSnippet
+      }),
+    });
+  } catch (apiError) {
+    console.error(`Failed to trigger API for push notification (student ${customStudentId}):`, apiError);
+    // Non-critical, alert is saved. Log or handle as needed.
+  }
 
   const newAlertDataForReturn: AlertItem = {
     id: docRef.id,
@@ -932,6 +983,7 @@ export async function sendAlertToStudent(
   };
   return newAlertDataForReturn;
 }
+
 
 export async function getAlertsForStudent(customStudentId: string): Promise<AlertItem[]> {
   const student = await getStudentByCustomId(customStudentId);
@@ -989,13 +1041,15 @@ export async function markAlertAsRead(alertId: string, customStudentId: string):
     }
     const alertData = alertItemFromDoc(alertSnap);
 
-    if (alertData.studentId === customStudentId) { 
+    if (alertData.studentId === customStudentId) {
+        // This is a targeted alert for this student
         if (!alertData.isRead) {
             await updateDoc(alertDocRef, { isRead: true });
             return { ...alertData, isRead: true };
         }
-        return alertData; 
-    } else if (!alertData.studentId) { 
+        return alertData; // Already read
+    } else if (!alertData.studentId) {
+        // This is a general alert, mark as read in the student's record
         const student = await getStudentByCustomId(customStudentId);
         if (student && student.firestoreId) {
             const studentDocRef = doc(db, STUDENTS_COLLECTION, student.firestoreId);
@@ -1008,12 +1062,13 @@ export async function markAlertAsRead(alertId: string, customStudentId: string):
                     readGeneralAlertIds: arrayUnion(alertId)
                 });
             }
-            return { ...alertData, isRead: true }; 
+            return { ...alertData, isRead: true }; // Mark as read for contextual display
         } else {
             throw new Error("Student not found to mark general alert as read.");
         }
     }
     else {
+        // This alert is targeted to a different student, do nothing for current student
         return alertData;
     }
 }
@@ -1029,7 +1084,7 @@ export async function uploadProfilePictureToStorage(studentFirestoreId: string, 
   }
 
   const fileExtension = file.name.split('.').pop();
-  const fileName = `profilePicture.${fileExtension}`; 
+  const fileName = `profilePicture.${fileExtension}`;
   const imageRef = storageRef(storage, `profilePictures/${studentFirestoreId}/${fileName}`);
 
   return new Promise((resolve, reject) => {
@@ -1125,7 +1180,7 @@ export async function batchImportAttendance(recordsToImport: AttendanceImportDat
           errorCount++;
           continue;
       }
-      
+
       let checkInDateTime: Date;
       const timeRegex = /^\d{2}:\d{2}:\d{2}$/;
       if (timeRegex.test(record['Check-In Time'])) {
@@ -1152,7 +1207,7 @@ export async function batchImportAttendance(recordsToImport: AttendanceImportDat
           continue;
         }
       }
-      
+
       if (checkOutDateTime && checkOutDateTime <= checkInDateTime) {
         errors.push(`Row ${i+2}: Check-Out Time must be after Check-In Time for Student ID ${record['Student ID']}.`);
         errorCount++;
@@ -1162,16 +1217,16 @@ export async function batchImportAttendance(recordsToImport: AttendanceImportDat
       const newRecordRef = doc(collection(db, ATTENDANCE_COLLECTION));
       batch.set(newRecordRef, {
         studentId: record['Student ID'],
-        date: format(parsedDate, 'yyyy-MM-dd'), 
+        date: format(parsedDate, 'yyyy-MM-dd'),
         checkInTime: Timestamp.fromDate(checkInDateTime),
         checkOutTime: checkOutDateTime ? Timestamp.fromDate(checkOutDateTime) : null,
       });
       operationCount++;
       successCount++;
 
-      if (operationCount >= 499) { 
+      if (operationCount >= 499) {
         await batch.commit();
-        // batch = writeBatch(db); 
+        // batch = writeBatch(db);
         operationCount = 0;
       }
 
@@ -1210,7 +1265,7 @@ export async function batchImportPayments(recordsToImport: PaymentImportData[]):
         errorCount++;
         continue;
       }
-      
+
       let parsedDate: Date;
       if (isValid(parseISO(record['Date']))) {
           parsedDate = parseISO(record['Date']);
@@ -1238,7 +1293,7 @@ export async function batchImportPayments(recordsToImport: PaymentImportData[]):
         transactionId: newTransactionId,
         method: method as PaymentRecord['method'],
       };
-      
+
       const firestorePaymentRecord = {
           ...paymentRecord,
           date: Timestamp.fromDate(parsedDate)
@@ -1250,7 +1305,7 @@ export async function batchImportPayments(recordsToImport: PaymentImportData[]):
       });
       operationCount++;
       successCount++;
-      
+
       if (operationCount >= 499) {
         await batch.commit();
         // batch = writeBatch(db);
