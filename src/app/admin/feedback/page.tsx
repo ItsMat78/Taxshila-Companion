@@ -206,7 +206,7 @@ const FeedbackCardItem = ({ item, onOpenResponseDialog, onArchiveFeedback, updat
 
 export default function AdminFeedbackPage() {
   const { toast } = useToast();
-  const { refreshNotifications } = useNotificationContext();
+  const { refreshNotifications, refreshKey } = useNotificationContext();
   const [allFeedbackList, setAllFeedbackList] = React.useState<FeedbackItem[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [updatingFeedbackId, setUpdatingFeedbackId] = React.useState<string | null>(null);
@@ -229,7 +229,7 @@ export default function AdminFeedbackPage() {
 
   React.useEffect(() => {
     fetchFeedback();
-  }, [fetchFeedback]);
+  }, [fetchFeedback, refreshKey]); // Added refreshKey to dependency array
 
   const filteredFeedbackList = React.useMemo(() => {
     if (filterStatus === "All") return allFeedbackList;
@@ -254,13 +254,13 @@ export default function AdminFeedbackPage() {
       } else if (status !== "Resolved") {
         toast({ title: "Feedback Updated", description: `Status changed to ${status}.` });
       }
-      await fetchFeedback();
-      refreshNotifications(); 
+      await fetchFeedback(); // Re-fetch after update
+      refreshNotifications(); // Refresh counts after update
     } catch (error: any) {
       toast({ title: "Update Failed", description: error.message || "Could not update feedback status.", variant: "destructive" });
     } finally {
       setUpdatingFeedbackId(null);
-      setSelectedFeedbackForResponse(null);
+      setSelectedFeedbackForResponse(null); // Ensure this is cleared
     }
   };
 
