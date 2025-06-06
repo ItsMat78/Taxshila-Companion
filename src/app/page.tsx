@@ -150,19 +150,29 @@ function AdminDashboardContent() {
     fetchDashboardData();
   }, []);
 
-  const adminActionTiles = [
-    { title: "Manage Students", icon: Users, description: "View, edit student details.", href: "/students/list" },
-    { title: "Register Student", icon: UserPlus, description: "Add new students to system.", href: "/students/register" },
-    { title: "Attendance Overview", icon: CalendarDays, description: "Check student attendance logs.", href: "/attendance/calendar" },
-    { title: "Send Alert", icon: SendIcon, description: "Broadcast to all members.", href: "/admin/alerts/send" },
-    { 
-      title: "View Feedback", 
-      icon: Inbox, 
-      description: "Review member suggestions.", 
-      href: "/admin/feedback",
-    }, 
-    { title: "Seat Dashboard", icon: Eye, description: "View current seat status.", href: "/seats/availability" },
-  ];
+  const adminActionTiles = React.useMemo(() => {
+    let feedbackTileTitle = "View Feedback";
+    if (isLoadingFeedbackCount) {
+      // feedbackTileTitle remains "View Feedback" or could be "Loading Feedback..."
+    } else if (openFeedbackCount > 0) {
+      feedbackTileTitle = `View Feedback (${openFeedbackCount} Open)`;
+    }
+
+    return [
+      { title: "Manage Students", icon: Users, description: "View, edit student details.", href: "/students/list" },
+      { title: "Register Student", icon: UserPlus, description: "Add new students to system.", href: "/students/register" },
+      { title: "Attendance Overview", icon: CalendarDays, description: "Check student attendance logs.", href: "/attendance/calendar" },
+      { title: "Send Alert", icon: SendIcon, description: "Broadcast to all members.", href: "/admin/alerts/send" },
+      { 
+        title: feedbackTileTitle, // Use dynamic title
+        icon: Inbox, 
+        description: "Review member suggestions.", 
+        href: "/admin/feedback",
+        hasNew: !isLoadingFeedbackCount && openFeedbackCount > 0, // Add hasNew prop
+      }, 
+      { title: "Seat Dashboard", icon: Eye, description: "View current seat status.", href: "/seats/availability" },
+    ];
+  }, [openFeedbackCount, isLoadingFeedbackCount]);
 
   const totalRegisteredStudents = morningShiftStudentCount + eveningShiftStudentCount + fullDayShiftStudentCount;
 
@@ -286,34 +296,19 @@ function AdminDashboardContent() {
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
         {adminActionTiles.map((tile) => {
           const Icon = tile.icon;
-          
-          let tileTitleText = tile.title;
-          let currentHasNew = false;
-
-          if (tile.href === "/admin/feedback") {
-            if (isLoadingFeedbackCount) {
-              tileTitleText = "View Feedback";
-            } else if (openFeedbackCount > 0) {
-              tileTitleText = `View Feedback (${openFeedbackCount} Open)`;
-              currentHasNew = true;
-            } else {
-              tileTitleText = "View Feedback";
-            }
-          }
-          
           return (
             <Link href={tile.href} key={tile.title} className="block no-underline focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-lg h-full">
               <Card className={cn(
                 "shadow-md hover:shadow-lg transition-shadow h-full flex flex-col",
-                currentHasNew && "border-destructive ring-2 ring-destructive/50"
+                (tile.href === "/admin/feedback" && tile.hasNew) && "border-destructive ring-2 ring-destructive/50"
               )}>
                 <CardHeader className="p-3 pb-1 relative">
-                   {currentHasNew && (
+                   {(tile.href === "/admin/feedback" && tile.hasNew) && (
                      <span className="absolute top-1 right-1 block h-2.5 w-2.5 rounded-full bg-destructive ring-1 ring-white" />
                    )}
                   <div className="flex items-center gap-2">
                     <Icon className="h-6 w-6 text-primary" /> 
-                    <ShadcnCardTitle className="text-base font-semibold">{tileTitleText}</ShadcnCardTitle>
+                    <ShadcnCardTitle className="text-base font-semibold">{tile.title}</ShadcnCardTitle>
                   </div>
                 </CardHeader>
                 <CardContent className="p-3 pt-0 flex-grow flex flex-col items-center justify-center">
