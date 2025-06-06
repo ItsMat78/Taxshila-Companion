@@ -1,5 +1,5 @@
 
-import * as functions from "firebase-functions";
+import * as functionsV1 from "firebase-functions/v1";
 import * as admin from "firebase-admin";
 
 admin.initializeApp();
@@ -25,24 +25,24 @@ interface Student {
 /**
  * Handles the creation of a new alert item in Firestore.
  * Fetches student tokens and sends push notifications via FCM.
- * @param {functions.firestore.DocumentSnapshot} snapshot The document snapshot.
- * @param {functions.EventContext} context The event context.
+ * @param {functionsV1.firestore.DocumentSnapshot} snapshot The document snapshot.
+ * @param {functionsV1.EventContext} context The event context.
  * @return {Promise<admin.messaging.MessagingDevicesResponse | null>}
  *  The FCM response or null.
  */
 const alertCreationHandler = async (
-  snapshot: functions.firestore.DocumentSnapshot,
-  context: functions.EventContext
+  snapshot: functionsV1.firestore.DocumentSnapshot,
+  context: functionsV1.EventContext
 ): Promise<admin.messaging.MessagingDevicesResponse | null> => {
   const alertDataFromDB = snapshot.data() as AlertItemFromDB | undefined;
 
   if (!alertDataFromDB) {
-    functions.logger.error("Alert data is undefined, exiting function.");
+    functionsV1.logger.error("Alert data is undefined, exiting function.");
     return null;
   }
 
   const alertId = context.params.alertId;
-  functions.logger.log("New alert created, ID:", alertId, "Data:", alertDataFromDB);
+  functionsV1.logger.log("New alert created, ID:", alertId, "Data:", alertDataFromDB);
 
   let tokens: string[] = [];
 
@@ -59,21 +59,21 @@ const alertCreationHandler = async (
       const student = studentDoc.data() as Student;
       if (student.fcmTokens && student.fcmTokens.length > 0) {
         tokens = student.fcmTokens;
-        functions.logger.log(
+        functionsV1.logger.log(
           "Targeted alert for student",
           alertDataFromDB.studentId,
           ". Tokens:",
           tokens.length
         );
       } else {
-        functions.logger.log(
+        functionsV1.logger.log(
           "Student",
           alertDataFromDB.studentId,
           "found, but no FCM tokens."
         );
       }
     } else {
-      functions.logger.log(
+      functionsV1.logger.log(
         "Student",
         alertDataFromDB.studentId,
         "not found for targeted alert."
@@ -89,11 +89,11 @@ const alertCreationHandler = async (
         tokens.push(...student.fcmTokens);
       }
     });
-    functions.logger.log("General alert. Total tokens found:", tokens.length);
+    functionsV1.logger.log("General alert. Total tokens found:", tokens.length);
   }
 
   if (tokens.length === 0) {
-    functions.logger.log("No FCM tokens found to send notification to.");
+    functionsV1.logger.log("No FCM tokens found to send notification to.");
     return null;
   }
 
@@ -115,9 +115,9 @@ const alertCreationHandler = async (
       alertDataFromDB.originalFeedbackMessageSnippet;
   }
 
-  const payload = {data: payloadData}; // Corrected: key-spacing
+  const payload = { data: payloadData };
 
-  functions.logger.log(
+  functionsV1.logger.log(
     "Sending FCM. Payload:",
     JSON.stringify(payload).substring(0, 30) + "...",
     "Tokens count:",
@@ -126,14 +126,14 @@ const alertCreationHandler = async (
 
   try {
     const response = await admin.messaging().sendToDevice(uniqueTokens, payload);
-    functions.logger.log("FCM send response:", response);
+    functionsV1.logger.log("FCM send response:", response);
 
     response.results.forEach((result, index) => {
       const error = result.error;
       if (error) {
-        functions.logger.error(
+        functionsV1.logger.error(
           "FCM Fail:",
-          uniqueTokens[index].substring(0, 10) + "...", // Shortened line
+          uniqueTokens[index].substring(0, 10) + "...",
           error.code
         );
         // Consider removing invalid tokens
@@ -141,7 +141,7 @@ const alertCreationHandler = async (
     });
     return response;
   } catch (error) {
-    functions.logger.error("Error sending FCM message:", error); // Shortened line
+    functionsV1.logger.error("Error sending FCM message:", error);
     return null;
   }
 };
@@ -149,6 +149,6 @@ const alertCreationHandler = async (
 /**
  * Firebase Cloud Function triggered on new alert creation to send notifications.
  */
-export const sendAlertNotification = functions.firestore
+export const sendAlertNotification = functionsV1.firestore
   .document("alertItems/{alertId}")
   .onCreate(alertCreationHandler);
