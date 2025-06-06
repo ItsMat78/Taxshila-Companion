@@ -1,8 +1,13 @@
 
+'use server';
 import * as functionsV1 from "firebase-functions/v1";
 import * as admin from "firebase-admin";
 
+// Initialize Firebase Admin SDK
+// Make sure your Firebase project has a service account key set up if running locally,
+// or it will work automatically in the Firebase Functions environment.
 admin.initializeApp();
+
 const db = admin.firestore();
 
 // Interface for data directly from Firestore snapshot
@@ -20,6 +25,7 @@ interface AlertItemFromDB {
 interface Student {
   studentId: string;
   fcmTokens?: string[];
+  // ... other student fields
 }
 
 /**
@@ -42,7 +48,12 @@ const alertCreationHandler = async (
   }
 
   const alertId = context.params.alertId;
-  functionsV1.logger.log("New alert created, ID:", alertId, "Data:", alertDataFromDB);
+  functionsV1.logger.log(
+    "New alert created, ID:",
+    alertId,
+    "Data:",
+    alertDataFromDB
+  );
 
   let tokens: string[] = [];
 
@@ -99,11 +110,12 @@ const alertCreationHandler = async (
 
   const uniqueTokens = [...new Set(tokens)];
 
-  const payloadData: { [key: string]: string } = {
+  // Construct the data payload for the push notification
+  const payloadData: {[key: string]: string} = {
     title: alertDataFromDB.title,
     body: alertDataFromDB.message,
     icon: "/logo.png",
-    url: "/member/alerts",
+    url: "/member/alerts", // Path for your app to open on click
     alertId: alertId,
     alertType: alertDataFromDB.type,
   };
@@ -115,7 +127,7 @@ const alertCreationHandler = async (
       alertDataFromDB.originalFeedbackMessageSnippet;
   }
 
-  const payload = { data: payloadData };
+  const payload = {data: payloadData};
 
   functionsV1.logger.log(
     "Sending FCM. Payload:",
@@ -128,6 +140,7 @@ const alertCreationHandler = async (
     const response = await admin.messaging().sendToDevice(uniqueTokens, payload);
     functionsV1.logger.log("FCM send response:", response);
 
+    // Clean up invalid tokens
     response.results.forEach((result, index) => {
       const error = result.error;
       if (error) {
@@ -137,6 +150,15 @@ const alertCreationHandler = async (
           error.code
         );
         // Consider removing invalid tokens
+        // This would involve querying the 'students' collection for the token
+        // and then removing it from the student's 'fcmTokens' array.
+        // For brevity, detailed token cleanup is omitted here.
+        if (
+          error.code === "messaging/invalid-registration-token" ||
+          error.code === "messaging/registration-token-not-registered"
+        ) {
+          // Example: removeTokenFromStudent(uniqueTokens[index]);
+        }
       }
     });
     return response;
