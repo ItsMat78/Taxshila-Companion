@@ -10,7 +10,7 @@ export const metadata: Metadata = {
   title: 'Taxshila Companion',
   description: 'Your companion app for Taxshila study hall.',
   manifest: '/manifest.json',
-  themeColor: '#30475E',
+  themeColor: '#30475E', // Matches primary color
   icons: {
     icon: [
       { url: '/favicon.ico', type: 'image/x-icon', sizes: 'any' },
