@@ -13,16 +13,19 @@ import {
 import { ScrollText } from 'lucide-react';
 
 const libraryRules = [
+  "Library Timings 7am to 2pm & 3pm to 10pm (Mon-Sat).",
+  "Attendance is mandatory. Fill out your own attendance only.",
+  "Girls will be seated separately.",
+  "Single Shift fee ₹600. Both Shifts fee ₹1000. Subjected to change according to season.",
+  "Demo will be given only for 1 day.",
+  "Library will remain open on Sundays until 2 pm only.",
+  "Remove shoes outside on the shoe rack. Do not litter.",
+  "Payment of fee due shall be made within 5 days after due date.",
+  "First time visitors are prohibited from sitting in the library without informing at the reception.",
   "Maintain silence in all study areas. Mobile phones should be on silent mode.",
-  "No food or beverages (except water in a sealed container) are allowed near books or computers.",
-  "Personal belongings should not be left unattended. The library is not responsible for lost items.",
-  "Respect library property. Do not write on, deface, or damage any library materials or furniture.",
-  "Seats are for registered members only and cannot be reserved by placing belongings.",
   "Adhere to your allocated shift timings to ensure fair access for all members.",
   "Misconduct or violation of library rules may result in suspension of membership.",
-  "Dispose of waste properly in designated bins.",
-  "Report any issues or concerns to the library staff immediately.",
-  "Follow all instructions given by the library staff.",
+  "Report any issues or concerns to the library staff immediately or through the app.",
 ];
 
 export default function MemberRulesPage() {

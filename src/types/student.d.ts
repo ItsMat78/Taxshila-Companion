@@ -20,6 +20,7 @@ export interface Student {
   amountDue?: string; 
   paymentHistory?: PaymentRecord[];
   profilePictureUrl?: string;
+  fcmTokens?: string[]; // Added for storing FCM tokens
 }
 
 export interface PaymentRecord {

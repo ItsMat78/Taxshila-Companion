@@ -29,7 +29,7 @@ import {
   UserCircle,
   TrendingUp,
   Settings,
-  UploadCloud // Added UploadCloud for Data Management icon (or use Database if preferred)
+  UploadCloud
 } from 'lucide-react';
 import type { UserRole } from '@/types/auth';
 
@@ -53,7 +53,7 @@ export const mainNav: NavItem[] = [
     roles: ['admin'],
   },
   {
-    title: 'Students',
+    title: 'Manage Students',
     href: '#',
     icon: Users,
     roles: ['admin'],
@@ -73,7 +73,7 @@ export const mainNav: NavItem[] = [
     ]
   },
   {
-    title: 'Seat Management',
+    title: 'Manage Seats',
     href: '#',
     icon: Armchair,
     roles: ['admin'],
@@ -87,7 +87,7 @@ export const mainNav: NavItem[] = [
     ]
   },
   {
-    title: 'Attendance Overview',
+    title: 'Check Attendance',
     href: '/attendance/calendar',
     icon: CalendarDays,
     roles: ['admin'],
@@ -153,7 +153,7 @@ export const mainNav: NavItem[] = [
   {
     title: 'Data Management',
     href: '/admin/data-management',
-    icon: Database, // Using Database icon as it seems more fitting than UploadCloud for general data management
+    icon: Database,
     roles: ['admin'],
   },
 
@@ -185,7 +185,7 @@ export const mainNav: NavItem[] = [
   {
     title: 'Pay Fees',
     href: '/member/pay',
-    icon: QrCode, // Kept QrCode for now, can be changed if payment method changes
+    icon: QrCode,
     roles: ['member'],
   },
   {
@@ -208,7 +208,7 @@ export const mainNav: NavItem[] = [
   },
   {
     title: 'Rate Us',
-    href: 'https://www.google.com/maps/search/?api=1&query=Taxshila+Study+Hall+Pune',
+    href: 'https://g.page/r/CS-yYFo4JxNXEBM/review', // Updated Rate Us link
     icon: Star,
     roles: ['member'],
     external: true,
