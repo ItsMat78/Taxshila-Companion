@@ -45,6 +45,22 @@ type CheckedInStudentInfo = Student & {
   isOutsideShift?: boolean;
 };
 
+const staticAdminActionTiles = [
+    { baseTitle: "Manage Students", icon: Users, description: "View, edit student details.", href: "/students/list" },
+    { baseTitle: "Register Student", icon: UserPlus, description: "Add new students to system.", href: "/students/register" },
+    { baseTitle: "Attendance Overview", icon: CalendarDays, description: "Check student attendance logs.", href: "/attendance/calendar" },
+    { baseTitle: "Send Alert", icon: SendIcon, description: "Broadcast to all members.", href: "/admin/alerts/send" },
+    { 
+      baseTitle: "View Feedback", 
+      icon: Inbox, 
+      description: "Review member suggestions.", 
+      href: "/admin/feedback",
+      isFeedbackTile: true, 
+    }, 
+    { baseTitle: "Seat Dashboard", icon: Eye, description: "View current seat status.", href: "/seats/availability" },
+];
+
+
 function AdminDashboardContent() {
   const [isLoadingDashboardStats, setIsLoadingDashboardStats] = React.useState(true);
   const [isLoadingAvailabilityStats, setIsLoadingAvailabilityStats] = React.useState(true);
@@ -153,21 +169,6 @@ function AdminDashboardContent() {
     };
     fetchDashboardData();
   }, []);
-
-  const staticAdminActionTiles = [
-      { baseTitle: "Manage Students", icon: Users, description: "View, edit student details.", href: "/students/list" },
-      { baseTitle: "Register Student", icon: UserPlus, description: "Add new students to system.", href: "/students/register" },
-      { baseTitle: "Attendance Overview", icon: CalendarDays, description: "Check student attendance logs.", href: "/attendance/calendar" },
-      { baseTitle: "Send Alert", icon: SendIcon, description: "Broadcast to all members.", href: "/admin/alerts/send" },
-      { 
-        baseTitle: "View Feedback", 
-        icon: Inbox, 
-        description: "Review member suggestions.", 
-        href: "/admin/feedback",
-        isFeedbackTile: true, // Marker for the feedback tile
-      }, 
-      { baseTitle: "Seat Dashboard", icon: Eye, description: "View current seat status.", href: "/seats/availability" },
-  ];
 
   const totalRegisteredStudents = morningShiftStudentCount + eveningShiftStudentCount + fullDayShiftStudentCount;
 
