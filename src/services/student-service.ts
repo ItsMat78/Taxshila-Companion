@@ -309,6 +309,7 @@ export interface AddStudentData {
   name: string;
   email?: string;
   phone: string;
+  address: string;
   password?: string;
   shift: Shift;
   seatNumber: string;
@@ -360,6 +361,7 @@ export async function addStudent(studentData: AddStudentData): Promise<Student> 
     name: studentData.name,
     email: studentData.email && studentData.email.trim() !== "" ? studentData.email.toLowerCase() : undefined,
     phone: studentData.phone,
+    address: studentData.address,
     password: studentData.password,
     shift: studentData.shift,
     seatNumber: studentData.seatNumber,
@@ -379,6 +381,7 @@ export async function addStudent(studentData: AddStudentData): Promise<Student> 
     studentId: newStudentDataTypeConsistent.studentId,
     name: newStudentDataTypeConsistent.name,
     phone: newStudentDataTypeConsistent.phone,
+    address: newStudentDataTypeConsistent.address,
     password: newStudentDataTypeConsistent.password,
     shift: newStudentDataTypeConsistent.shift,
     seatNumber: newStudentDataTypeConsistent.seatNumber,
@@ -513,6 +516,7 @@ export async function updateStudent(customStudentId: string, studentUpdateData: 
       const profileChanged = (studentUpdateData.name && studentUpdateData.name !== studentToUpdate.name) ||
                              (payload.email !== studentToUpdate.email) ||
                              (studentUpdateData.phone && studentUpdateData.phone !== studentToUpdate.phone) ||
+                             (studentUpdateData.address && studentUpdateData.address !== studentToUpdate.address) ||
                              (studentUpdateData.shift && studentUpdateData.shift !== studentToUpdate.shift) ||
                              (studentUpdateData.seatNumber !== undefined && studentUpdateData.seatNumber !== studentToUpdate.seatNumber) ||
                              (payload.idCardFileName !== studentToUpdate.idCardFileName) ||

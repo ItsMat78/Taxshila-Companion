@@ -62,6 +62,7 @@ const studentEditFormSchema = z.object({
   phone: z.string()
     .length(10, { message: "Phone number must be exactly 10 digits." })
     .regex(/^\d+$/, { message: "Phone number must contain only digits." }),
+  address: z.string(),
   shift: z.enum(["morning", "evening", "fullday"], { required_error: "Shift selection is required." }),
   seatNumber: z.string().nullable().refine(val => val !== null && val !== "", { message: "Seat selection is required."}),
   idCardFileName: z.string().optional(),
@@ -114,6 +115,7 @@ export default function EditStudentPage() {
       name: "",
       email: "",
       phone: "",
+      address: "",
       shift: undefined,
       seatNumber: null,
       idCardFileName: "",
@@ -136,6 +138,7 @@ export default function EditStudentPage() {
           name: student.name,
           email: student.email || "",
           phone: student.phone,
+          address: student.address,
           shift: student.shift,
           seatNumber: student.activityStatus === 'Left' ? null : student.seatNumber,
           idCardFileName: student.idCardFileName || "",
@@ -231,6 +234,7 @@ export default function EditStudentPage() {
         name: data.name,
         email: data.email,
         phone: data.phone,
+        address: data.address,
         shift: data.shift,
         seatNumber: data.seatNumber,
         activityStatus: 'Active', 
@@ -245,6 +249,7 @@ export default function EditStudentPage() {
         name: data.name,
         email: data.email,
         phone: data.phone,
+        address: data.address,
         shift: data.shift,
         seatNumber: data.seatNumber,
         idCardFileName: data.idCardFileName,
@@ -264,6 +269,7 @@ export default function EditStudentPage() {
             name: updatedStudent.name,
             email: updatedStudent.email || "",
             phone: updatedStudent.phone,
+            address: updatedStudent.address,
             shift: updatedStudent.shift,
             seatNumber: updatedStudent.activityStatus === 'Left' ? null : updatedStudent.seatNumber,
             idCardFileName: updatedStudent.idCardFileName || "",
@@ -332,6 +338,7 @@ export default function EditStudentPage() {
             name: updatedStudent.name,
             email: updatedStudent.email || "",
             phone: updatedStudent.phone,
+            address: updatedStudent.address,
             shift: updatedStudent.shift,
             seatNumber: null,
             idCardFileName: updatedStudent.idCardFileName || "",
@@ -469,6 +476,9 @@ export default function EditStudentPage() {
               <FormField control={form.control} name="phone" render={({ field }) => (
                 <FormItem><FormLabel>Phone Number</FormLabel><FormControl><Input type="tel" placeholder="Enter 10-digit phone number" {...field} disabled={isSaving || isDeleting} /></FormControl><FormMessage /></FormItem>
               )} />
+              <FormField control={form.control} name="address" render={({ field }) => (
+                <FormItem><FormLabel>Address</FormLabel><FormControl><Input placeholder="Enter address" {...field} disabled={isSaving || isDeleting} /></FormControl><FormMessage /></FormItem>
+              )} />
               <FormField control={form.control} name="shift" render={({ field }) => (
                 <FormItem className="space-y-3"><FormLabel>Shift Selection</FormLabel>
                   <FormControl>
@@ -518,24 +528,7 @@ export default function EditStudentPage() {
                   </FormItem>
                 )}
               />
-              <FormItem>
-                <FormLabel>ID Card (Optional - Photo/Scan)</FormLabel>
-                 <Input
-                    type="file"
-                    accept="image/*,.pdf"
-                    ref={fileInputRef}
-                    onChange={handleFileChange}
-                    disabled={isSaving || isDeleting}
-                    className="text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:font-semibold file:bg-primary file:text-primary-foreground hover:file:bg-primary/90"
-                  />
-                  {currentIdCardFilename && (
-                    <div className="mt-2 p-2 border rounded-md bg-muted/50 inline-block">
-                        <Image src={ID_CARD_PLACEHOLDER_EDIT} alt="ID Card Preview" width={100} height={67} className="rounded-md max-w-full object-contain" data-ai-hint="document id card" />
-                        <p className="text-xs text-muted-foreground pt-1 truncate max-w-[100px]">{currentIdCardFilename} (Preview)</p>
-                    </div>
-                  )}
-                   <FormDescription>Editing/re-uploading ID card image not fully supported in demo (filename change only).</FormDescription>
-              </FormItem>
+              
 
               <div className="space-y-2 pt-4 border-t">
                 <FormLabel className="flex items-center"><KeyRound className="mr-2 h-4 w-4 text-muted-foreground" />Update Password (Optional)</FormLabel>

@@ -23,7 +23,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Eye, Edit, Loader2, Users, UserX, UserCheck, Search as SearchIcon, Phone, Mail } from 'lucide-react'; // Changed ArrowRight to Eye
+import { Eye, Edit, Loader2, Users, UserX, UserCheck, Search as SearchIcon, Phone, Mail, MapPin } from 'lucide-react'; // Changed ArrowRight to Eye
 import { getAllStudents } from '@/services/student-service';
 import type { Student as StudentData } from '@/types/student';
 import { cn } from '@/lib/utils';
@@ -43,6 +43,7 @@ const StudentCardItem = ({ student, isLeftTable, getStatusBadge }: { student: St
       </CardHeader>
       <CardContent className="space-y-1 text-xs pb-3">
         <p className="flex items-center"><Phone className="mr-2 h-3 w-3 text-muted-foreground" /><span className="font-medium">Phone:</span>&nbsp;{student.phone}</p>
+        <p className="flex items-center"><MapPin className="mr-2 h-3 w-3 text-muted-foreground" /><span className="font-medium">Address:</span>&nbsp;{student.address}</p>
         <p className="flex items-center truncate"><Mail className="mr-2 h-3 w-3 text-muted-foreground" /><span className="font-medium">Email:</span>&nbsp;{student.email || 'N/A'}</p>
         <p><span className="font-medium">Shift:</span> <span className="capitalize">{student.shift}</span></p>
         <p><span className="font-medium">Seat:</span> {student.seatNumber || 'N/A'}</p>
@@ -101,7 +102,7 @@ export default function StudentListPage() {
       student.name.toLowerCase().includes(lowercasedFilter) ||
       student.studentId.toLowerCase().includes(lowercasedFilter) ||
       (student.email && student.email.toLowerCase().includes(lowercasedFilter)) ||
-      student.phone.includes(searchTerm) 
+      student.phone.includes(searchTerm)
     );
   }, [allStudents, searchTerm]);
 
@@ -162,6 +163,7 @@ export default function StudentListPage() {
                     <TableHead className="whitespace-nowrap">ID</TableHead>
                     <TableHead>Name</TableHead>
                     <TableHead className="whitespace-nowrap">Phone</TableHead>
+                    <TableHead>Address</TableHead>
                     <TableHead>Email</TableHead>
                     <TableHead>Shift</TableHead>
                     <TableHead>Seat</TableHead>
@@ -179,6 +181,7 @@ export default function StudentListPage() {
                         </Link>
                       </TableCell>
                       <TableCell>{student.phone}</TableCell>
+                      <TableCell>{student.address}</TableCell>
                       <TableCell>{student.email || 'N/A'}</TableCell>
                       <TableCell className="capitalize">{student.shift}</TableCell>
                       <TableCell>{student.seatNumber || 'N/A'}</TableCell>

@@ -304,7 +304,7 @@ export default function MemberDashboardPage() {
             formatsToSupport: formatsToSupport,
             rememberLastUsedCamera: true,
             videoConstraints: {
-              facingMode: "environment"
+              facingMode: {exact: "environment" }
             },
             verbose: false, // Added to prevent header message errors
         };
@@ -654,7 +654,7 @@ export default function MemberDashboardPage() {
 
               <div
                 id={DASHBOARD_QR_SCANNER_ELEMENT_ID}
-                className="w-full aspect-square bg-muted rounded-md overflow-hidden border"
+                className="w-full aspect-square bg-muted rounded-md border"
               />
 
               {(hasCameraPermission === null && !isProcessingQr) && (

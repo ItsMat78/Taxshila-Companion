@@ -43,6 +43,7 @@ const studentFormSchema = z.object({
   phone: z.string()
     .length(10, { message: "Phone number must be exactly 10 digits." })
     .regex(/^\d+$/, { message: "Phone number must contain only digits." }),
+  address: z.string(),
   password: z.string().min(6, { message: "Password must be at least 6 characters." }),
   confirmPassword: z.string(),
   shift: z.enum(["morning", "evening", "fullday"], { required_error: "Shift selection is required." }),
@@ -74,6 +75,7 @@ export default function StudentRegisterPage() {
       name: "",
       email: "",
       phone: "",
+      address: "",
       password: "",
       confirmPassword: "",
       shift: undefined,
@@ -118,6 +120,7 @@ export default function StudentRegisterPage() {
         name: data.name,
         email: data.email || undefined,
         phone: data.phone,
+        address: data.address,
         password: data.password,
         shift: data.shift,
         seatNumber: data.seatNumber,
@@ -152,14 +155,6 @@ export default function StudentRegisterPage() {
     }
   }
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      form.setValue("idCardFileName", file.name);
-    } else {
-      form.setValue("idCardFileName", "");
-    }
-  };
 
   return (
     <>
@@ -180,6 +175,9 @@ export default function StudentRegisterPage() {
               )} />
               <FormField control={form.control} name="phone" render={({ field }) => (
                 <FormItem><FormLabel>Phone Number</FormLabel><FormControl><Input type="tel" placeholder="Enter 10-digit phone number" {...field} disabled={isSubmitting} /></FormControl><FormMessage /></FormItem>
+              )} />
+              <FormField control={form.control} name="address" render={({ field }) => (
+                <FormItem><FormLabel>Address</FormLabel><FormControl><Input placeholder="Enter address" {...field} disabled={isSubmitting} /></FormControl><FormMessage /></FormItem>
               )} />
               <FormField control={form.control} name="password" render={({ field }) => (
                 <FormItem><FormLabel>Password</FormLabel><FormControl><Input type="password" placeholder="Enter password (min 6 characters)" {...field} disabled={isSubmitting} /></FormControl><FormMessage /></FormItem>
@@ -235,20 +233,7 @@ export default function StudentRegisterPage() {
                   </FormItem>
                 )}
               />
-              <FormItem>
-                <FormLabel>ID Card (Optional - Photo/Scan)</FormLabel>
-                <FormControl>
-                  <Input
-                    type="file"
-                    accept="image/*,.pdf"
-                    ref={fileInputRef}
-                    onChange={handleFileChange}
-                    disabled={isSubmitting}
-                    className="file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-primary-foreground hover:file:bg-primary/90"
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
+              
 
             </CardContent>
             <CardFooter>
