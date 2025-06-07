@@ -8,6 +8,7 @@ export interface Student {
   name: string;
   email?: string; 
   phone: string;
+  address: string;
   password?: string; 
   shift: Shift;
   seatNumber: string | null; 

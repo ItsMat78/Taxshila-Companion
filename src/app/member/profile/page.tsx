@@ -20,7 +20,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from '@/contexts/auth-context';
 import { getStudentByEmail } from '@/services/student-service'; 
 import type { Student } from '@/types/student'; 
-import { UserCircle, UploadCloud, Save, Mail, Phone, BookOpen, MapPin, Receipt, Loader2, Edit } from 'lucide-react';
+import { UserCircle, UploadCloud, Save, Mail, Phone, BookOpen, MapPin, Receipt, Loader2, Edit, SquareUser, IndianRupee } from 'lucide-react';
 
 const DEFAULT_PROFILE_PLACEHOLDER = "https://placehold.co/200x200.png";
 const ID_CARD_PLACEHOLDER = "https://placehold.co/300x200.png?text=ID+Card";
@@ -146,54 +146,16 @@ export default function MemberProfilePage() {
 
   return (
     <>
-      <PageTitle title="My Profile" description="View your details and update your profile picture." />
+      <PageTitle title="My Profile" description="View your details." />
       
-      <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-3">
-        <Card className="lg:col-span-1 shadow-lg">
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <UserCircle className="mr-2 h-5 w-5" />
-              Profile Picture
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-col items-center space-y-4">
-            <Avatar className="h-40 w-40 border-2 border-primary shadow-md">
-              <AvatarImage src={profilePicturePreview || currentProfilePicture} alt={displayName} data-ai-hint="profile person" />
-              <AvatarFallback className="text-4xl">{displayName.substring(0, 2).toUpperCase()}</AvatarFallback>
-            </Avatar>
-            
-            <Input
-              id="picture"
-              type="file"
-              ref={fileInputRef}
-              onChange={handleFileChange}
-              accept="image/png, image/jpeg, image/jpg"
-              disabled={isSavingPicture}
-              className="text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-primary-foreground hover:file:bg-primary/90"
-            />
-             {profilePicturePreview && (
-              <p className="text-xs text-muted-foreground truncate max-w-full px-2">
-                Preview: {selectedFile?.name}
-              </p>
-            )}
-             <p className="text-xs text-muted-foreground">Max file size: 2MB.</p>
-          </CardContent>
-          <CardFooter>
-            <Button 
-              onClick={handleSaveProfilePicture} 
-              disabled={!profilePicturePreview || isSavingPicture || !selectedFile}
-              className="w-full"
-            >
-              {isSavingPicture ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-              {isSavingPicture ? "Updating..." : "Update Profile Picture"}
-            </Button>
-          </CardFooter>
-        </Card>
-
+      <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-3">  
         <Card className="lg:col-span-2 shadow-lg">
           <CardHeader>
-            <CardTitle>My Details</CardTitle>
-            <CardDescription>Your current information on record. Contact admin to change these details.</CardDescription>
+          <div className="flex items-center">
+          <SquareUser className="mr-3 h-5 w-5 text-muted-foreground " />
+          <CardTitle>My Details</CardTitle>
+          </div>  
+          <CardDescription>Your current information on record. Contact admin to change these details.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center">
@@ -244,7 +206,7 @@ export default function MemberProfilePage() {
            <CardFooter>
              <Link href="/member/fees" passHref legacyBehavior>
                 <Button variant="outline" size="sm">
-                  <Receipt className="mr-2 h-4 w-4" /> View Payment History
+                  <IndianRupee className="mr-2 h-4 w-4" /> View Payment History
                 </Button>
               </Link>
           </CardFooter>
