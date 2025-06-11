@@ -172,18 +172,22 @@ export default function EditStudentPage() {
 
       setIsLoadingSeats(true);
       setAvailableSeatOptions([]);
+      // If the shift is being changed OR the student was marked 'Left' and is being re-activated, clear the current seat selection.
+      // Otherwise, (e.g., editing other details but not shift), retain the current seat.
       if (form.getValues("shift") !== studentData.shift || studentData.activityStatus === 'Left') {
-         form.setValue("seatNumber", null, {shouldDirty: true});
+         form.setValue("seatNumber", null, {shouldDirty: true}); // Clear seat if shift changes or student is 'Left'
          setIsDirtyOverride(true);
       } else {
-        form.setValue("seatNumber", studentData.seatNumber, { shouldDirty: false });
+        form.setValue("seatNumber", studentData.seatNumber, { shouldDirty: false }); // Keep current seat if shift not changing and student Active
       }
       
       try {
-        const seats = await getAvailableSeats(shift);
+        const seats = await getAvailableSeats(shift); // `shift` is the new `selectedShift`
         const seatOptionsSet = new Set(seats);
 
-        if (studentData.seatNumber && studentData.activityStatus === 'Active' && studentData.shift === shift) {
+        // If the student being edited is active and currently has a seat,
+        // ensure that seat is always an option in the dropdown, even if their shift is changing.
+        if (studentData.seatNumber && studentData.activityStatus === 'Active') {
           seatOptionsSet.add(studentData.seatNumber);
         }
         
