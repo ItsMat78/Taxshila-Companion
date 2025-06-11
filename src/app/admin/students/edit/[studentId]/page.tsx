@@ -109,6 +109,10 @@ export default function EditStudentPage() {
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const [isDirtyOverride, setIsDirtyOverride] = React.useState(false);
 
+  const [isConfirmPaymentOpen, setIsConfirmPaymentOpen] = React.useState(false);
+  const [isConfirmMarkLeftOpen, setIsConfirmMarkLeftOpen] = React.useState(false);
+
+
   const form = useForm<StudentEditFormValues>({
     resolver: zodResolver(studentEditFormSchema),
     defaultValues: {
@@ -148,8 +152,6 @@ export default function EditStudentPage() {
       } else {
         toast({ title: "Error", description: "Student not found.", variant: "destructive" });
         setStudentData(null);
-        // Optionally redirect if student not found
-        // router.push('/students/list'); 
       }
     } catch (error) {
       console.error("Failed to fetch student data:", error);
@@ -172,21 +174,16 @@ export default function EditStudentPage() {
 
       setIsLoadingSeats(true);
       setAvailableSeatOptions([]);
-      // If the shift is being changed OR the student was marked 'Left' and is being re-activated, clear the current seat selection.
-      // Otherwise, (e.g., editing other details but not shift), retain the current seat.
       if (form.getValues("shift") !== studentData.shift || studentData.activityStatus === 'Left') {
-         form.setValue("seatNumber", null, {shouldDirty: true}); // Clear seat if shift changes or student is 'Left'
+         form.setValue("seatNumber", null, {shouldDirty: true});
          setIsDirtyOverride(true);
       } else {
-        form.setValue("seatNumber", studentData.seatNumber, { shouldDirty: false }); // Keep current seat if shift not changing and student Active
+        form.setValue("seatNumber", studentData.seatNumber, { shouldDirty: false });
       }
       
       try {
-        const seats = await getAvailableSeats(shift); // `shift` is the new `selectedShift`
+        const seats = await getAvailableSeats(shift);
         const seatOptionsSet = new Set(seats);
-
-        // If the student being edited is active and currently has a seat,
-        // ensure that seat is always an option in the dropdown, even if their shift is changing.
         if (studentData.seatNumber && studentData.activityStatus === 'Active') {
           seatOptionsSet.add(studentData.seatNumber);
         }
@@ -326,6 +323,7 @@ export default function EditStudentPage() {
       });
     } finally {
       setIsSaving(false);
+      setIsConfirmPaymentOpen(false);
     }
   }
 
@@ -373,6 +371,7 @@ export default function EditStudentPage() {
       });
     } finally {
       setIsSaving(false);
+      setIsConfirmMarkLeftOpen(false);
     }
   }
 
@@ -394,7 +393,6 @@ export default function EditStudentPage() {
       });
       setIsDeleting(false);
     }
-    // No finally setIsDeleting(false) here, as we navigate away on success.
   };
 
 
@@ -442,6 +440,10 @@ export default function EditStudentPage() {
       </div>
     );
   }
+
+  const amountDueDisplay = studentData.amountDue && studentData.amountDue !== "Rs. 0" && studentData.amountDue !== "N/A" 
+    ? studentData.amountDue 
+    : (studentData.shift === "fullday" ? "Rs. 1200" : "Rs. 700");
 
   return (
     <>
@@ -555,16 +557,35 @@ export default function EditStudentPage() {
             </CardContent>
             <CardFooter className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-4">
               <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={handleMarkAsLeft}
-                    disabled={isSaving || isDeleting || isStudentLeft}
-                    className={isStudentLeft ? "hidden" : ""}
-                  >
-                    {isSaving && !isStudentLeft && !isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UserX className="mr-2 h-4 w-4" />}
-                    Mark as Left
-                  </Button>
+                  <AlertDialog open={isConfirmMarkLeftOpen} onOpenChange={setIsConfirmMarkLeftOpen}>
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        disabled={isSaving || isDeleting || isStudentLeft}
+                        className={isStudentLeft ? "hidden" : ""}
+                        onClick={() => setIsConfirmMarkLeftOpen(true)}
+                      >
+                        <UserX className="mr-2 h-4 w-4" /> Mark as Left
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Mark {studentData.name} as Left?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          This will mark the student as inactive and their seat will become available. Are you sure?
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel onClick={() => setIsConfirmMarkLeftOpen(false)} disabled={isSaving}>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleMarkAsLeft} disabled={isSaving}>
+                          {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                          Confirm
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
                       <Button
@@ -594,10 +615,33 @@ export default function EditStudentPage() {
                   </AlertDialog>
               </div>
               <div className="flex flex-col sm:flex-row sm:items-center gap-2 w-full sm:w-auto justify-end">
-                <Button type="button" variant="outline" onClick={handleMarkPaymentPaid} disabled={isSaving || isDeleting || studentData.feeStatus === "Paid" || isStudentLeft}>
-                  {isSaving && studentData.feeStatus !== "Paid" && !isStudentLeft && !isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ClipboardCheck className="mr-2 h-4 w-4" />}
-                  Mark Payment as Paid
-                </Button>
+                 <AlertDialog open={isConfirmPaymentOpen} onOpenChange={setIsConfirmPaymentOpen}>
+                    <AlertDialogTrigger asChild>
+                        <Button
+                            type="button"
+                            variant="outline"
+                            disabled={isSaving || isDeleting || studentData.feeStatus === "Paid" || isStudentLeft}
+                            onClick={() => setIsConfirmPaymentOpen(true)}
+                        >
+                            <ClipboardCheck className="mr-2 h-4 w-4" /> Mark Payment as Paid
+                        </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>Confirm Payment for {studentData.name}?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                                This will mark the current due amount of <strong>{amountDueDisplay}</strong> as paid and advance the due date by one month.
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel onClick={() => setIsConfirmPaymentOpen(false)} disabled={isSaving}>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={handleMarkPaymentPaid} disabled={isSaving}>
+                                {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                                Confirm Payment
+                            </AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
                 <Button type="submit" disabled={isSaving || isDeleting || isLoadingSeats || (!isStudentLeft && !form.formState.isDirty && !isDirtyOverride && !form.getValues("newPassword")) }>
                   {isSaving && !isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : (isStudentLeft ? <UserCheck className="mr-2 h-4 w-4" /> : <Save className="mr-2 h-4 w-4" />)}
                   {isStudentLeft ? "Save and Re-activate" : "Save Changes"}
