@@ -124,13 +124,12 @@ export default function DataManagementPage() {
   };
 
   const processStudentImport = async (parsedData: any[], actualHeaders: string[]) => {
-    const expectedHeaders = ['Name', 'Email', 'Phone', 'Password', 'Shift', 'Seat Number'];
-    const missingHeaders = expectedHeaders.filter(h => !actualHeaders.includes(h) && (h !== 'Email')); 
+    const expectedHeaders = ['Name', 'Email', 'Phone', 'Address', 'Password', 'Shift', 'Seat Number'];
     const strictlyMissingHeaders = expectedHeaders.filter(h => h !== 'Email' && !actualHeaders.includes(h));
 
 
     if (strictlyMissingHeaders.length > 0) {
-      toast({ title: 'Invalid CSV Headers', description: `Missing required student headers: ${strictlyMissingHeaders.join(', ')}.`, variant: 'destructive' });
+      toast({ title: 'Invalid CSV Headers', description: `Missing required student headers: ${strictlyMissingHeaders.join(', ')}. Expected: ${expectedHeaders.join(', ')}.`, variant: 'destructive' });
       return;
     }
     
@@ -139,8 +138,8 @@ export default function DataManagementPage() {
 
     for (let i = 0; i < parsedData.length; i++) {
       const row = parsedData[i] as any;
-      if (!row.Name || !row.Phone || !row.Password || !row.Shift || !row['Seat Number']) {
-        importErrors.push(`Row ${i + 2}: Missing required fields (Name, Phone, Password, Shift, Seat Number).`);
+      if (!row.Name || !row.Phone || !row.Address || !row.Password || !row.Shift || !row['Seat Number']) {
+        importErrors.push(`Row ${i + 2}: Missing required fields (Name, Phone, Address, Password, Shift, Seat Number).`);
         continue;
       }
       if (!['morning', 'evening', 'fullday'].includes(String(row.Shift).toLowerCase())) {
@@ -151,6 +150,7 @@ export default function DataManagementPage() {
         name: row.Name,
         email: row.Email || undefined,
         phone: String(row.Phone).trim(),
+        address: row.Address || "", // Ensure address is a string, even if empty from CSV
         password: row.Password,
         shift: String(row.Shift).toLowerCase() as AddStudentData['shift'],
         seatNumber: String(row['Seat Number']).trim(),
@@ -279,6 +279,7 @@ export default function DataManagementPage() {
         'Email': s.email || '',
         'Phone': s.phone,
         'Password': s.password || '', // Include password field
+        'Address': s.address || '',
         'Shift': s.shift,
         'Seat Number': s.seatNumber || '',
         'ID Card File Name': s.idCardFileName || '',
@@ -401,7 +402,7 @@ export default function DataManagementPage() {
               <label htmlFor="studentCsvFileImport" className="block text-sm font-medium text-foreground mb-1">Select Student CSV</label>
               <Input id="studentCsvFileImport" type="file" accept=".csv" ref={studentFileInputRef} className="file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-primary-foreground hover:file:bg-primary/90" disabled={!!isImporting} onChange={(e) => handleFileSelected(e, "students")} />
             </div>
-            <p className="text-xs text-muted-foreground">Required headers: Name, Phone, Password, Shift, Seat Number.<br/>Optional: Email.<br/>Shift: morning, evening, fullday.</p>
+            <p className="text-xs text-muted-foreground">Required headers: Name, Phone, Address, Password, Shift, Seat Number.<br/>Optional: Email.<br/>Shift: morning, evening, fullday.</p>
           </CardContent>
           <CardFooter>
             <Button onClick={() => studentFileInputRef.current?.click()} disabled={!!isImporting} className="w-full">
@@ -531,3 +532,5 @@ export default function DataManagementPage() {
     </>
   );
 }
+
+    
