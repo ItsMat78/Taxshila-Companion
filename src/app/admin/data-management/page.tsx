@@ -24,7 +24,7 @@ import {
   getAllStudentsWithPaymentHistory,
   batchImportAttendance,
   batchImportPayments,
-  deleteAllData // Import the new delete function
+  deleteAllData
 } from '@/services/student-service';
 import type { Student, AttendanceRecord, PaymentRecord, AttendanceImportData, PaymentImportData } from '@/types/student';
 import { format, parseISO, isValid } from 'date-fns';
@@ -39,7 +39,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { useRouter } from 'next/navigation'; // For redirecting after deletion
+import { useRouter } from 'next/navigation';
 
 interface AggregatedPaymentRecordForExport extends PaymentRecord {
   studentId: string;
@@ -125,11 +125,11 @@ export default function DataManagementPage() {
 
   const processStudentImport = async (parsedData: any[], actualHeaders: string[]) => {
     const expectedHeaders = ['Name', 'Email', 'Phone', 'Address', 'Password', 'Shift', 'Seat Number'];
+    // Email is optional, Address column must be present but its value can be empty.
     const strictlyMissingHeaders = expectedHeaders.filter(h => h !== 'Email' && !actualHeaders.includes(h));
 
-
     if (strictlyMissingHeaders.length > 0) {
-      toast({ title: 'Invalid CSV Headers', description: `Missing required student headers: ${strictlyMissingHeaders.join(', ')}. Expected: ${expectedHeaders.join(', ')}.`, variant: 'destructive' });
+      toast({ title: 'Invalid CSV Headers', description: `Missing required student column headers: ${strictlyMissingHeaders.join(', ')}. Expected columns: ${expectedHeaders.join(', ')}.`, variant: 'destructive' });
       return;
     }
     
@@ -138,8 +138,10 @@ export default function DataManagementPage() {
 
     for (let i = 0; i < parsedData.length; i++) {
       const row = parsedData[i] as any;
-      if (!row.Name || !row.Phone || !row.Address || !row.Password || !row.Shift || !row['Seat Number']) {
-        importErrors.push(`Row ${i + 2}: Missing required fields (Name, Phone, Address, Password, Shift, Seat Number).`);
+      // Validate essential non-empty fields. 'Address' column presence is checked by header validation.
+      // Its value can be an empty string. 'Email' is optional.
+      if (!row.Name || !row.Phone || !row.Password || !row.Shift || !row['Seat Number']) {
+        importErrors.push(`Row ${i + 2}: Missing required values for Name, Phone, Password, Shift, or Seat Number. The 'Address' field value can be empty, but the column must exist.`);
         continue;
       }
       if (!['morning', 'evening', 'fullday'].includes(String(row.Shift).toLowerCase())) {
@@ -150,7 +152,7 @@ export default function DataManagementPage() {
         name: row.Name,
         email: row.Email || undefined,
         phone: String(row.Phone).trim(),
-        address: row.Address || "", // Ensure address is a string, even if empty from CSV
+        address: row.Address || "", // Ensures address is a string, handles empty or undefined from CSV
         password: row.Password,
         shift: String(row.Shift).toLowerCase() as AddStudentData['shift'],
         seatNumber: String(row['Seat Number']).trim(),
@@ -278,7 +280,7 @@ export default function DataManagementPage() {
         'Name': s.name,
         'Email': s.email || '',
         'Phone': s.phone,
-        'Password': s.password || '', // Include password field
+        'Password': s.password || '',
         'Address': s.address || '',
         'Shift': s.shift,
         'Seat Number': s.seatNumber || '',
@@ -371,7 +373,6 @@ export default function DataManagementPage() {
         description: 'All application data has been deleted successfully.',
         duration: 7000,
       });
-      // Optionally, redirect or refresh to reflect the empty state
       router.refresh(); 
     } catch (error: any) {
       console.error("Error deleting database:", error);
@@ -391,7 +392,6 @@ export default function DataManagementPage() {
       <PageTitle title="Data Management" description="Import and export application data." />
 
       <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-3">
-        {/* Student Import Card */}
         <Card className="shadow-lg">
           <CardHeader>
             <CardTitle className="flex items-center"><Users className="mr-2 h-5 w-5" />Import New Students</CardTitle>
@@ -412,7 +412,6 @@ export default function DataManagementPage() {
           </CardFooter>
         </Card>
 
-        {/* Attendance Import Card */}
         <Card className="shadow-lg">
           <CardHeader>
             <CardTitle className="flex items-center"><FileClock className="mr-2 h-5 w-5" />Import Attendance</CardTitle>
@@ -433,7 +432,6 @@ export default function DataManagementPage() {
           </CardFooter>
         </Card>
 
-        {/* Payment Import Card */}
         <Card className="shadow-lg">
           <CardHeader>
             <CardTitle className="flex items-center"><Banknote className="mr-2 h-5 w-5" />Import Payments</CardTitle>
@@ -532,5 +530,3 @@ export default function DataManagementPage() {
     </>
   );
 }
-
-    
