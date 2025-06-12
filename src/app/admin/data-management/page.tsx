@@ -278,6 +278,7 @@ export default function DataManagementPage() {
         'Name': s.name,
         'Email': s.email || '',
         'Phone': s.phone,
+        'Password': s.password || '', // Include password field
         'Shift': s.shift,
         'Seat Number': s.seatNumber || '',
         'ID Card File Name': s.idCardFileName || '',
