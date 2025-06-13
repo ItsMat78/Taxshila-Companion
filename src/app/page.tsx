@@ -3,14 +3,14 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { PageTitle } from '@/components/shared/page-title';
-import { 
-  Users, 
-  Armchair, 
-  IndianRupee, 
+import {
+  Users,
+  Armchair,
+  IndianRupee,
   Loader2,
   UserPlus,
   CalendarDays,
-  Send as SendIcon, 
+  Send as SendIcon,
   Inbox,
   Eye,
   LogIn,
@@ -32,32 +32,32 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useAuth } from '@/contexts/auth-context';
-import { useRouter } from 'next/navigation';
+import { useRouter } from 'next/navigation'; // Changed from next/router
 import { cn } from '@/lib/utils';
-import { getAllStudents, getAvailableSeats, getAllAttendanceRecords, calculateMonthlyRevenue } from '@/services/student-service'; 
+import { getAllStudents, getAvailableSeats, getAllAttendanceRecords, calculateMonthlyRevenue } from '@/services/student-service';
 import type { Student, Shift, AttendanceRecord } from '@/types/student';
-import type { FeedbackItem } from '@/types/communication'; 
-import { format, parseISO, isToday, getHours } from 'date-fns';
+import type { FeedbackItem } from '@/types/communication';
+import { format, parseISO, isToday, getHours, getMinutes } from 'date-fns';
 import { useNotificationCounts } from '@/hooks/use-notification-counts';
 
-type CheckedInStudentInfo = Student & { 
+type CheckedInStudentInfo = Student & {
   checkInTime: string;
-  isOutsideShift?: boolean;
+  isOutsideShift: boolean;
 };
 
 const staticAdminActionTilesConfig = [
-    { baseTitle: "Manage Students", icon: Users, description: "View, edit student details.", href: "/students/list" },
-    { baseTitle: "Register Student", icon: UserPlus, description: "Add new students to system.", href: "/students/register" },
-    { baseTitle: "Attendance Overview", icon: CalendarDays, description: "Check student attendance logs.", href: "/attendance/calendar" },
-    { baseTitle: "Send Alert", icon: SendIcon, description: "Broadcast to all members.", href: "/admin/alerts/send" },
-    { 
-      baseTitle: "View Feedback", 
-      icon: Inbox, 
-      description: "Review member suggestions.", 
-      href: "/admin/feedback",
-      isFeedbackTile: true, 
-    }, 
-    { baseTitle: "Seat Dashboard", icon: Eye, description: "View current seat status.", href: "/seats/availability" },
+  { baseTitle: "Manage Students", icon: Users, description: "View, edit student details.", href: "/students/list" },
+  { baseTitle: "Register Student", icon: UserPlus, description: "Add new students to system.", href: "/students/register" },
+  { baseTitle: "Attendance Overview", icon: CalendarDays, description: "Check student attendance logs.", href: "/attendance/calendar" },
+  { baseTitle: "Send Alert", icon: SendIcon, description: "Broadcast to all members.", href: "/admin/alerts/send" },
+  {
+    baseTitle: "View Feedback",
+    icon: Inbox,
+    description: "Review member suggestions.",
+    href: "/admin/feedback",
+    isFeedbackTile: true,
+  },
+  { baseTitle: "Seat Dashboard", icon: Eye, description: "View current seat status.", href: "/seats/availability" },
 ];
 
 
@@ -66,7 +66,7 @@ function AdminDashboardContent() {
   const [isLoadingAvailabilityStats, setIsLoadingAvailabilityStats] = React.useState(true);
   const [isLoadingCheckedInStudents, setIsLoadingCheckedInStudents] = React.useState(true);
   const [isLoadingRevenue, setIsLoadingRevenue] = React.useState(true);
-  
+
   const [morningShiftStudentCount, setMorningShiftStudentCount] = React.useState(0);
   const [eveningShiftStudentCount, setEveningShiftStudentCount] = React.useState(0);
   const [fullDayShiftStudentCount, setFullDayShiftStudentCount] = React.useState(0);
@@ -115,19 +115,19 @@ function AdminDashboardContent() {
         const morningRegistered = activeStudentsWithSeats.filter(s => s.shift === 'morning').length;
         const eveningRegistered = activeStudentsWithSeats.filter(s => s.shift === 'evening').length;
         const fulldayRegistered = activeStudentsWithSeats.filter(s => s.shift === 'fullday').length;
-        
+
         setMorningShiftStudentCount(morningRegistered);
         setEveningShiftStudentCount(eveningRegistered);
         setFullDayShiftStudentCount(fulldayRegistered);
-        
+
         setAvailableMorningSlotsCount(morningAvail.length);
         setAvailableEveningSlotsCount(eveningAvail.length);
         setAvailableFullDaySlotsCount(fulldayAvail.length);
-        
+
         const todayCheckedInRecords = allAttendance.filter(
           (record) => isToday(parseISO(record.checkInTime)) && !record.checkOutTime
         );
-        
+
         const checkedInStudentDetails: CheckedInStudentInfo[] = todayCheckedInRecords
           .map(record => {
             const student = allStudentsData.find(s => s.studentId === record.studentId);
@@ -137,15 +137,15 @@ function AdminDashboardContent() {
             const checkInHour = getHours(parseISO(record.checkInTime));
             if (student.shift === "morning" && (checkInHour < 7 || checkInHour >= 14)) {
               isOutside = true;
-            } else if (student.shift === "evening" && (checkInHour < 15 || checkInHour >= 22)) {
+            } else if (student.shift === "evening" && (checkInHour < 14 || (checkInHour === 21 && getMinutes(parseISO(record.checkInTime)) > 30) || checkInHour >= 22)) {
               isOutside = true;
             }
 
             return { ...student, checkInTime: record.checkInTime, isOutsideShift: isOutside };
           })
           .filter((s): s is CheckedInStudentInfo => s !== null)
-          .sort((a, b) => parseISO(a.checkInTime).getTime() - parseISO(b.checkInTime).getTime());
-        
+          .sort((a, b) => parseISO(a.checkInTime).getTime() - parseISO(b.checkInTime).getTime()) as CheckedInStudentInfo[];
+
         setCheckedInStudents(checkedInStudentDetails);
         setMonthlyRevenue(currentMonthRevenue);
         setCurrentMonthName(format(new Date(), 'MMMM'));
@@ -175,16 +175,16 @@ function AdminDashboardContent() {
   return (
     <>
       <PageTitle title="Admin Dashboard" description="Overview of Taxshila Companion activities." />
-      
+
       <Dialog open={showCheckedInDialog} onOpenChange={setShowCheckedInDialog}>
         <DialogContent className="sm:max-w-[725px]">
-           <DialogHeader>
+          <DialogHeader>
             <ShadcnDialogTitle className="flex items-center"><LogIn className="mr-2 h-5 w-5" />Students Currently In Library</ShadcnDialogTitle>
           </DialogHeader>
           {isLoadingCheckedInStudents ? (
-             <div className="flex items-center justify-center py-10">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-             </div>
+            <div className="flex items-center justify-center py-10">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
           ) : (
             <div className="max-h-[60vh] overflow-y-auto mt-4">
               <Table>
@@ -209,15 +209,15 @@ function AdminDashboardContent() {
                         )}
                       </TableCell>
                       <TableCell>{student.seatNumber || 'N/A'}</TableCell>
-                      <TableCell>{format(parseISO(student.checkInTime), 'p')}</TableCell>
+                      <TableCell>{format(parseISO(student.checkInTime), 'p' )}</TableCell>
                     </TableRow>
                   ))}
                   {checkedInStudents.length === 0 && (
-                      <TableRow>
-                        <TableCell colSpan={4} className="text-center text-muted-foreground py-4">
-                          No students are currently checked in.
-                        </TableCell>
-                      </TableRow>
+                    <TableRow>
+                      <TableCell colSpan={4} className="text-center text-muted-foreground py-4">
+                        No students are currently checked in.
+                      </TableCell>
+                    </TableRow>
                   )}
                 </TableBody>
               </Table>
@@ -225,35 +225,35 @@ function AdminDashboardContent() {
           )}
         </DialogContent>
       </Dialog>
-      
+
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
         <Link href="/students/list" className="block no-underline focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-lg h-full">
-            <Card className="flex flex-col items-center justify-center text-center p-3 w-full h-full shadow-md hover:shadow-lg transition-shadow">
-              <Users className="h-6 w-6 mb-1 text-primary" />
-              <ShadcnCardTitle className="text-sm font-semibold text-card-foreground mb-1">Total Students</ShadcnCardTitle>
-              {isLoadingDashboardStats ? (
-                <Loader2 className="h-5 w-5 animate-spin my-1" />
-              ) : (
-                <div className="text-2xl font-bold text-foreground mb-1">{totalRegisteredStudents}</div>
-              )}
-              <p className="text-xs text-muted-foreground">
-                {isLoadingDashboardStats ? "Loading..." : `M: ${morningShiftStudentCount}, E: ${eveningShiftStudentCount}, FD: ${fullDayShiftStudentCount} active`}
-              </p>
-            </Card>
+          <Card className="flex flex-col items-center justify-center text-center p-3 w-full h-full shadow-md hover:shadow-lg transition-shadow">
+            <Users className="h-6 w-6 mb-1 text-primary" />
+            <ShadcnCardTitle className="text-sm font-semibold text-card-foreground mb-1">Total Students</ShadcnCardTitle>
+            {isLoadingDashboardStats ? (
+              <Loader2 className="h-5 w-5 animate-spin my-1" />
+            ) : (
+              <div className="text-2xl font-bold text-foreground mb-1">{totalRegisteredStudents}</div>
+            )}
+            <p className="text-xs text-muted-foreground">
+              {isLoadingDashboardStats ? "Loading..." : `M: ${morningShiftStudentCount}, E: ${eveningShiftStudentCount}, FD: ${fullDayShiftStudentCount} active`}
+            </p>
+          </Card>
         </Link>
 
-        <Card 
-            className="flex flex-col items-center justify-center text-center p-3 w-full h-full shadow-md hover:shadow-lg transition-shadow cursor-pointer"
-            onClick={() => setShowCheckedInDialog(true)}
+        <Card
+          className="flex flex-col items-center justify-center text-center p-3 w-full h-full shadow-md hover:shadow-lg transition-shadow cursor-pointer"
+          onClick={() => setShowCheckedInDialog(true)}
         >
-            <LogIn className="h-6 w-6 mb-1 text-primary" />
-            <ShadcnCardTitle className="text-sm font-semibold text-card-foreground mb-1">Currently In Library</ShadcnCardTitle>
-             {isLoadingCheckedInStudents ? (
-                <Loader2 className="h-5 w-5 animate-spin my-1" />
-              ) : (
-                <div className="text-2xl font-bold text-foreground mb-1">{checkedInStudents.length}</div>
-              )}
-            <p className="text-xs text-muted-foreground">Active check-ins right now</p>
+          <LogIn className="h-6 w-6 mb-1 text-primary" />
+          <ShadcnCardTitle className="text-sm font-semibold text-card-foreground mb-1">Currently In Library</ShadcnCardTitle>
+          {isLoadingCheckedInStudents ? (
+            <Loader2 className="h-5 w-5 animate-spin my-1" />
+          ) : (
+            <div className="text-2xl font-bold text-foreground mb-1">{checkedInStudents.length}</div>
+          )}
+          <p className="text-xs text-muted-foreground">Active check-ins right now</p>
         </Card>
 
         <Link href="/seats/availability" className="block no-underline focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-lg h-full">
@@ -271,18 +271,18 @@ function AdminDashboardContent() {
             </CardContent>
           </Card>
         </Link>
-        
+
         <Link href="/admin/fees/revenue-history" className="block no-underline focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-lg h-full">
-             <Card className="flex flex-col items-center justify-center text-center p-3 w-full h-full shadow-md hover:shadow-lg transition-shadow">
-                <IndianRupee className="h-6 w-6 mb-1 text-primary" />
-                <ShadcnCardTitle className="text-sm font-semibold text-card-foreground mb-1">Revenue ({currentMonthName})</ShadcnCardTitle>
-                {isLoadingRevenue ? (
-                     <Loader2 className="h-5 w-5 animate-spin my-1" />
-                ) : (
-                    <div className="text-2xl font-bold text-foreground mb-1">{monthlyRevenue || "Rs. 0"}</div>
-                )}
-                <p className="text-xs text-muted-foreground">From received payments this month</p>
-            </Card>
+          <Card className="flex flex-col items-center justify-center text-center p-3 w-full h-full shadow-md hover:shadow-lg transition-shadow">
+            <IndianRupee className="h-6 w-6 mb-1 text-primary" />
+            <ShadcnCardTitle className="text-sm font-semibold text-card-foreground mb-1">Revenue ({currentMonthName})</ShadcnCardTitle>
+            {isLoadingRevenue ? (
+              <Loader2 className="h-5 w-5 animate-spin my-1" />
+            ) : (
+              <div className="text-2xl font-bold text-foreground mb-1">{monthlyRevenue || "Rs. 0"}</div>
+            )}
+            <p className="text-xs text-muted-foreground">From received payments this month</p>
+          </Card>
         </Link>
       </div>
 
@@ -313,11 +313,11 @@ function AdminDashboardContent() {
                 (tileConfig.isFeedbackTile && hasNewBadge) && "border-destructive ring-2 ring-destructive/50"
               )}>
                 <CardHeader className="p-3 pb-1 relative">
-                   {(tileConfig.isFeedbackTile && hasNewBadge) && (
-                     <span className="absolute top-1 right-1 block h-2.5 w-2.5 rounded-full bg-destructive ring-1 ring-white" />
-                   )}
+                  {(tileConfig.isFeedbackTile && hasNewBadge) && (
+                    <span className="absolute top-1 right-1 block h-2.5 w-2.5 rounded-full bg-destructive ring-1 ring-white" />
+                  )}
                   <div className="flex items-center gap-2">
-                    <Icon className="h-6 w-6 text-primary" /> 
+                    <Icon className="h-6 w-6 text-primary" />
                     <ShadcnCardTitle className="text-base font-semibold">{currentTitle}</ShadcnCardTitle>
                   </div>
                 </CardHeader>
@@ -343,11 +343,11 @@ export default function MainPage() {
         router.replace('/member/dashboard');
       }
     } else if (!isLoading && !user) {
-       router.replace('/login');
+      router.replace('/login');
     }
   }, [user, isLoading, router]);
 
-  if (isLoading || (!isLoading && !user && !router.pathname?.startsWith('/login'))) { 
+  if (isLoading || (!isLoading && !user && router && typeof router.replace === 'function' && pathname.startsWith('/login'))) { // Added check for router and pathname
     return (
       <div className="flex min-h-screen w-full flex-col items-center justify-center bg-background">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -355,7 +355,7 @@ export default function MainPage() {
       </div>
     );
   }
-  
+
   if (user && user.role === 'member') {
     return (
       <div className="flex min-h-screen w-full flex-col items-center justify-center bg-background">
@@ -364,17 +364,29 @@ export default function MainPage() {
       </div>
     );
   }
-  
+
   if (user && user.role === 'admin') {
     return <AdminDashboardContent />;
   }
 
-  return (
-     <div className="flex min-h-screen w-full flex-col items-center justify-center bg-background">
+  // It's good practice to also get pathname here if used in conditional logic
+  const pathname = usePathname(); 
+  if (!isLoading && !user && !pathname.startsWith('/login')) {
+    // This specific case might be redundant if AuthContext already handles redirection,
+    // but ensures we don't render AdminDashboardContent if user is null and not on login page.
+    return (
+      <div className="flex min-h-screen w-full flex-col items-center justify-center bg-background">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
-        <p className="mt-4 text-muted-foreground">Loading...</p>
+        <p className="mt-4 text-muted-foreground">Redirecting to login...</p>
       </div>
+    );
+  }
+
+
+  return (
+    <div className="flex min-h-screen w-full flex-col items-center justify-center bg-background">
+      <Loader2 className="h-12 w-12 animate-spin text-primary" />
+      <p className="mt-4 text-muted-foreground">Loading...</p>
+    </div>
   );
 }
-
-    
