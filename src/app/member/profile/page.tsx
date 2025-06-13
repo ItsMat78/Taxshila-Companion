@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from 'react';
@@ -18,7 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from '@/contexts/auth-context';
-import { getStudentByEmail } from '@/services/student-service'; 
+import { getStudentByEmail, getStudentByCustomId } from '@/services/student-service'; 
 import type { Student } from '@/types/student'; 
 import { UserCircle, UploadCloud, Save, Mail, Phone, BookOpen, MapPin, Receipt, Loader2, Edit, SquareUser, IndianRupee } from 'lucide-react';
 
@@ -39,27 +38,31 @@ export default function MemberProfilePage() {
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   React.useEffect(() => {
-    if (user?.email) {
-      setIsLoading(true);
-      getStudentByEmail(user.email)
-        .then(student => {
-          if (student) {
-            setMemberDetails(student);
-            setCurrentProfilePicture(student.profilePictureUrl || DEFAULT_PROFILE_PLACEHOLDER);
-          } else {
-            toast({ title: "Error", description: "Could not load your profile data.", variant: "destructive" });
-          }
-        })
-        .catch(error => {
-          console.error("Failed to fetch member details:", error);
-          toast({ title: "Error", description: "An error occurred while loading your profile.", variant: "destructive" });
-        })
-        .finally(() => {
-          setIsLoading(false);
-        });
-    } else {
-      setIsLoading(false); 
-    }
+    setIsLoading(true);
+    const fetchStudent = async () => {
+      try {
+        let student = null;
+        if (user?.studentId) {
+          student = await getStudentByCustomId(user.studentId);
+        } else if (user?.email) {
+          student = await getStudentByEmail(user.email);
+        }
+
+        if (student) {
+          setMemberDetails(student);
+          setCurrentProfilePicture(student.profilePictureUrl || DEFAULT_PROFILE_PLACEHOLDER);
+        } else {
+          toast({ title: "Error", description: "Could not load your profile data.", variant: "destructive" });
+        }
+      } catch (error) {
+        console.error("Failed to fetch member details:", error);
+        toast({ title: "Error", description: "An error occurred while loading your profile.", variant: "destructive" });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchStudent();
   }, [user, toast]);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {

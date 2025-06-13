@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from 'react';
@@ -7,7 +6,6 @@ import {
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -24,7 +22,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Loader2, CreditCard, ShieldCheck, IndianRupee, CalendarCheck2, Info, AlertCircle } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
-import { getStudentByEmail, getFeeStructure } from '@/services/student-service'; // Added getFeeStructure
+import { getStudentByEmail, getFeeStructure, getStudentByCustomId } from '@/services/student-service'; // Added getFeeStructure
 import type { Student, FeeStructure as FeeStructureType } from '@/types/student'; // Added FeeStructureType
 import { format, parseISO, isValid, addMonths } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -53,19 +51,24 @@ export default function MemberPayFeesPage() {
       setIsLoadingStudent(true);
       setIsLoadingFeeStructure(true);
       try {
-        if (user?.email) {
-          const student = await getStudentByEmail(user.email);
-          if (student) {
-            setCurrentStudent(student);
-          } else {
-            toast({
-              title: "Student Record Not Found",
-              description: "Could not find an active student record associated with your email.",
-              variant: "destructive",
-            });
-            setCurrentStudent(null);
-          }
+        let student = null;
+        if (user?.studentId) {
+          student = await getStudentByCustomId(user.studentId);
+        } else if (user?.email) {
+          student = await getStudentByEmail(user.email);
         }
+
+        if (student) {
+          setCurrentStudent(student);
+        } else {
+          toast({
+            title: "Student Record Not Found",
+            description: "Could not find an active student record associated with your email.",
+            variant: "destructive",
+          });
+          setCurrentStudent(null);
+        }
+
         const fees = await getFeeStructure();
         setFeeStructure(fees);
       } catch (error) {
