@@ -25,10 +25,10 @@ import {
   type ChartConfig,
 } from "@/components/ui/chart";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Legend } from 'recharts';
-import { Loader2, TrendingUp, History } from 'lucide-react';
+import { Loader2, TrendingUp, History, IndianRupee } from 'lucide-react'; // Added IndianRupee
 import { getMonthlyRevenueHistory, type MonthlyRevenueData } from '@/services/student-service';
 import { useToast } from '@/hooks/use-toast';
-import { format, parse, compareDesc } from 'date-fns'; // Added parse and compareDesc
+import { format, parse, compareDesc } from 'date-fns';
 
 const revenueChartConfig = {
   revenue: {
@@ -50,7 +50,6 @@ const staticProvidedRevenueInput: { monthName: string; year: number; revenue: nu
 ];
 
 const staticRevenueData: MonthlyRevenueData[] = staticProvidedRevenueInput.map(item => {
-  // Parsing month name to date object
   const monthDate = parse(`${item.monthName} ${item.year}`, 'MMMM yyyy', new Date());
   return {
     monthDate: monthDate,
@@ -72,28 +71,23 @@ export default function RevenueHistoryPage() {
         const dynamicHistory = await getMonthlyRevenueHistory();
         
         const combinedMap = new Map<string, MonthlyRevenueData>();
-
-        // Add dynamic data first
         dynamicHistory.forEach(item => {
           const monthKey = format(item.monthDate, 'yyyy-MM');
           combinedMap.set(monthKey, item);
         });
-
-        // Add/overwrite with static data
         staticRevenueData.forEach(item => {
           const monthKey = format(item.monthDate, 'yyyy-MM');
-          combinedMap.set(monthKey, item); // Static data takes precedence
+          combinedMap.set(monthKey, item); 
         });
         
         const combinedList = Array.from(combinedMap.values())
-          .sort((a, b) => compareDesc(a.monthDate, b.monthDate)); // Sort most recent first
+          .sort((a, b) => compareDesc(a.monthDate, b.monthDate)); 
 
         setAllRevenueHistory(combinedList);
 
       } catch (error) {
         console.error("Failed to fetch revenue history:", error);
         toast({ title: "Error", description: "Could not load revenue history.", variant: "destructive" });
-        // Fallback to just static data if dynamic fetch fails but static is available
         setAllRevenueHistory(staticRevenueData.sort((a, b) => compareDesc(a.monthDate, b.monthDate)));
       } finally {
         setIsLoading(false);
@@ -106,25 +100,53 @@ export default function RevenueHistoryPage() {
     if (isLoading || allRevenueHistory.length === 0) {
       return [];
     }
-    // Take the 6 most recent months for the graph, then reverse for chronological order in chart
     return allRevenueHistory
       .slice(0, 6) 
       .reverse() 
       .map(item => ({
-        month: format(item.monthDate, 'MMM yy'), // Changed to 'MMM yy' for brevity in graph
+        month: format(item.monthDate, 'MMM yy'),
         revenue: item.revenue,
       }));
   }, [allRevenueHistory, isLoading]);
 
-  // Table data will now just be the combined and sorted allRevenueHistory
   const tableData = React.useMemo(() => {
     return allRevenueHistory;
   }, [allRevenueHistory]);
+
+  const totalRevenueAmount = React.useMemo(() => {
+    if (isLoading || allRevenueHistory.length === 0) {
+      return null;
+    }
+    return allRevenueHistory.reduce((sum, item) => sum + item.revenue, 0);
+  }, [allRevenueHistory, isLoading]);
 
 
   return (
     <>
       <PageTitle title="Monthly Revenue History" description="Track revenue from received payments over time." />
+
+      <Card className="mb-6 shadow-lg w-full">
+        <CardHeader>
+          <CardTitle className="flex items-center">
+            <IndianRupee className="mr-2 h-5 w-5" />
+            Total Recorded Revenue
+          </CardTitle>
+          <CardDescription>Sum of all monthly revenues in the log.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <div className="flex items-center justify-center h-[50px]">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+          ) : totalRevenueAmount !== null ? (
+            <p className="text-3xl font-bold">
+              Rs. {totalRevenueAmount.toLocaleString('en-IN')}
+            </p>
+          ) : (
+            <p className="text-center text-muted-foreground">No revenue data available.</p>
+          )}
+        </CardContent>
+      </Card>
 
       <Card className="mb-6 shadow-lg w-full">
         <CardHeader>
@@ -175,7 +197,7 @@ export default function RevenueHistoryPage() {
           <CardDescription>Tabular view of monthly revenue, latest first.</CardDescription>
         </CardHeader>
         <CardContent>
-          {isLoading && tableData.length === 0 ? ( // Show loader if loading and no data yet for table
+          {isLoading && tableData.length === 0 ? ( 
             <div className="flex items-center justify-center py-10">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
