@@ -42,7 +42,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useRouter } from 'next/navigation';
-import { Timestamp, arrayUnion, writeBatch } from '@/lib/firebase'; // For direct Firestore operations if needed, and Timestamp/arrayUnion
+import { Timestamp, arrayUnion, writeBatch, doc } from '@/lib/firebase'; // For direct Firestore operations if needed, and Timestamp/arrayUnion
 import { db } from '@/lib/firebase'; // For writeBatch
 
 interface AggregatedPaymentRecordForExport extends PaymentRecord {
@@ -647,5 +647,3 @@ export default function DataManagementPage() {
     </>
   );
 }
-
-    

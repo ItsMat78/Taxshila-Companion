@@ -25,10 +25,10 @@ import {
   type ChartConfig,
 } from "@/components/ui/chart";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Legend } from 'recharts';
-import { Loader2, TrendingUp, History } from 'lucide-react';
+import { Loader2, TrendingUp, History, IndianRupee } from 'lucide-react'; // Added IndianRupee
 import { getMonthlyRevenueHistory, type MonthlyRevenueData } from '@/services/student-service';
 import { useToast } from '@/hooks/use-toast';
-import { format, parseISO } from 'date-fns';
+import { format, parse, compareDesc } from 'date-fns';
 
 const revenueChartConfig = {
   revenue: {
@@ -36,6 +36,28 @@ const revenueChartConfig = {
     color: "hsl(var(--chart-1))",
   },
 } satisfies ChartConfig;
+
+const staticProvidedRevenueInput: { monthName: string; year: number; revenue: number }[] = [
+  { monthName: "September", year: 2024, revenue: 13000 }, // 1900 + 11100
+  { monthName: "October", year: 2024, revenue: 15600 },  // 4500 + 11100
+  { monthName: "November", year: 2024, revenue: 22400 }, // 11300 + 11100
+  { monthName: "December", year: 2024, revenue: 20650 }, // 9550 + 11100
+  { monthName: "January", year: 2025, revenue: 20000 },  // 8900 + 11100
+  { monthName: "February", year: 2025, revenue: 22400 }, // 11300 + 11100
+  { monthName: "March", year: 2025, revenue: 36800 },   // 25700 + 11100
+  { monthName: "April", year: 2025, revenue: 68600 },   // 57500 + 11100
+  { monthName: "May", year: 2025, revenue: 47350 },     // 36250 + 11100
+];
+
+const staticRevenueData: MonthlyRevenueData[] = staticProvidedRevenueInput.map(item => {
+  const monthDate = parse(`${item.monthName} ${item.year}`, 'MMMM yyyy', new Date());
+  return {
+    monthDate: monthDate,
+    monthDisplay: format(monthDate, 'MMMM yyyy'),
+    revenue: item.revenue,
+  };
+});
+
 
 export default function RevenueHistoryPage() {
   const { toast } = useToast();
@@ -46,12 +68,27 @@ export default function RevenueHistoryPage() {
     const fetchHistory = async () => {
       setIsLoading(true);
       try {
-        const historyData = await getMonthlyRevenueHistory(); 
-        setAllRevenueHistory(historyData);
+        const dynamicHistory = await getMonthlyRevenueHistory();
+        
+        const combinedMap = new Map<string, MonthlyRevenueData>();
+        dynamicHistory.forEach(item => {
+          const monthKey = format(item.monthDate, 'yyyy-MM');
+          combinedMap.set(monthKey, item);
+        });
+        staticRevenueData.forEach(item => {
+          const monthKey = format(item.monthDate, 'yyyy-MM');
+          combinedMap.set(monthKey, item); 
+        });
+        
+        const combinedList = Array.from(combinedMap.values())
+          .sort((a, b) => compareDesc(a.monthDate, b.monthDate)); 
+
+        setAllRevenueHistory(combinedList);
+
       } catch (error) {
         console.error("Failed to fetch revenue history:", error);
-        toast({ title: "Error", description: "Could not load revenue history.", variant: "destructive" });
-        setAllRevenueHistory([]);
+        toast({ title: "Error", description: "Could not load revenue history. Displaying static data only.", variant: "destructive" });
+        setAllRevenueHistory(staticRevenueData.sort((a, b) => compareDesc(a.monthDate, b.monthDate)));
       } finally {
         setIsLoading(false);
       }
@@ -64,26 +101,52 @@ export default function RevenueHistoryPage() {
       return [];
     }
     return allRevenueHistory
-      .slice(0, 6)
+      .slice(0, 6) 
       .reverse() 
       .map(item => ({
-        month: format(item.monthDate, 'MMM'), 
+        month: format(item.monthDate, 'MMM yy'),
         revenue: item.revenue,
       }));
   }, [allRevenueHistory, isLoading]);
 
   const tableData = React.useMemo(() => {
+    return allRevenueHistory;
+  }, [allRevenueHistory]);
+
+  const totalRevenueAmount = React.useMemo(() => {
     if (isLoading || allRevenueHistory.length === 0) {
-      return [];
+      return null;
     }
-    const october2024StartDate = new Date(2024, 9, 1); // Month is 0-indexed (9 = October)
-    return allRevenueHistory.filter(item => item.monthDate >= october2024StartDate);
+    return allRevenueHistory.reduce((sum, item) => sum + item.revenue, 0);
   }, [allRevenueHistory, isLoading]);
 
 
   return (
     <>
       <PageTitle title="Monthly Revenue History" description="Track revenue from received payments over time." />
+
+      <Card className="mb-6 shadow-lg w-full">
+        <CardHeader>
+          <CardTitle className="flex items-center">
+            <IndianRupee className="mr-2 h-5 w-5" />
+            Total Recorded Revenue
+          </CardTitle>
+          <CardDescription>Sum of all monthly revenues in the log.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <div className="flex items-center justify-center h-[50px]">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+          ) : totalRevenueAmount !== null ? (
+            <p className="text-3xl font-bold">
+              Rs. {totalRevenueAmount.toLocaleString('en-IN')}
+            </p>
+          ) : (
+            <p className="text-center text-muted-foreground">No revenue data available.</p>
+          )}
+        </CardContent>
+      </Card>
 
       <Card className="mb-6 shadow-lg w-full">
         <CardHeader>
@@ -129,12 +192,12 @@ export default function RevenueHistoryPage() {
         <CardHeader>
           <CardTitle className="flex items-center">
             <History className="mr-2 h-5 w-5" />
-            Revenue Data (Since Oct 2024)
+            Monthly Revenue Log
           </CardTitle>
           <CardDescription>Tabular view of monthly revenue, latest first.</CardDescription>
         </CardHeader>
         <CardContent>
-          {isLoading ? (
+          {isLoading && tableData.length === 0 ? ( 
             <div className="flex items-center justify-center py-10">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
@@ -156,7 +219,7 @@ export default function RevenueHistoryPage() {
                 {tableData.length === 0 && !isLoading && (
                   <TableRow>
                     <TableCell colSpan={2} className="text-center text-muted-foreground py-6">
-                      No revenue data found for this period.
+                      No revenue data found.
                     </TableCell>
                   </TableRow>
                 )}
