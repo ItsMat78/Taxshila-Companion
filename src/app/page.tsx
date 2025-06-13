@@ -32,7 +32,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useAuth } from '@/contexts/auth-context';
-import { useRouter } from 'next/navigation'; // Changed from next/router
+import { useRouter, usePathname } from 'next/navigation'; // Changed from next/router
 import { cn } from '@/lib/utils';
 import { getAllStudents, getAvailableSeats, getAllAttendanceRecords, calculateMonthlyRevenue } from '@/services/student-service';
 import type { Student, Shift, AttendanceRecord } from '@/types/student';
@@ -336,7 +336,7 @@ function AdminDashboardContent() {
 export default function MainPage() {
   const { user, isLoading } = useAuth();
   const router = useRouter();
-
+  const pathname = usePathname(); 
   React.useEffect(() => {
     if (!isLoading && user) {
       if (user.role === 'member') {
@@ -370,7 +370,7 @@ export default function MainPage() {
   }
 
   // It's good practice to also get pathname here if used in conditional logic
-  const pathname = usePathname(); 
+  
   if (!isLoading && !user && !pathname.startsWith('/login')) {
     // This specific case might be redundant if AuthContext already handles redirection,
     // but ensures we don't render AdminDashboardContent if user is null and not on login page.
