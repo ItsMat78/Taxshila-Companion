@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from 'react';
@@ -18,7 +17,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/auth-context';
 import { Camera, QrCode, Receipt, IndianRupee, MessageSquare, Bell, ScrollText, Star, Loader2, XCircle, Home, BarChart3, PlayCircle, CheckCircle, Hourglass, ScanLine, LogOut } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { getStudentByEmail, getAlertsForStudent, calculateMonthlyStudyHours, addCheckIn, addCheckOut, getActiveCheckIn, getAttendanceForDate } from '@/services/student-service';
+import { getStudentByEmail, getAlertsForStudent, calculateMonthlyStudyHours, addCheckIn, addCheckOut, getActiveCheckIn, getAttendanceForDate, getStudentByCustomId } from '@/services/student-service';
 import type { AlertItem } from '@/types/communication';
 import type { Student, AttendanceRecord, FeeStatus } from '@/types/student';
 import { format, parseISO, differenceInMilliseconds, isValid } from 'date-fns';
@@ -43,7 +42,7 @@ type DashboardTileProps = {
   disabled?: boolean;
 };
 
-const DashboardTile: React.FC<DashboardTileProps> = ({
+const DashboardTile: React.FC<DashboardTileProps> = ({ 
   title,
   description,
   statistic,
@@ -173,7 +172,7 @@ export default function MemberDashboardPage() {
   const [studentNextDueDate, setStudentNextDueDate] = React.useState<string | null>(null);
 
   const fetchAllDashboardData = React.useCallback(async () => {
-    if (user?.email) {
+    if (user?.studentId || user?.email) {
         setIsLoadingStudentData(true);
         setIsLoadingStudyHours(true);
         setIsLoadingCurrentSession(true);
@@ -189,7 +188,13 @@ export default function MemberDashboardPage() {
 
       let studentDetailsFetchedSuccessfully = false;
       try {
-        const studentDetails = await getStudentByEmail(user.email);
+        let studentDetails = null;
+        if (user.studentId) {
+          studentDetails = await getStudentByCustomId(user.studentId);
+        } else if (user.email) {
+          studentDetails = await getStudentByEmail(user.email);
+        }
+
         if (studentDetails) {
           studentDetailsFetchedSuccessfully = true;
           setStudentId(studentDetails.studentId);
@@ -304,8 +309,8 @@ export default function MemberDashboardPage() {
             formatsToSupport: formatsToSupport,
             rememberLastUsedCamera: true,
             videoConstraints: {
-              facingMode: {exact: "environment" }
-            },
+              facingMode: "environment" }
+            ,
             verbose: false, // Added to prevent header message errors
         };
 

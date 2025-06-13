@@ -1,4 +1,3 @@
-
 "use client";
 
 import type { UserRole } from '@/types/auth';
@@ -11,10 +10,12 @@ import { app as firebaseApp } from '@/lib/firebase'; // For messaging
 import { VAPID_KEY_FROM_CLIENT_LIB } from '@/lib/firebase-messaging-client'; // Import VAPID key
 
 interface User {
-  email: string;
+  email?: string;
   role: UserRole;
   profilePictureUrl?: string;
   firestoreId?: string;
+  studentId?: string;
+  identifierForDisplay?: string;
 }
 
 interface AuthContextType {
@@ -73,6 +74,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             role: adminFromDb.role,
             profilePictureUrl: matchedHardcodedAdmin.profilePictureUrl, // Keep using hardcoded one if any
             firestoreId: adminFromDb.firestoreId,
+            identifierForDisplay: adminFromDb.email, // Set identifier for admin
           };
           setUser(userData);
           localStorage.setItem('taxshilaUser', JSON.stringify(userData));
@@ -83,7 +85,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           // Log them in with hardcoded details but without firestoreId for now.
           // This means they won't get FCM tokens saved until their DB entry is created.
           console.warn(`[AuthContext] Admin ${matchedHardcodedAdmin.email} found in hardcoded list but not in Firestore 'admins' collection. FCM tokens won't be saved.`);
-          const userData: User = { email: matchedHardcodedAdmin.email, role: matchedHardcodedAdmin.role, profilePictureUrl: matchedHardcodedAdmin.profilePictureUrl, firestoreId: undefined };
+          const userData: User = { email: matchedHardcodedAdmin.email, role: matchedHardcodedAdmin.role, profilePictureUrl: matchedHardcodedAdmin.profilePictureUrl, firestoreId: undefined, identifierForDisplay: matchedHardcodedAdmin.email };
           setUser(userData);
           localStorage.setItem('taxshilaUser', JSON.stringify(userData));
           setIsLoading(false);
@@ -91,7 +93,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       } catch (dbError) {
         console.error("[AuthContext] Error fetching admin from Firestore, logging in with hardcoded details only:", dbError);
-        const userData: User = { email: matchedHardcodedAdmin.email, role: matchedHardcodedAdmin.role, profilePictureUrl: matchedHardcodedAdmin.profilePictureUrl, firestoreId: undefined };
+        const userData: User = { email: matchedHardcodedAdmin.email, role: matchedHardcodedAdmin.role, profilePictureUrl: matchedHardcodedAdmin.profilePictureUrl, firestoreId: undefined, identifierForDisplay: matchedHardcodedAdmin.email };
         setUser(userData);
         localStorage.setItem('taxshilaUser', JSON.stringify(userData));
         setIsLoading(false);
@@ -102,12 +104,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const member = await getStudentByIdentifier(identifier);
       if (member && member.password === passwordAttempt && member.activityStatus === 'Active') {
-        if (!member.email) {
-            toast({ title: "Login Issue", description: "Member account has no email. Please contact admin.", variant: "destructive" });
-            setIsLoading(false);
-            return null;
-        }
-        const userData: User = { email: member.email, role: 'member' as UserRole, profilePictureUrl: member.profilePictureUrl, firestoreId: member.firestoreId };
+        const userData: User = {
+          email: member.email ?? undefined,
+          role: 'member' as UserRole,
+          profilePictureUrl: member.profilePictureUrl,
+          firestoreId: member.firestoreId,
+          studentId: member.studentId,
+          identifierForDisplay: member.email || member.phone,
+        };
         setUser(userData);
         localStorage.setItem('taxshilaUser', JSON.stringify(userData));
         setIsLoading(false);

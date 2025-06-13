@@ -1,4 +1,3 @@
-
 "use client";
 
 import Link from 'next/link';
@@ -180,9 +179,9 @@ export function AppSidebarContent() {
 
   if (!user) return null;
 
-  const getInitials = (email?: string) => {
-    if (!email) return 'U';
-    return email.substring(0, 2).toUpperCase();
+  const getInitials = (identifierForDisplay?: string) => {
+    if (!identifierForDisplay) return 'U';
+    return identifierForDisplay.substring(0, 2).toUpperCase();
   }
 
   return (
@@ -211,11 +210,11 @@ export function AppSidebarContent() {
         </Link>
          <div className="flex items-center gap-2 group-data-[collapsible=icon]:hidden w-full">
             <Avatar className="h-9 w-9">
-              <AvatarImage src={user.profilePictureUrl || undefined} alt={user.email} data-ai-hint="profile person" />
-              <AvatarFallback>{getInitials(user.email)}</AvatarFallback>
+              <AvatarImage src={user.profilePictureUrl || undefined} alt={user.identifierForDisplay} data-ai-hint="profile person" />
+              <AvatarFallback>{getInitials(user.identifierForDisplay)}</AvatarFallback>
             </Avatar>
             <div className="flex flex-col min-w-0 flex-1">
-              <span className="text-sm font-medium truncate">{user.email}</span>
+              <span className="text-sm font-medium truncate">{user.identifierForDisplay}</span>
               <span className="text-xs text-muted-foreground capitalize">{user.role}</span>
             </div>
           </div>

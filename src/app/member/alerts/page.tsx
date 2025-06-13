@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from 'react';
@@ -22,7 +21,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge'; // Import Badge
 import { AlertTriangle, Info, Megaphone, Loader2, MailWarning, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
-import { getStudentByEmail, getAlertsForStudent, markAlertAsRead } from '@/services/student-service';
+import { getStudentByEmail, getAlertsForStudent, markAlertAsRead, getStudentByCustomId } from '@/services/student-service';
 import type { AlertItem } from '@/types/communication';
 import { useToast } from '@/hooks/use-toast';
 import { format, parseISO } from 'date-fns';
@@ -96,28 +95,32 @@ export default function MemberAlertsPage() {
   const [currentAlertInModal, setCurrentAlertInModal] = React.useState<AlertItem | null>(null);
 
   React.useEffect(() => {
-    if (user?.email) {
-      setIsLoading(true);
-      setStudentId(null);
-      setAlertsList([]);
-      getStudentByEmail(user.email)
-        .then(student => {
-          if (student) {
-            setStudentId(student.studentId);
-          } else {
-            toast({ title: "Error", description: "Could not find your student record.", variant: "destructive" });
-            setIsLoading(false);
-          }
-        })
-        .catch(error => {
-          toast({ title: "Error", description: "Failed to fetch your details.", variant: "destructive" });
+    setIsLoading(true);
+    setStudentId(null);
+    setAlertsList([]);
+
+    const fetchStudentData = async () => {
+      try {
+        let student = null;
+        if (user?.studentId) {
+          student = await getStudentByCustomId(user.studentId);
+        } else if (user?.email) {
+          student = await getStudentByEmail(user.email);
+        }
+
+        if (student) {
+          setStudentId(student.studentId);
+        } else {
+          toast({ title: "Error", description: "Could not find your student record.", variant: "destructive" });
           setIsLoading(false);
-        });
-    } else if (!user) {
-      setStudentId(null);
-      setAlertsList([]);
-      setIsLoading(false);
-    }
+        }
+      } catch (error) {
+        toast({ title: "Error", description: "Failed to fetch your details.", variant: "destructive" });
+        setIsLoading(false);
+      }
+    };
+
+    fetchStudentData();
   }, [user, toast]);
 
 

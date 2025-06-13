@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from 'react';
@@ -17,7 +16,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Camera, Loader2, XCircle, BarChart3, Clock, LogIn, LogOut, ScanLine, CheckCircle } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
-import { getStudentByEmail, getActiveCheckIn, addCheckIn, addCheckOut, getAttendanceForDate, calculateMonthlyStudyHours } from '@/services/student-service';
+import { getStudentByEmail, getActiveCheckIn, addCheckIn, addCheckOut, getAttendanceForDate, calculateMonthlyStudyHours, getStudentByCustomId } from '@/services/student-service';
 import type { AttendanceRecord } from '@/types/student';
 import { format, parseISO, isValid } from 'date-fns';
 import { Html5QrcodeScanner, Html5QrcodeSupportedFormats, Html5QrcodeScanType } from 'html5-qrcode';
@@ -43,11 +42,17 @@ export default function MemberAttendancePage() {
   const [isLoadingActiveCheckIn, setIsLoadingActiveCheckIn] = React.useState(true);
 
   const fetchStudentDataAndActiveCheckIn = React.useCallback(async () => {
-    if (user?.email) {
+    if (user?.studentId || user?.email) {
       setIsLoadingStudyHours(true);
       setIsLoadingActiveCheckIn(true);
       try {
-        const student = await getStudentByEmail(user.email);
+        let student = null;
+        if (user.studentId) {
+          student = await getStudentByCustomId(user.studentId);
+        } else if (user.email) {
+          student = await getStudentByEmail(user.email);
+        }
+
         if (student) {
           setCurrentStudentId(student.studentId);
           const [hours, activeCheckIn] = await Promise.all([
@@ -115,6 +120,10 @@ export default function MemberAttendancePage() {
   }, [currentStudentId, date, toast]);
 
   React.useEffect(() => {
+    fetchAttendanceForSelectedDate();
+  }, [fetchAttendanceForSelectedDate]);
+
+  React.useEffect(() => {
     let timeoutId: NodeJS.Timeout;
     if (isScannerOpen && currentStudentId && !activeCheckInRecord) {
       timeoutId = setTimeout(() => {
@@ -146,7 +155,7 @@ export default function MemberAttendancePage() {
           videoConstraints: { 
             facingMode: "environment" 
           },
-          verbose: false, // Added to prevent header message errors
+          verbose: false
         };
 
         const scanner = new Html5QrcodeScanner( QR_SCANNER_ELEMENT_ID_ATTENDANCE, config );
@@ -174,7 +183,8 @@ export default function MemberAttendancePage() {
               toast({ title: "Check-in Error", description: error.message || "Failed to process check-in. Please try again.", variant: "destructive" });
             }
           } else {
-            toast({ title: "Invalid QR Code", description: "Please scan the official library QR code.", variant: "destructive" });
+            toast({
+              title: "Invalid QR Code", description: "Please scan the official library QR code.", variant: "destructive" });
              setTimeout(() => {
                if (html5QrcodeScannerRef.current ) {
                   try {
@@ -248,11 +258,6 @@ export default function MemberAttendancePage() {
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isScannerOpen, currentStudentId, activeCheckInRecord, toast, fetchStudentDataAndActiveCheckIn, fetchAttendanceForSelectedDate]);
-
-
-  React.useEffect(() => {
-    fetchAttendanceForSelectedDate();
-  }, [fetchAttendanceForSelectedDate]);
 
 
   const handleScanCheckInButtonClick = () => {

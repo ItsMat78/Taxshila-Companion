@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from 'react';
@@ -33,7 +32,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from '@/contexts/auth-context';
-import { getStudentByEmail, submitFeedback as submitFeedbackService } from '@/services/student-service';
+import { getStudentByEmail, submitFeedback as submitFeedbackService, getStudentByCustomId } from '@/services/student-service';
 import type { FeedbackType } from '@/types/communication';
 import type { Student } from '@/types/student';
 import { Send, Loader2 } from 'lucide-react';
@@ -70,20 +69,25 @@ export default function MemberFeedbackPage() {
   });
 
   React.useEffect(() => {
-    if (user?.email) {
-      setIsLoadingStudent(true);
-      getStudentByEmail(user.email)
-        .then(data => {
-          setStudentData(data || null);
-        })
-        .catch(err => {
-          console.error("Failed to fetch student data for feedback:", err);
-          toast({ title: "Error", description: "Could not load your details.", variant: "destructive" });
-        })
-        .finally(() => setIsLoadingStudent(false));
-    } else {
-      setIsLoadingStudent(false);
-    }
+    setIsLoadingStudent(true);
+    const fetchStudent = async () => {
+      try {
+        let student = null;
+        if (user?.studentId) {
+          student = await getStudentByCustomId(user.studentId);
+        } else if (user?.email) {
+          student = await getStudentByEmail(user.email);
+        }
+        setStudentData(student || null);
+      } catch (err) {
+        console.error("Failed to fetch student data for feedback:", err);
+        toast({ title: "Error", description: "Could not load your details.", variant: "destructive" });
+      } finally {
+        setIsLoadingStudent(false);
+      }
+    };
+
+    fetchStudent();
   }, [user, toast]);
 
   async function onSubmit(data: FeedbackFormValues) {

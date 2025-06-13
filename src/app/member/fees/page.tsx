@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from 'react';
@@ -23,7 +22,7 @@ import {
 import { Receipt, History, Download, IndianRupee, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/auth-context';
-import { getStudentByEmail, getFeeStructure } from '@/services/student-service'; // Added getFeeStructure
+import { getStudentByEmail, getFeeStructure, getStudentByCustomId } from '@/services/student-service'; // Added getFeeStructure
 import type { Student, PaymentRecord, FeeStructure as FeeStructureType } from '@/types/student'; // Added FeeStructureType
 import { useToast } from '@/hooks/use-toast';
 import { format, parseISO, isValid } from 'date-fns'; // Ensure format, parseISO, isValid are imported
@@ -36,40 +35,40 @@ export default function MemberFeesPage() {
   const [isLoading, setIsLoading] = React.useState(true);
 
   React.useEffect(() => {
-    if (user?.email) {
-      const fetchInitialData = async () => {
-        setIsLoading(true);
-        try {
-          const [student, fees] = await Promise.all([
-            getStudentByEmail(user.email),
-            getFeeStructure()
-          ]);
+    setIsLoading(true);
+    const fetchInitialData = async () => {
+      try {
+        let student = null;
+        if (user?.studentId) {
+          student = await getStudentByCustomId(user.studentId);
+        } else if (user?.email) {
+          student = await getStudentByEmail(user.email);
+        }
 
-          if (student) {
-            setStudentData(student);
-          } else {
-            toast({
-              title: "Error",
-              description: "Could not find your student record.",
-              variant: "destructive",
-            });
-          }
-          setFeeStructure(fees);
-        } catch (error) {
-          console.error("Failed to fetch student data or fees for fees page:", error);
+        const fees = await getFeeStructure();
+
+        if (student) {
+          setStudentData(student);
+        } else {
           toast({
             title: "Error",
-            description: "Failed to load your fee details or settings.",
+            description: "Could not find your student record.",
             variant: "destructive",
           });
-        } finally {
-          setIsLoading(false);
         }
-      };
-      fetchInitialData();
-    } else {
-      setIsLoading(false); 
-    }
+        setFeeStructure(fees);
+      } catch (error) {
+        console.error("Failed to fetch student data or fees for fees page:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load your fee details or settings.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchInitialData();
   }, [user, toast]);
 
   const getMonthlyFeeDisplay = (shift?: Student['shift'], currentFeeStructure?: FeeStructureType | null): string => {
