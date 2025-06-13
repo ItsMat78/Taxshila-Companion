@@ -38,15 +38,15 @@ const revenueChartConfig = {
 } satisfies ChartConfig;
 
 const staticProvidedRevenueInput: { monthName: string; year: number; revenue: number }[] = [
-  { monthName: "September", year: 2024, revenue: 1900 },
-  { monthName: "October", year: 2024, revenue: 4500 },
-  { monthName: "November", year: 2024, revenue: 11300 },
-  { monthName: "December", year: 2024, revenue: 9550 },
-  { monthName: "January", year: 2025, revenue: 8900 },
-  { monthName: "February", year: 2025, revenue: 11300 },
-  { monthName: "March", year: 2025, revenue: 25700 },
-  { monthName: "April", year: 2025, revenue: 57500 },
-  { monthName: "May", year: 2025, revenue: 36250 },
+  { monthName: "September", year: 2024, revenue: 13000 }, // 1900 + 11100
+  { monthName: "October", year: 2024, revenue: 15600 },  // 4500 + 11100
+  { monthName: "November", year: 2024, revenue: 22400 }, // 11300 + 11100
+  { monthName: "December", year: 2024, revenue: 20650 }, // 9550 + 11100
+  { monthName: "January", year: 2025, revenue: 20000 },  // 8900 + 11100
+  { monthName: "February", year: 2025, revenue: 22400 }, // 11300 + 11100
+  { monthName: "March", year: 2025, revenue: 36800 },   // 25700 + 11100
+  { monthName: "April", year: 2025, revenue: 68600 },   // 57500 + 11100
+  { monthName: "May", year: 2025, revenue: 47350 },     // 36250 + 11100
 ];
 
 const staticRevenueData: MonthlyRevenueData[] = staticProvidedRevenueInput.map(item => {
@@ -87,7 +87,7 @@ export default function RevenueHistoryPage() {
 
       } catch (error) {
         console.error("Failed to fetch revenue history:", error);
-        toast({ title: "Error", description: "Could not load revenue history.", variant: "destructive" });
+        toast({ title: "Error", description: "Could not load revenue history. Displaying static data only.", variant: "destructive" });
         setAllRevenueHistory(staticRevenueData.sort((a, b) => compareDesc(a.monthDate, b.monthDate)));
       } finally {
         setIsLoading(false);
