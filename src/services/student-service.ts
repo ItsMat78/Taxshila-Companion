@@ -25,7 +25,7 @@ import {
 } from '@/lib/firebase';
 import type { Student, Shift, FeeStatus, PaymentRecord, ActivityStatus, AttendanceRecord, FeeStructure, AttendanceImportData, PaymentImportData } from '@/types/student';
 import type { FeedbackItem, FeedbackType, FeedbackStatus, AlertItem } from '@/types/communication';
-import { format, parseISO, differenceInDays, isPast, addMonths, subHours, subMinutes, startOfDay, endOfDay, isValid, differenceInMilliseconds, startOfMonth, endOfMonth, isWithinInterval, subMonths, getHours, compareDesc, getYear, getMonth, setHours, setMinutes, setSeconds } from 'date-fns';
+import { format, parseISO, differenceInDays, isPast, addMonths, subHours, subMinutes, startOfDay, endOfDay, isValid, differenceInMilliseconds, startOfMonth, endOfMonth, isWithinInterval, subMonths, getHours, getMinutes, compareDesc, getYear, getMonth, setHours, setMinutes, setSeconds } from 'date-fns';
 
 // --- Collections ---
 const STUDENTS_COLLECTION = "students";
@@ -615,8 +615,8 @@ export async function addCheckIn(studentId: string): Promise<AttendanceRecord> {
     shiftHoursMessage = "7 AM - 2 PM";
     if (currentHour < 7 || currentHour >= 14) outsideShift = true;
   } else if (student.shift === "evening") {
-    shiftHoursMessage = "3 PM - 10 PM";
-    if (currentHour < 15 || currentHour >= 22) outsideShift = true;
+    shiftHoursMessage = "2 PM - 9:30 PM";
+    if (currentHour < 14 || (currentHour === 21 && getMinutes(now) > 30) || currentHour >= 22) outsideShift = true;
   }
 
   if (outsideShift && studentId) {

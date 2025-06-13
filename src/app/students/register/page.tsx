@@ -58,8 +58,8 @@ type StudentFormValues = z.infer<typeof studentFormSchema>;
 
 const shiftOptions = [
   { value: "morning" as Shift, label: "Morning Shift (7 AM - 2 PM)" },
-  { value: "evening" as Shift, label: "Evening Shift (3 PM - 10 PM)" },
-  { value: "fullday" as Shift, label: "Full Day (7 AM - 10 PM)" },
+  { value: "evening" as Shift, label: "Evening Shift (2 PM - 9:30 PM)" },
+  { value: "fullday" as Shift, label: "Full Day (7 AM - 9:30 PM)" },
 ];
 
 export default function StudentRegisterPage() {
