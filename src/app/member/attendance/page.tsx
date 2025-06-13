@@ -120,6 +120,10 @@ export default function MemberAttendancePage() {
   }, [currentStudentId, date, toast]);
 
   React.useEffect(() => {
+    fetchAttendanceForSelectedDate();
+  }, [fetchAttendanceForSelectedDate]);
+
+  React.useEffect(() => {
     let timeoutId: NodeJS.Timeout;
     if (isScannerOpen && currentStudentId && !activeCheckInRecord) {
       timeoutId = setTimeout(() => {
@@ -254,11 +258,6 @@ export default function MemberAttendancePage() {
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isScannerOpen, currentStudentId, activeCheckInRecord, toast, fetchStudentDataAndActiveCheckIn, fetchAttendanceForSelectedDate]);
-
-
-  React.useEffect(() => {
-    fetchAttendanceForSelectedDate();
-  }, [fetchAttendanceForSelectedDate]);
 
 
   const handleScanCheckInButtonClick = () => {

@@ -42,7 +42,7 @@ type DashboardTileProps = {
   disabled?: boolean;
 };
 
-const DashboardTile: React.FC<DashboardTileProps> = ({
+const DashboardTile: React.FC<DashboardTileProps> = ({ 
   title,
   description,
   statistic,
@@ -309,8 +309,8 @@ export default function MemberDashboardPage() {
             formatsToSupport: formatsToSupport,
             rememberLastUsedCamera: true,
             videoConstraints: {
-              facingMode: {exact: "environment" }
-            },
+              facingMode: "environment" }
+            ,
             verbose: false, // Added to prevent header message errors
         };
 
