@@ -715,7 +715,7 @@ export async function recordStudentPayment(
   }
 
   const studentDocRef = doc(db, STUDENTS_COLLECTION, studentToUpdate.firestoreId);
-  const today = new Date();
+  const today = new Date(); // Actual payment date
   const newPaymentId = `PAY${String(Date.now()).slice(-6)}${String(Math.floor(Math.random() * 100)).padStart(2,'0')}`;
   const newTransactionId = `TXN${paymentMethod === "Admin Recorded" ? "ADMIN" : (paymentMethod === "UPI" ? "UPI" : "MEM")}${String(Date.now()).slice(-7)}`;
 
@@ -732,32 +732,22 @@ export async function recordStudentPayment(
       date: Timestamp.fromDate(parseISO(newPaymentRecord.date))
   };
 
-  let baseDateForNextDueCalculation = today;
-
-  // Refined logic for baseDateForNextDueCalculation
-  if (paymentMethod === "Admin Recorded" && numberOfMonthsPaid === 1) {
-    // For a single-month admin-recorded payment (typical "Mark as Paid" scenario)
-    if (studentToUpdate.feeStatus === "Paid" && studentToUpdate.nextDueDate && isValid(parseISO(studentToUpdate.nextDueDate)) && parseISO(studentToUpdate.nextDueDate) > today) {
-      // If already paid in advance, extend from the existing future due date
-      baseDateForNextDueCalculation = parseISO(studentToUpdate.nextDueDate);
-    } else {
-      // Otherwise (Due, Overdue, or Paid but nextDueDate is past/today), base calculation on today
-      baseDateForNextDueCalculation = today;
-    }
+  let baseDateForCalculation: Date;
+  if (studentToUpdate.nextDueDate && isValid(parseISO(studentToUpdate.nextDueDate))) {
+    // If there IS an existing valid due date, use it as the base for calculation.
+    baseDateForCalculation = parseISO(studentToUpdate.nextDueDate);
   } else {
-    // For other payment methods or multi-month admin payments, use the standard logic:
-    // Extend from future due date if applicable, otherwise from today.
-    if (studentToUpdate.nextDueDate && isValid(parseISO(studentToUpdate.nextDueDate)) && parseISO(studentToUpdate.nextDueDate) > today) {
-      baseDateForNextDueCalculation = parseISO(studentToUpdate.nextDueDate);
-    } else {
-      baseDateForNextDueCalculation = today;
-    }
+    // If there's NO valid existing due date (e.g., new student, or it was cleared after being 'Left'),
+    // then the base for calculation is the payment date (today).
+    baseDateForCalculation = today;
   }
+  // The new due date is calculated by adding the number of months paid to this base date.
+  const newNextDueDate = addMonths(baseDateForCalculation, numberOfMonthsPaid);
 
   const updatedFeeData = {
     feeStatus: "Paid" as FeeStatus,
-    lastPaymentDate: Timestamp.fromDate(today),
-    nextDueDate: Timestamp.fromDate(addMonths(baseDateForNextDueCalculation, numberOfMonthsPaid)),
+    lastPaymentDate: Timestamp.fromDate(today), // This is the actual date the payment is recorded.
+    nextDueDate: Timestamp.fromDate(newNextDueDate),
     amountDue: "Rs. 0",
     paymentHistory: arrayUnion(firestorePaymentRecord),
   };
