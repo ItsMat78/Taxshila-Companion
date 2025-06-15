@@ -10,7 +10,8 @@ import {
   query,
   where,
   Timestamp,
-  orderBy,
+  orderBy, // Keep orderBy import for other potential uses, but we'll remove its use in the problematic query
+  limit, // Added limit in case it was intended for student query
 } from '@/lib/firebase';
 import type { Student, Shift, AttendanceRecord } from '@/types/student';
 import { format, parseISO, isValid } from 'date-fns';
@@ -81,8 +82,8 @@ const attendanceRecordFromSnapshot = (docSnapshot: any): Omit<AttendanceRecord, 
 export async function getDailyAttendanceDetails(date: string): Promise<DailyAttendanceDetail[]> {
   const attendanceQuery = query(
     collection(db, "attendanceRecords"),
-    where("date", "==", date),
-    orderBy("checkInTime", "asc")
+    where("date", "==", date)
+    // Removed: orderBy("checkInTime", "asc") // This was causing the index requirement
   );
 
   const attendanceSnapshot = await getDocs(attendanceQuery);
@@ -99,8 +100,6 @@ export async function getDailyAttendanceDetails(date: string): Promise<DailyAtte
 
     let studentData = studentCache.get(record.studentId);
     if (studentData === undefined) { // Not in cache, fetch it
-      // Assuming studentId in attendanceRecords is the custom studentId (e.g., TSMEM001)
-      // We need to query the students collection based on this custom studentId field.
       const studentQuery = query(collection(db, "students"), where("studentId", "==", record.studentId), limit(1));
       const studentDocSnapshots = await getDocs(studentQuery);
       if (!studentDocSnapshots.empty) {
@@ -123,21 +122,20 @@ export async function getDailyAttendanceDetails(date: string): Promise<DailyAtte
         checkOutTime: record.checkOutTime,
       });
     } else {
-      // Handle case where student data might not be found for an attendance record
-      // This might indicate an orphaned record or data inconsistency
       console.warn(`Student data not found for studentId: ${record.studentId} from attendance record: ${record.recordId}`);
       attendanceDetails.push({
         recordId: record.recordId,
         studentId: record.studentId,
         studentName: `Unknown Student (ID: ${record.studentId})`,
         seatNumber: null,
-        shift: 'fullday', // Default or indicate unknown
+        shift: 'fullday', 
         checkInTime: record.checkInTime,
         checkOutTime: record.checkOutTime,
       });
     }
   }
 
+  // Sort the results in JavaScript after fetching
   return attendanceDetails.sort((a, b) =>
     parseISO(a.checkInTime).getTime() - parseISO(b.checkInTime).getTime()
   );
