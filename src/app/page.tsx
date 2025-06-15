@@ -131,12 +131,13 @@ function AdminDashboardContent() {
             if (!student) return null;
 
             let isOutsideAtCheckIn = false;
-            const checkInHour = getHours(parseISO(record.checkInTime));
-            const checkInMinutes = getMinutes(parseISO(record.checkInTime));
+            const checkInTime = parseISO(record.checkInTime);
+            const checkInHour = getHours(checkInTime);
+            const checkInMinutes = getMinutes(checkInTime);
 
             if (student.shift === "morning" && (checkInHour < 7 || checkInHour >= 14)) {
               isOutsideAtCheckIn = true;
-            } else if (student.shift === "evening" && (checkInHour < 14 || currentHour > 21 || (checkInHour === 21 && checkInMinutes > 30))) {
+            } else if (student.shift === "evening" && (checkInHour < 14 || checkInHour > 21 || (checkInHour === 21 && checkInMinutes > 30))) {
               isOutsideAtCheckIn = true;
             }
             // Full day students are never outside their shift by this definition.
@@ -430,4 +431,3 @@ export default function MainPage() {
     </div>
   );
 }
-
