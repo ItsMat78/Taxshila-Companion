@@ -32,7 +32,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useAuth } from '@/contexts/auth-context';
-import { useRouter, usePathname } from 'next/navigation'; // Changed from next/router
+import { useRouter, usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { getAllStudents, getAvailableSeats, getAllAttendanceRecords, calculateMonthlyRevenue } from '@/services/student-service';
 import type { Student, Shift, AttendanceRecord } from '@/types/student';
@@ -40,10 +40,11 @@ import type { FeedbackItem } from '@/types/communication';
 import { format, parseISO, isToday, getHours, getMinutes } from 'date-fns';
 import { useNotificationCounts } from '@/hooks/use-notification-counts';
 
-type CheckedInStudentInfo = Student & {
+interface CheckedInStudentInfo extends Student {
   checkInTime: string;
-  isOutsideShift: boolean;
-};
+  isOutsideShift: boolean; // Based on check-in time initially, then updated live
+  shift: Shift; // Student's registered shift
+}
 
 const staticAdminActionTilesConfig = [
   { baseTitle: "Manage Students", icon: Users, description: "View, edit student details.", href: "/students/list" },
@@ -75,17 +76,13 @@ function AdminDashboardContent() {
   const [availableEveningSlotsCount, setAvailableEveningSlotsCount] = React.useState(0);
   const [availableFullDaySlotsCount, setAvailableFullDaySlotsCount] = React.useState(0);
 
-  const [checkedInStudents, setCheckedInStudents] = React.useState<CheckedInStudentInfo[]>([]);
+  const [baseCheckedInStudents, setBaseCheckedInStudents] = React.useState<CheckedInStudentInfo[]>([]);
+  const [liveCheckedInStudents, setLiveCheckedInStudents] = React.useState<CheckedInStudentInfo[]>([]);
   const [showCheckedInDialog, setShowCheckedInDialog] = React.useState(false);
   const [monthlyRevenue, setMonthlyRevenue] = React.useState<string | null>(null);
   const [currentMonthName, setCurrentMonthName] = React.useState<string>(format(new Date(), 'MMMM'));
 
   const { count: openFeedbackCount, isLoadingCount: isLoadingFeedbackCount } = useNotificationCounts();
-
-  React.useEffect(() => {
-    console.log("[AdminDashboardContent] Feedback count or loading state changed:", { openFeedbackCount, isLoadingFeedbackCount });
-  }, [openFeedbackCount, isLoadingFeedbackCount]);
-
 
   React.useEffect(() => {
     const fetchDashboardData = async () => {
@@ -133,20 +130,23 @@ function AdminDashboardContent() {
             const student = allStudentsData.find(s => s.studentId === record.studentId);
             if (!student) return null;
 
-            let isOutside = false;
+            let isOutsideAtCheckIn = false;
             const checkInHour = getHours(parseISO(record.checkInTime));
-            if (student.shift === "morning" && (checkInHour < 7 || checkInHour >= 14)) {
-              isOutside = true;
-            } else if (student.shift === "evening" && (checkInHour < 14 || (checkInHour === 21 && getMinutes(parseISO(record.checkInTime)) > 30) || checkInHour >= 22)) {
-              isOutside = true;
-            }
+            const checkInMinutes = getMinutes(parseISO(record.checkInTime));
 
-            return { ...student, checkInTime: record.checkInTime, isOutsideShift: isOutside };
+            if (student.shift === "morning" && (checkInHour < 7 || checkInHour >= 14)) {
+              isOutsideAtCheckIn = true;
+            } else if (student.shift === "evening" && (checkInHour < 14 || currentHour > 21 || (checkInHour === 21 && checkInMinutes > 30))) {
+              isOutsideAtCheckIn = true;
+            }
+            // Full day students are never outside their shift by this definition.
+
+            return { ...student, checkInTime: record.checkInTime, isOutsideShift: isOutsideAtCheckIn, shift: student.shift };
           })
           .filter((s): s is CheckedInStudentInfo => s !== null)
           .sort((a, b) => parseISO(a.checkInTime).getTime() - parseISO(b.checkInTime).getTime()) as CheckedInStudentInfo[];
 
-        setCheckedInStudents(checkedInStudentDetails);
+        setBaseCheckedInStudents(checkedInStudentDetails);
         setMonthlyRevenue(currentMonthRevenue);
         setCurrentMonthName(format(new Date(), 'MMMM'));
 
@@ -158,7 +158,7 @@ function AdminDashboardContent() {
         setAvailableMorningSlotsCount(0);
         setAvailableEveningSlotsCount(0);
         setAvailableFullDaySlotsCount(0);
-        setCheckedInStudents([]);
+        setBaseCheckedInStudents([]);
         setMonthlyRevenue("Rs. 0");
       } finally {
         setIsLoadingDashboardStats(false);
@@ -170,7 +170,50 @@ function AdminDashboardContent() {
     fetchDashboardData();
   }, []);
 
+  React.useEffect(() => {
+    let intervalId: NodeJS.Timeout | null = null;
+
+    const updateLiveStudentStatus = () => {
+      const now = new Date();
+      const currentHour = getHours(now);
+      const currentMinutes = getMinutes(now);
+
+      setLiveCheckedInStudents(
+        baseCheckedInStudents.map(student => {
+          let currentlyOutsideShift = false;
+          if (student.shift === "morning") { // Morning: 7 AM to 2 PM (14:00)
+            if (currentHour < 7 || currentHour >= 14) {
+              currentlyOutsideShift = true;
+            }
+          } else if (student.shift === "evening") { // Evening: 2 PM (14:00) to 9:30 PM (21:30)
+             if (currentHour < 14 || currentHour > 21 || (currentHour === 21 && currentMinutes > 30)) {
+              currentlyOutsideShift = true;
+            }
+          }
+          // Full day students are by definition not "outside shift" during library hours
+          return { ...student, isOutsideShift: currentlyOutsideShift };
+        })
+      );
+    };
+
+    if (showCheckedInDialog && baseCheckedInStudents.length > 0) {
+      updateLiveStudentStatus(); // Initial update when dialog opens
+      intervalId = setInterval(updateLiveStudentStatus, 30000); // Update every 30 seconds
+    } else {
+      setLiveCheckedInStudents([]); // Clear live data if dialog is closed or no base students
+    }
+
+    return () => {
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
+    };
+  }, [showCheckedInDialog, baseCheckedInStudents]);
+
+
   const totalRegisteredStudents = morningShiftStudentCount + eveningShiftStudentCount + fullDayShiftStudentCount;
+  const studentsToDisplayInDialog = liveCheckedInStudents.length > 0 ? liveCheckedInStudents : baseCheckedInStudents;
+
 
   return (
     <>
@@ -181,7 +224,7 @@ function AdminDashboardContent() {
           <DialogHeader>
             <ShadcnDialogTitle className="flex items-center"><LogIn className="mr-2 h-5 w-5" />Students Currently In Library</ShadcnDialogTitle>
           </DialogHeader>
-          {isLoadingCheckedInStudents ? (
+          {isLoadingCheckedInStudents && baseCheckedInStudents.length === 0 ? (
             <div className="flex items-center justify-center py-10">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
@@ -190,16 +233,15 @@ function AdminDashboardContent() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Student ID</TableHead>
                     <TableHead>Name</TableHead>
+                    <TableHead>Shift</TableHead>
                     <TableHead>Seat</TableHead>
                     <TableHead>Check-in Time</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {checkedInStudents.map((student) => (
+                  {studentsToDisplayInDialog.map((student) => (
                     <TableRow key={student.studentId}>
-                      <TableCell>{student.studentId}</TableCell>
                       <TableCell className="font-medium flex items-center">
                         {student.name}
                         {student.isOutsideShift && (
@@ -208,11 +250,12 @@ function AdminDashboardContent() {
                           </Badge>
                         )}
                       </TableCell>
+                      <TableCell className="capitalize">{student.shift}</TableCell>
                       <TableCell>{student.seatNumber || 'N/A'}</TableCell>
                       <TableCell>{format(parseISO(student.checkInTime), 'p' )}</TableCell>
                     </TableRow>
                   ))}
-                  {checkedInStudents.length === 0 && (
+                  {studentsToDisplayInDialog.length === 0 && (
                     <TableRow>
                       <TableCell colSpan={4} className="text-center text-muted-foreground py-4">
                         No students are currently checked in.
@@ -251,7 +294,7 @@ function AdminDashboardContent() {
           {isLoadingCheckedInStudents ? (
             <Loader2 className="h-5 w-5 animate-spin my-1" />
           ) : (
-            <div className="text-2xl font-bold text-foreground mb-1">{checkedInStudents.length}</div>
+            <div className="text-2xl font-bold text-foreground mb-1">{baseCheckedInStudents.length}</div>
           )}
           <p className="text-xs text-muted-foreground">Active check-ins right now</p>
         </Card>
@@ -336,7 +379,8 @@ function AdminDashboardContent() {
 export default function MainPage() {
   const { user, isLoading } = useAuth();
   const router = useRouter();
-  const pathname = usePathname(); 
+  const pathname = usePathname();
+
   React.useEffect(() => {
     if (!isLoading && user) {
       if (user.role === 'member') {
@@ -347,7 +391,7 @@ export default function MainPage() {
     }
   }, [user, isLoading, router]);
 
-  if (isLoading || (!isLoading && !user && router && typeof router.replace === 'function' && pathname.startsWith('/login'))) { // Added check for router and pathname
+  if (isLoading || (!isLoading && !user && !pathname.startsWith('/login'))) {
     return (
       <div className="flex min-h-screen w-full flex-col items-center justify-center bg-background">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -369,19 +413,15 @@ export default function MainPage() {
     return <AdminDashboardContent />;
   }
 
-  // It's good practice to also get pathname here if used in conditional logic
-  
-  if (!isLoading && !user && !pathname.startsWith('/login')) {
-    // This specific case might be redundant if AuthContext already handles redirection,
-    // but ensures we don't render AdminDashboardContent if user is null and not on login page.
-    return (
-      <div className="flex min-h-screen w-full flex-col items-center justify-center bg-background">
-        <Loader2 className="h-12 w-12 animate-spin text-primary" />
-        <p className="mt-4 text-muted-foreground">Redirecting to login...</p>
-      </div>
-    );
+  if (!isLoading && !user && pathname.startsWith('/login')) {
+    // This case can happen if user is on login page and logs out, or directly navigates to login.
+    // We don't want to show a full-page loader here because the login page should render.
+    // The AppLayout handles the redirection if they try to access protected routes without auth.
+    // If AppLayout is not handling children correctly for /login route, this might be a safety net.
+    // However, with the current AppLayout, this condition might lead to rendering the loader over the login page.
+    // It's better handled by AppLayout structure. For now, let the login page render.
+     return null;
   }
-
 
   return (
     <div className="flex min-h-screen w-full flex-col items-center justify-center bg-background">
@@ -390,3 +430,4 @@ export default function MainPage() {
     </div>
   );
 }
+
