@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from 'react';
@@ -376,13 +375,16 @@ export default function SeatAvailabilityPage() {
                   
                   const studentsOnThisSeat = activeStudents.filter(s => s.seatNumber === seatNum);
 
+                  const isFemaleOnly = (parseInt(seatNum) >= 18 && parseInt(seatNum) <= 27) || (parseInt(seatNum) >= 50 && parseInt(seatNum) <= 58);
+
                   return (
                     <Popover key={seatNum}>
                       <PopoverTrigger asChild>
                         <div
                           className={cn(
                             "relative flex items-center justify-center h-10 w-10 sm:h-12 sm:w-12 text-xs sm:text-sm rounded-md border transition-colors font-medium cursor-pointer",
-                            colorClass
+                            colorClass,
+                            isFemaleOnly ? "female-only-seat" : "" // Add the class here
                           )}
                           title={studentsOnThisSeat.length > 0 ? `Seat ${seatNum} - Click for details` : `Seat ${seatNum} - Available`}
                         >

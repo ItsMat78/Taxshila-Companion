@@ -1,4 +1,3 @@
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -120,4 +119,8 @@
 .animate-top-progress-bar {
   animation: indeterminate-progress 1.5s ease-in-out infinite;
   transform-origin: left;
+}
+
+.female-only-seat {
+  outline: 2px solid rgb(255, 162, 177);
 }
