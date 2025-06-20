@@ -12,13 +12,12 @@ importScripts('https://www.gstatic.com/firebasejs/9.22.1/firebase-messaging-comp
 // !!! CRITICAL: ENSURE THIS CONFIG MATCHES YOUR ACTUAL FIREBASE PROJECT'S CONFIG !!!
 // ==========================================================================================
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY", // <<< --- REPLACE THIS!
-  authDomain: "YOUR_AUTH_DOMAIN", // <<< --- REPLACE THIS!
-  projectId: "YOUR_PROJECT_ID", // <<< --- REPLACE THIS!
-  storageBucket: "YOUR_STORAGE_BUCKET", // <<< --- REPLACE THIS!
-  messagingSenderId: "YOUR_MESSAGING_SENDER_ID", // <<< --- REPLACE THIS!
-  appId: "YOUR_APP_ID", // <<< --- REPLACE THIS!
-  measurementId: "YOUR_MEASUREMENT_ID" // Optional
+  apiKey: "AIzaSyDeZ6OoD1SUctiVxTZWEU1ziWTgIoV5EVQ", // <<< --- REPLACE THIS!
+  authDomain: "taxshila-companion.firebaseapp.com", // <<< --- REPLACE THIS!
+  projectId: "taxshila-companion", // <<< --- REPLACE THIS!
+  storageBucket: "taxshila-companion.firebasestorage.app", // <<< --- REPLACE THIS!
+  messagingSenderId: "855781562502", // <<< --- REPLACE THIS!
+  appId: "1:855781562502:web:f2089ec4be77f2780e1907", // <<< --- REPLACE THIS!
 };
 // ==========================================================================================
 
