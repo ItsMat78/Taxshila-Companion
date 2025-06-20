@@ -370,7 +370,6 @@ export async function addStudent(studentData: AddStudentData): Promise<Student> 
     activityStatus: "Active",
     registrationDate: format(today, 'yyyy-MM-dd'),
     amountDue: amountDueForShift,
-    nextDueDate: format(addMonths(today, 1), 'yyyy-MM-dd'),
     profilePictureUrl: "https://placehold.co/200x200.png",
     paymentHistory: [],
     readGeneralAlertIds: [],
