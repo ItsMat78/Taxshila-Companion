@@ -50,7 +50,7 @@ interface AdminUserFirestore {
 
 export const ALL_SEAT_NUMBERS: string[] = [];
 for (let i = 1; i <= 83; i++) {
-    ALL_SEAT_NUMBERS.push(String(i));  
+    ALL_SEAT_NUMBERS.push(String(i));
 }
 ALL_SEAT_NUMBERS.sort((a, b) => parseInt(a) - parseInt(b));
 
@@ -370,7 +370,6 @@ export async function addStudent(studentData: AddStudentData): Promise<Student> 
     activityStatus: "Active",
     registrationDate: format(today, 'yyyy-MM-dd'),
     amountDue: amountDueForShift,
-    nextDueDate: format(addMonths(today, 1), 'yyyy-MM-dd'),
     profilePictureUrl: "https://placehold.co/200x200.png",
     paymentHistory: [],
     readGeneralAlertIds: [],
@@ -683,7 +682,7 @@ export async function getAttendanceRecordsByStudentId(studentId: string): Promis
 // --- Payment and Revenue ---
 export async function recordStudentPayment(
   customStudentId: string,
-  totalAmountPaidString: string, // This can be "Rs. 0", "N/A", or a specific amount like "Rs. 700"
+  totalAmountPaidString: string,
   paymentMethod: PaymentRecord['method'] | "Admin Recorded",
   numberOfMonthsPaid: number = 1
 ): Promise<Student | undefined> {
@@ -705,8 +704,6 @@ export async function recordStudentPayment(
   }
 
   let amountToPayNumeric: number;
-  // If totalAmountPaidString is generic (like "Rs. 0" or "N/A"), calculate based on shift and months.
-  // Otherwise, parse the specific amount provided.
   if (totalAmountPaidString === "Rs. 0" || totalAmountPaidString === "N/A" || !totalAmountPaidString.startsWith("Rs.")) {
     amountToPayNumeric = expectedMonthlyFee * numberOfMonthsPaid;
   } else {
@@ -716,14 +713,8 @@ export async function recordStudentPayment(
     }
   }
 
-  if (paymentMethod !== "Admin Recorded" && amountToPayNumeric < (expectedMonthlyFee * numberOfMonthsPaid)) {
-    // This condition might be too strict if allowing partial payments.
-    // For now, if not admin recorded, it expects full payment for the number of months.
-  }
-
-
   const studentDocRef = doc(db, STUDENTS_COLLECTION, studentToUpdate.firestoreId);
-  const today = new Date();
+  const today = new Date(); // Actual payment date
   const newPaymentId = `PAY${String(Date.now()).slice(-6)}${String(Math.floor(Math.random() * 100)).padStart(2,'0')}`;
   const newTransactionId = `TXN${paymentMethod === "Admin Recorded" ? "ADMIN" : (paymentMethod === "UPI" ? "UPI" : "MEM")}${String(Date.now()).slice(-7)}`;
 
@@ -740,15 +731,22 @@ export async function recordStudentPayment(
       date: Timestamp.fromDate(parseISO(newPaymentRecord.date))
   };
 
-  let baseDateForNextDue = today;
-  if (studentToUpdate.nextDueDate && isValid(parseISO(studentToUpdate.nextDueDate)) && parseISO(studentToUpdate.nextDueDate) > today) {
-    baseDateForNextDue = parseISO(studentToUpdate.nextDueDate);
+  let baseDateForCalculation: Date;
+  if (studentToUpdate.nextDueDate && isValid(parseISO(studentToUpdate.nextDueDate))) {
+    // If there IS an existing valid due date, use it as the base for calculation.
+    baseDateForCalculation = parseISO(studentToUpdate.nextDueDate);
+  } else {
+    // If there's NO valid existing due date (e.g., new student, or it was cleared after being 'Left'),
+    // then the base for calculation is the payment date (today).
+    baseDateForCalculation = today;
   }
+  // The new due date is calculated by adding the number of months paid to this base date.
+  const newNextDueDate = addMonths(baseDateForCalculation, numberOfMonthsPaid);
 
   const updatedFeeData = {
     feeStatus: "Paid" as FeeStatus,
-    lastPaymentDate: Timestamp.fromDate(today),
-    nextDueDate: Timestamp.fromDate(addMonths(baseDateForNextDue, numberOfMonthsPaid)),
+    lastPaymentDate: Timestamp.fromDate(today), // This is the actual date the payment is recorded.
+    nextDueDate: Timestamp.fromDate(newNextDueDate),
     amountDue: "Rs. 0",
     paymentHistory: arrayUnion(firestorePaymentRecord),
   };
@@ -1504,3 +1502,4 @@ declare module '@/types/communication' {
     firestoreId?: string;
   }
 }
+
