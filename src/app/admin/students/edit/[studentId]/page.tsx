@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from 'react';
@@ -52,6 +51,13 @@ import { useParams, useRouter } from 'next/navigation';
 import { getStudentById, updateStudent, getAvailableSeats, recordStudentPayment, deleteStudentCompletely } from '@/services/student-service';
 import type { Student, Shift } from '@/types/student';
 import { format, addMonths } from 'date-fns';
+import { Calendar } from '@/components/ui/calendar'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
+import { cn } from "@/lib/utils"
 import { Skeleton } from '@/components/ui/skeleton';
 
 const ID_CARD_PLACEHOLDER_EDIT = "https://placehold.co/150x100.png?text=ID+Preview";
@@ -66,6 +72,7 @@ const studentEditFormSchema = z.object({
   shift: z.enum(["morning", "evening", "fullday"], { required_error: "Shift selection is required." }),
   seatNumber: z.string().nullable().refine(val => val !== null && val !== "", { message: "Seat selection is required."}),
   idCardFileName: z.string().optional(),
+  nextDueDate: z.date().optional(),
   newPassword: z.string().optional(),
   confirmNewPassword: z.string().optional(),
 }).refine(data => {
@@ -123,6 +130,7 @@ export default function EditStudentPage() {
       shift: undefined,
       seatNumber: null,
       idCardFileName: "",
+      nextDueDate: undefined,
       newPassword: "",
       confirmNewPassword: "",
     },
@@ -146,6 +154,7 @@ export default function EditStudentPage() {
           shift: student.shift,
           seatNumber: student.activityStatus === 'Left' ? null : student.seatNumber,
           idCardFileName: student.idCardFileName || "",
+          nextDueDate: student.nextDueDate ? new Date(student.nextDueDate) : undefined,
           newPassword: "", 
           confirmNewPassword: "",
         });
@@ -241,6 +250,7 @@ export default function EditStudentPage() {
         activityStatus: 'Active', 
         registrationDate: studentData.registrationDate, 
         idCardFileName: data.idCardFileName,
+        nextDueDate: data.nextDueDate ? format(data.nextDueDate, 'yyyy-MM-dd') : undefined,
       };
       successMessage = `${data.name} has been re-activated.`;
       wasReactivated = true;
@@ -254,6 +264,7 @@ export default function EditStudentPage() {
         shift: data.shift,
         seatNumber: data.seatNumber,
         idCardFileName: data.idCardFileName,
+        nextDueDate: data.nextDueDate ? format(data.nextDueDate, 'yyyy-MM-dd') : undefined,
       };
       successMessage = `${data.name}'s details have been updated.`;
     }
@@ -274,6 +285,7 @@ export default function EditStudentPage() {
             shift: updatedStudent.shift,
             seatNumber: updatedStudent.activityStatus === 'Left' ? null : updatedStudent.seatNumber,
             idCardFileName: updatedStudent.idCardFileName || "",
+            nextDueDate: updatedStudent.nextDueDate ? new Date(updatedStudent.nextDueDate) : undefined,
             newPassword: "", 
             confirmNewPassword: ""
         });
@@ -344,6 +356,7 @@ export default function EditStudentPage() {
             shift: updatedStudent.shift,
             seatNumber: null,
             idCardFileName: updatedStudent.idCardFileName || "",
+            nextDueDate: updatedStudent.nextDueDate ? new Date(updatedStudent.nextDueDate) : undefined,
             newPassword: "", 
             confirmNewPassword: ""
         });
@@ -519,8 +532,7 @@ export default function EditStudentPage() {
                         {!selectedShift && (<p className="p-2 text-xs text-muted-foreground">Select a shift to see available seats.</p>)}
                         {selectedShift && isLoadingSeats && (<p className="p-2 text-xs text-muted-foreground">Loading seats...</p>)}
                         {selectedShift && !isLoadingSeats && availableSeatOptions.length === 0 && (
-                           <p className="p-2 text-xs text-muted-foreground">No seats currently available for {selectedShift} shift.</p>
-                        )}
+                           <p className="p-2 text-xs text-muted-foreground">No seats currently available for {selectedShift} shift.</p>)}
                         {availableSeatOptions.map(seat => (
                           <SelectItem key={seat} value={seat}>
                             {seat}{seat === studentData.seatNumber && studentData.shift === selectedShift && !isStudentLeft ? " (Current)" : ""}
@@ -535,6 +547,44 @@ export default function EditStudentPage() {
                 )}
               />
               
+              <FormField
+                control={form.control}
+                name="nextDueDate"
+                render={({ field }) => (
+                  <FormItem className="flex flex-col">
+                    <FormLabel>Next Due Date</FormLabel>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <FormControl>
+                          <Button
+                            variant={"outline"}
+                            className={cn(
+                              "w-[240px] pl-3 text-left font-normal",
+                              !field.value && "text-muted-foreground"
+                            )}
+                          >
+                            {field.value ? (
+                              format(field.value, "PPP")
+                            ) : (
+                              <span>Pick a date</span>
+                            )}
+                          </Button>
+                        </FormControl>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={field.value}
+                          onSelect={field.onChange}
+                          disabled={isSaving || isDeleting}
+                          initialFocus
+                        />
+                      </PopoverContent>
+                    </Popover>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
               <div className="space-y-2 pt-4 border-t">
                 <FormLabel className="flex items-center"><KeyRound className="mr-2 h-4 w-4 text-muted-foreground" />Update Password (Optional)</FormLabel>
