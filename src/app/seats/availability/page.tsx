@@ -375,7 +375,7 @@ export default function SeatAvailabilityPage() {
                   
                   const studentsOnThisSeat = activeStudents.filter(s => s.seatNumber === seatNum);
 
-                  const isFemaleOnly = (parseInt(seatNum) >= 18 && parseInt(seatNum) <= 27) || (parseInt(seatNum) >= 50 && parseInt(seatNum) <= 58);
+                  const isFemaleOnly = (parseInt(seatNum) >= 18 && parseInt(seatNum) <= 27) || (parseInt(seatNum) >= 50 && parseInt(seatNum) <= 58) || (parseInt(seatNum) == 84);
 
                   return (
                     <Popover key={seatNum}>
