@@ -49,7 +49,7 @@ interface AdminUserFirestore {
 
 
 export const ALL_SEAT_NUMBERS: string[] = [];
-for (let i = 1; i <= 83; i++) {
+for (let i = 1; i <= 84; i++) {
     ALL_SEAT_NUMBERS.push(String(i));
 }
 ALL_SEAT_NUMBERS.sort((a, b) => parseInt(a) - parseInt(b));
@@ -457,6 +457,56 @@ export async function updateStudent(customStudentId: string, studentUpdateData: 
 
   const newShift = studentUpdateData.shift || studentToUpdate.shift;
   const newSeatNumber = studentUpdateData.seatNumber !== undefined ? studentUpdateData.seatNumber : studentToUpdate.seatNumber;
+
+  if (studentUpdateData.shift && studentUpdateData.shift !== studentToUpdate.shift) {
+    // Shift has changed, recalculate amountDue
+    const fees = await getFeeStructure();
+    let amountDueForShift: string;
+    switch (studentUpdateData.shift) {
+      case "morning": amountDueForShift = `Rs. ${fees.morningFee}`; break;
+      case "evening": amountDueForShift = `Rs. ${fees.eveningFee}`; break;
+      case "fullday": amountDueForShift = `Rs. ${fees.fullDayFee}`; break;
+      default: amountDueForShift = "Rs. 0";
+    }
+
+    payload.amountDue = amountDueForShift;
+    payload.feeStatus = 'Due'; // Reset fee status since shift changed
+    //TODO: Add logic to handle existing payment. If student already paid for the month, set amountDue to "Rs. 0"
+        // 1. Get the current month and year
+        const now = new Date();
+        const currentYear = now.getFullYear();
+        const currentMonth = now.getMonth();
+    
+        // 2. Check if there's a payment in the current month
+        const currentMonthPayment = studentToUpdate.paymentHistory?.find(payment => {
+            const paymentDate = parseISO(payment.date);
+            return paymentDate.getFullYear() === currentYear && paymentDate.getMonth() === currentMonth;
+        });
+    
+        if (currentMonthPayment) {
+            // 3. If payment exists, check if it covers the new shift fee
+            const amountPaid = parseInt(currentMonthPayment.amount.replace('Rs. ', ''), 10);
+            let newShiftFee: number;
+    
+            switch (studentUpdateData.shift) {
+                case "morning": newShiftFee = fees.morningFee; break;
+                case "evening": newShiftFee = fees.eveningFee; break;
+                case "fullday": newShiftFee = fees.fullDayFee; break;
+                default: newShiftFee = 0;
+            }
+    
+            if (amountPaid >= newShiftFee) {
+                // Payment covers the new fee
+                payload.amountDue = "Rs. 0";
+                payload.feeStatus = "Paid";
+            } else {
+                // Payment doesn't cover the new fee, calculate remaining balance
+                const remainingBalance = newShiftFee - amountPaid;
+                payload.amountDue = `Rs. ${remainingBalance}`;
+            }
+        }
+    }
+
 
   if (newSeatNumber && (newSeatNumber !== studentToUpdate.seatNumber || newShift !== studentToUpdate.shift || (studentUpdateData.activityStatus === 'Active' && studentToUpdate.activityStatus === 'Left'))) {
       const allCurrentStudents = await getAllStudents();

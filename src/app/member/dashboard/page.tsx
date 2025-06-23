@@ -256,6 +256,12 @@ export default function MemberDashboardPage() {
 
   React.useEffect(() => {
     fetchAllDashboardData();
+
+    // Set up interval to refresh data every 5 minutes (300000 milliseconds)
+    const intervalId = setInterval(fetchAllDashboardData, 300000);
+
+    // Clear the interval on component unmount
+    return () => clearInterval(intervalId);
   }, [fetchAllDashboardData]);
 
   const handleCloseScanner = React.useCallback(async () => {
@@ -605,11 +611,15 @@ export default function MemberDashboardPage() {
               </div>
             )}
             {hoursStudiedToday !== null && hoursStudiedToday > 0 && (
-              <div className="flex items-center">
-                <Hourglass className="mr-1 h-3 w-3 text-blue-500" />
-                <span>Today: {hoursStudiedToday.toFixed(1)} hrs</span>
-              </div>
-            )}
+      <div className="flex items-center">
+        <Hourglass className="mr-1 h-3 w-3 text-blue-500" />
+        <span>
+          Today: {Math.floor(hoursStudiedToday)} hr{" "}
+          {Math.round((hoursStudiedToday % 1) * 60)} min
+        </span>
+      </div>
+    )}
+
             {hoursStudiedToday === 0 && !activeCheckInRecord && !isLoadingCurrentSession && (
                 <div className="flex items-center">
                 <Hourglass className="mr-1 h-3 w-3 text-blue-500" />
