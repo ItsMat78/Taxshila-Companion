@@ -59,6 +59,7 @@ import {
 } from "@/components/ui/popover"
 import { cn } from "@/lib/utils"
 import { Skeleton } from '@/components/ui/skeleton';
+import { useNotificationContext } from '@/contexts/notification-context';
 
 const ID_CARD_PLACEHOLDER_EDIT = "https://placehold.co/150x100.png?text=ID+Preview";
 
@@ -106,6 +107,7 @@ export default function EditStudentPage() {
   const params = useParams();
   const router = useRouter();
   const studentId = params.studentId as string;
+  const { refreshNotifications } = useNotificationContext();
 
   const [studentData, setStudentData] = React.useState<Student | null>(null);
   const [availableSeatOptions, setAvailableSeatOptions] = React.useState<string[]>([]);
@@ -320,6 +322,7 @@ export default function EditStudentPage() {
       if (updatedStudent) {
         setStudentData(updatedStudent); 
         setIsDirtyOverride(false);
+        refreshNotifications(); // Refresh sidebar counts
          toast({
           title: "Payment Status Updated",
           description: `Payment for ${updatedStudent.name} has been marked as Paid. An alert has been sent.`,
@@ -361,6 +364,7 @@ export default function EditStudentPage() {
             confirmNewPassword: ""
         });
         setIsDirtyOverride(true); 
+        refreshNotifications(); // Refresh sidebar counts
         toast({
           title: "Student Marked as Left",
           description: `${updatedStudent.name} is now marked as Left. Their seat is available. An alert has been sent.`,

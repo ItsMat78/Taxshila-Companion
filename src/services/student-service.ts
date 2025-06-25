@@ -189,52 +189,66 @@ export async function updateFeeStructure(newFees: Partial<FeeStructure>): Promis
 // --- Student Service Functions ---
 
 async function applyAutomaticStatusUpdates(studentData: Student): Promise<Student> {
-  let updatedStudent = { ...studentData };
-  if (updatedStudent.activityStatus === 'Active' && updatedStudent.feeStatus === 'Overdue' && updatedStudent.nextDueDate) {
-    try {
-      const dueDate = parseISO(updatedStudent.nextDueDate);
-      const today = new Date();
-      const todayDateOnly = startOfDay(today);
-      const dueDateOnly = startOfDay(dueDate);
+  // Only perform updates for active students.
+  if (studentData.activityStatus !== 'Active') {
+    return studentData;
+  }
+  
+  let updatesToCommit: { [key: string]: any } = {};
 
-      if (isValid(dueDateOnly) && isPast(dueDateOnly) && differenceInDays(todayDateOnly, dueDateOnly) > 5) {
-        updatedStudent = {
-            ...updatedStudent,
-            activityStatus: 'Left',
-            seatNumber: null,
-            feeStatus: "N/A",
-            amountDue: "N/A",
-            lastPaymentDate: undefined,
-            nextDueDate: undefined,
-        };
-        if (updatedStudent.firestoreId) {
-             await updateDoc(doc(db, STUDENTS_COLLECTION, updatedStudent.firestoreId), {
-                activityStatus: 'Left',
-                seatNumber: null,
-                feeStatus: "N/A",
-                amountDue: "N/A",
-                lastPaymentDate: null,
-                nextDueDate: null,
-             });
+  // --- Fee Status Update Logic ---
+  if (studentData.nextDueDate && isValid(parseISO(studentData.nextDueDate))) {
+    const dueDate = startOfDay(parseISO(studentData.nextDueDate));
+    const today = startOfDay(new Date());
+
+    if (isPast(dueDate)) { // The due date has passed.
+      const daysOverdue = differenceInDays(today, dueDate);
+      
+      if (daysOverdue > 5) {
+        // It's now 'Overdue'.
+        if (studentData.feeStatus !== 'Overdue') {
+          updatesToCommit.feeStatus = 'Overdue';
+        }
+      } else { // It can be `daysOverdue >= 0 && daysOverdue <= 5`
+        // It's now 'Due'.
+        if (studentData.feeStatus !== 'Due') {
+          updatesToCommit.feeStatus = 'Due';
         }
       }
-    } catch (e) {
     }
   }
-  if (updatedStudent.activityStatus === 'Active' && updatedStudent.feeStatus !== 'Paid' && updatedStudent.nextDueDate) {
-    try {
-        const dueDate = parseISO(updatedStudent.nextDueDate);
-        const today = new Date();
-        if (isValid(dueDate) && isPast(dueDate) && updatedStudent.feeStatus !== 'Overdue') {
-            updatedStudent.feeStatus = 'Overdue';
-            if (updatedStudent.firestoreId) {
-                 await updateDoc(doc(db, STUDENTS_COLLECTION, updatedStudent.firestoreId), { feeStatus: 'Overdue' });
-            }
-        }
-    } catch (e) {
+
+  // --- Mark as 'Left' if severely overdue ---
+  // This logic is separate. If a student is 'Overdue' and it's been more than 10 days.
+  if (studentData.feeStatus === 'Overdue' && studentData.nextDueDate && isValid(parseISO(studentData.nextDueDate))) {
+    const dueDate = startOfDay(parseISO(studentData.nextDueDate));
+    const today = startOfDay(new Date());
+    const daysOverdue = differenceInDays(today, dueDate);
+
+    if (daysOverdue > 10) { 
+      updatesToCommit.activityStatus = 'Left';
+      updatesToCommit.seatNumber = null;
+      updatesToCommit.feeStatus = "N/A";
+      updatesToCommit.amountDue = "N/A";
+      updatesToCommit.lastPaymentDate = null;
+      updatesToCommit.nextDueDate = null;
     }
   }
-  return updatedStudent;
+  
+  // --- Commit updates if any ---
+  if (Object.keys(updatesToCommit).length > 0 && studentData.firestoreId) {
+    await updateDoc(doc(db, STUDENTS_COLLECTION, studentData.firestoreId), updatesToCommit);
+    
+    // Apply local updates to the object and return it for immediate UI feedback.
+    const updatedStudent = { ...studentData, ...updatesToCommit };
+    if(updatesToCommit.feeStatus) updatedStudent.feeStatus = updatesToCommit.feeStatus as FeeStatus;
+    if(updatesToCommit.activityStatus) updatedStudent.activityStatus = updatesToCommit.activityStatus as ActivityStatus;
+
+    return updatedStudent;
+  }
+
+  // If no updates were needed, just return the original data.
+  return studentData;
 }
 
 

@@ -3,7 +3,7 @@
 
 import * as React from 'react';
 import { useAuth } from '@/contexts/auth-context';
-import { getAllFeedback, getAlertsForStudent, getStudentByEmail } from '@/services/student-service';
+import { getAllFeedback, getAlertsForStudent } from '@/services/student-service';
 import type { FeedbackItem } from '@/types/communication';
 import type { AlertItem } from '@/types/communication';
 import { useNotificationContext } from '@/contexts/notification-context'; // Import context hook
@@ -27,16 +27,11 @@ export function useNotificationCounts() {
         const feedbackItems: FeedbackItem[] = await getAllFeedback();
         const openFeedbackCount = feedbackItems.filter(item => item.status === "Open").length;
         setCount(openFeedbackCount);
-        console.log("[useNotificationCounts] Admin: Open feedback count set to:", openFeedbackCount); // DEBUG
-      } else if (user.role === 'member' && user.email) {
-        const student = await getStudentByEmail(user.email);
-        if (student && student.studentId) {
-          const alerts: AlertItem[] = await getAlertsForStudent(student.studentId);
-          const unreadAlertsCount = alerts.filter(alert => !alert.isRead).length;
-          setCount(unreadAlertsCount);
-        } else {
-          setCount(0); 
-        }
+      } else if (user.role === 'member' && user.studentId) {
+        // Directly use studentId from the authenticated user context
+        const alerts: AlertItem[] = await getAlertsForStudent(user.studentId);
+        const unreadAlertsCount = alerts.filter(alert => !alert.isRead).length;
+        setCount(unreadAlertsCount);
       } else {
         setCount(0);
       }

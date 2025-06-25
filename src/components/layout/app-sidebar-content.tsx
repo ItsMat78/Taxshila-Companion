@@ -24,6 +24,7 @@ import {
 import { useAuth } from '@/contexts/auth-context';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useNotificationCounts } from '@/hooks/use-notification-counts'; // Import the hook
+import { useFinancialCounts } from '@/hooks/use-financial-counts'; // Import the new hook
 
 const ACTUAL_LOGO_URL = '/logo.png'; // Use the actual logo path
 
@@ -35,7 +36,8 @@ function NavListItem({ item }: { item: NavItem }) {
   );
 
   const { user } = useAuth();
-  const { count: notificationCount, isLoadingCount } = useNotificationCounts(); // Get notification count
+  const { count: notificationCount, isLoadingCount } = useNotificationCounts();
+  const { count: financialCount, isLoadingCount: isLoadingFinancialCount } = useFinancialCounts(); // Use the new hook
 
   const closeMobileSidebar = () => {
     if (isMobile) {
@@ -51,7 +53,8 @@ function NavListItem({ item }: { item: NavItem }) {
     !subItem.roles || (user && subItem.roles.includes(user.role))
   );
 
-  const displayCount = notificationCount > 9 ? '9+' : String(notificationCount);
+  const displayNotificationCount = notificationCount > 9 ? '9+' : String(notificationCount);
+  const displayFinancialCount = financialCount > 9 ? '9+' : String(financialCount);
 
   if (item.external) {
     return (
@@ -74,6 +77,7 @@ function NavListItem({ item }: { item: NavItem }) {
   }
 
   if (visibleSubItems && visibleSubItems.length > 0) {
+    const shouldShowFinancialBadgeOnParent = item.title === 'Financials' && !isLoadingFinancialCount && financialCount > 0;
     return (
       <SidebarMenuItem>
         <SidebarMenuButton
@@ -84,6 +88,11 @@ function NavListItem({ item }: { item: NavItem }) {
           <span className="flex items-center gap-2">
             {item.icon && <item.icon className="h-4 w-4" />}
             <span className="truncate">{item.title}</span>
+             {shouldShowFinancialBadgeOnParent && (
+              <span className="ml-2 inline-flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold text-destructive-foreground">
+                {displayFinancialCount}
+              </span>
+            )}
           </span>
           <ChevronDown
             className={cn(
@@ -95,7 +104,7 @@ function NavListItem({ item }: { item: NavItem }) {
         {isSubMenuOpen && (
           <SidebarMenuSub>
             {visibleSubItems.map((subItem) => {
-              const shouldShowSubItemBadge =
+              const shouldShowNotificationBadge =
                 !isLoadingCount &&
                 notificationCount > 0 &&
                 user &&
@@ -104,21 +113,31 @@ function NavListItem({ item }: { item: NavItem }) {
                   (user.role === 'member' && subItem.href === '/member/alerts')
                 );
 
+              const shouldShowFinancialBadgeOnSubItem =
+                subItem.href === '/admin/fees/due' &&
+                !isLoadingFinancialCount &&
+                financialCount > 0;
+
               return (
                 <SidebarMenuSubItem key={subItem.href}>
                   <Link href={subItem.href} passHref legacyBehavior>
                     <SidebarMenuSubButton
                       isActive={pathname === subItem.href}
                       onClick={closeMobileSidebar}
-                      className="justify-between w-full" // Ensure button takes full width for badge positioning
+                      className="justify-between w-full"
                     >
                       <span className="flex items-center gap-2">
                         {subItem.icon && <subItem.icon className="h-4 w-4" />}
                         <span className="truncate">{subItem.title}</span>
                       </span>
-                      {shouldShowSubItemBadge && (
+                      {shouldShowNotificationBadge && (
                         <span className="ml-auto inline-flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold text-destructive-foreground">
-                          {displayCount}
+                          {displayNotificationCount}
+                        </span>
+                      )}
+                      {shouldShowFinancialBadgeOnSubItem && (
+                         <span className="ml-auto inline-flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold text-destructive-foreground">
+                          {displayFinancialCount}
                         </span>
                       )}
                     </SidebarMenuSubButton>
@@ -141,7 +160,7 @@ function NavListItem({ item }: { item: NavItem }) {
         notificationCount > 0 &&
         user &&
         (
-          (user.role === 'admin' && item.href === '/admin/feedback') || // This condition might not apply for top-level if feedback is always a sub-item
+          (user.role === 'admin' && item.href === '/admin/feedback') ||
           (user.role === 'member' && item.href === '/member/alerts')
         );
 
@@ -151,7 +170,7 @@ function NavListItem({ item }: { item: NavItem }) {
           <SidebarMenuButton
             isActive={pathname === item.href}
             onClick={closeMobileSidebar}
-            className="justify-between w-full" // Ensure button takes full width
+            className="justify-between w-full"
           >
             <span className="flex items-center gap-2">
               {item.icon && <item.icon className="h-4 w-4" />}
@@ -159,7 +178,7 @@ function NavListItem({ item }: { item: NavItem }) {
             </span>
             {shouldShowTopLevelBadge && (
               <span className="ml-auto inline-flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold text-destructive-foreground">
-                {displayCount}
+                {displayNotificationCount}
               </span>
             )}
           </SidebarMenuButton>
