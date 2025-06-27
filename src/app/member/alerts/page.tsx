@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from 'react';
@@ -19,9 +20,9 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge'; // Import Badge
-import { AlertTriangle, Info, Megaphone, Loader2, MailWarning, CheckCircle2 } from 'lucide-react';
+import { AlertTriangle, Info, Megaphone, Loader2, MailWarning, CheckCircle2, ClipboardCheck } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
-import { getStudentByEmail, getAlertsForStudent, markAlertAsRead, getStudentByCustomId } from '@/services/student-service';
+import { getStudentByEmail, getAlertsForStudent, markAlertAsRead, getStudentByCustomId, markAllAlertsAsRead } from '@/services/student-service';
 import type { AlertItem } from '@/types/communication';
 import { useToast } from '@/hooks/use-toast';
 import { format, parseISO } from 'date-fns';
@@ -93,6 +94,7 @@ export default function MemberAlertsPage() {
 
   const [isAlertDetailsOpen, setIsAlertDetailsOpen] = React.useState(false);
   const [currentAlertInModal, setCurrentAlertInModal] = React.useState<AlertItem | null>(null);
+  const [isMarkingAllRead, setIsMarkingAllRead] = React.useState(false);
 
   React.useEffect(() => {
     setIsLoading(true);
@@ -141,6 +143,32 @@ export default function MemberAlertsPage() {
       });
     }
   }, [studentId, fetchAlerts, refreshKey]); // Add refreshKey to dependency array
+
+  const hasUnread = React.useMemo(() => alertsList.some(a => !a.isRead), [alertsList]);
+
+  const handleMarkAllAsRead = async () => {
+    if (!studentId || !hasUnread) return;
+
+    setIsMarkingAllRead(true);
+    try {
+      await markAllAlertsAsRead(studentId);
+      await fetchAlerts(studentId); // Re-fetch alerts to update UI
+      refreshNotifications(); // Refresh sidebar count
+      toast({
+        title: "All Alerts Marked as Read",
+        description: "Your notification inbox is up to date.",
+      });
+    } catch (error) {
+      console.error("Failed to mark all alerts as read:", error);
+      toast({
+        title: "Error",
+        description: "Could not mark all alerts as read. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsMarkingAllRead(false);
+    }
+  };
 
 
   const handleOpenAlertDetails = async (alertItem: AlertItem) => {
@@ -227,7 +255,23 @@ export default function MemberAlertsPage() {
 
   return (
     <>
-      <PageTitle title="Notifications & Alerts" description="Stay updated with important announcements from the library." />
+      <PageTitle title="Notifications & Alerts" description="Stay updated with important announcements from the library.">
+        {hasUnread && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleMarkAllAsRead}
+            disabled={isMarkingAllRead || isLoading}
+          >
+            {isMarkingAllRead ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <ClipboardCheck className="mr-2 h-4 w-4" />
+            )}
+            Mark all as read
+          </Button>
+        )}
+      </PageTitle>
 
       {alertsList.length === 0 ? (
         <Card className="shadow-lg">
@@ -241,8 +285,6 @@ export default function MemberAlertsPage() {
         <div className="space-y-4">
           {alertsList.map((alert) => {
             if (!alert || !alert.id) {
-              // This check is defensive. If alert.id is truly undefined, this alert will be skipped.
-              // The root cause is that `alert.id` isn't being correctly passed from the service.
               console.warn("Skipping alert with undefined ID:", alert);
               return null;
             }

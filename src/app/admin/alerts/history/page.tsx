@@ -18,13 +18,76 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle as ShadcnDialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { History, AlertTriangle, Info, Megaphone, CheckCircle2, Users, User, Loader2, MailWarning, Calendar, Type, Send } from 'lucide-react';
+import { History, AlertTriangle, Info, Megaphone, CheckCircle2, Users, User, Loader2, MailWarning, ListFilter } from 'lucide-react';
 import { getAllAdminSentAlerts } from '@/services/student-service';
 import type { AlertItem } from '@/types/communication';
 import { useToast } from '@/hooks/use-toast';
 import { format, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
+
+// Dialog to show full alert details
+interface AlertDetailsDialogProps {
+  isOpen: boolean;
+  onClose: () => void;
+  alertItem: AlertItem | null;
+}
+
+function AlertDetailsDialog({ isOpen, onClose, alertItem }: AlertDetailsDialogProps) {
+  if (!alertItem) return null;
+
+  const getDialogAlertIcon = (type: AlertItem['type']) => {
+    switch (type) {
+      case 'closure': return <Info className="h-5 w-5 text-blue-500" />;
+      case 'warning': return <AlertTriangle className="h-5 w-5 text-yellow-500" />;
+      case 'feedback_response': return <CheckCircle2 className="h-5 w-5 text-green-500" />;
+      case 'info':
+      default: return <Megaphone className="h-5 w-5 text-primary" />;
+    }
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <ShadcnDialogTitle className="flex items-start">
+            <span className="mr-2 pt-0.5">{getDialogAlertIcon(alertItem.type)}</span>
+            <span>{alertItem.title}</span>
+          </ShadcnDialogTitle>
+          <DialogDescription className="text-xs pt-1">
+            Sent on: {format(parseISO(alertItem.dateSent), 'MMM d, yyyy, p')}
+            {alertItem.studentId && ` | To: ${alertItem.studentId}`}
+          </DialogDescription>
+        </DialogHeader>
+        <div className="py-4 space-y-3 max-h-[60vh] overflow-y-auto">
+          <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">
+            {alertItem.message}
+          </p>
+        </div>
+        <DialogFooter>
+          <Button onClick={onClose}>Close</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 
 const getAlertDisplayInfo = (alert: AlertItem, size: "sm" | "xs" = "sm") => {
   const baseClass = size === "xs" ? "text-xs px-1.5 py-0.5" : "capitalize";
@@ -58,10 +121,10 @@ const getAlertDisplayInfo = (alert: AlertItem, size: "sm" | "xs" = "sm") => {
   }
 };
 
-const AlertCardItem = ({ alert }: { alert: AlertItem }) => {
+const AlertCardItem = ({ alert, onCardClick }: { alert: AlertItem, onCardClick: (alert: AlertItem) => void }) => {
   const { icon, color, label } = getAlertDisplayInfo(alert, "xs");
   return (
-    <Card className="w-full shadow-md">
+    <Card className="w-full shadow-md hover:shadow-lg transition-shadow cursor-pointer" onClick={() => onCardClick(alert)}>
       <CardHeader className="pb-2">
         <div className="flex justify-between items-start gap-2">
           <Badge variant="outline" className={cn("border-opacity-50", color, "text-xs px-1.5 py-0.5")}>
@@ -93,11 +156,16 @@ const AlertCardItem = ({ alert }: { alert: AlertItem }) => {
   );
 };
 
+type AlertFilterType = 'all' | 'payment' | 'admin_broadcast' | 'feedback' | 'shift_warning';
 
 export default function AdminAlertsHistoryPage() {
   const { toast } = useToast();
   const [sentAlerts, setSentAlerts] = React.useState<AlertItem[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
+  
+  const [filterType, setFilterType] = React.useState<AlertFilterType>('all');
+  const [isDetailsDialogOpen, setIsDetailsDialogOpen] = React.useState(false);
+  const [selectedAlert, setSelectedAlert] = React.useState<AlertItem | null>(null);
 
   React.useEffect(() => {
     const fetchAlerts = async () => {
@@ -115,16 +183,67 @@ export default function AdminAlertsHistoryPage() {
     fetchAlerts();
   }, [toast]);
 
+  const filteredAlerts = React.useMemo(() => {
+    switch (filterType) {
+      case 'payment':
+        return sentAlerts.filter(alert => alert.title === 'Payment Confirmation');
+      case 'admin_broadcast':
+        return sentAlerts.filter(alert => !alert.studentId);
+      case 'feedback':
+        return sentAlerts.filter(alert => alert.type === 'feedback_response');
+      case 'shift_warning':
+        return sentAlerts.filter(alert => alert.title === 'Outside Shift Warning');
+      case 'all':
+      default:
+        return sentAlerts;
+    }
+  }, [sentAlerts, filterType]);
+  
+  const getFilterLabel = (type: AlertFilterType): string => {
+    switch (type) {
+      case 'all': return 'All Alerts';
+      case 'payment': return 'Payment Confirmations';
+      case 'admin_broadcast': return 'Admin Broadcasts';
+      case 'feedback': return 'Feedback Responses';
+      case 'shift_warning': return 'Shift Warnings';
+      default: return 'Filter';
+    }
+  };
+
+  const handleOpenDetails = (alert: AlertItem) => {
+    setSelectedAlert(alert);
+    setIsDetailsDialogOpen(true);
+  };
+
   return (
     <>
-      <PageTitle title="Sent Alerts History" description="A log of all announcements and alerts sent to members." />
+      <PageTitle title="Sent Alerts History" description="A log of all announcements and alerts sent to members.">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline">
+              <ListFilter className="mr-2 h-4 w-4" />
+              Filter: {getFilterLabel(filterType)}
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuRadioGroup value={filterType} onValueChange={(value) => setFilterType(value as AlertFilterType)}>
+              <DropdownMenuRadioItem value="all">All Alerts</DropdownMenuRadioItem>
+              <DropdownMenuRadioItem value="payment">Payment Confirmations</DropdownMenuRadioItem>
+              <DropdownMenuRadioItem value="admin_broadcast">Admin Broadcasts</DropdownMenuRadioItem>
+              <DropdownMenuRadioItem value="feedback">Feedback Responses</DropdownMenuRadioItem>
+              <DropdownMenuRadioItem value="shift_warning">Shift Warnings</DropdownMenuRadioItem>
+            </DropdownMenuRadioGroup>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </PageTitle>
+
       <Card className="shadow-lg w-full">
         <CardHeader>
           <CardTitle className="flex items-center">
             <History className="mr-2 h-5 w-5" />
-            Broadcast Log ({sentAlerts.length})
+            Broadcast Log ({filteredAlerts.length})
           </CardTitle>
-          <CardDescription>Review all past communications sent to members.</CardDescription>
+          <CardDescription>Review all past communications sent to members. Click an item to view its full content.</CardDescription>
         </CardHeader>
         <CardContent>
           {isLoading ? (
@@ -136,14 +255,14 @@ export default function AdminAlertsHistoryPage() {
             <>
               {/* Mobile Card View */}
               <div className="md:hidden space-y-3">
-                {sentAlerts.length === 0 ? (
+                {filteredAlerts.length === 0 ? (
                   <div className="text-center text-muted-foreground py-6">
                      <MailWarning className="mx-auto mb-2 h-10 w-10 text-muted-foreground" />
-                    No alerts have been sent yet.
+                    No alerts found for the selected filter.
                   </div>
                 ) : (
-                  sentAlerts.map((alert) => (
-                    <AlertCardItem key={alert.id} alert={alert} />
+                  filteredAlerts.map((alert) => (
+                    <AlertCardItem key={alert.id} alert={alert} onCardClick={handleOpenDetails} />
                   ))
                 )}
               </div>
@@ -157,14 +276,14 @@ export default function AdminAlertsHistoryPage() {
                       <TableHead>Type</TableHead>
                       <TableHead>Audience</TableHead>
                       <TableHead>Title</TableHead>
-                      <TableHead>Message</TableHead>
+                      <TableHead>Message Snippet</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {sentAlerts.map((alert) => {
+                    {filteredAlerts.map((alert) => {
                       const { icon, color, label } = getAlertDisplayInfo(alert);
                       return (
-                        <TableRow key={alert.id}>
+                        <TableRow key={alert.id} onClick={() => handleOpenDetails(alert)} className="cursor-pointer hover:bg-muted/50">
                           <TableCell className="text-xs whitespace-nowrap">{format(parseISO(alert.dateSent), 'MMM d, yyyy, p')}</TableCell>
                           <TableCell>
                             <Badge variant="outline" className={cn("capitalize border-opacity-50", color)}>
@@ -186,15 +305,15 @@ export default function AdminAlertsHistoryPage() {
                             )}
                           </TableCell>
                           <TableCell className="font-medium">{alert.title}</TableCell>
-                          <TableCell className="text-sm whitespace-pre-wrap">{alert.message}</TableCell>
+                          <TableCell className="text-sm text-muted-foreground line-clamp-2">{alert.message}</TableCell>
                         </TableRow>
                       );
                     })}
-                    {sentAlerts.length === 0 && !isLoading && (
+                    {filteredAlerts.length === 0 && !isLoading && (
                       <TableRow>
                         <TableCell colSpan={5} className="text-center text-muted-foreground py-6">
                           <MailWarning className="mx-auto mb-2 h-10 w-10 text-muted-foreground" />
-                          No alerts have been sent yet.
+                          No alerts found for the selected filter.
                         </TableCell>
                       </TableRow>
                     )}
@@ -205,6 +324,15 @@ export default function AdminAlertsHistoryPage() {
           )}
         </CardContent>
       </Card>
+      
+      <AlertDetailsDialog
+        isOpen={isDetailsDialogOpen}
+        onClose={() => {
+          setIsDetailsDialogOpen(false);
+          setSelectedAlert(null);
+        }}
+        alertItem={selectedAlert}
+      />
     </>
   );
 }

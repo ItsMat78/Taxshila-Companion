@@ -14,6 +14,8 @@ import {
   Inbox,
   Eye,
   LogIn,
+  CreditCard,
+  History,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle as ShadcnCardTitle, CardDescription as ShadcnCardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -39,6 +41,7 @@ import type { Student, Shift, AttendanceRecord } from '@/types/student';
 import type { FeedbackItem } from '@/types/communication';
 import { format, parseISO, isToday, getHours, getMinutes } from 'date-fns';
 import { useNotificationCounts } from '@/hooks/use-notification-counts';
+import { useFinancialCounts } from '@/hooks/use-financial-counts';
 
 interface CheckedInStudentInfo extends Student {
   checkInTime: string;
@@ -50,6 +53,14 @@ const staticAdminActionTilesConfig = [
   { baseTitle: "Manage Students", icon: Users, description: "View, edit student details.", href: "/students/list" },
   { baseTitle: "Register Student", icon: UserPlus, description: "Add new students to system.", href: "/students/register" },
   { baseTitle: "Attendance Overview", icon: CalendarDays, description: "Check student attendance logs.", href: "/attendance/calendar" },
+  {
+    baseTitle: "Payment Due List",
+    icon: CreditCard,
+    description: "View students with due fees.",
+    href: "/admin/fees/due",
+    isFinancialTile: true,
+  },
+  { baseTitle: "Payment History", icon: History, description: "See all past transactions.", href: "/admin/fees/payments-history" },
   { baseTitle: "Send Alert", icon: SendIcon, description: "Broadcast to all members.", href: "/admin/alerts/send" },
   {
     baseTitle: "View Feedback",
@@ -83,6 +94,8 @@ function AdminDashboardContent() {
   const [currentMonthName, setCurrentMonthName] = React.useState<string>(format(new Date(), 'MMMM'));
 
   const { count: openFeedbackCount, isLoadingCount: isLoadingFeedbackCount } = useNotificationCounts();
+  const { count: financialCount, isLoadingCount: isLoadingFinancialCount } = useFinancialCounts();
+
 
   React.useEffect(() => {
     const fetchDashboardData = async () => {
@@ -350,14 +363,25 @@ function AdminDashboardContent() {
             }
           }
 
+          if (tileConfig.isFinancialTile) {
+            if (isLoadingFinancialCount) {
+              currentTitle = "Payment Due (Loading...)";
+            } else if (financialCount > 0) {
+              currentTitle = `Payment Due (${financialCount})`;
+              hasNewBadge = true;
+            } else {
+              currentTitle = "Payment Due List";
+            }
+          }
+
           return (
             <Link href={tileConfig.href} key={tileConfig.baseTitle} className="block no-underline focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-lg h-full">
               <Card className={cn(
                 "shadow-md hover:shadow-lg transition-shadow h-full flex flex-col",
-                (tileConfig.isFeedbackTile && hasNewBadge) && "border-destructive ring-2 ring-destructive/50"
+                hasNewBadge && "border-destructive ring-2 ring-destructive/50"
               )}>
                 <CardHeader className="p-3 pb-1 relative">
-                  {(tileConfig.isFeedbackTile && hasNewBadge) && (
+                  {hasNewBadge && (
                     <span className="absolute top-1 right-1 block h-2.5 w-2.5 rounded-full bg-destructive ring-1 ring-white" />
                   )}
                   <div className="flex items-center gap-2">
