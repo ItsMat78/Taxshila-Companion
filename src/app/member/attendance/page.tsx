@@ -498,14 +498,14 @@ export default function MemberAttendancePage() {
                   <div className="h-[250px]">
                     <ChartContainer config={chartConfig} className="w-full h-full">
                       <ResponsiveContainer width="100%" height={250}>
-                          <BarChart accessibilityLayer data={monthlyStudyData} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
+                          <BarChart accessibilityLayer data={monthlyStudyData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                               <CartesianGrid vertical={false} />
                               <XAxis
                                   dataKey="date"
                                   tickLine={false}
                                   tickMargin={10}
                                   axisLine={false}
-                                  tickCount={5}
+                                  interval={4}
                               />
                               <YAxis
                                 tickFormatter={(value) => `${Math.round(value as number)}hr`}
