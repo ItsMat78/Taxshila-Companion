@@ -528,7 +528,7 @@ export default function MemberAttendancePage() {
                     </div>
                     <CardDescription>Hours studied per day this month</CardDescription>
                 </CardHeader>
-                <CardContent className="overflow-x-auto">
+                <CardContent>
                     {isLoadingMonthlyStudyData ? (
                         <div className="flex items-center justify-center h-[300px]">
                             <Loader2 className="h-8 w-8 animate-spin text-primary"/>
@@ -536,7 +536,7 @@ export default function MemberAttendancePage() {
                         </div>
                     ) : (
                         monthlyStudyData.length > 0 ? (
-                            <ChartContainer config={studyChartConfig} className="min-h-[300px] w-full min-w-[600px]">
+                            <ChartContainer config={studyChartConfig} className="min-h-[300px] w-full">
                                 <ResponsiveContainer width="100%" height={300}>
                                     <BarChart data={monthlyStudyData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
                                         <CartesianGrid strokeDasharray="3 3" vertical={false} />
