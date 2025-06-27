@@ -408,7 +408,7 @@ export default function MemberAttendancePage() {
         </AlertDialogContent>
       </AlertDialog>
 
-      <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-2">
+      <div className="grid gap-6 md:grid-cols-1">
         <Card className="shadow-lg">
           <CardHeader>
             <CardTitle className="flex items-center text-base sm:text-lg">
@@ -469,15 +469,19 @@ export default function MemberAttendancePage() {
             )}
           </CardContent>
         </Card>
+      </div>
 
-        <Card className="shadow-lg">
-           <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle className="flex items-center text-base sm:text-lg">
-                  <BarChart3 className="mr-2 h-5 w-5" />
-                  Monthly Study Time
-              </CardTitle>
-              <div className="flex items-center space-x-1">
+      <Card className="mt-6 shadow-lg">
+        <CardHeader>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+              <div className="flex-grow">
+                <CardTitle className="flex items-center text-base sm:text-lg">
+                    <BarChart3 className="mr-2 h-5 w-5" />
+                    Monthly Study Time
+                </CardTitle>
+                <CardDescription>Your daily study performance this month.</CardDescription>
+              </div>
+              <div className="flex items-center space-x-1 self-start sm:self-center">
                   <Button variant="outline" size="icon" className="h-7 w-7" onClick={handlePrevMonth} disabled={isLoadingStudyHours}>
                       <ChevronLeft className="h-4 w-4" />
                   </Button>
@@ -487,7 +491,6 @@ export default function MemberAttendancePage() {
                   </Button>
               </div>
             </div>
-            <CardDescription>Your daily study performance this month.</CardDescription>
           </CardHeader>
           <CardContent className="pb-2">
               {isLoadingStudyHours ? (
@@ -497,15 +500,14 @@ export default function MemberAttendancePage() {
               ) : monthlyStudyData.length > 0 ? (
                   <div className="h-[250px]">
                     <ChartContainer config={chartConfig} className="w-full h-full">
-                      <ResponsiveContainer width="100%" height={250}>
-                          <BarChart accessibilityLayer data={monthlyStudyData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                      <ResponsiveContainer width="100%" height="100%">
+                          <BarChart accessibilityLayer data={monthlyStudyData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
                               <CartesianGrid vertical={false} />
                               <XAxis
                                   dataKey="date"
                                   tickLine={false}
                                   tickMargin={10}
                                   axisLine={false}
-                                  interval={4}
                               />
                               <YAxis
                                 tickFormatter={(value) => `${Math.round(value as number)}hr`}
@@ -541,8 +543,8 @@ export default function MemberAttendancePage() {
                   <p className="text-center text-muted-foreground py-10">No study data for this month.</p>
               )}
           </CardContent>
-        </Card>
-      </div>
+      </Card>
+
 
       <Card className="mt-6 shadow-lg">
         <CardHeader>
