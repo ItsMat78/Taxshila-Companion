@@ -18,6 +18,10 @@ interface StudentDoc {
   fcmTokens?: string[];
 }
 
+interface AdminDoc {
+  fcmTokens?: string[];
+}
+
 try {
   if (!admin.apps.length) {
     const privateKeyRaw = process.env.FIREBASE_PRIVATE_KEY;
@@ -103,7 +107,10 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ success: true, message: `Student ${studentIdToQuery} not found, notification not sent.` }, { status: 200 });
       }
     } else {
-      console.log("API Route: General alert. Fetching tokens for all students...");
+      // GENERAL ALERT - Fetch tokens for all students AND all admins
+      console.log("API Route: General alert. Fetching tokens for all students and admins...");
+      
+      // Fetch student tokens
       const allStudentsSnapshot = await db.collection("students").get();
       allStudentsSnapshot.forEach((studentDoc) => {
         const student = studentDoc.data() as StudentDoc;
@@ -111,7 +118,17 @@ export async function POST(request: NextRequest) {
           tokens.push(...student.fcmTokens.filter(token => typeof token === 'string' && token.length > 0));
         }
       });
-      console.log("API Route: Total tokens found for general alert (before unique):", tokens.length);
+      console.log("API Route: Total tokens from students:", tokens.length);
+      
+      // Fetch admin tokens
+      const adminsSnapshot = await db.collection("admins").get();
+      adminsSnapshot.forEach((doc) => {
+        const adminData = doc.data() as AdminDoc;
+        if (adminData.fcmTokens && adminData.fcmTokens.length > 0) {
+          tokens.push(...adminData.fcmTokens);
+        }
+      });
+      console.log("API Route: Total tokens after adding admins (before unique):", tokens.length);
     }
 
     if (tokens.length === 0) {
@@ -165,21 +182,31 @@ export async function POST(request: NextRequest) {
                 errorCode === 'messaging/invalid-registration-token') {
                 console.log(`API Route: Invalid token ${currentToken.substring(0,10)}... detected. Attempting to remove from Firestore.`);
                 try {
-                    // Find all student documents that contain this invalid token
-                    const studentsWithTokenQuery = db.collection('students').where('fcmTokens', 'array-contains', currentToken);
-                    const querySnapshot = await studentsWithTokenQuery.get();
+                    const batch = db.batch();
                     
-                    if (!querySnapshot.empty) {
-                        const batch = db.batch();
-                        querySnapshot.forEach(doc => {
+                    // Check students collection
+                    const studentsWithTokenQuery = db.collection('students').where('fcmTokens', 'array-contains', currentToken);
+                    const studentQuerySnapshot = await studentsWithTokenQuery.get();
+                    if (!studentQuerySnapshot.empty) {
+                        studentQuerySnapshot.forEach(doc => {
                             console.log(`API Route: Removing invalid token from student document ${doc.id}`);
                             batch.update(doc.ref, { fcmTokens: FieldValue.arrayRemove(currentToken) });
                         });
-                        await batch.commit();
-                        console.log(`API Route: Invalid token ${currentToken.substring(0,10)}... removed from relevant student documents.`);
-                    } else {
-                        console.log(`API Route: No student found with the invalid token ${currentToken.substring(0,10)}... in their fcmTokens array.`);
                     }
+
+                    // Check admins collection
+                    const adminsWithTokenQuery = db.collection('admins').where('fcmTokens', 'array-contains', currentToken);
+                    const adminQuerySnapshot = await adminsWithTokenQuery.get();
+                     if (!adminQuerySnapshot.empty) {
+                        adminQuerySnapshot.forEach(doc => {
+                            console.log(`API Route: Removing invalid token from admin document ${doc.id}`);
+                            batch.update(doc.ref, { fcmTokens: FieldValue.arrayRemove(currentToken) });
+                        });
+                    }
+                    
+                    await batch.commit();
+                    console.log(`API Route: Invalid token ${currentToken.substring(0,10)}... removed from relevant documents.`);
+
                 } catch (cleanupError: any) {
                     console.error(`API Route: Error cleaning up invalid token ${currentToken.substring(0,10)}...: `, cleanupError.message);
                 }
