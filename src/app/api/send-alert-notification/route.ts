@@ -153,7 +153,7 @@ export async function POST(request: NextRequest) {
 
     console.log("API Route: FCM send response: Successes:", response.successCount, "Failures:", response.failureCount);
 
-    response.responses.forEach(async (result, index) => {
+    const cleanupPromises = response.responses.map(async (result, index) => {
         const currentToken = uniqueTokens[index];
         if (result.success) {
             console.log(`API Route: Successfully sent to token (index ${index}): ${currentToken.substring(0,10)}... Message ID: ${result.messageId}`);
@@ -187,6 +187,8 @@ export async function POST(request: NextRequest) {
         }
     });
 
+    await Promise.all(cleanupPromises);
+
     return NextResponse.json({ success: true, message: `Notifications attempt summary: Successes: ${response.successCount}, Failures: ${response.failureCount}.` });
 
   } catch (error: any) {
@@ -194,5 +196,3 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: false, error: error.message || "An unexpected server error occurred." }, { status: 500 });
   }
 }
-
-    

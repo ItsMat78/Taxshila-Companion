@@ -97,7 +97,7 @@ export async function POST(request: NextRequest) {
     console.log("API Route (Admin Feedback): FCM response: Successes:", response.successCount, "Failures:", response.failureCount);
 
     // Handle invalid token cleanup
-    response.responses.forEach(async (result, index) => {
+    const cleanupPromises = response.responses.map(async (result, index) => {
         const currentToken = uniqueTokens[index];
         if (!result.success) {
             const errorCode = result.error?.code;
@@ -116,6 +116,8 @@ export async function POST(request: NextRequest) {
             }
         }
     });
+
+    await Promise.all(cleanupPromises);
 
     return NextResponse.json({ success: true, message: `Admin notifications sent. Success: ${response.successCount}, Failures: ${response.failureCount}.` });
 
