@@ -536,17 +536,17 @@ export default function MemberAttendancePage() {
                         </div>
                     ) : (
                         monthlyStudyData.length > 0 ? (
-                            <ChartContainer config={studyChartConfig} className="min-h-[300px] w-full">
+                            <ChartContainer config={studyChartConfig} className="w-full">
                                 <ResponsiveContainer width="100%" height={300}>
-                                    <BarChart data={monthlyStudyData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
+                                    <BarChart data={monthlyStudyData} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
                                         <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                                        <XAxis dataKey="date" tickFormatter={(date) => format(parseISO(date), 'dd')} tickLine={false} axisLine={false} tickMargin={8} />
+                                        <XAxis dataKey="date" tickFormatter={(date) => format(parseISO(date), 'dd')} tickLine={false} axisLine={false} tickMargin={8} interval={4}/>
                                         <YAxis
                                             tickFormatter={(value) => `${Math.round(value)}hr`}
                                             tickLine={false}
                                             axisLine={false}
                                             tickMargin={8}
-                                            width={50}
+                                            width={40}
                                         />
                                         <ChartTooltip
                                             cursor={{ fill: 'hsl(var(--muted))', radius: 4 }}
