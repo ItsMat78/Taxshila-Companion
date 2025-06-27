@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from 'react';
@@ -23,23 +22,12 @@ import {
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Camera, Loader2, XCircle, BarChart3, Clock, LogIn, LogOut, ScanLine, CheckCircle, TrendingUp, ChevronLeft, ChevronRight, AlertCircle } from 'lucide-react';
+import { Camera, Loader2, XCircle, BarChart3, Clock, LogIn, LogOut, ScanLine, CheckCircle, TrendingUp, AlertCircle } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
 import { getStudentByEmail, getActiveCheckIn, addCheckIn, addCheckOut, getAttendanceForDate, calculateMonthlyStudyHours, getStudentByCustomId } from '@/services/student-service';
 import type { Student, AttendanceRecord } from '@/types/student';
-import { format, parseISO, isValid, differenceInMilliseconds, startOfMonth, endOfMonth, eachDayOfInterval, addMonths, subMonths, getMonth, getYear } from 'date-fns';
+import { format, parseISO, isValid, differenceInMilliseconds } from 'date-fns';
 import { Html5QrcodeScanner, Html5QrcodeSupportedFormats, Html5QrcodeScanType } from 'html5-qrcode';
-import { BarChart, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Bar } from 'recharts';
-import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
-import { cn } from "@/lib/utils";
-
-const studyChartConfig = {
-  hours: {
-    label: "Hours",
-    color: "hsl(var(--chart-1))",
-  },
-} satisfies ChartConfig;
-
 
 const QR_SCANNER_ELEMENT_ID_ATTENDANCE = "qr-reader-attendance-page";
 const LIBRARY_QR_CODE_PAYLOAD = "TAXSHILA_LIBRARY_CHECKIN_QR_V1";
@@ -60,20 +48,7 @@ export default function MemberAttendancePage() {
   const [isLoadingStudyHours, setIsLoadingStudyHours] = React.useState(true);
   const [activeCheckInRecord, setActiveCheckInRecord] = React.useState<AttendanceRecord | null>(null);
   const [isLoadingActiveCheckIn, setIsLoadingActiveCheckIn] = React.useState(true);
-  const [monthlyStudyData, setMonthlyStudyData] = React.useState<{ date: string; hours: number }[]>([]);
-  const [isLoadingMonthlyStudyData, setIsLoadingMonthlyStudyData] = React.useState(true);
   const [isOverdueDialogOpen, setIsOverdueDialogOpen] = React.useState(false);
-
-    const [viewedMonth, setViewedMonth] = React.useState(new Date()); // new state variable
-
-    const handlePrevMonth = () => {
-        setViewedMonth((prev) => subMonths(prev, 1));
-    };
-
-    const handleNextMonth = () => {
-        setViewedMonth((prev) => addMonths(prev, 1));
-    };
-
 
   const fetchStudentDataAndActiveCheckIn = React.useCallback(async () => {
     if (user?.studentId || user?.email) {
@@ -130,49 +105,6 @@ export default function MemberAttendancePage() {
   React.useEffect(() => {
     fetchStudentDataAndActiveCheckIn();
   }, [fetchStudentDataAndActiveCheckIn]);
-
-    const getDailyStudyDataForMonth = React.useCallback(async (studentId: string, month: Date) => {
-        setIsLoadingMonthlyStudyData(true);
-        try {
-            const startDate = startOfMonth(month);
-            const endDate = endOfMonth(month);
-            const allDays = eachDayOfInterval({ start: startDate, end: endDate });
-            const studyData: { date: string; hours: number }[] = [];
-
-            for (const day of allDays) {
-                const dateString = format(day, 'yyyy-MM-dd');
-                const records = await getAttendanceForDate(studentId, dateString);
-                let totalMilliseconds = 0;
-                records.forEach(record => {
-                    if (record.checkInTime && record.checkOutTime && isValid(parseISO(record.checkInTime)) && isValid(parseISO(record.checkOutTime))) {
-                        totalMilliseconds += differenceInMilliseconds(parseISO(record.checkOutTime), parseISO(record.checkInTime));
-                    } else if (record.checkInTime && !record.checkOutTime && isValid(parseISO(record.checkInTime))) {
-                        const checkInTime = parseISO(record.checkInTime);
-                        const endTime = new Date(checkInTime);
-                        endTime.setHours(21, 30, 0, 0);
-
-                        const now = new Date();
-                        const calculationEndTime = endTime > now ? now : endTime;
-
-                        totalMilliseconds += differenceInMilliseconds(calculationEndTime, checkInTime);
-                    }
-                });
-                const totalHours = totalMilliseconds / (1000 * 60 * 60);
-                studyData.push({ date: dateString, hours: totalHours });
-            }
-            setMonthlyStudyData(studyData);
-        } catch (error) {
-            console.error("Error fetching daily study data:", error);
-        } finally {
-            setIsLoadingMonthlyStudyData(false);
-        }
-    }, []);
-
-  React.useEffect(() => {
-    if (currentStudent?.studentId) {
-      getDailyStudyDataForMonth(currentStudent.studentId, viewedMonth);
-    }
-  }, [currentStudent, viewedMonth, getDailyStudyDataForMonth]);
 
   const calculateDailyStudyTime = (records: AttendanceRecord[]) => {
     let totalMilliseconds = 0;
@@ -509,98 +441,29 @@ export default function MemberAttendancePage() {
           </CardContent>
         </Card>
       </div>
-                 <Card className="mt-6 shadow-lg w-full">
-                <CardHeader>
-                    <div className="flex items-center justify-between w-full">
-                        <CardTitle className="flex items-center text-base sm:text-lg">
-                            <TrendingUp className="mr-2 h-5 w-5" />
-                            Monthly Study Time
-                        </CardTitle>
-                        <div className="flex items-center space-x-2">
-                            <Button variant="outline" size="icon" onClick={handlePrevMonth}>
-                                <ChevronLeft className="h-4 w-4" />
-                            </Button>
-                            <span>{format(viewedMonth, 'MMMM yyyy')}</span>
-                            <Button variant="outline" size="icon" onClick={handleNextMonth}>
-                                <ChevronRight className="h-4 w-4" />
-                            </Button>
-                        </div>
-                    </div>
-                    <CardDescription>Hours studied per day this month</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    {isLoadingMonthlyStudyData ? (
-                        <div className="flex items-center justify-center h-[300px]">
-                            <Loader2 className="h-8 w-8 animate-spin text-primary"/>
-                            <p className="ml-2 text-muted-foreground">Loading monthly study data...</p>
-                        </div>
-                    ) : (
-                        monthlyStudyData.length > 0 ? (
-                            <ChartContainer config={studyChartConfig} className="w-full">
-                                <ResponsiveContainer width="100%" height={300}>
-                                    <BarChart data={monthlyStudyData} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
-                                        <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                                        <XAxis dataKey="date" tickFormatter={(date) => format(parseISO(date), 'dd')} tickLine={false} axisLine={false} tickMargin={8} interval={4}/>
-                                        <YAxis
-                                            tickFormatter={(value) => `${Math.round(value)}hr`}
-                                            tickLine={false}
-                                            axisLine={false}
-                                            tickMargin={8}
-                                            width={40}
-                                        />
-                                        <ChartTooltip
-                                            cursor={{ fill: 'hsl(var(--muted))', radius: 4 }}
-                                            content={
-                                                <ChartTooltipContent
-                                                    labelFormatter={(label) => format(parseISO(label), "PPP")}
-                                                    formatter={(value) => {
-                                                        const hours = Math.floor(value as number);
-                                                        const minutes = Math.round(((value as number) % 1) * 60);
-                                                        return `${hours} hr ${minutes} min`;
-                                                    }}
-                                                />
-                                            }
-                                        />
-                                        <Bar dataKey="hours" fill="var(--color-hours)" radius={4} />
-                                    </BarChart>
-                                </ResponsiveContainer>
-                            </ChartContainer>
-                        ) : (
-                            <p className="text-center text-muted-foreground py-10">No study history data available to display for the graph.</p>
-                        )
-                    )}
-                </CardContent>
-            </Card>
-      
 
       <Card className="mt-6 shadow-lg">
-      <CardHeader>
-        <CardTitle className="flex items-center text-base sm:text-lg">
-          <BarChart3 className="mr-2 h-5 w-5" />
-          Monthly Overview
-        </CardTitle>
-        <CardDescription>Select a date to view details or navigate through months.</CardDescription>
-      </CardHeader>
-      <CardContent className="flex justify-center">
-          <Calendar
-            mode="single"
-            selected={date}
-            onSelect={setDate}
-            className="rounded-md border shadow-inner"
-            modifiers={{ today: new Date() }}
-            modifiersStyles={{ today: { color: 'hsl(var(--accent-foreground))', backgroundColor: 'hsl(var(--accent))' } }}
-            disabled={!currentStudent}
-          />
-        </CardContent>
-      </Card>
-
-      {date && currentStudent && (
-        <Card className="mt-6 shadow-lg">
-          <CardHeader>
-            <CardTitle className="text-base sm:text-lg">Details for {format(date, 'PPP')}</CardTitle>
-          </CardHeader>
-          <CardContent>
-             {/* Display Daily Study Time */}
+        <CardHeader>
+          <CardTitle className="flex items-center text-base sm:text-lg">
+            <BarChart3 className="mr-2 h-5 w-5" />
+            Monthly Overview
+          </CardTitle>
+          <CardDescription>Select a date to view attendance details for that day.</CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col md:flex-row items-center md:items-start gap-6">
+          <div className="w-full md:w-auto flex justify-center">
+            <Calendar
+              mode="single"
+              selected={date}
+              onSelect={setDate}
+              className="rounded-md border shadow-inner"
+              modifiers={{ today: new Date() }}
+              modifiersStyles={{ today: { color: 'hsl(var(--accent-foreground))', backgroundColor: 'hsl(var(--accent))' } }}
+              disabled={!currentStudent}
+            />
+          </div>
+          <div className="w-full md:flex-1">
+            <h4 className="text-md font-semibold mb-2">Details for {date ? format(date, 'PPP') : 'selected date'}:</h4>
             {isLoadingDetails ? (
               <div className="flex items-center justify-center text-muted-foreground">
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading details...
@@ -654,9 +517,9 @@ export default function MemberAttendancePage() {
                 )}
               </>
             )}
-          </CardContent>
-        </Card>
-      )}
+          </div>
+        </CardContent>
+      </Card>
     </>
   );
 }
