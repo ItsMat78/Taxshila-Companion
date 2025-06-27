@@ -209,7 +209,7 @@ async function applyAutomaticStatusUpdates(studentData: Student): Promise<Studen
         if (studentData.feeStatus !== 'Overdue') {
           updatesToCommit.feeStatus = 'Overdue';
         }
-      } else { // It can be `daysOverdue >= 0 && daysOverdue <= 5`
+      } else if (daysOverdue >= 0) { // It can be `daysOverdue >= 0 && daysOverdue <= 5`
         // It's now 'Due'.
         if (studentData.feeStatus !== 'Due') {
           updatesToCommit.feeStatus = 'Due';
@@ -666,6 +666,9 @@ export async function addCheckIn(studentId: string): Promise<AttendanceRecord> {
   const student = await getStudentByCustomId(studentId);
   if (!student) {
     throw new Error("Student not found for check-in.");
+  }
+  if (student.feeStatus === 'Overdue') {
+    throw new Error("Your fee payment is overdue by more than 5 days. Please pay at the desk immediately to continue marking attendance.");
   }
 
   const now = new Date();
@@ -1567,3 +1570,4 @@ declare module '@/types/communication' {
   }
 }
 
+    

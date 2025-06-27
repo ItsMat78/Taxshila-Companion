@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from 'react';
@@ -10,13 +11,22 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Camera, Loader2, XCircle, BarChart3, Clock, LogIn, LogOut, ScanLine, CheckCircle, TrendingUp, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
 import { getStudentByEmail, getActiveCheckIn, addCheckIn, addCheckOut, getAttendanceForDate, calculateMonthlyStudyHours, getStudentByCustomId } from '@/services/student-service';
-import type { AttendanceRecord } from '@/types/student';
+import type { Student, AttendanceRecord } from '@/types/student';
 import { format, parseISO, isValid, differenceInMilliseconds, startOfMonth, endOfMonth, eachDayOfInterval, addMonths, subMonths, getMonth, getYear } from 'date-fns';
 import { Html5QrcodeScanner, Html5QrcodeSupportedFormats, Html5QrcodeScanType } from 'html5-qrcode';
 import { BarChart, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Bar } from 'recharts'; //Import recharts components
@@ -61,7 +71,7 @@ export default function MemberAttendancePage() {
   const [isProcessingQr, setIsProcessingQr] = React.useState(false);
   const html5QrcodeScannerRef = React.useRef<Html5QrcodeScanner | null>(null);
 
-  const [currentStudentId, setCurrentStudentId] = React.useState<string | null>(null);
+  const [currentStudent, setCurrentStudent] = React.useState<Student | null>(null);
   const [attendanceForDay, setAttendanceForDay] = React.useState<AttendanceRecord[]>([]);
   const [isLoadingDetails, setIsLoadingDetails] = React.useState(false);
   const [monthlyStudyHours, setMonthlyStudyHours] = React.useState<number | null>(null);
@@ -70,6 +80,8 @@ export default function MemberAttendancePage() {
   const [isLoadingActiveCheckIn, setIsLoadingActiveCheckIn] = React.useState(true);
   const [monthlyStudyData, setMonthlyStudyData] = React.useState<{ date: string; hours: number }[]>([]);
   const [isLoadingMonthlyStudyData, setIsLoadingMonthlyStudyData] = React.useState(true);
+  const [isOverdueDialogOpen, setIsOverdueDialogOpen] = React.useState(false);
+
 
     const revenueChartConfig = {
         revenue: {
@@ -102,7 +114,7 @@ export default function MemberAttendancePage() {
         }
 
         if (student) {
-          setCurrentStudentId(student.studentId);
+          setCurrentStudent(student);
           const [hours, activeCheckIn] = await Promise.all([
             calculateMonthlyStudyHours(student.studentId),
             getActiveCheckIn(student.studentId)
@@ -115,7 +127,7 @@ export default function MemberAttendancePage() {
             description: "Could not find a student record associated with your email.",
             variant: "destructive",
           });
-          setCurrentStudentId(null);
+          setCurrentStudent(null);
           setMonthlyStudyHours(0);
           setActiveCheckInRecord(null);
         }
@@ -126,7 +138,7 @@ export default function MemberAttendancePage() {
           description: error.message || "Failed to fetch student details or session status.",
           variant: "destructive",
         });
-        setCurrentStudentId(null);
+        setCurrentStudent(null);
         setMonthlyStudyHours(0);
         setActiveCheckInRecord(null);
       } finally {
@@ -136,7 +148,7 @@ export default function MemberAttendancePage() {
     } else {
       setIsLoadingStudyHours(false);
       setIsLoadingActiveCheckIn(false);
-      setCurrentStudentId(null);
+      setCurrentStudent(null);
       setActiveCheckInRecord(null);
     }
   }, [user, toast]);
@@ -183,10 +195,10 @@ export default function MemberAttendancePage() {
     }, []);
 
   React.useEffect(() => {
-    if (currentStudentId) {
-      getDailyStudyDataForMonth(currentStudentId, viewedMonth);
+    if (currentStudent?.studentId) {
+      getDailyStudyDataForMonth(currentStudent.studentId, viewedMonth);
     }
-  }, [currentStudentId, viewedMonth, getDailyStudyDataForMonth]);
+  }, [currentStudent, viewedMonth, getDailyStudyDataForMonth]);
 
   const calculateDailyStudyTime = (records: AttendanceRecord[]) => {
     let totalMilliseconds = 0;
@@ -213,10 +225,10 @@ export default function MemberAttendancePage() {
   };
 
   const fetchAttendanceForSelectedDate = React.useCallback(async () => {
-    if (currentStudentId && date) {
+    if (currentStudent?.studentId && date) {
       setIsLoadingDetails(true);
       try {
-        const records = await getAttendanceForDate(currentStudentId, format(date, 'yyyy-MM-dd'));
+        const records = await getAttendanceForDate(currentStudent.studentId, format(date, 'yyyy-MM-dd'));
         setAttendanceForDay(records);
       } catch (error: any) {
         console.error("Error fetching attendance for date (Attendance Page):", error);
@@ -232,7 +244,7 @@ export default function MemberAttendancePage() {
     } else {
       setAttendanceForDay([]);
     }
-  }, [currentStudentId, date, toast]);
+  }, [currentStudent, date, toast]);
 
   React.useEffect(() => {
     fetchAttendanceForSelectedDate();
@@ -240,7 +252,7 @@ export default function MemberAttendancePage() {
 
   React.useEffect(() => {
     let timeoutId: NodeJS.Timeout;
-    if (isScannerOpen && currentStudentId && !activeCheckInRecord) {
+    if (isScannerOpen && currentStudent?.studentId && !activeCheckInRecord) {
       timeoutId = setTimeout(() => {
         const scannerElement = document.getElementById(QR_SCANNER_ELEMENT_ID_ATTENDANCE);
         if (!scannerElement) {
@@ -286,7 +298,8 @@ export default function MemberAttendancePage() {
           
           if (decodedText === LIBRARY_QR_CODE_PAYLOAD) {
             try {
-              await addCheckIn(currentStudentId);
+              if (!currentStudent?.studentId) throw new Error("Student ID not found.");
+              await addCheckIn(currentStudent.studentId);
               toast({
                 title: "Checked In!",
                 description: `Successfully checked in at ${new Date().toLocaleTimeString()}.`,
@@ -372,10 +385,14 @@ export default function MemberAttendancePage() {
       }
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isScannerOpen, currentStudentId, activeCheckInRecord, toast, fetchStudentDataAndActiveCheckIn, fetchAttendanceForSelectedDate]);
+  }, [isScannerOpen, currentStudent, activeCheckInRecord, toast, fetchStudentDataAndActiveCheckIn, fetchAttendanceForSelectedDate]);
 
 
   const handleScanCheckInButtonClick = () => {
+    if (currentStudent?.feeStatus === 'Overdue') {
+      setIsOverdueDialogOpen(true);
+      return;
+    }
     setHasCameraPermission(null);
     setIsScannerOpen(true);
   };
@@ -385,7 +402,7 @@ export default function MemberAttendancePage() {
   };
 
   const handleCheckOut = async () => {
-    if (!currentStudentId || !activeCheckInRecord) {
+    if (!currentStudent?.studentId || !activeCheckInRecord) {
       toast({ title: "Error", description: "Cannot check out. Active session not found.", variant: "destructive" });
       return;
     }
@@ -414,6 +431,20 @@ export default function MemberAttendancePage() {
         description="Mark your presence, view your calendar, and track your study hours"
       />
 
+       <AlertDialog open={isOverdueDialogOpen} onOpenChange={setIsOverdueDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Fee Payment Overdue</AlertDialogTitle>
+            <AlertDialogDescription>
+              Your fee payment is overdue by more than 5 days. Please pay your outstanding fees at the desk immediately to continue using the services.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={() => setIsOverdueDialogOpen(false)}>Okay</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-2">
         <Card className="shadow-lg">
           <CardHeader>
@@ -435,7 +466,7 @@ export default function MemberAttendancePage() {
                 <Loader2 className="h-6 w-6 animate-spin text-primary" />
               </div>
             ) : activeCheckInRecord ? (
-              <Button onClick={handleCheckOut} className="w-full" disabled={isProcessingQr || !currentStudentId}>
+              <Button onClick={handleCheckOut} className="w-full" disabled={isProcessingQr || !currentStudent}>
                 {isProcessingQr && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Check Out
               </Button>
@@ -463,14 +494,14 @@ export default function MemberAttendancePage() {
                 </Button>
               </div>
             ) : (
-              <Button onClick={handleScanCheckInButtonClick} className="w-full" disabled={!currentStudentId || isScannerOpen}>
+              <Button onClick={handleScanCheckInButtonClick} className="w-full" disabled={!currentStudent || isScannerOpen}>
                 <ScanLine className="mr-2 h-4 w-4" /> Scan QR to Check-In
               </Button>
             )}
-            {!currentStudentId && !user && (
+            {!currentStudent && !user && (
                  <p className="text-xs text-muted-foreground mt-2 text-center">Loading user details...</p>
             )}
-             {!currentStudentId && user && !isLoadingActiveCheckIn && (
+             {!currentStudent && user && !isLoadingActiveCheckIn && (
                  <p className="text-xs text-destructive mt-2 text-center">Could not link your email to a student record. Please contact admin.</p>
             )}
           </CardContent>
@@ -571,12 +602,12 @@ export default function MemberAttendancePage() {
             className="rounded-md border shadow-inner"
             modifiers={{ today: new Date() }}
             modifiersStyles={{ today: { color: 'hsl(var(--accent-foreground))', backgroundColor: 'hsl(var(--accent))' } }}
-            disabled={!currentStudentId}
+            disabled={!currentStudent}
           />
         </CardContent>
       </Card>
 
-      {date && currentStudentId && (
+      {date && currentStudent && (
         <Card className="mt-6 shadow-lg">
           <CardHeader>
             <CardTitle className="text-base sm:text-lg">Details for {format(date, 'PPP')}</CardTitle>
@@ -642,3 +673,5 @@ export default function MemberAttendancePage() {
     </>
   );
 }
+
+    

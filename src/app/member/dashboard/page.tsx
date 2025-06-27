@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from 'react';
@@ -12,6 +13,15 @@ import {
   DialogHeader,
   DialogTitle as ShadcnDialogTitle,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Alert, AlertDescription, AlertTitle as ShadcnAlertTitle } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/auth-context';
@@ -170,6 +180,7 @@ export default function MemberDashboardPage() {
 
   const [studentFeeStatus, setStudentFeeStatus] = React.useState<FeeStatus | null>(null);
   const [studentNextDueDate, setStudentNextDueDate] = React.useState<string | null>(null);
+  const [isOverdueDialogOpen, setIsOverdueDialogOpen] = React.useState(false);
 
   const fetchAllDashboardData = React.useCallback(async () => {
     if (user?.studentId || user?.email) {
@@ -337,13 +348,8 @@ export default function MemberDashboardPage() {
           if (decodedText === LIBRARY_QR_CODE_PAYLOAD) {
             try {
               if (studentId) {
-                  const currentActiveCheckIn = await getActiveCheckIn(studentId);
-                  if (currentActiveCheckIn) {
-                    toast({ title: "Already Checked In", description: `You are already checked in. Use the 'Check Out' button.`, variant: "default" });
-                  } else {
-                    await addCheckIn(studentId);
-                    toast({ title: "Checked In!", description: `Successfully checked in at ${new Date().toLocaleTimeString()}.` });
-                  }
+                  await addCheckIn(studentId);
+                  toast({ title: "Checked In!", description: `Successfully checked in at ${new Date().toLocaleTimeString()}.` });
                   await fetchAllDashboardData();
               } else {
                   toast({ title: "Error", description: "Student ID not available for scan processing.", variant: "destructive"});
@@ -430,6 +436,10 @@ export default function MemberDashboardPage() {
 
 
   const handleOpenScanner = React.useCallback(() => {
+    if (studentFeeStatus === 'Overdue') {
+      setIsOverdueDialogOpen(true);
+      return;
+    }
     if (!studentId) {
         toast({title: "Error", description: "Cannot mark attendance. Student details not loaded.", variant: "destructive"});
         return;
@@ -441,7 +451,7 @@ export default function MemberDashboardPage() {
     setHasCameraPermission(null);
     setIsProcessingQr(false);
     setIsScannerOpen(true);
-  }, [studentId, activeCheckInRecord, toast]);
+  }, [studentId, activeCheckInRecord, toast, studentFeeStatus]);
 
 
   const handleDashboardCheckOut = async () => {
@@ -592,6 +602,20 @@ export default function MemberDashboardPage() {
     <>
       <PageTitle title={pageTitleText} description="Your Taxshila Companion dashboard." />
 
+      <AlertDialog open={isOverdueDialogOpen} onOpenChange={setIsOverdueDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Fee Payment Overdue</AlertDialogTitle>
+            <AlertDialogDescription>
+              Your fee payment is overdue by more than 5 days. Please pay your outstanding fees at the desk immediately to continue using the services.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={() => setIsOverdueDialogOpen(false)}>Okay</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
        <div className="mt-1 mb-4 text-xs text-center text-muted-foreground">
           <div className="flex flex-col sm:flex-row items-center justify-center gap-x-3 gap-y-1">
             {isLoadingCurrentSession ? (
@@ -715,3 +739,5 @@ export default function MemberDashboardPage() {
     </>
   );
 }
+
+    
