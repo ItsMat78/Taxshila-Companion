@@ -195,8 +195,8 @@ export default function SeatAvailabilityPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold">168</p>
-            <p className="text-xs text-muted-foreground pt-1">84 Morning Slots + 84 Evening Slots</p>
+            <p className="text-3xl font-bold">150</p>
+            <p className="text-xs text-muted-foreground pt-1">75 Morning Slots + 75 Evening Slots</p>
           </CardContent>
         </Card>
 
