@@ -800,14 +800,10 @@ export async function recordStudentPayment(
 
   let baseDateForCalculation: Date;
   if (studentToUpdate.nextDueDate && isValid(parseISO(studentToUpdate.nextDueDate))) {
-    // If there IS an existing valid due date, use it as the base for calculation.
     baseDateForCalculation = parseISO(studentToUpdate.nextDueDate);
   } else {
-    // If there's NO valid existing due date (e.g., new student, or it was cleared after being 'Left'),
-    // then the base for calculation is the payment date (today).
     baseDateForCalculation = today;
   }
-  // The new due date is calculated by adding the number of months paid to this base date.
   const newNextDueDate = addMonths(baseDateForCalculation, numberOfMonthsPaid);
 
   const updatedFeeData = {
@@ -1175,6 +1171,44 @@ export async function markAlertAsRead(alertId: string, customStudentId: string):
         // This alert is targeted to a different student, do nothing for current student
         return alertData;
     }
+}
+
+export async function markAllAlertsAsRead(customStudentId: string): Promise<void> {
+    const student = await getStudentByCustomId(customStudentId);
+    if (!student || !student.firestoreId) {
+        throw new Error("Student not found to mark all alerts as read.");
+    }
+
+    const batch = writeBatch(db);
+
+    // 1. Find and update all unread TARGETED alerts
+    const unreadTargetedQuery = query(
+        collection(db, ALERTS_COLLECTION),
+        where("studentId", "==", customStudentId),
+        where("isRead", "==", false)
+    );
+    const unreadTargetedSnapshot = await getDocs(unreadTargetedQuery);
+    unreadTargetedSnapshot.forEach(docSnap => {
+        batch.update(docSnap.ref, { isRead: true });
+    });
+
+    // 2. Find all GENERAL alerts and add their IDs to the student's read list
+    const generalAlertsQuery = query(
+        collection(db, ALERTS_COLLECTION),
+        where("studentId", "==", null)
+    );
+    const generalAlertsSnapshot = await getDocs(generalAlertsQuery);
+    const allGeneralAlertIds = generalAlertsSnapshot.docs.map(docSnap => docSnap.id);
+
+    if (allGeneralAlertIds.length > 0) {
+        const studentDocRef = doc(db, STUDENTS_COLLECTION, student.firestoreId);
+        // Using arrayUnion is efficient as it only adds elements that are not already present.
+        batch.update(studentDocRef, {
+            readGeneralAlertIds: arrayUnion(...allGeneralAlertIds)
+        });
+    }
+
+    await batch.commit();
 }
 
 
@@ -1569,5 +1603,3 @@ declare module '@/types/communication' {
     firestoreId?: string;
   }
 }
-
-    
