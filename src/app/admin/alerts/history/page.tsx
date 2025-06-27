@@ -156,13 +156,14 @@ const AlertCardItem = ({ alert, onCardClick }: { alert: AlertItem, onCardClick: 
   );
 };
 
+type AlertFilterType = 'all' | 'payment' | 'admin_broadcast' | 'feedback' | 'shift_warning';
 
 export default function AdminAlertsHistoryPage() {
   const { toast } = useToast();
   const [sentAlerts, setSentAlerts] = React.useState<AlertItem[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   
-  const [filterType, setFilterType] = React.useState<AlertItem['type'] | 'all'>('all');
+  const [filterType, setFilterType] = React.useState<AlertFilterType>('all');
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = React.useState(false);
   const [selectedAlert, setSelectedAlert] = React.useState<AlertItem | null>(null);
 
@@ -183,19 +184,28 @@ export default function AdminAlertsHistoryPage() {
   }, [toast]);
 
   const filteredAlerts = React.useMemo(() => {
-    if (filterType === 'all') {
-      return sentAlerts;
+    switch (filterType) {
+      case 'payment':
+        return sentAlerts.filter(alert => alert.title === 'Payment Confirmation');
+      case 'admin_broadcast':
+        return sentAlerts.filter(alert => !alert.studentId);
+      case 'feedback':
+        return sentAlerts.filter(alert => alert.type === 'feedback_response');
+      case 'shift_warning':
+        return sentAlerts.filter(alert => alert.title === 'Outside Shift Warning');
+      case 'all':
+      default:
+        return sentAlerts;
     }
-    return sentAlerts.filter(alert => alert.type === filterType);
   }, [sentAlerts, filterType]);
   
-  const getFilterLabel = (type: AlertItem['type'] | 'all'): string => {
+  const getFilterLabel = (type: AlertFilterType): string => {
     switch (type) {
-      case 'all': return 'All Types';
-      case 'info': return 'Info';
-      case 'warning': return 'Warning';
-      case 'closure': return 'Closure';
-      case 'feedback_response': return 'Feedback Response';
+      case 'all': return 'All Alerts';
+      case 'payment': return 'Payment Confirmations';
+      case 'admin_broadcast': return 'Admin Broadcasts';
+      case 'feedback': return 'Feedback Responses';
+      case 'shift_warning': return 'Shift Warnings';
       default: return 'Filter';
     }
   };
@@ -216,12 +226,12 @@ export default function AdminAlertsHistoryPage() {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuRadioGroup value={filterType} onValueChange={(value) => setFilterType(value as any)}>
-              <DropdownMenuRadioItem value="all">All Types</DropdownMenuRadioItem>
-              <DropdownMenuRadioItem value="info">Info / General</DropdownMenuRadioItem>
-              <DropdownMenuRadioItem value="warning">Warning</DropdownMenuRadioItem>
-              <DropdownMenuRadioItem value="closure">Closure</DropdownMenuRadioItem>
-              <DropdownMenuRadioItem value="feedback_response">Feedback Response</DropdownMenuRadioItem>
+            <DropdownMenuRadioGroup value={filterType} onValueChange={(value) => setFilterType(value as AlertFilterType)}>
+              <DropdownMenuRadioItem value="all">All Alerts</DropdownMenuRadioItem>
+              <DropdownMenuRadioItem value="payment">Payment Confirmations</DropdownMenuRadioItem>
+              <DropdownMenuRadioItem value="admin_broadcast">Admin Broadcasts</DropdownMenuRadioItem>
+              <DropdownMenuRadioItem value="feedback">Feedback Responses</DropdownMenuRadioItem>
+              <DropdownMenuRadioItem value="shift_warning">Shift Warnings</DropdownMenuRadioItem>
             </DropdownMenuRadioGroup>
           </DropdownMenuContent>
         </DropdownMenu>
