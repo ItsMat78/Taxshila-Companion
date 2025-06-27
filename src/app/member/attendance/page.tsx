@@ -29,34 +29,16 @@ import { getStudentByEmail, getActiveCheckIn, addCheckIn, addCheckOut, getAttend
 import type { Student, AttendanceRecord } from '@/types/student';
 import { format, parseISO, isValid, differenceInMilliseconds, startOfMonth, endOfMonth, eachDayOfInterval, addMonths, subMonths, getMonth, getYear } from 'date-fns';
 import { Html5QrcodeScanner, Html5QrcodeSupportedFormats, Html5QrcodeScanType } from 'html5-qrcode';
-import { BarChart, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Bar } from 'recharts'; //Import recharts components
+import { BarChart, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Bar } from 'recharts';
+import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
 import { cn } from "@/lib/utils";
 
-
-// Placeholder implementation for ChartTooltipContent
-const ChartTooltipContent = ({ active, payload, label }: any) => {
-  if (active && payload && payload.length) {
-    const hours = payload[0].value;
-    const minutes = Math.round((hours % 1) * 60);
-    return (
-      <div className="p-2 bg-white border rounded-md shadow-md text-sm">
-        <p className="font-semibold">{label}</p>
-        <p className="text-gray-600">
-          {payload[0].name}: {Math.floor(hours)} hr {minutes} min
-        </p>
-      </div>
-    );
-  }
-
-  return null;
-};
-
-interface ChartConfig {
-    revenue: {
-        label: string;
-        color: string;
-    };
-}
+const studyChartConfig = {
+  hours: {
+    label: "Hours",
+    color: "hsl(var(--chart-1))",
+  },
+} satisfies ChartConfig;
 
 
 const QR_SCANNER_ELEMENT_ID_ATTENDANCE = "qr-reader-attendance-page";
@@ -81,14 +63,6 @@ export default function MemberAttendancePage() {
   const [monthlyStudyData, setMonthlyStudyData] = React.useState<{ date: string; hours: number }[]>([]);
   const [isLoadingMonthlyStudyData, setIsLoadingMonthlyStudyData] = React.useState(true);
   const [isOverdueDialogOpen, setIsOverdueDialogOpen] = React.useState(false);
-
-
-    const revenueChartConfig = {
-        revenue: {
-            label: "Hours Studied",
-            color: "hsl(var(--chart-1))",
-        },
-    } satisfies ChartConfig;
 
     const [viewedMonth, setViewedMonth] = React.useState(new Date()); // new state variable
 
@@ -535,8 +509,7 @@ export default function MemberAttendancePage() {
           </CardContent>
         </Card>
       </div>
-                 {/* New Card for Graph Navigation and Graph */}
-                 <Card className="mt-6 shadow-lg w-full overflow-x-auto">
+                 <Card className="mt-6 shadow-lg w-full">
                 <CardHeader>
                     <div className="flex items-center justify-between w-full">
                         <CardTitle className="flex items-center text-base sm:text-lg">
@@ -555,32 +528,43 @@ export default function MemberAttendancePage() {
                     </div>
                     <CardDescription>Hours studied per day this month</CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="overflow-x-auto">
                     {isLoadingMonthlyStudyData ? (
-                        <div className="flex items-center justify-center">
-                            <Loader2 className="h-8 w-8 animate-spin text-primary"/> Loading monthly study data...
+                        <div className="flex items-center justify-center h-[300px]">
+                            <Loader2 className="h-8 w-8 animate-spin text-primary"/>
+                            <p className="ml-2 text-muted-foreground">Loading monthly study data...</p>
                         </div>
                     ) : (
                         monthlyStudyData.length > 0 ? (
-                            <div className="min-h-[200px] w-full">
+                            <ChartContainer config={studyChartConfig} className="min-h-[300px] w-full min-w-[600px]">
                                 <ResponsiveContainer width="100%" height={300}>
                                     <BarChart data={monthlyStudyData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
                                         <CartesianGrid strokeDasharray="3 3" vertical={false} />
                                         <XAxis dataKey="date" tickFormatter={(date) => format(parseISO(date), 'dd')} tickLine={false} axisLine={false} tickMargin={8} />
                                         <YAxis
+                                            tickFormatter={(value) => `${Math.round(value)}hr`}
                                             tickLine={false}
                                             axisLine={false}
                                             tickMargin={8}
                                             width={50}
                                         />
-                                        <Tooltip
+                                        <ChartTooltip
                                             cursor={{ fill: 'hsl(var(--muted))', radius: 4 }}
-                                            content={ChartTooltipContent}
+                                            content={
+                                                <ChartTooltipContent
+                                                    labelFormatter={(label) => format(parseISO(label), "PPP")}
+                                                    formatter={(value) => {
+                                                        const hours = Math.floor(value as number);
+                                                        const minutes = Math.round(((value as number) % 1) * 60);
+                                                        return `${hours} hr ${minutes} min`;
+                                                    }}
+                                                />
+                                            }
                                         />
-                                        <Bar dataKey="hours" fill="hsl(var(--chart-1))" radius={4} />
+                                        <Bar dataKey="hours" fill="var(--color-hours)" radius={4} />
                                     </BarChart>
                                 </ResponsiveContainer>
-                            </div>
+                            </ChartContainer>
                         ) : (
                             <p className="text-center text-muted-foreground py-10">No study history data available to display for the graph.</p>
                         )
@@ -676,7 +660,3 @@ export default function MemberAttendancePage() {
     </>
   );
 }
-
-    
-
-    
