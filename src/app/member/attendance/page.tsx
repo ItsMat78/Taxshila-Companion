@@ -489,29 +489,30 @@ export default function MemberAttendancePage() {
             </div>
             <CardDescription>Your daily study performance this month.</CardDescription>
           </CardHeader>
-          <CardContent className="overflow-x-auto pl-0 pr-4 pb-2">
+          <CardContent className="pb-2">
               {isLoadingStudyHours ? (
                   <div className="flex items-center justify-center h-[250px]">
                       <Loader2 className="h-8 w-8 animate-spin text-primary" />
                   </div>
               ) : monthlyStudyData.length > 0 ? (
-                  <div className="min-w-[600px] h-[250px]">
+                  <div className="h-[250px]">
                     <ChartContainer config={chartConfig} className="w-full h-full">
                       <ResponsiveContainer width="100%" height={250}>
-                          <BarChart accessibilityLayer data={monthlyStudyData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                          <BarChart accessibilityLayer data={monthlyStudyData} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
                               <CartesianGrid vertical={false} />
                               <XAxis
                                   dataKey="date"
                                   tickLine={false}
                                   tickMargin={10}
                                   axisLine={false}
+                                  tickCount={5}
                               />
                               <YAxis
-                                tickFormatter={(value) => `${value}hr`}
+                                tickFormatter={(value) => `${Math.round(value as number)}hr`}
                                 tickLine={false}
                                 tickMargin={10}
                                 axisLine={false}
-                                width={30}
+                                width={40}
                               />
                               <ChartTooltip
                                   cursor={false}
@@ -623,5 +624,3 @@ export default function MemberAttendancePage() {
     </>
   );
 }
-
-    
