@@ -23,9 +23,9 @@ import {
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Camera, Loader2, XCircle, BarChart3, Clock, LogIn, LogOut, ScanLine, CheckCircle, TrendingUp, AlertCircle, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Camera, Loader2, XCircle, BarChart3, Clock, LogIn, LogOut, ScanLine, CheckCircle, AlertCircle, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
-import { getStudentByEmail, getActiveCheckIn, addCheckIn, addCheckOut, getAttendanceForDate, calculateMonthlyStudyHours, getStudentByCustomId } from '@/services/student-service';
+import { getStudentByEmail, getActiveCheckIn, addCheckIn, addCheckOut, getAttendanceForDate, getStudentByCustomId } from '@/services/student-service';
 import type { Student, AttendanceRecord } from '@/types/student';
 import { format, parseISO, isValid, differenceInMilliseconds, startOfMonth, endOfMonth, eachDayOfInterval, addMonths, subMonths } from 'date-fns';
 import { Html5QrcodeScanner, Html5QrcodeSupportedFormats, Html5QrcodeScanType } from 'html5-qrcode';
@@ -44,6 +44,55 @@ const chartConfig = {
 } satisfies ChartConfig;
 
 
+// Helper function to calculate daily study time from records
+const calculateDailyStudyTime = (records: AttendanceRecord[]) => {
+  let totalMilliseconds = 0;
+  records.forEach(record => {
+    if (record.checkInTime && record.checkOutTime && isValid(parseISO(record.checkInTime)) && isValid(parseISO(record.checkOutTime))) {
+      totalMilliseconds += differenceInMilliseconds(parseISO(record.checkOutTime), parseISO(record.checkInTime));
+    } else if (record.checkInTime && !record.checkOutTime && isValid(parseISO(record.checkInTime))) {
+      // Logic for currently active session
+      const checkInTime = parseISO(record.checkInTime);
+      const now = new Date();
+      // Assume a max checkout time for calculation to avoid infinitely growing bars for forgotten checkouts
+      const sessionEndDate = new Date(checkInTime);
+      sessionEndDate.setHours(21, 30, 0, 0); // Library closes at 9:30 PM
+      const calculationEndTime = now > sessionEndDate ? sessionEndDate : now;
+      totalMilliseconds += differenceInMilliseconds(calculationEndTime, checkInTime);
+    }
+  });
+
+  const totalHours = totalMilliseconds / (1000 * 60 * 60);
+  return totalHours;
+};
+
+
+// This function will fetch data for the graph. It's inside the component to be self-contained.
+async function getDailyStudyDataForMonth(studentId: string, month: Date): Promise<{ date: string; fullDate: string; hours: number }[]> {
+  const startDate = startOfMonth(month);
+  const endDate = endOfMonth(month);
+  const allDays = eachDayOfInterval({ start: startDate, end: endDate });
+  const studyData: { date: string; fullDate: string; hours: number }[] = [];
+
+  for (const day of allDays) {
+    const dateString = format(day, 'yyyy-MM-dd');
+    try {
+      const records = await getAttendanceForDate(studentId, dateString);
+      const totalHours = calculateDailyStudyTime(records);
+      studyData.push({
+        date: format(day, 'dd'),
+        fullDate: dateString,
+        hours: totalHours
+      });
+    } catch (error) {
+       console.error(`Failed to fetch attendance for ${dateString}:`, error);
+       studyData.push({ date: format(day, 'dd'), fullDate: dateString, hours: 0 }); // Push 0 hours on error
+    }
+  }
+  return studyData;
+};
+
+
 export default function MemberAttendancePage() {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -56,7 +105,7 @@ export default function MemberAttendancePage() {
   const [currentStudent, setCurrentStudent] = React.useState<Student | null>(null);
   const [attendanceForDay, setAttendanceForDay] = React.useState<AttendanceRecord[]>([]);
   const [isLoadingDetails, setIsLoadingDetails] = React.useState(false);
-  const [monthlyStudyData, setMonthlyStudyData] = React.useState<{ date: string; hours: number }[]>([]);
+  const [monthlyStudyData, setMonthlyStudyData] = React.useState<{ date: string; fullDate: string; hours: number }[]>([]);
   const [isLoadingStudyHours, setIsLoadingStudyHours] = React.useState(true);
   const [activeCheckInRecord, setActiveCheckInRecord] = React.useState<AttendanceRecord | null>(null);
   const [isLoadingActiveCheckIn, setIsLoadingActiveCheckIn] = React.useState(true);
@@ -80,21 +129,11 @@ export default function MemberAttendancePage() {
           const activeCheckIn = await getActiveCheckIn(student.studentId);
           setActiveCheckInRecord(activeCheckIn || null);
         } else {
-          toast({
-            title: "Student Record Not Found",
-            description: "Could not find a student record associated with your email.",
-            variant: "destructive",
-          });
           setCurrentStudent(null);
           setActiveCheckInRecord(null);
         }
       } catch (error: any) {
         console.error("Error fetching student data/active check-in (Attendance Page):", error);
-        toast({
-          title: "Error",
-          description: error.message || "Failed to fetch student details or session status.",
-          variant: "destructive",
-        });
         setCurrentStudent(null);
         setActiveCheckInRecord(null);
       } finally {
@@ -105,44 +144,7 @@ export default function MemberAttendancePage() {
       setCurrentStudent(null);
       setActiveCheckInRecord(null);
     }
-  }, [user, toast]);
-
-  const getDailyStudyDataForMonth = React.useCallback(async (studentId: string, month: Date) => {
-    setIsLoadingStudyHours(true);
-    try {
-        const startDate = startOfMonth(month);
-        const endDate = endOfMonth(month);
-        const allDays = eachDayOfInterval({ start: startDate, end: endDate });
-        const studyData: { date: string; hours: number }[] = [];
-
-        for (const day of allDays) {
-            const dateString = format(day, 'yyyy-MM-dd');
-            const records = await getAttendanceForDate(studentId, dateString);
-            let totalMilliseconds = 0;
-            records.forEach(record => {
-                if (record.checkInTime && record.checkOutTime && isValid(parseISO(record.checkInTime)) && isValid(parseISO(record.checkOutTime))) {
-                    totalMilliseconds += differenceInMilliseconds(parseISO(record.checkOutTime), parseISO(record.checkInTime));
-                } else if (record.checkInTime && !record.checkOutTime && isValid(parseISO(record.checkInTime))) {
-                    const checkInTime = parseISO(record.checkInTime);
-                    const endTime = new Date(checkInTime);
-                    endTime.setHours(21, 30, 0, 0);
-
-                    const now = new Date();
-                    const calculationEndTime = endTime > now ? now : endTime;
-
-                    totalMilliseconds += differenceInMilliseconds(calculationEndTime, checkInTime);
-                }
-            });
-            const totalHours = totalMilliseconds / (1000 * 60 * 60);
-            studyData.push({ date: format(day, 'dd'), hours: totalHours });
-        }
-        setMonthlyStudyData(studyData);
-    } catch (error) {
-        console.error("Error fetching daily study data:", error);
-    } finally {
-        setIsLoadingStudyHours(false);
-    }
-  }, []);
+  }, [user]);
 
   React.useEffect(() => {
     fetchStudentDataAndActiveCheckIn();
@@ -150,34 +152,13 @@ export default function MemberAttendancePage() {
 
   React.useEffect(() => {
     if (currentStudent?.studentId) {
-      getDailyStudyDataForMonth(currentStudent.studentId, viewedMonth);
+      setIsLoadingStudyHours(true);
+      getDailyStudyDataForMonth(currentStudent.studentId, viewedMonth)
+        .then(setMonthlyStudyData)
+        .finally(() => setIsLoadingStudyHours(false));
     }
-  }, [currentStudent, viewedMonth, getDailyStudyDataForMonth]);
-
-  const calculateDailyStudyTime = (records: AttendanceRecord[]) => {
-    let totalMilliseconds = 0;
-    records.forEach(record => {
-      if (record.checkInTime && record.checkOutTime && isValid(parseISO(record.checkInTime)) && isValid(parseISO(record.checkOutTime))) {
-        totalMilliseconds += differenceInMilliseconds(parseISO(record.checkOutTime), parseISO(record.checkInTime));
-      } else if (record.checkInTime && !record.checkOutTime && isValid(parseISO(record.checkInTime))) {
-        const checkInTime = parseISO(record.checkInTime);
-        const endTime = new Date(checkInTime); 
-        endTime.setHours(21, 30, 0, 0); 
-
-        const now = new Date();
-        const calculationEndTime = endTime > now ? now : endTime;
-
-        totalMilliseconds += differenceInMilliseconds(calculationEndTime, checkInTime);
-      }
-    });
-
-    const totalHours = totalMilliseconds / (1000 * 60 * 60);
-    const hours = Math.floor(totalHours);
-    const minutes = Math.round((totalHours - hours) * 60);
-
-    return { hours, minutes };
-  };
-
+  }, [currentStudent, viewedMonth]);
+  
   const fetchAttendanceForSelectedDate = React.useCallback(async () => {
     if (currentStudent?.studentId && date) {
       setIsLoadingDetails(true);
@@ -186,11 +167,6 @@ export default function MemberAttendancePage() {
         setAttendanceForDay(records);
       } catch (error: any) {
         console.error("Error fetching attendance for date (Attendance Page):", error);
-        toast({
-          title: "Error Fetching Attendance",
-          description: error.message || "Could not load attendance for the selected date.",
-          variant: "destructive",
-        });
         setAttendanceForDay([]);
       } finally {
         setIsLoadingDetails(false);
@@ -198,11 +174,12 @@ export default function MemberAttendancePage() {
     } else {
       setAttendanceForDay([]);
     }
-  }, [currentStudent, date, toast]);
+  }, [currentStudent, date]);
 
   React.useEffect(() => {
     fetchAttendanceForSelectedDate();
   }, [fetchAttendanceForSelectedDate]);
+
 
   React.useEffect(() => {
     let timeoutId: NodeJS.Timeout;
@@ -210,8 +187,6 @@ export default function MemberAttendancePage() {
       timeoutId = setTimeout(() => {
         const scannerElement = document.getElementById(QR_SCANNER_ELEMENT_ID_ATTENDANCE);
         if (!scannerElement) {
-          console.warn("Attendance page QR scanner element not found after delay.");
-          toast({variant: 'destructive', title: "Scanner Error", description: "Could not initialize QR scanner display. Please try again."});
           setIsScannerOpen(false);
           return;
         }
@@ -261,7 +236,6 @@ export default function MemberAttendancePage() {
               await fetchStudentDataAndActiveCheckIn();
               await fetchAttendanceForSelectedDate();
             } catch (error: any) {
-              console.error("Detailed error during check-in processing (Attendance Page):", error);
               toast({ title: "Check-in Error", description: error.message || "Failed to process check-in. Please try again.", variant: "destructive" });
             }
           } else {
@@ -291,15 +265,8 @@ export default function MemberAttendancePage() {
               errorMsgLower.includes("aborterror")) {
             if (!errorMsgLower.includes("no qr code")) {
               setHasCameraPermission(false);
-              toast({
-                variant: 'destructive',
-                title: 'Camera Access Denied or Not Found',
-                description: 'Please enable camera permissions and ensure a camera is connected.',
-              });
               setIsScannerOpen(false);
             }
-          } else if (!errorMsgLower.includes("no qr code")) {
-            // console.warn("QR Scan Failure (Attendance Page, non-critical):", errorMessage, errorPayload);
           }
         };
         
@@ -307,13 +274,7 @@ export default function MemberAttendancePage() {
           scanner.render(onScanSuccess, onScanFailure);
           setHasCameraPermission(true); 
         } catch (renderError: any) {
-          console.error("Error rendering scanner (Attendance Page):", renderError);
           setHasCameraPermission(false);
-          toast({
-            variant: 'destructive',
-            title: 'Scanner Initialization Error',
-            description: renderError.message || 'Could not start the QR scanner. Ensure camera permissions are enabled and try again.',
-          });
           setIsScannerOpen(false);
         }
       }, 100); 
@@ -339,7 +300,7 @@ export default function MemberAttendancePage() {
       }
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isScannerOpen, currentStudent, activeCheckInRecord, toast, fetchStudentDataAndActiveCheckIn, fetchAttendanceForSelectedDate]);
+  }, [isScannerOpen, currentStudent, activeCheckInRecord, fetchStudentDataAndActiveCheckIn, fetchAttendanceForSelectedDate]);
 
   const handlePrevMonth = () => {
     setViewedMonth((prev) => subMonths(prev, 1));
@@ -363,7 +324,6 @@ export default function MemberAttendancePage() {
 
   const handleCheckOut = async () => {
     if (!currentStudent?.studentId || !activeCheckInRecord) {
-      toast({ title: "Error", description: "Cannot check out. Active session not found.", variant: "destructive" });
       return;
     }
     setIsProcessingQr(true);
@@ -376,7 +336,6 @@ export default function MemberAttendancePage() {
       await fetchStudentDataAndActiveCheckIn();
       await fetchAttendanceForSelectedDate();
     } catch (error: any) {
-      console.error("Error during check-out (Attendance Page):", error);
       toast({ title: "Check-out Error", description: error.message || "Failed to process check-out. Please try again.", variant: "destructive" });
     } finally {
       setIsProcessingQr(false);
@@ -408,145 +367,138 @@ export default function MemberAttendancePage() {
         </AlertDialogContent>
       </AlertDialog>
 
-      <div className="grid gap-6 md:grid-cols-1">
-        <Card className="shadow-lg">
-          <CardHeader>
-            <CardTitle className="flex items-center text-base sm:text-lg">
-              {activeCheckInRecord ? <LogOut className="mr-2 h-5 w-5 text-red-500" /> : <ScanLine className="mr-2 h-5 w-5 text-green-500" />}
-              Mark Attendance
-            </CardTitle>
-            <CardDescription>
-              {isLoadingActiveCheckIn ? "Loading session status..." :
-                (activeCheckInRecord
-                  ? `You are currently checked in since ${format(parseISO(activeCheckInRecord.checkInTime), 'p')}.`
-                  : "Scan the QR code at the library desk to check-in.")
-              }
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {isLoadingActiveCheckIn ? (
-              <div className="flex items-center justify-center">
-                <Loader2 className="h-6 w-6 animate-spin text-primary" />
-              </div>
-            ) : activeCheckInRecord ? (
-              <Button onClick={handleCheckOut} className="w-full" disabled={isProcessingQr || !currentStudent}>
-                {isProcessingQr && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Check Out
-              </Button>
-            ) : isScannerOpen ? (
-              <div className="space-y-4">
-                 {hasCameraPermission === false && (
-                  <Alert variant="destructive">
-                    <XCircle className="h-4 w-4" />
-                    <AlertTitle>Camera Access Denied</AlertTitle>
-                    <AlertDescription>
-                      Camera access is required. Please enable it in your browser settings.
-                    </AlertDescription>
-                  </Alert>
-                )}
-                <div id={QR_SCANNER_ELEMENT_ID_ATTENDANCE} className="w-full aspect-square bg-muted rounded-md overflow-hidden border" />
-                {(hasCameraPermission === null && !isProcessingQr) && (
-                     <div className="flex items-center justify-center text-muted-foreground">
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Initializing camera...
-                    </div>
-                )}
-                {isProcessingQr && <p className="text-sm text-muted-foreground text-center">Processing QR code...</p>}
-                <Button variant="outline" onClick={handleCancelScan} className="w-full" disabled={isProcessingQr}>
-                  Cancel Scan
-                </Button>
-              </div>
-            ) : (
-              <Button onClick={handleScanCheckInButtonClick} className="w-full" disabled={!currentStudent || isScannerOpen}>
-                <ScanLine className="mr-2 h-4 w-4" /> Scan QR to Check-In
-              </Button>
-            )}
-            {!currentStudent && !user && (
-                 <p className="text-xs text-muted-foreground mt-2 text-center">Loading user details...</p>
-            )}
-             {!currentStudent && user && !isLoadingActiveCheckIn && (
-                 <p className="text-xs text-destructive mt-2 text-center">Could not link your email to a student record. Please contact admin.</p>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      <Card className="mt-6 shadow-lg">
+      <Card className="mb-6 shadow-lg">
         <CardHeader>
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-              <div className="flex-grow">
-                <CardTitle className="flex items-center text-base sm:text-lg">
-                    <BarChart3 className="mr-2 h-5 w-5" />
-                    Monthly Study Time
-                </CardTitle>
-                <CardDescription>Your daily study performance this month.</CardDescription>
-              </div>
-              <div className="flex items-center space-x-1 self-start sm:self-center">
-                  <Button variant="outline" size="icon" className="h-7 w-7" onClick={handlePrevMonth} disabled={isLoadingStudyHours}>
-                      <ChevronLeft className="h-4 w-4" />
-                  </Button>
-                  <span className="text-sm font-medium w-24 text-center">{format(viewedMonth, 'MMMM yyyy')}</span>
-                  <Button variant="outline" size="icon" className="h-7 w-7" onClick={handleNextMonth} disabled={isLoadingStudyHours}>
-                      <ChevronRight className="h-4 w-4" />
-                  </Button>
-              </div>
+          <CardTitle className="flex items-center text-base sm:text-lg">
+            {activeCheckInRecord ? <LogOut className="mr-2 h-5 w-5 text-red-500" /> : <ScanLine className="mr-2 h-5 w-5 text-green-500" />}
+            Mark Attendance
+          </CardTitle>
+          <CardDescription>
+            {isLoadingActiveCheckIn ? "Loading session status..." :
+              (activeCheckInRecord
+                ? `You are currently checked in since ${format(parseISO(activeCheckInRecord.checkInTime), 'p')}.`
+                : "Scan the QR code at the library desk to check-in.")
+            }
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {isLoadingActiveCheckIn ? (
+            <div className="flex items-center justify-center">
+              <Loader2 className="h-6 w-6 animate-spin text-primary" />
             </div>
-          </CardHeader>
-          <CardContent className="pb-2">
-              {isLoadingStudyHours ? (
-                  <div className="flex items-center justify-center h-[250px]">
-                      <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                  </div>
-              ) : monthlyStudyData.length > 0 ? (
-                  <div className="h-[250px]">
-                    <ChartContainer config={chartConfig} className="w-full h-full">
-                      <ResponsiveContainer width="100%" height="100%">
-                          <BarChart accessibilityLayer data={monthlyStudyData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
-                              <CartesianGrid vertical={false} />
-                              <XAxis
-                                  dataKey="date"
-                                  tickLine={false}
-                                  tickMargin={10}
-                                  axisLine={false}
-                              />
-                              <YAxis
-                                tickFormatter={(value) => `${Math.round(value as number)}hr`}
-                                tickLine={false}
-                                tickMargin={10}
-                                axisLine={false}
-                                width={40}
-                              />
-                              <ChartTooltip
-                                  cursor={false}
-                                  content={
-                                    <ChartTooltipContent
-                                      formatter={(value, name, item) => {
-                                        const fullDate = format(new Date(viewedMonth.getFullYear(), viewedMonth.getMonth(), parseInt(item.payload.date)), 'PP');
-                                        const hours = Math.floor(value as number);
-                                        const minutes = Math.round(((value as number) % 1) * 60);
-                                        return (
-                                            <div className="flex flex-col">
-                                                <span className="font-bold">{fullDate}</span>
-                                                <span>{`${hours} hr ${minutes} min`}</span>
-                                            </div>
-                                        );
-                                      }}
-                                    />
-                                  }
-                              />
-                              <Bar dataKey="hours" fill="var(--color-hours)" radius={4} />
-                          </BarChart>
-                      </ResponsiveContainer>
-                    </ChartContainer>
-                  </div>
-              ) : (
-                  <p className="text-center text-muted-foreground py-10">No study data for this month.</p>
+          ) : activeCheckInRecord ? (
+            <Button onClick={handleCheckOut} className="w-full" disabled={isProcessingQr || !currentStudent}>
+              {isProcessingQr && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Check Out
+            </Button>
+          ) : isScannerOpen ? (
+            <div className="space-y-4">
+               {hasCameraPermission === false && (
+                <Alert variant="destructive">
+                  <XCircle className="h-4 w-4" />
+                  <AlertTitle>Camera Access Denied</AlertTitle>
+                  <AlertDescription>
+                    Camera access is required. Please enable it in your browser settings.
+                  </AlertDescription>
+                </Alert>
               )}
-          </CardContent>
+              <div id={QR_SCANNER_ELEMENT_ID_ATTENDANCE} className="w-full aspect-square bg-muted rounded-md overflow-hidden border" />
+              {(hasCameraPermission === null && !isProcessingQr) && (
+                   <div className="flex items-center justify-center text-muted-foreground">
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Initializing camera...
+                  </div>
+              )}
+              {isProcessingQr && <p className="text-sm text-muted-foreground text-center">Processing QR code...</p>}
+              <Button variant="outline" onClick={handleCancelScan} className="w-full" disabled={isProcessingQr}>
+                Cancel Scan
+              </Button>
+            </div>
+          ) : (
+            <Button onClick={handleScanCheckInButtonClick} className="w-full" disabled={!currentStudent || isScannerOpen}>
+              <ScanLine className="mr-2 h-4 w-4" /> Scan QR to Check-In
+            </Button>
+          )}
+        </CardContent>
       </Card>
 
+      <Card className="mb-6 shadow-lg">
+        <CardHeader>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+            <div className="flex-grow">
+              <CardTitle className="flex items-center text-base sm:text-lg">
+                  <BarChart3 className="mr-2 h-5 w-5" />
+                  Monthly Study Time
+              </CardTitle>
+              <CardDescription>Your daily study performance this month.</CardDescription>
+            </div>
+            <div className="flex items-center space-x-1 self-start sm:self-center">
+                <Button variant="outline" size="icon" className="h-7 w-7" onClick={handlePrevMonth} disabled={isLoadingStudyHours}>
+                    <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <span className="text-sm font-medium w-24 text-center">{format(viewedMonth, 'MMMM yyyy')}</span>
+                <Button variant="outline" size="icon" className="h-7 w-7" onClick={handleNextMonth} disabled={isLoadingStudyHours}>
+                    <ChevronRight className="h-4 w-4" />
+                </Button>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="h-[250px] pb-2">
+            {isLoadingStudyHours ? (
+                <div className="flex items-center justify-center h-full">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                </div>
+            ) : monthlyStudyData.length > 0 ? (
+                <ChartContainer config={chartConfig} className="w-full h-full">
+                  <ResponsiveContainer>
+                      <BarChart data={monthlyStudyData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+                          <CartesianGrid vertical={false} />
+                          <XAxis
+                              dataKey="date"
+                              tickLine={false}
+                              tickMargin={10}
+                              axisLine={false}
+                              interval="auto"
+                          />
+                          <YAxis
+                            tickFormatter={(value) => `${Math.round(value as number)}hr`}
+                            tickLine={false}
+                            tickMargin={10}
+                            axisLine={false}
+                            width={40}
+                            domain={[0, 'dataMax + 1']}
+                          />
+                          <ChartTooltip
+                              cursor={false}
+                              content={
+                                <ChartTooltipContent
+                                  formatter={(value, name, item) => {
+                                    const fullDate = format(parseISO(item.payload.fullDate), 'PP');
+                                    const hours = Math.floor(value as number);
+                                    const minutes = Math.round(((value as number) % 1) * 60);
+                                    return (
+                                        <div className="flex flex-col">
+                                            <span className="font-bold">{fullDate}</span>
+                                            <span>{`${hours} hr ${minutes} min`}</span>
+                                        </div>
+                                    );
+                                  }}
+                                />
+                              }
+                          />
+                          <Bar dataKey="hours" fill="var(--color-hours)" radius={4} />
+                      </BarChart>
+                  </ResponsiveContainer>
+                </ChartContainer>
+            ) : (
+                <div className="flex items-center justify-center h-full">
+                  <p className="text-center text-muted-foreground">No study data for this month.</p>
+                </div>
+            )}
+        </CardContent>
+      </Card>
 
-      <Card className="mt-6 shadow-lg">
+      <Card className="shadow-lg">
         <CardHeader>
           <CardTitle className="flex items-center text-base sm:text-lg">
             <Clock className="mr-2 h-5 w-5" />
@@ -574,14 +526,14 @@ export default function MemberAttendancePage() {
               </div>
             ) : (
               <>
-                {(() => {
-                  const { hours, minutes } = calculateDailyStudyTime(attendanceForDay);
-                  return (
-                    <div className="mb-4 text-lg font-semibold" style={{ color: '#30475E' }}>
-                      Total study time: {hours} hr {minutes} min
-                    </div>
-                  );
-                })()}
+                <div className="mb-4 text-lg font-semibold text-primary">
+                  Total study time: {(() => {
+                    const totalHours = calculateDailyStudyTime(attendanceForDay);
+                    const hours = Math.floor(totalHours);
+                    const minutes = Math.round((totalHours - hours) * 60);
+                    return `${hours} hr ${minutes} min`;
+                  })()}
+                </div>
 
                 {attendanceForDay.length === 0 && (
                   <p className="text-muted-foreground">No attendance records found for this day.</p>
