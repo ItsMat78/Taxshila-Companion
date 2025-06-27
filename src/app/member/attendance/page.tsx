@@ -23,7 +23,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Camera, Loader2, XCircle, BarChart3, Clock, LogIn, LogOut, ScanLine, CheckCircle, TrendingUp, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Camera, Loader2, XCircle, BarChart3, Clock, LogIn, LogOut, ScanLine, CheckCircle, TrendingUp, ChevronLeft, ChevronRight, AlertCircle } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
 import { getStudentByEmail, getActiveCheckIn, addCheckIn, addCheckOut, getAttendanceForDate, calculateMonthlyStudyHours, getStudentByCustomId } from '@/services/student-service';
 import type { Student, AttendanceRecord } from '@/types/student';
@@ -434,7 +434,10 @@ export default function MemberAttendancePage() {
        <AlertDialog open={isOverdueDialogOpen} onOpenChange={setIsOverdueDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Fee Payment Overdue</AlertDialogTitle>
+            <AlertDialogTitle className="flex items-center text-destructive">
+              <AlertCircle className="mr-2 h-5 w-5" />
+              Fee Payment Overdue
+            </AlertDialogTitle>
             <AlertDialogDescription>
               Your fee payment is overdue by more than 5 days. Please pay your outstanding fees at the desk immediately to continue using the services.
             </AlertDialogDescription>
@@ -673,5 +676,7 @@ export default function MemberAttendancePage() {
     </>
   );
 }
+
+    
 
     
