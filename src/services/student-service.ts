@@ -49,7 +49,7 @@ interface AdminUserFirestore {
 
 
 export const ALL_SEAT_NUMBERS: string[] = [];
-for (let i = 1; i <= 84; i++) {
+for (let i = 10; i <= 84; i++) {
     ALL_SEAT_NUMBERS.push(String(i));
 }
 ALL_SEAT_NUMBERS.sort((a, b) => parseInt(a) - parseInt(b));
@@ -719,7 +719,7 @@ export async function addCheckOut(recordId: string): Promise<AttendanceRecord | 
 
   await updateDoc(recordDocRef, { checkOutTime: Timestamp.fromDate(new Date()) });
   const updatedSnap = await getDoc(recordDocRef);
-  return attendanceRecordFromDoc(updatedSnap);
+  return updatedSnap.exists() ? attendanceRecordFromDoc(updatedSnap) : undefined;
 }
 
 export async function getAttendanceForDate(studentId: string, date: string): Promise<AttendanceRecord[]> {
@@ -730,19 +730,19 @@ export async function getAttendanceForDate(studentId: string, date: string): Pro
     orderBy("checkInTime", "asc")
   );
   const querySnapshot = await getDocs(q);
-  return querySnapshot.docs.map(attendanceRecordFromDoc);
+  return querySnapshot.docs.map(doc => attendanceRecordFromDoc(doc));
 }
 
 export async function getAllAttendanceRecords(): Promise<AttendanceRecord[]> {
     const q = query(collection(db, ATTENDANCE_COLLECTION), orderBy("checkInTime", "desc"));
     const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map(attendanceRecordFromDoc);
+    return querySnapshot.docs.map(doc => attendanceRecordFromDoc(doc));
 }
 
 export async function getAttendanceRecordsByStudentId(studentId: string): Promise<AttendanceRecord[]> {
   const q = query(collection(db, ATTENDANCE_COLLECTION), where("studentId", "==", studentId), orderBy("checkInTime", "desc"));
   const querySnapshot = await getDocs(q);
-  return querySnapshot.docs.map(attendanceRecordFromDoc);
+  return querySnapshot.docs.map(doc => attendanceRecordFromDoc(doc));
 }
 
 
@@ -938,12 +938,31 @@ export async function submitFeedback(
   const docRef = await addDoc(collection(db, FEEDBACK_COLLECTION), newFeedbackData);
   console.log("[StudentService] New feedback submitted, ID:", docRef.id, "Data:", newFeedbackData);
 
-  // TODO: Fetch admin FCM tokens (e.g., from a separate 'admins' collection or config)
-  // Example: const adminTokens = await getAllAdminFCMTokens();
-  // TODO: For each admin token, call the /api/send-alert-notification endpoint with a specific payload for new feedback
-  // Example: for (const token of adminTokens) { /* send notification */ }
+  // Trigger push notification to admins
+  try {
+    const messageSnippet = message.substring(0, 100) + (message.length > 100 ? "..." : "");
+    const apiPayload = {
+      studentName: studentName || "Anonymous",
+      messageSnippet: messageSnippet,
+      feedbackId: docRef.id,
+    };
+    console.log("[StudentService] Calling API to send admin feedback notification. Payload:", apiPayload);
+    
+    // Relative fetch from a Server Action to an API Route on the same host
+    const response = await fetch('/api/send-admin-feedback-notification', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(apiPayload),
+    });
+     if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: "Unknown API error" }));
+        console.error("[StudentService] API error sending admin feedback notification:", response.status, errorData);
+    }
+  } catch (apiError) {
+      console.error("[StudentService] Failed to trigger API for admin feedback push notification:", apiError);
+  }
 
-  // Dispatch custom event for admin notification
+  // Dispatch custom event for in-app toast notification for admin
   if (typeof window !== 'undefined') {
     console.log("[StudentService] Dispatching new-feedback-submitted event for ID:", docRef.id);
     window.dispatchEvent(new CustomEvent('new-feedback-submitted', { detail: { feedbackId: docRef.id } }));
@@ -961,7 +980,7 @@ export async function submitFeedback(
 export async function getAllFeedback(): Promise<FeedbackItem[]> {
   const q = query(collection(db, FEEDBACK_COLLECTION), orderBy("dateSubmitted", "desc"));
   const querySnapshot = await getDocs(q);
-  return querySnapshot.docs.map(feedbackItemFromDoc);
+  return querySnapshot.docs.map(doc => feedbackItemFromDoc(doc));
 }
 
 export async function updateFeedbackStatus(feedbackId: string, status: FeedbackStatus): Promise<FeedbackItem | undefined> {
@@ -1105,11 +1124,11 @@ export async function getAlertsForStudent(customStudentId: string): Promise<Aler
   );
 
   const targetedAlertsSnapshot = await getDocs(targetedQuery);
-  const studentAlerts = targetedAlertsSnapshot.docs.map(alertItemFromDoc);
+  const studentAlerts = targetedAlertsSnapshot.docs.map(doc => alertItemFromDoc(doc));
 
   const generalAlertsSnapshot = await getDocs(generalAlertsQuery);
   const generalAlerts = generalAlertsSnapshot.docs
-      .map(alertItemFromDoc)
+      .map(doc => alertItemFromDoc(doc))
       .filter(alert => alert.type !== 'feedback_response');
 
 
@@ -1128,7 +1147,7 @@ export async function getAlertsForStudent(customStudentId: string): Promise<Aler
 export async function getAllAdminSentAlerts(): Promise<AlertItem[]> {
   const q = query(collection(db, ALERTS_COLLECTION), orderBy("dateSent", "desc"));
   const querySnapshot = await getDocs(q);
-  return querySnapshot.docs.map(alertItemFromDoc);
+  return querySnapshot.docs.map(doc => alertItemFromDoc(doc));
 }
 
 
