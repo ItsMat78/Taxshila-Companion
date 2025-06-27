@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { ArrowLeft, CreditCard, CalendarDays, Receipt, Loader2, UserCircle, Briefcase, History as HistoryIcon, LogIn, LogOut, Clock, FileText, Download, Mail, Phone, Edit, TrendingUp, ChevronLeft, ChevronRight } from 'lucide-react'; // Added Edit and Chart Icons
+import { ArrowLeft, CreditCard, CalendarDays, Receipt, Loader2, UserCircle, Briefcase, History as HistoryIcon, LogIn, LogOut, Clock, FileText, Download, Mail, Phone, Edit, TrendingUp, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -21,23 +21,23 @@ import {
 import { Calendar } from "@/components/ui/calendar";
 import { getStudentById, getAttendanceForDate } from '@/services/student-service';
 import type { Student, PaymentRecord, AttendanceRecord } from '@/types/student';
-import { format, parseISO, isValid, differenceInMilliseconds, startOfMonth, endOfMonth, eachDayOfInterval, addMonths, subMonths } from 'date-fns'; // Added date-fns functions
+import { format, parseISO, isValid, differenceInMilliseconds, startOfMonth, endOfMonth, eachDayOfInterval, addMonths, subMonths } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { BarChart, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Bar } from 'recharts'; //Import recharts components
+import { BarChart, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Bar } from 'recharts';
 
 const DEFAULT_PROFILE_PLACEHOLDER = "https://placehold.co/100x100.png";
 const ID_CARD_PLACEHOLDER = "https://placehold.co/300x200.png?text=ID+Card";
 
-// Placeholder implementation for ChartTooltipContent
+
 const ChartTooltipContent = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
         const hours = payload[0].value;
         const minutes = Math.round((hours % 1) * 60);
         return (
-            <div className="p-2 bg-white border rounded-md shadow-md text-sm">
-                <p className="font-semibold">{label}</p>
-                <p className="text-gray-600">
+            <div className="p-2 bg-popover text-popover-foreground border rounded-md shadow-md text-sm">
+                <p className="font-semibold">{format(parseISO(label), 'PP')}</p>
+                <p>
                     {payload[0].name}: {Math.floor(hours)} hr {minutes} min
                 </p>
             </div>
@@ -46,13 +46,6 @@ const ChartTooltipContent = ({ active, payload, label }: any) => {
 
     return null;
 };
-
-interface ChartConfig {
-    revenue: {
-        label: string;
-        color: string;
-    };
-}
 
 
 // Mobile Card Item for Payment History
@@ -90,13 +83,6 @@ export default function StudentDetailPage() {
   const [viewedMonth, setViewedMonth] = React.useState(new Date());
   const [monthlyStudyData, setMonthlyStudyData] = React.useState<{ date: string; hours: number }[]>([]);
   const [isLoadingMonthlyStudyData, setIsLoadingMonthlyStudyData] = React.useState(true);
-
-    const revenueChartConfig = {
-        revenue: {
-            label: "Hours Studied",
-            color: "hsl(var(--chart-1))",
-        },
-    } satisfies ChartConfig;
 
   React.useEffect(() => {
     if (studentId) {
@@ -378,7 +364,6 @@ export default function StudentDetailPage() {
         </Card>
       </div>
 
-      {/* New Card for Graph Navigation and Graph */}
         <Card className="mt-6 shadow-md w-full overflow-x-auto">
             <CardHeader>
                 <div className="flex items-center justify-between w-full">
@@ -387,11 +372,11 @@ export default function StudentDetailPage() {
                         Monthly Study Time
                     </CardTitle>
                     <div className="flex items-center space-x-2">
-                        <Button variant="outline" size="icon" onClick={handlePrevMonth}>
+                        <Button variant="outline" size="icon" onClick={handlePrevMonth} disabled={isLoadingMonthlyStudyData}>
                             <ChevronLeft className="h-4 w-4" />
                         </Button>
                         <span>{format(viewedMonth, 'MMMM yyyy')}</span>
-                        <Button variant="outline" size="icon" onClick={handleNextMonth}>
+                        <Button variant="outline" size="icon" onClick={handleNextMonth} disabled={isLoadingMonthlyStudyData}>
                             <ChevronRight className="h-4 w-4" />
                         </Button>
                     </div>
@@ -400,12 +385,12 @@ export default function StudentDetailPage() {
             </CardHeader>
             <CardContent>
                 {isLoadingMonthlyStudyData ? (
-                    <div className="flex items-center justify-center">
-                        <Loader2 className="h-8 w-8 animate-spin text-primary"/> Loading monthly study data...
+                    <div className="flex items-center justify-center h-[300px]">
+                        <Loader2 className="h-8 w-8 animate-spin text-primary"/>
                     </div>
                 ) : (
                     monthlyStudyData.length > 0 ? (
-                        <div className="min-h-[200px] w-full">
+                        <div className="min-h-[300px] w-full">
                             <ResponsiveContainer width="100%" height={300}>
                                 <BarChart data={monthlyStudyData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
                                     <CartesianGrid strokeDasharray="3 3" vertical={false} />
@@ -415,17 +400,18 @@ export default function StudentDetailPage() {
                                         axisLine={false}
                                         tickMargin={8}
                                         width={50}
+                                        tickFormatter={(value) => `${value}h`}
                                     />
                                     <Tooltip
                                         cursor={{ fill: 'hsl(var(--muted))', radius: 4 }}
-                                        content={ChartTooltipContent}
+                                        content={<ChartTooltipContent />}
                                     />
-                                    <Bar dataKey="hours" fill="hsl(var(--chart-1))" radius={4} />
+                                    <Bar dataKey="hours" name="Hours Studied" fill="hsl(var(--primary))" radius={4} />
                                 </BarChart>
                             </ResponsiveContainer>
                         </div>
                     ) : (
-                        <p className="text-center text-muted-foreground py-10">No study history data available to display for the graph.</p>
+                        <p className="text-center text-muted-foreground py-10 h-[300px] flex items-center justify-center">No study history data available for this month.</p>
                     )
                 )}
             </CardContent>
@@ -438,21 +424,21 @@ export default function StudentDetailPage() {
             Attendance Overview
           </CardTitle>
           <CardDescription>
-            Monthly attendance for {student.name}. Select a date to view details.
+            Select a date to view attendance for {student.name}.
           </CardDescription>
         </CardHeader>
-        <CardContent className="flex flex-col items-stretch gap-6">
-          <div className="w-full flex justify-center">
+        <CardContent className="flex flex-col items-stretch gap-6 md:flex-row md:items-start">
+          <div className="w-full flex justify-center md:w-auto">
             <Calendar
               mode="single"
               selected={selectedCalendarDate}
               onSelect={setSelectedCalendarDate}
-              className="rounded-md border shadow-inner min-w-[280px] sm:min-w-[320px] max-w-md"
+              className="rounded-md border shadow-inner min-w-[280px] sm:min-w-[320px]"
               modifiers={{ today: new Date() }}
               modifiersStyles={{ today: { color: 'hsl(var(--accent-foreground))', backgroundColor: 'hsl(var(--accent))' } }}
             />
           </div>
-          <div className="w-full">
+          <div className="w-full md:flex-1">
             <h4 className="text-md font-semibold mb-2">
               Details for {selectedCalendarDate ? format(selectedCalendarDate, 'PPP') : 'selected date'}:
             </h4>
