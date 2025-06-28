@@ -48,8 +48,8 @@ import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Save, ClipboardCheck, Loader2, UserX, UserCheck, FileText, KeyRound, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { getStudentById, updateStudent, getAvailableSeats, recordStudentPayment, deleteStudentCompletely } from '@/services/student-service';
-import type { Student, Shift } from '@/types/student';
+import { getStudentById, updateStudent, getAvailableSeats, recordStudentPayment, deleteStudentCompletely, getFeeStructure } from '@/services/student-service';
+import type { Student, Shift, FeeStructure } from '@/types/student';
 import { format, addMonths } from 'date-fns';
 import { Calendar } from '@/components/ui/calendar'
 import {
@@ -120,6 +120,7 @@ export default function EditStudentPage() {
 
   const [isConfirmPaymentOpen, setIsConfirmPaymentOpen] = React.useState(false);
   const [isConfirmMarkLeftOpen, setIsConfirmMarkLeftOpen] = React.useState(false);
+  const [feeStructure, setFeeStructure] = React.useState<FeeStructure | null>(null);
 
 
   const form = useForm<StudentEditFormValues>({
@@ -145,7 +146,11 @@ export default function EditStudentPage() {
   const fetchStudentDetails = React.useCallback(async (currentStudentId: string) => {
     setIsLoading(true);
     try {
-      const student = await getStudentById(currentStudentId);
+      const [student, fees] = await Promise.all([
+          getStudentById(currentStudentId),
+          getFeeStructure()
+      ]);
+      setFeeStructure(fees);
       if (student) {
         setStudentData(student);
         form.reset({
@@ -311,12 +316,22 @@ export default function EditStudentPage() {
   }
 
   async function handleMarkPaymentPaid() {
-    if (!studentId || !studentData || isStudentLeft) return;
+    if (!studentId || !studentData || isStudentLeft || !feeStructure) return;
     setIsSaving(true);
     
-    const amountToPay = studentData.amountDue && studentData.amountDue !== "Rs. 0" && studentData.amountDue !== "N/A" 
-                       ? studentData.amountDue 
-                       : (studentData.shift === "fullday" ? "Rs. 1200" : "Rs. 700");
+    let amountToPay: string;
+    if (studentData.amountDue && studentData.amountDue !== "Rs. 0" && studentData.amountDue !== "N/A") {
+      amountToPay = studentData.amountDue;
+    } else {
+        let defaultFee = 0;
+        switch(studentData.shift) {
+            case 'morning': defaultFee = feeStructure.morningFee; break;
+            case 'evening': defaultFee = feeStructure.eveningFee; break;
+            case 'fullday': defaultFee = feeStructure.fullDayFee; break;
+        }
+        amountToPay = `Rs. ${defaultFee}`;
+    }
+
     try {
       const updatedStudent = await recordStudentPayment(studentId, amountToPay, "Admin Recorded");
       if (updatedStudent) {
@@ -458,9 +473,21 @@ export default function EditStudentPage() {
     );
   }
 
-  const amountDueDisplay = studentData.amountDue && studentData.amountDue !== "Rs. 0" && studentData.amountDue !== "N/A" 
-    ? studentData.amountDue 
-    : (studentData.shift === "fullday" ? "Rs. 1200" : "Rs. 700");
+  const getAmountDueDisplay = () => {
+    if (studentData.amountDue && studentData.amountDue !== "Rs. 0" && studentData.amountDue !== "N/A") {
+      return studentData.amountDue;
+    }
+    if (feeStructure) {
+      switch (studentData.shift) {
+        case 'morning': return `Rs. ${feeStructure.morningFee}`;
+        case 'evening': return `Rs. ${feeStructure.eveningFee}`;
+        case 'fullday': return `Rs. ${feeStructure.fullDayFee}`;
+      }
+    }
+    return "Calculating...";
+  };
+
+  const amountDueDisplay = getAmountDueDisplay();
 
   return (
     <>
