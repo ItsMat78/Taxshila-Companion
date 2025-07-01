@@ -23,7 +23,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Eye, Edit, Loader2, Users, UserX, UserCheck, Search as SearchIcon, Phone, Mail, MapPin } from 'lucide-react'; // Changed ArrowRight to Eye
+import { Eye, Edit, Loader2, Users, UserX, UserCheck, Search as SearchIcon, Phone, Mail, MapPin } from 'lucide-react';
 import { getAllStudents } from '@/services/student-service';
 import type { Student as StudentData } from '@/types/student';
 import { cn } from '@/lib/utils';
@@ -43,8 +43,6 @@ const StudentCardItem = ({ student, isLeftTable, getStatusBadge }: { student: St
       </CardHeader>
       <CardContent className="space-y-1 text-xs pb-3">
         <p className="flex items-center"><Phone className="mr-2 h-3 w-3 text-muted-foreground" /><span className="font-medium">Phone:</span>&nbsp;{student.phone}</p>
-        <p className="flex items-center"><MapPin className="mr-2 h-3 w-3 text-muted-foreground" /><span className="font-medium">Address:</span>&nbsp;{student.address}</p>
-        <p className="flex items-center truncate"><Mail className="mr-2 h-3 w-3 text-muted-foreground" /><span className="font-medium">Email:</span>&nbsp;{student.email || 'N/A'}</p>
         <p><span className="font-medium">Shift:</span> <span className="capitalize">{student.shift}</span></p>
         <p><span className="font-medium">Seat:</span> {student.seatNumber || 'N/A'}</p>
       </CardContent>
@@ -160,11 +158,8 @@ export default function StudentListPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="whitespace-nowrap">ID</TableHead>
                     <TableHead>Name</TableHead>
                     <TableHead className="whitespace-nowrap">Phone</TableHead>
-                    <TableHead>Address</TableHead>
-                    <TableHead>Email</TableHead>
                     <TableHead>Shift</TableHead>
                     <TableHead>Seat</TableHead>
                     <TableHead>Status</TableHead>
@@ -174,15 +169,12 @@ export default function StudentListPage() {
                 <TableBody>
                   {studentsToRender.map((student) => (
                     <TableRow key={student.studentId}>
-                      <TableCell>{student.studentId}</TableCell>
                       <TableCell className="font-medium">
                         <Link href={`/students/profiles/${student.studentId}`} className="hover:underline text-primary">
                           {student.name}
                         </Link>
                       </TableCell>
                       <TableCell>{student.phone}</TableCell>
-                      <TableCell>{student.address}</TableCell>
-                      <TableCell>{student.email || 'N/A'}</TableCell>
                       <TableCell className="capitalize">{student.shift}</TableCell>
                       <TableCell>{student.seatNumber || 'N/A'}</TableCell>
                       <TableCell>{getStatusBadgeForStudent(student)}</TableCell>
@@ -210,7 +202,7 @@ export default function StudentListPage() {
                   ))}
                   {studentsToRender.length === 0 && !isLoading && (
                     <TableRow>
-                      <TableCell colSpan={8} className="py-4 text-center text-muted-foreground">
+                      <TableCell colSpan={6} className="py-4 text-center text-muted-foreground">
                         {searchTerm.trim() && allStudents.length > 0 ? "No students match your search." : emptyMessage}
                       </TableCell>
                     </TableRow>
