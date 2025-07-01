@@ -28,7 +28,7 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsToolti
 import { Loader2, TrendingUp, History, IndianRupee } from 'lucide-react';
 import { getMonthlyRevenueHistory, type MonthlyRevenueData } from '@/services/student-service';
 import { useToast } from '@/hooks/use-toast';
-import { format, parse, compareDesc, subMonths, isAfter } from 'date-fns';
+import { format, parse, compareDesc, subMonths, isAfter, startOfMonth } from 'date-fns';
 import {
   Select,
   SelectContent,
@@ -121,9 +121,11 @@ export default function RevenueHistoryPage() {
         '12m': 12,
       }[timeRange];
       
-      const cutoffDate = subMonths(now, monthsToSubtract);
+      // Corrected cutoff date logic
+      // To get the last 'X' months including the current one, we subtract 'X-1' and take the start of that month.
+      const cutoffDate = startOfMonth(subMonths(now, monthsToSubtract - 1));
       
-      filteredData = allRevenueHistory.filter(item => isAfter(item.monthDate, cutoffDate));
+      filteredData = allRevenueHistory.filter(item => item.monthDate >= cutoffDate);
     }
     
     // Sort ascending (oldest to newest) for the chart's x-axis
@@ -136,7 +138,8 @@ export default function RevenueHistoryPage() {
   }, [allRevenueHistory, isLoading, timeRange]);
 
   const tableData = React.useMemo(() => {
-    return allRevenueHistory;
+    // Ensure table data is always sorted descending (latest first)
+    return [...allRevenueHistory].sort((a, b) => b.monthDate.getTime() - a.monthDate.getTime());
   }, [allRevenueHistory]);
 
   const totalRevenueAmount = React.useMemo(() => {
