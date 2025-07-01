@@ -22,14 +22,18 @@ import {
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
-import { AlertTriangle, CalendarClock, CheckCircle2, Loader2, User, IndianRupee, Edit } from 'lucide-react';
-import { getAllStudents } from '@/services/student-service';
+import { AlertTriangle, CalendarClock, CheckCircle2, Loader2, User, IndianRupee, Edit, UserCheck } from 'lucide-react';
+import { getAllStudents, getAllAttendanceRecords } from '@/services/student-service';
 import type { Student } from '@/types/student';
 import { useToast } from '@/hooks/use-toast';
 import { format, parseISO, isValid } from 'date-fns';
 import { cn } from '@/lib/utils';
 
-const FeeDueCardItem = ({ student }: { student: Student }) => {
+interface StudentWithLastAttended extends Student {
+  lastAttended?: string; // ISO string
+}
+
+const FeeDueCardItem = ({ student }: { student: StudentWithLastAttended }) => {
   const feeStatusBadge = (
     <Badge
       variant={student.feeStatus === "Overdue" ? "destructive" : "default"}
@@ -53,6 +57,7 @@ const FeeDueCardItem = ({ student }: { student: Student }) => {
         <p><span className="font-medium">Amount Due:</span> {student.amountDue || 'N/A'}</p>
         <p><span className="font-medium">Last Payment:</span> {student.lastPaymentDate && isValid(parseISO(student.lastPaymentDate)) ? format(parseISO(student.lastPaymentDate), 'MMM d, yyyy') : 'N/A'}</p>
         <p><span className="font-medium">Next Due Date:</span> {student.nextDueDate && isValid(parseISO(student.nextDueDate)) ? format(parseISO(student.nextDueDate), 'MMM d, yyyy') : 'N/A'}</p>
+        <p className="flex items-center"><UserCheck className="mr-1 h-3 w-3 text-muted-foreground"/><span className="font-medium">Last Attended:</span>&nbsp;{student.lastAttended && isValid(parseISO(student.lastAttended)) ? format(parseISO(student.lastAttended), 'MMM d, yyyy') : 'Never'}</p>
       </CardContent>
       <CardFooter className="py-3 border-t">
         <Link href={`/admin/students/edit/${student.studentId}`} passHref legacyBehavior>
@@ -67,18 +72,35 @@ const FeeDueCardItem = ({ student }: { student: Student }) => {
 
 export default function FeesDuePage() {
   const { toast } = useToast();
-  const [feesDueStudents, setFeesDueStudents] = React.useState<Student[]>([]);
+  const [feesDueStudents, setFeesDueStudents] = React.useState<StudentWithLastAttended[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
 
   React.useEffect(() => {
     const fetchFeesDue = async () => {
       setIsLoading(true);
       try {
-        const allStudents = await getAllStudents();
-        const dueStudents = allStudents.filter(student =>
-          student.activityStatus === "Active" &&
-          (student.feeStatus === "Due" || student.feeStatus === "Overdue")
-        );
+        const [allStudents, allAttendance] = await Promise.all([
+          getAllStudents(),
+          getAllAttendanceRecords(),
+        ]);
+
+        const lastAttendedMap = new Map<string, string>();
+        allAttendance.forEach(record => {
+          const existing = lastAttendedMap.get(record.studentId);
+          if (!existing || new Date(record.checkInTime) > new Date(existing)) {
+            lastAttendedMap.set(record.studentId, record.checkInTime);
+          }
+        });
+
+        const dueStudents = allStudents
+          .filter(student =>
+            student.activityStatus === "Active" &&
+            (student.feeStatus === "Due" || student.feeStatus === "Overdue")
+          )
+          .map(student => ({
+            ...student,
+            lastAttended: lastAttendedMap.get(student.studentId)
+          }));
 
         dueStudents.sort((a, b) => {
           const statusOrder = (status: Student['feeStatus']) => status === "Overdue" ? 0 : 1;
@@ -146,9 +168,9 @@ export default function FeesDuePage() {
                     <TableRow>
                       <TableHead>Student ID</TableHead>
                       <TableHead>Name</TableHead>
-                      <TableHead>Amount Due</TableHead>
                       <TableHead>Last Payment</TableHead>
                       <TableHead>Next Due Date</TableHead>
+                      <TableHead>Last Attended</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead className="text-right">Action</TableHead>
                     </TableRow>
@@ -158,7 +180,6 @@ export default function FeesDuePage() {
                       <TableRow key={student.studentId} className={student.feeStatus === "Overdue" ? "bg-destructive/10 hover:bg-destructive/15" : "hover:bg-muted/30"}>
                         <TableCell>{student.studentId}</TableCell>
                         <TableCell className="font-medium">{student.name}</TableCell>
-                        <TableCell>{student.amountDue || 'N/A'}</TableCell>
                         <TableCell className="whitespace-nowrap">
                           {student.lastPaymentDate && isValid(parseISO(student.lastPaymentDate))
                             ? format(parseISO(student.lastPaymentDate), 'MMM d, yyyy')
@@ -168,6 +189,11 @@ export default function FeesDuePage() {
                           {student.nextDueDate && isValid(parseISO(student.nextDueDate))
                             ? format(parseISO(student.nextDueDate), 'MMM d, yyyy')
                             : 'N/A'}
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap">
+                           {student.lastAttended && isValid(parseISO(student.lastAttended))
+                            ? format(parseISO(student.lastAttended), 'MMM d, yyyy')
+                            : 'Never'}
                         </TableCell>
                         <TableCell>
                           <Badge
