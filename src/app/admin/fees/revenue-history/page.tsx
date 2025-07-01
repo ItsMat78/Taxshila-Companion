@@ -24,11 +24,13 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from "@/components/ui/chart";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Legend } from 'recharts';
-import { Loader2, TrendingUp, History, IndianRupee } from 'lucide-react'; // Added IndianRupee
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Legend } from 'recharts';
+import { Loader2, TrendingUp, History, IndianRupee } from 'lucide-react';
 import { getMonthlyRevenueHistory, type MonthlyRevenueData } from '@/services/student-service';
 import { useToast } from '@/hooks/use-toast';
-import { format, parse, compareDesc } from 'date-fns';
+import { format, parse, compareDesc, subMonths, isAfter } from 'date-fns';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 
 const revenueChartConfig = {
   revenue: {
@@ -38,15 +40,15 @@ const revenueChartConfig = {
 } satisfies ChartConfig;
 
 const staticProvidedRevenueInput: { monthName: string; year: number; revenue: number }[] = [
-  { monthName: "September", year: 2024, revenue: 13000 }, // 1900 + 11100
-  { monthName: "October", year: 2024, revenue: 15600 },  // 4500 + 11100
-  { monthName: "November", year: 2024, revenue: 22400 }, // 11300 + 11100
-  { monthName: "December", year: 2024, revenue: 20650 }, // 9550 + 11100
-  { monthName: "January", year: 2025, revenue: 20000 },  // 8900 + 11100
-  { monthName: "February", year: 2025, revenue: 22400 }, // 11300 + 11100
-  { monthName: "March", year: 2025, revenue: 36800 },   // 25700 + 11100
-  { monthName: "April", year: 2025, revenue: 68600 },   // 57500 + 11100
-  { monthName: "May", year: 2025, revenue: 47350 },     // 36250 + 11100
+  { monthName: "September", year: 2024, revenue: 13000 },
+  { monthName: "October", year: 2024, revenue: 15600 },
+  { monthName: "November", year: 2024, revenue: 22400 },
+  { monthName: "December", year: 2024, revenue: 20650 },
+  { monthName: "January", year: 2025, revenue: 20000 },
+  { monthName: "February", year: 2025, revenue: 22400 },
+  { monthName: "March", year: 2025, revenue: 36800 },
+  { monthName: "April", year: 2025, revenue: 68600 },
+  { monthName: "May", year: 2025, revenue: 47350 },
 ];
 
 const staticRevenueData: MonthlyRevenueData[] = staticProvidedRevenueInput.map(item => {
@@ -58,11 +60,13 @@ const staticRevenueData: MonthlyRevenueData[] = staticProvidedRevenueInput.map(i
   };
 });
 
+type TimeRange = '3m' | '6m' | '12m' | 'all';
 
 export default function RevenueHistoryPage() {
   const { toast } = useToast();
   const [allRevenueHistory, setAllRevenueHistory] = React.useState<MonthlyRevenueData[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
+  const [timeRange, setTimeRange] = React.useState<TimeRange>('6m');
 
   React.useEffect(() => {
     const fetchHistory = async () => {
@@ -100,14 +104,30 @@ export default function RevenueHistoryPage() {
     if (isLoading || allRevenueHistory.length === 0) {
       return [];
     }
-    return allRevenueHistory
-      .slice(0, 6) 
-      .reverse() 
+
+    let filteredData = allRevenueHistory;
+
+    if (timeRange !== 'all') {
+      const now = new Date();
+      const monthsToSubtract = {
+        '3m': 3,
+        '6m': 6,
+        '12m': 12,
+      }[timeRange];
+      
+      const cutoffDate = subMonths(now, monthsToSubtract);
+      
+      filteredData = allRevenueHistory.filter(item => isAfter(item.monthDate, cutoffDate));
+    }
+    
+    // Sort ascending (oldest to newest) for the chart's x-axis
+    return filteredData
+      .sort((a, b) => a.monthDate.getTime() - b.monthDate.getTime())
       .map(item => ({
         month: format(item.monthDate, 'MMM yy'),
         revenue: item.revenue,
       }));
-  }, [allRevenueHistory, isLoading]);
+  }, [allRevenueHistory, isLoading, timeRange]);
 
   const tableData = React.useMemo(() => {
     return allRevenueHistory;
@@ -150,11 +170,27 @@ export default function RevenueHistoryPage() {
 
       <Card className="mb-6 shadow-lg w-full">
         <CardHeader>
-          <CardTitle className="flex items-center">
-            <TrendingUp className="mr-2 h-5 w-5" />
-            Revenue Graph (Last 6 Months)
-          </CardTitle>
-          <CardDescription>Visual comparison of monthly revenue.</CardDescription>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+            <div className="flex-grow">
+              <CardTitle className="flex items-center">
+                <TrendingUp className="mr-2 h-5 w-5" />
+                Revenue Graph
+              </CardTitle>
+              <CardDescription className="mt-1">Visual comparison of monthly revenue.</CardDescription>
+            </div>
+            <div className="flex items-center gap-2">
+              {(['3m', '6m', '12m', 'all'] as TimeRange[]).map((range) => (
+                <Button
+                  key={range}
+                  variant={timeRange === range ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setTimeRange(range)}
+                >
+                  {range === 'all' ? 'All Time' : `Last ${range.replace('m', 'M')}`}
+                </Button>
+              ))}
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           {isLoading ? (
@@ -164,7 +200,13 @@ export default function RevenueHistoryPage() {
           ) : graphData.length > 0 ? (
             <ChartContainer config={revenueChartConfig} className="min-h-[200px] w-full aspect-video">
               <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={graphData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
+                <AreaChart data={graphData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
+                  <defs>
+                    <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="var(--color-revenue)" stopOpacity={0.8}/>
+                      <stop offset="95%" stopColor="var(--color-revenue)" stopOpacity={0.1}/>
+                    </linearGradient>
+                  </defs>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} />
                   <XAxis dataKey="month" tickLine={false} axisLine={false} tickMargin={8} />
                   <YAxis
@@ -175,15 +217,15 @@ export default function RevenueHistoryPage() {
                     width={50}
                   />
                   <RechartsTooltip
-                    cursor={{ fill: 'hsl(var(--muted))', radius: 4 }}
+                    cursor={{ fill: 'hsl(var(--muted))', stroke: 'var(--color-revenue)', strokeWidth: 1, radius: 4 }}
                     content={<ChartTooltipContent indicator="dot" formatter={(value) => `Rs. ${Number(value).toLocaleString('en-IN')}`} />}
                   />
-                  <Bar dataKey="revenue" fill="var(--color-revenue)" radius={4} />
-                </BarChart>
+                  <Area type="monotone" dataKey="revenue" stroke="var(--color-revenue)" strokeWidth={2} fillOpacity={1} fill="url(#colorRevenue)" />
+                </AreaChart>
               </ResponsiveContainer>
             </ChartContainer>
           ) : (
-            <p className="text-center text-muted-foreground py-10">No revenue history data available to display for the graph.</p>
+            <p className="text-center text-muted-foreground py-10">No revenue history data available to display for the selected range.</p>
           )}
         </CardContent>
       </Card>
@@ -194,7 +236,7 @@ export default function RevenueHistoryPage() {
             <History className="mr-2 h-5 w-5" />
             Monthly Revenue Log
           </CardTitle>
-          <CardDescription>Tabular view of monthly revenue, latest first.</CardDescription>
+          <CardDescription>Tabular view of all monthly revenue, latest first.</CardDescription>
         </CardHeader>
         <CardContent>
           {isLoading && tableData.length === 0 ? ( 
