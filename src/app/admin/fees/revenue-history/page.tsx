@@ -28,7 +28,7 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsToolti
 import { Loader2, TrendingUp, History, IndianRupee } from 'lucide-react';
 import { getMonthlyRevenueHistory, type MonthlyRevenueData } from '@/services/student-service';
 import { useToast } from '@/hooks/use-toast';
-import { format, parse, compareDesc, subMonths, isAfter, startOfMonth } from 'date-fns';
+import { format, parse, compareDesc, subMonths, isAfter, startOfMonth, endOfMonth, addMonths } from 'date-fns';
 import {
   Select,
   SelectContent,
@@ -107,34 +107,40 @@ export default function RevenueHistoryPage() {
   }, [toast]);
 
   const graphData = React.useMemo(() => {
-    if (isLoading || allRevenueHistory.length === 0) {
-      return [];
+    if (isLoading) return [];
+
+    const now = new Date();
+    let startDate;
+    const endDate = endOfMonth(now);
+
+    if (timeRange === 'all') {
+        if (allRevenueHistory.length === 0) return [];
+        startDate = allRevenueHistory.reduce((earliest, item) => item.monthDate < earliest ? item.monthDate : earliest, new Date());
+    } else {
+        const monthsToSubtract = { '3m': 3, '6m': 6, '12m': 12 }[timeRange];
+        startDate = startOfMonth(subMonths(now, monthsToSubtract - 1));
     }
 
-    let filteredData = allRevenueHistory;
+    const revenueMap = new Map<string, number>();
+    allRevenueHistory.forEach(item => {
+        const monthKey = format(item.monthDate, 'yyyy-MM');
+        revenueMap.set(monthKey, item.revenue);
+    });
 
-    if (timeRange !== 'all') {
-      const now = new Date();
-      const monthsToSubtract = {
-        '3m': 3,
-        '6m': 6,
-        '12m': 12,
-      }[timeRange];
-      
-      // Corrected cutoff date logic
-      // To get the last 'X' months including the current one, we subtract 'X-1' and take the start of that month.
-      const cutoffDate = startOfMonth(subMonths(now, monthsToSubtract - 1));
-      
-      filteredData = allRevenueHistory.filter(item => item.monthDate >= cutoffDate);
+    const chartData = [];
+    let currentMonth = startDate;
+    let safetyCounter = 0; // Avoid infinite loops
+    while (currentMonth <= endDate && safetyCounter < 240) { // Limit to 20 years
+        const monthKey = format(currentMonth, 'yyyy-MM');
+        chartData.push({
+            month: format(currentMonth, 'MMM yy'),
+            revenue: revenueMap.get(monthKey) || 0,
+        });
+        currentMonth = addMonths(currentMonth, 1);
+        safetyCounter++;
     }
     
-    // Sort ascending (oldest to newest) for the chart's x-axis
-    return filteredData
-      .sort((a, b) => a.monthDate.getTime() - b.monthDate.getTime())
-      .map(item => ({
-        month: format(item.monthDate, 'MMM yy'),
-        revenue: item.revenue,
-      }));
+    return chartData;
   }, [allRevenueHistory, isLoading, timeRange]);
 
   const tableData = React.useMemo(() => {
@@ -209,12 +215,6 @@ export default function RevenueHistoryPage() {
             <ChartContainer config={revenueChartConfig} className="min-h-[200px] w-full aspect-video">
               <ResponsiveContainer width="100%" height={300}>
                 <AreaChart data={graphData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
-                  <defs>
-                    <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="var(--color-revenue)" stopOpacity={0.8}/>
-                      <stop offset="95%" stopColor="var(--color-revenue)" stopOpacity={0.1}/>
-                    </linearGradient>
-                  </defs>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} />
                   <XAxis dataKey="month" tickLine={false} axisLine={false} tickMargin={8} />
                   <YAxis
@@ -228,7 +228,7 @@ export default function RevenueHistoryPage() {
                     cursor={{ fill: 'hsl(var(--muted))', stroke: 'var(--color-revenue)', strokeWidth: 1, radius: 4 }}
                     content={<ChartTooltipContent indicator="dot" formatter={(value) => `Rs. ${Number(value).toLocaleString('en-IN')}`} />}
                   />
-                  <Area type="linear" dataKey="revenue" stroke="var(--color-revenue)" strokeWidth={2} fillOpacity={1} fill="url(#colorRevenue)" />
+                  <Area type="linear" dataKey="revenue" stroke="var(--color-revenue)" strokeWidth={2} fill="var(--color-revenue)" fillOpacity={0.3} />
                 </AreaChart>
               </ResponsiveContainer>
             </ChartContainer>
