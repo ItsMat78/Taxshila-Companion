@@ -29,7 +29,13 @@ import { Loader2, TrendingUp, History, IndianRupee } from 'lucide-react';
 import { getMonthlyRevenueHistory, type MonthlyRevenueData } from '@/services/student-service';
 import { useToast } from '@/hooks/use-toast';
 import { format, parse, compareDesc, subMonths, isAfter } from 'date-fns';
-import { Button } from '@/components/ui/button';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { cn } from '@/lib/utils';
 
 const revenueChartConfig = {
@@ -178,18 +184,17 @@ export default function RevenueHistoryPage() {
               </CardTitle>
               <CardDescription className="mt-1">Visual comparison of monthly revenue.</CardDescription>
             </div>
-            <div className="flex items-center gap-2">
-              {(['3m', '6m', '12m', 'all'] as TimeRange[]).map((range) => (
-                <Button
-                  key={range}
-                  variant={timeRange === range ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setTimeRange(range)}
-                >
-                  {range === 'all' ? 'All Time' : `Last ${range.replace('m', 'M')}`}
-                </Button>
-              ))}
-            </div>
+            <Select value={timeRange} onValueChange={(value) => setTimeRange(value as TimeRange)}>
+              <SelectTrigger className="w-full sm:w-[180px]">
+                <SelectValue placeholder="Select time range" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="3m">Last 3 Months</SelectItem>
+                <SelectItem value="6m">Last 6 Months</SelectItem>
+                <SelectItem value="12m">Last 12 Months</SelectItem>
+                <SelectItem value="all">All Time</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </CardHeader>
         <CardContent>
@@ -220,7 +225,7 @@ export default function RevenueHistoryPage() {
                     cursor={{ fill: 'hsl(var(--muted))', stroke: 'var(--color-revenue)', strokeWidth: 1, radius: 4 }}
                     content={<ChartTooltipContent indicator="dot" formatter={(value) => `Rs. ${Number(value).toLocaleString('en-IN')}`} />}
                   />
-                  <Area type="monotone" dataKey="revenue" stroke="var(--color-revenue)" strokeWidth={2} fillOpacity={1} fill="url(#colorRevenue)" />
+                  <Area type="linear" dataKey="revenue" stroke="var(--color-revenue)" strokeWidth={2} fillOpacity={1} fill="url(#colorRevenue)" />
                 </AreaChart>
               </ResponsiveContainer>
             </ChartContainer>
