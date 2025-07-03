@@ -1612,6 +1612,7 @@ export interface InsightsData {
   totalActiveStudents: number;
   newStudentsThisMonth: number;
   totalLeftStudents: number;
+  feesDueCount: number;
   peakHour: string;
   averageSessionDurationHours: number;
   shiftCounts: { morning: number; evening: number; fullday: number; };
@@ -1627,13 +1628,15 @@ export async function getInsightsData(): Promise<InsightsData> {
   const studentMap = new Map<string, Student>();
   activeStudents.forEach(s => studentMap.set(s.studentId, s));
 
-  // KPI: Total Active, New, and Left Students
+  // KPI: Total Active, New, Left Students and Fees Due
   const totalActiveStudents = activeStudents.length;
   const totalLeftStudents = allStudents.filter(s => s.activityStatus === 'Left').length;
-  const thirtyDaysAgo = subDays(new Date(), 30);
+  const feesDueCount = activeStudents.filter(s => s.feeStatus === 'Due' || s.feeStatus === 'Overdue').length;
+
+  const currentMonthStart = startOfMonth(new Date());
   const newStudentsThisMonth = allStudents.filter(s => {
       try {
-          return s.registrationDate && isValid(parseISO(s.registrationDate)) && isAfter(parseISO(s.registrationDate), thirtyDaysAgo);
+          return s.registrationDate && isValid(parseISO(s.registrationDate)) && isAfter(parseISO(s.registrationDate), currentMonthStart);
       } catch { return false; }
   }).length;
 
@@ -1725,6 +1728,7 @@ export async function getInsightsData(): Promise<InsightsData> {
     totalActiveStudents,
     newStudentsThisMonth,
     totalLeftStudents,
+    feesDueCount,
     peakHour,
     averageSessionDurationHours,
     shiftCounts,
