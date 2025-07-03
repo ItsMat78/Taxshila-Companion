@@ -27,7 +27,7 @@ import {
 } from '@/lib/firebase';
 import type { Student, Shift, FeeStatus, PaymentRecord, ActivityStatus, AttendanceRecord, FeeStructure, AttendanceImportData, PaymentImportData } from '@/types/student';
 import type { FeedbackItem, FeedbackType, FeedbackStatus, AlertItem } from '@/types/communication';
-import { format, parseISO, differenceInDays, isPast, addMonths, subHours, subMinutes, startOfDay, endOfDay, isValid, differenceInMilliseconds, startOfMonth, endOfMonth, isWithinInterval, subMonths, getHours, getMinutes, compareDesc, getYear, getMonth, setHours, setMinutes, setSeconds, subDays, isToday, isAfter } from 'date-fns';
+import { format, parseISO, differenceInDays, isPast, addMonths, subHours, subMinutes, startOfDay, endOfDay, isValid, differenceInMilliseconds, startOfMonth, endOfMonth, isWithinInterval, subMonths, getHours, getMinutes, compareDesc, getYear, getMonth, setHours, setMinutes, setSeconds, subDays, isToday, isAfter, addDays } from 'date-fns';
 import { ALL_SEAT_NUMBERS } from '@/config/nav';
 
 // --- Collections ---
@@ -206,12 +206,21 @@ async function applyAutomaticStatusUpdates(studentData: Student): Promise<Studen
         if (studentData.feeStatus !== 'Overdue') {
           updatesToCommit.feeStatus = 'Overdue';
         }
-      } else if (daysOverdue >= 0) { // It can be `daysOverdue >= 0 && daysOverdue <= 5`
+      } else { // It can be `daysOverdue >= 0 && daysOverdue <= 5`
         // It's now 'Due'.
         if (studentData.feeStatus !== 'Due') {
           updatesToCommit.feeStatus = 'Due';
         }
       }
+    } else {
+        // Due date is in the future, so status should be 'Paid'.
+        if (studentData.feeStatus !== 'Paid') {
+            updatesToCommit.feeStatus = 'Paid';
+            // Also ensure amountDue is 'Rs. 0' if they are paid up
+            if (studentData.amountDue !== 'Rs. 0') {
+                updatesToCommit.amountDue = 'Rs. 0';
+            }
+        }
     }
   }
 
@@ -252,11 +261,11 @@ async function applyAutomaticStatusUpdates(studentData: Student): Promise<Studen
 export async function getAllStudents(): Promise<Student[]> {
   const q = query(collection(db, STUDENTS_COLLECTION));
   const querySnapshot = await getDocs(q);
-  let studentsList: Student[] = [];
+  const studentsList: Student[] = [];
   querySnapshot.forEach((docSnap) => {
     studentsList.push(studentFromDoc(docSnap));
   });
-  studentsList = await Promise.all(studentsList.map(s => applyAutomaticStatusUpdates(s)));
+  // Removed automatic status check for performance. It will now be done on single-student reads.
   return studentsList;
 }
 
@@ -267,6 +276,7 @@ export async function getStudentByCustomId(studentId: string): Promise<Student |
     return undefined;
   }
   const student = studentFromDoc(querySnapshot.docs[0]);
+  // Apply status check here for on-demand accuracy.
   return applyAutomaticStatusUpdates(student);
 }
 export const getStudentById = getStudentByCustomId;
@@ -279,6 +289,7 @@ export async function getStudentByEmail(email: string): Promise<Student | undefi
     return undefined;
   }
   const student = studentFromDoc(querySnapshot.docs[0]);
+  // Apply status check here for on-demand accuracy.
   return applyAutomaticStatusUpdates(student);
 }
 
@@ -295,6 +306,7 @@ export async function getStudentByIdentifier(identifier: string): Promise<Studen
       student = studentFromDoc(querySnapshot.docs[0]);
     }
   }
+  // Apply status check here for on-demand accuracy.
   return student ? applyAutomaticStatusUpdates(student) : undefined;
 }
 
@@ -433,6 +445,57 @@ export async function updateStudent(customStudentId: string, studentUpdateData: 
   delete payload.studentId;
   delete payload.id;
 
+  // Pro-rata fee calculation for shift changes
+  const isChangingShift = studentUpdateData.shift && studentUpdateData.shift !== studentToUpdate.shift;
+  if (isChangingShift) {
+    const fees = await getFeeStructure();
+    const newShift = studentUpdateData.shift!;
+    const oldShift = studentToUpdate.shift;
+
+    const getFeeForShift = (shift: Shift) => {
+        switch (shift) {
+            case "morning": return fees.morningFee;
+            case "evening": return fees.eveningFee;
+            case "fullday": return fees.fullDayFee;
+            default: return 0;
+        }
+    };
+
+    const oldShiftFee = getFeeForShift(oldShift);
+    const newShiftFee = getFeeForShift(newShift);
+
+    // Proration logic: Only apply if student is currently 'Paid' and their due date is in the future.
+    if (studentToUpdate.feeStatus === 'Paid' && studentToUpdate.nextDueDate && isAfter(parseISO(studentToUpdate.nextDueDate), new Date())) {
+        const today = new Date();
+        const nextDueDate = parseISO(studentToUpdate.nextDueDate);
+        
+        const daysRemaining = differenceInDays(nextDueDate, today);
+        
+        if (daysRemaining > 0) {
+            const oldCostPerDay = oldShiftFee > 0 ? oldShiftFee / 30 : 0; // Assuming 30-day month
+            const remainingCredit = daysRemaining * oldCostPerDay;
+            
+            const newCostPerDay = newShiftFee > 0 ? newShiftFee / 30 : 0;
+            const newDurationInDays = newCostPerDay > 0 ? Math.floor(remainingCredit / newCostPerDay) : 0;
+            
+            const newNextDueDate = addDays(today, newDurationInDays);
+            
+            payload.nextDueDate = Timestamp.fromDate(newNextDueDate);
+            payload.feeStatus = 'Paid';
+            payload.amountDue = 'Rs. 0';
+        } else {
+            // Due date is past, but status was somehow 'Paid'. Treat as due for new shift.
+            payload.feeStatus = 'Due';
+            payload.amountDue = `Rs. ${newShiftFee}`;
+        }
+    } else {
+        // If student is not in a paid period (e.g., they are 'Due' or 'Overdue'), just update the amount due for the new shift.
+        payload.feeStatus = 'Due';
+        payload.amountDue = `Rs. ${newShiftFee}`;
+    }
+  }
+
+
   if (payload.registrationDate && typeof payload.registrationDate === 'string') {
     payload.registrationDate = Timestamp.fromDate(parseISO(payload.registrationDate));
   }
@@ -441,10 +504,13 @@ export async function updateStudent(customStudentId: string, studentUpdateData: 
   } else if (payload.hasOwnProperty('lastPaymentDate') && payload.lastPaymentDate === undefined) {
     payload.lastPaymentDate = null;
   }
-  if (payload.nextDueDate && typeof payload.nextDueDate === 'string') {
-    payload.nextDueDate = Timestamp.fromDate(parseISO(payload.nextDueDate));
-  } else if (payload.hasOwnProperty('nextDueDate') && payload.nextDueDate === undefined) {
-    payload.nextDueDate = null;
+  // Avoid overriding prorated nextDueDate if it was set
+  if (!isChangingShift && payload.nextDueDate) {
+    if (typeof payload.nextDueDate === 'string') {
+        payload.nextDueDate = Timestamp.fromDate(parseISO(payload.nextDueDate));
+    } else if (payload.hasOwnProperty('nextDueDate') && payload.nextDueDate === undefined) {
+        payload.nextDueDate = null;
+    }
   }
   if (payload.paymentHistory) {
     payload.paymentHistory = studentUpdateData.paymentHistory?.map(p => ({
@@ -468,56 +534,6 @@ export async function updateStudent(customStudentId: string, studentUpdateData: 
 
   const newShift = studentUpdateData.shift || studentToUpdate.shift;
   const newSeatNumber = studentUpdateData.seatNumber !== undefined ? studentUpdateData.seatNumber : studentToUpdate.seatNumber;
-
-  if (studentUpdateData.shift && studentUpdateData.shift !== studentToUpdate.shift) {
-    // Shift has changed, recalculate amountDue
-    const fees = await getFeeStructure();
-    let amountDueForShift: string;
-    switch (studentUpdateData.shift) {
-      case "morning": amountDueForShift = `Rs. ${fees.morningFee}`; break;
-      case "evening": amountDueForShift = `Rs. ${fees.eveningFee}`; break;
-      case "fullday": amountDueForShift = `Rs. ${fees.fullDayFee}`; break;
-      default: amountDueForShift = "Rs. 0";
-    }
-
-    payload.amountDue = amountDueForShift;
-    payload.feeStatus = 'Due'; // Reset fee status since shift changed
-    //TODO: Add logic to handle existing payment. If student already paid for the month, set amountDue to "Rs. 0"
-        // 1. Get the current month and year
-        const now = new Date();
-        const currentYear = now.getFullYear();
-        const currentMonth = now.getMonth();
-    
-        // 2. Check if there's a payment in the current month
-        const currentMonthPayment = studentToUpdate.paymentHistory?.find(payment => {
-            const paymentDate = parseISO(payment.date);
-            return paymentDate.getFullYear() === currentYear && paymentDate.getMonth() === currentMonth;
-        });
-    
-        if (currentMonthPayment) {
-            // 3. If payment exists, check if it covers the new shift fee
-            const amountPaid = parseInt(currentMonthPayment.amount.replace('Rs. ', ''), 10);
-            let newShiftFee: number;
-    
-            switch (studentUpdateData.shift) {
-                case "morning": newShiftFee = fees.morningFee; break;
-                case "evening": newShiftFee = fees.eveningFee; break;
-                case "fullday": newShiftFee = fees.fullDayFee; break;
-                default: newShiftFee = 0;
-            }
-    
-            if (amountPaid >= newShiftFee) {
-                // Payment covers the new fee
-                payload.amountDue = "Rs. 0";
-                payload.feeStatus = "Paid";
-            } else {
-                // Payment doesn't cover the new fee, calculate remaining balance
-                const remainingBalance = newShiftFee - amountPaid;
-                payload.amountDue = `Rs. ${remainingBalance}`;
-            }
-        }
-    }
-
 
   if (newSeatNumber && (newSeatNumber !== studentToUpdate.seatNumber || newShift !== studentToUpdate.shift || (studentUpdateData.activityStatus === 'Active' && studentToUpdate.activityStatus === 'Left'))) {
       const allCurrentStudents = await getAllStudents();
@@ -796,7 +812,7 @@ export async function recordStudentPayment(
   };
 
   let baseDateForCalculation: Date;
-  if (studentToUpdate.nextDueDate && isValid(parseISO(studentToUpdate.nextDueDate))) {
+  if (studentToUpdate.nextDueDate && isValid(parseISO(studentToUpdate.nextDueDate)) && isAfter(parseISO(studentToUpdate.nextDueDate), today)) {
     baseDateForCalculation = parseISO(studentToUpdate.nextDueDate);
   } else {
     baseDateForCalculation = today;
