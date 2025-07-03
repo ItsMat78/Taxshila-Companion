@@ -52,12 +52,6 @@ export const mainNav: NavItem[] = [
     icon: LayoutDashboard,
     roles: ['admin'],
   },
-   {
-    title: 'Insights',
-    href: '/admin/insights',
-    icon: TrendingUp,
-    roles: ['admin'],
-  },
   {
     title: 'Manage Students',
     href: '#',
@@ -155,6 +149,12 @@ export const mainNav: NavItem[] = [
         roles: ['admin'],
       },
     ]
+  },
+  {
+    title: 'Insights',
+    href: '/admin/insights',
+    icon: TrendingUp,
+    roles: ['admin'],
   },
   {
     title: 'Data Management',

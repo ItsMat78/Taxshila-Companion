@@ -10,7 +10,7 @@ import {
   CardHeader,
   CardTitle,
   CardFooter
-} from '@/components/ui/card';
+} from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -26,7 +26,7 @@ import {
   type ChartConfig,
 } from "@/components/ui/chart";
 import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip as RechartsTooltip, Legend } from 'recharts';
-import { Loader2, TrendingUp, Clock, Users, PieChart as PieChartIcon, AlertOctagon, Sparkles, UserX } from 'lucide-react';
+import { Loader2, TrendingUp, Clock, Users, PieChart as PieChartIcon, UserPlus, Sparkles, UserX, UserMinus } from 'lucide-react';
 import { getInsightsData, type InsightsData, getAllFeedback } from '@/services/student-service';
 import { summarizeFeedback, type FeedbackSummaryInput, type FeedbackSummaryOutput } from '@/ai/flows/feedback-summary-flow';
 import { useToast } from '@/hooks/use-toast';
@@ -40,19 +40,13 @@ const hourlyChartConfig = {
   },
 } satisfies ChartConfig;
 
-const shiftChartConfig = {
-  morning: { label: "Morning", color: "hsl(var(--chart-2))" },
-  evening: { label: "Evening", color: "hsl(var(--chart-3))" },
-  fullday: { label: "Full Day", color: "hsl(var(--chart-4))" },
-} satisfies ChartConfig;
-
 const RADIAN = Math.PI / 180;
 const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent, index, payload }: any) => {
   const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
   const x = cx + radius * Math.cos(-midAngle * RADIAN);
   const y = cy + radius * Math.sin(-midAngle * RADIAN);
 
-  if (percent < 0.05) return null; // Don't render label if slice is too small
+  if (percent < 0.05) return null;
 
   return (
     <text x={x} y={y} fill="white" textAnchor="middle" dominantBaseline="central" className="text-xs font-bold">
@@ -115,9 +109,9 @@ export default function InsightsPage() {
   const shiftData = React.useMemo(() => {
     if (!insights) return [];
     return [
-      { name: 'Morning', value: insights.shiftCounts.morning, fill: 'var(--color-morning)' },
-      { name: 'Evening', value: insights.shiftCounts.evening, fill: 'var(--color-evening)' },
-      { name: 'Full Day', value: insights.shiftCounts.fullday, fill: 'var(--color-fullday)' },
+      { name: 'Morning', value: insights.shiftCounts.morning, fill: 'rgb(254 215 170)' }, // tailwind orange-200
+      { name: 'Evening', value: insights.shiftCounts.evening, fill: 'rgb(221 214 254)' }, // tailwind purple-200
+      { name: 'Full Day', value: insights.shiftCounts.fullday, fill: 'rgb(253 230 159)' }, // tailwind yellow-200
     ].filter(item => item.value > 0);
   }, [insights]);
 
@@ -139,18 +133,7 @@ export default function InsightsPage() {
     <>
       <PageTitle title="Library Insights" description="Data-driven overview of your study hall's activity and performance." />
       
-      {/* KPI Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 mb-6">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Peak Check-in Hour</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{insights.peakHour}</div>
-            <p className="text-xs text-muted-foreground">Busiest time for members arriving</p>
-          </CardContent>
-        </Card>
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 mb-6">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Active Students</CardTitle>
@@ -158,7 +141,27 @@ export default function InsightsPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{insights.totalActiveStudents}</div>
-            <p className="text-xs text-muted-foreground">Currently registered & active members</p>
+            <p className="text-xs text-muted-foreground">Currently registered & active</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">New Students (30d)</CardTitle>
+            <UserPlus className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{insights.newStudentsThisMonth}</div>
+            <p className="text-xs text-muted-foreground">New admissions in last 30 days</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Left Students</CardTitle>
+            <UserMinus className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{insights.totalLeftStudents}</div>
+            <p className="text-xs text-muted-foreground">Students marked as 'Left'</p>
           </CardContent>
         </Card>
         <Card>
@@ -168,7 +171,17 @@ export default function InsightsPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{insights.averageSessionDurationHours.toFixed(1)} hours</div>
-            <p className="text-xs text-muted-foreground">Average time spent per check-in</p>
+            <p className="text-xs text-muted-foreground">For completed sessions</p>
+          </CardContent>
+        </Card>
+         <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Peak Check-in Hour</CardTitle>
+            <Clock className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{insights.peakHour}</div>
+            <p className="text-xs text-muted-foreground">Busiest time for member arrivals</p>
           </CardContent>
         </Card>
       </div>
@@ -200,7 +213,7 @@ export default function InsightsPage() {
           </CardHeader>
           <CardContent className="flex justify-center">
             {shiftData.length > 0 ? (
-            <ChartContainer config={shiftChartConfig} className="min-h-[250px] w-full aspect-square">
+            <ChartContainer config={{}} className="min-h-[250px] w-full aspect-square">
               <ResponsiveContainer width="100%" height={250}>
                 <PieChart>
                   <Pie
@@ -211,6 +224,7 @@ export default function InsightsPage() {
                     label={renderCustomizedLabel}
                     outerRadius={100}
                     dataKey="value"
+                    nameKey="name"
                   >
                     {shiftData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.fill} />

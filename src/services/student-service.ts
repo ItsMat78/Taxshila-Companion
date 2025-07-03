@@ -25,7 +25,7 @@ import {
 } from '@/lib/firebase';
 import type { Student, Shift, FeeStatus, PaymentRecord, ActivityStatus, AttendanceRecord, FeeStructure, AttendanceImportData, PaymentImportData } from '@/types/student';
 import type { FeedbackItem, FeedbackType, FeedbackStatus, AlertItem } from '@/types/communication';
-import { format, parseISO, differenceInDays, isPast, addMonths, subHours, subMinutes, startOfDay, endOfDay, isValid, differenceInMilliseconds, startOfMonth, endOfMonth, isWithinInterval, subMonths, getHours, getMinutes, compareDesc, getYear, getMonth, setHours, setMinutes, setSeconds, subDays } from 'date-fns';
+import { format, parseISO, differenceInDays, isPast, addMonths, subHours, subMinutes, startOfDay, endOfDay, isValid, differenceInMilliseconds, startOfMonth, endOfMonth, isWithinInterval, subMonths, getHours, getMinutes, compareDesc, getYear, getMonth, setHours, setMinutes, setSeconds, subDays, isToday, isAfter } from 'date-fns';
 
 // --- Collections ---
 const STUDENTS_COLLECTION = "students";
@@ -1610,6 +1610,8 @@ export async function removeAdminFCMToken(adminFirestoreId: string, tokenToRemov
 
 export interface InsightsData {
   totalActiveStudents: number;
+  newStudentsThisMonth: number;
+  totalLeftStudents: number;
   peakHour: string;
   averageSessionDurationHours: number;
   shiftCounts: { morning: number; evening: number; fullday: number; };
@@ -1622,9 +1624,19 @@ export async function getInsightsData(): Promise<InsightsData> {
   const allAttendance = await getAllAttendanceRecords();
   
   const activeStudents = allStudents.filter(s => s.activityStatus === 'Active');
+  const studentMap = new Map<string, Student>();
+  activeStudents.forEach(s => studentMap.set(s.studentId, s));
 
-  // Total Active Students
+  // KPI: Total Active, New, and Left Students
   const totalActiveStudents = activeStudents.length;
+  const totalLeftStudents = allStudents.filter(s => s.activityStatus === 'Left').length;
+  const thirtyDaysAgo = subDays(new Date(), 30);
+  const newStudentsThisMonth = allStudents.filter(s => {
+      try {
+          return s.registrationDate && isValid(parseISO(s.registrationDate)) && isAfter(parseISO(s.registrationDate), thirtyDaysAgo);
+      } catch { return false; }
+  }).length;
+
 
   // Shift Counts
   const shiftCounts = activeStudents.reduce((acc, student) => {
@@ -1638,12 +1650,34 @@ export async function getInsightsData(): Promise<InsightsData> {
   let completedSessions = 0;
 
   allAttendance.forEach(rec => {
-    const checkInHour = getHours(parseISO(rec.checkInTime));
+    const checkInTime = parseISO(rec.checkInTime);
+    if (!isValid(checkInTime)) return;
+    
+    const checkInHour = getHours(checkInTime);
     hourlyCheckins[checkInHour].checkIns++;
     
+    const student = studentMap.get(rec.studentId);
+    if (!student) return;
+
+    let effectiveCheckOutTime: Date | null = null;
+
     if (rec.checkOutTime) {
-      const duration = differenceInMilliseconds(parseISO(rec.checkOutTime), parseISO(rec.checkInTime));
-      if (duration > 0 && duration < 1000 * 60 * 60 * 16) { // Filter out invalid durations
+      effectiveCheckOutTime = parseISO(rec.checkOutTime);
+    } else {
+      if (!isToday(checkInTime)) {
+        let shiftEndTime = new Date(checkInTime);
+        if (student.shift === "morning") {
+          shiftEndTime.setHours(14, 0, 0, 0); // 2 PM
+        } else { // evening or fullday
+          shiftEndTime.setHours(21, 30, 0, 0); // 9:30 PM
+        }
+        effectiveCheckOutTime = shiftEndTime;
+      }
+    }
+
+    if (effectiveCheckOutTime && isValid(effectiveCheckOutTime)) {
+      const duration = differenceInMilliseconds(effectiveCheckOutTime, checkInTime);
+      if (duration > (1000 * 60 * 5) && duration < (1000 * 60 * 60 * 16)) {
         totalSessionMillis += duration;
         completedSessions++;
       }
@@ -1661,6 +1695,7 @@ export async function getInsightsData(): Promise<InsightsData> {
   const lastSeenMap = new Map<string, Date>();
   allAttendance.forEach(rec => {
     const checkInDate = parseISO(rec.checkInTime);
+    if (!isValid(checkInDate)) return;
     const existing = lastSeenMap.get(rec.studentId);
     if (!existing || checkInDate > existing) {
       lastSeenMap.set(rec.studentId, checkInDate);
@@ -1688,6 +1723,8 @@ export async function getInsightsData(): Promise<InsightsData> {
 
   return {
     totalActiveStudents,
+    newStudentsThisMonth,
+    totalLeftStudents,
     peakHour,
     averageSessionDurationHours,
     shiftCounts,
