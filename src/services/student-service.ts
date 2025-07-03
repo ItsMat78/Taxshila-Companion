@@ -1,4 +1,6 @@
 
+"use server";
+
 import {
   db,
   collection,
@@ -26,6 +28,7 @@ import {
 import type { Student, Shift, FeeStatus, PaymentRecord, ActivityStatus, AttendanceRecord, FeeStructure, AttendanceImportData, PaymentImportData } from '@/types/student';
 import type { FeedbackItem, FeedbackType, FeedbackStatus, AlertItem } from '@/types/communication';
 import { format, parseISO, differenceInDays, isPast, addMonths, subHours, subMinutes, startOfDay, endOfDay, isValid, differenceInMilliseconds, startOfMonth, endOfMonth, isWithinInterval, subMonths, getHours, getMinutes, compareDesc, getYear, getMonth, setHours, setMinutes, setSeconds, subDays, isToday, isAfter } from 'date-fns';
+import { ALL_SEAT_NUMBERS } from '@/config/nav';
 
 // --- Collections ---
 const STUDENTS_COLLECTION = "students";
@@ -47,12 +50,6 @@ interface AdminUserFirestore {
   // Auth still relies on hardcoded passwords for now.
 }
 
-
-export const ALL_SEAT_NUMBERS: string[] = [];
-for (let i = 10; i <= 84; i++) {
-    ALL_SEAT_NUMBERS.push(String(i));
-}
-ALL_SEAT_NUMBERS.sort((a, b) => parseInt(a) - parseInt(b));
 
 // --- Helper to convert Firestore Timestamps in student data ---
 const studentFromDoc = (docSnapshot: any): Student => {
@@ -1618,6 +1615,7 @@ export interface InsightsData {
   shiftCounts: { morning: number; evening: number; fullday: number; };
   hourlyCheckins: { hour: string; checkIns: number; }[];
   inactiveStudents: { studentId: string; name: string; lastSeen: string; daysSinceLastSeen: number; feeStatus: FeeStatus }[];
+  monthlyAdmissionsHistory: { month: string; count: number; }[];
 }
 
 export async function getInsightsData(): Promise<InsightsData> {
@@ -1705,11 +1703,11 @@ export async function getInsightsData(): Promise<InsightsData> {
     }
   });
 
-  const fourteenDaysAgo = subDays(new Date(), 14);
+  const fiveDaysAgo = subDays(new Date(), 5);
   const inactiveStudents = activeStudents
     .map(student => {
       const lastSeenDate = lastSeenMap.get(student.studentId);
-      if (!lastSeenDate || lastSeenDate < fourteenDaysAgo) {
+      if (!lastSeenDate || lastSeenDate < fiveDaysAgo) {
         return {
           studentId: student.studentId,
           name: student.name,
@@ -1723,6 +1721,27 @@ export async function getInsightsData(): Promise<InsightsData> {
     .filter((s): s is NonNullable<typeof s> => s !== null)
     .sort((a, b) => b.daysSinceLastSeen - a.daysSinceLastSeen);
 
+  // New admissions history
+  const monthlyAdmissions: Record<string, number> = {};
+  allStudents.forEach(s => {
+    if (s.registrationDate && isValid(parseISO(s.registrationDate))) {
+      const monthKey = format(parseISO(s.registrationDate), 'yyyy-MM');
+      monthlyAdmissions[monthKey] = (monthlyAdmissions[monthKey] || 0) + 1;
+    }
+  });
+
+  const monthlyAdmissionsHistory = Object.entries(monthlyAdmissions)
+    .map(([monthKey, count]) => {
+      const [year, monthNum] = monthKey.split('-').map(Number);
+      return {
+        month: format(new Date(year, monthNum - 1), 'MMMM yyyy'),
+        count: count,
+        date: new Date(year, monthNum - 1), // for sorting
+      };
+    })
+    .sort((a, b) => b.date.getTime() - a.date.getTime())
+    .map(({ month, count }) => ({ month, count }));
+
 
   return {
     totalActiveStudents,
@@ -1734,6 +1753,7 @@ export async function getInsightsData(): Promise<InsightsData> {
     shiftCounts,
     hourlyCheckins,
     inactiveStudents,
+    monthlyAdmissionsHistory,
   };
 }
 

@@ -20,6 +20,13 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
@@ -55,6 +62,45 @@ const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, per
   );
 };
 
+function AdmissionsHistoryDialog({ isOpen, onClose, history }: {
+  isOpen: boolean;
+  onClose: () => void;
+  history: { month: string; count: number; }[];
+}) {
+  if (!history) return null;
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Monthly Admissions History</DialogTitle>
+          <DialogDescription>
+            A history of new student registrations per month.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="max-h-[60vh] overflow-y-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Month</TableHead>
+                <TableHead className="text-right">New Students</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {history.map((item) => (
+                <TableRow key={item.month}>
+                  <TableCell>{item.month}</TableCell>
+                  <TableCell className="text-right">{item.count}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 
 export default function InsightsPage() {
   const { toast } = useToast();
@@ -63,6 +109,8 @@ export default function InsightsPage() {
   
   const [feedbackSummary, setFeedbackSummary] = React.useState<FeedbackSummaryOutput | null>(null);
   const [isSummarizing, setIsSummarizing] = React.useState(false);
+  const [isAdmissionsHistoryOpen, setIsAdmissionsHistoryOpen] = React.useState(false);
+
 
   React.useEffect(() => {
     const fetchData = async () => {
@@ -156,16 +204,18 @@ export default function InsightsPage() {
             </CardContent>
           </Card>
         </Link>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">New Students</CardTitle>
-            <UserPlus className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{insights.newStudentsThisMonth}</div>
-            <p className="text-xs text-muted-foreground">New admissions this month</p>
-          </CardContent>
-        </Card>
+        <button onClick={() => setIsAdmissionsHistoryOpen(true)} className="text-left w-full h-full">
+          <Card className="hover:bg-muted/50 transition-colors h-full">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">New Students</CardTitle>
+              <UserPlus className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{insights.newStudentsThisMonth}</div>
+              <p className="text-xs text-muted-foreground">New admissions this month</p>
+            </CardContent>
+          </Card>
+        </button>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Left Students</CardTitle>
@@ -306,7 +356,7 @@ export default function InsightsPage() {
             Potentially Inactive Students
           </CardTitle>
           <CardDescription>
-            Active students who have not checked in for over 14 days.
+            Active students who have not checked in for over 5 days.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -344,6 +394,12 @@ export default function InsightsPage() {
           )}
         </CardContent>
       </Card>
+      
+      <AdmissionsHistoryDialog
+        isOpen={isAdmissionsHistoryOpen}
+        onClose={() => setIsAdmissionsHistoryOpen(false)}
+        history={insights.monthlyAdmissionsHistory || []}
+    />
     </>
   );
 }
