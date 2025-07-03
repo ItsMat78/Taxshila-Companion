@@ -1806,3 +1806,5 @@ declare module '@/types/communication' {
     firestoreId?: string;
   }
 }
+
+    
