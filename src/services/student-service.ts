@@ -1646,7 +1646,11 @@ export async function getInsightsData(): Promise<InsightsData> {
   }, { morning: 0, evening: 0, fullday: 0 });
 
   // Hourly Check-ins & Avg Session Duration
-  const hourlyCheckins = Array(24).fill(0).map((_, i) => ({ hour: `${i}:00`, checkIns: 0 }));
+  const hourlyCheckinsData: { [hour: number]: number } = {};
+  for (let i = 7; i <= 22; i++) { // From 7am to 10pm (22:00)
+    hourlyCheckinsData[i] = 0;
+  }
+  
   let totalSessionMillis = 0;
   let completedSessions = 0;
 
@@ -1655,7 +1659,9 @@ export async function getInsightsData(): Promise<InsightsData> {
     if (!isValid(checkInTime)) return;
     
     const checkInHour = getHours(checkInTime);
-    hourlyCheckins[checkInHour].checkIns++;
+    if (checkInHour >= 7 && checkInHour <= 22) {
+      hourlyCheckinsData[checkInHour]++;
+    }
     
     const student = studentMap.get(rec.studentId);
     if (!student) return;
@@ -1684,10 +1690,21 @@ export async function getInsightsData(): Promise<InsightsData> {
       }
     }
   });
+  
+  const hourlyCheckins = Object.entries(hourlyCheckinsData).map(([hour, count]) => ({
+    hour: `${hour}:00`,
+    checkIns: count,
+  }));
 
   // Peak Hour
-  const peakHourIndex = hourlyCheckins.reduce((maxIndex, item, i, arr) => item.checkIns > arr[maxIndex].checkIns ? i : maxIndex, 0);
-  const peakHour = `${peakHourIndex}:00 - ${peakHourIndex + 1}:00`;
+  let peakHour = "N/A";
+  if (hourlyCheckins.length > 0) {
+    const peakHourItem = hourlyCheckins.reduce((maxItem, currentItem) => {
+        return currentItem.checkIns > maxItem.checkIns ? currentItem : maxItem;
+    }, hourlyCheckins[0]);
+    const hourNum = parseInt(peakHourItem.hour.split(':')[0]);
+    peakHour = `${hourNum}:00 - ${hourNum + 1}:00`;
+  }
   
   // Average Session Duration
   const averageSessionDurationHours = completedSessions > 0 ? (totalSessionMillis / completedSessions) / (1000 * 60 * 60) : 0;
