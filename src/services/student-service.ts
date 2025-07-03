@@ -25,7 +25,7 @@ import {
 } from '@/lib/firebase';
 import type { Student, Shift, FeeStatus, PaymentRecord, ActivityStatus, AttendanceRecord, FeeStructure, AttendanceImportData, PaymentImportData } from '@/types/student';
 import type { FeedbackItem, FeedbackType, FeedbackStatus, AlertItem } from '@/types/communication';
-import { format, parseISO, differenceInDays, isPast, addMonths, subHours, subMinutes, startOfDay, endOfDay, isValid, differenceInMilliseconds, startOfMonth, endOfMonth, isWithinInterval, subMonths, getHours, getMinutes, compareDesc, getYear, getMonth, setHours, setMinutes, setSeconds } from 'date-fns';
+import { format, parseISO, differenceInDays, isPast, addMonths, subHours, subMinutes, startOfDay, endOfDay, isValid, differenceInMilliseconds, startOfMonth, endOfMonth, isWithinInterval, subMonths, getHours, getMinutes, compareDesc, getYear, getMonth, setHours, setMinutes, setSeconds, subDays } from 'date-fns';
 
 // --- Collections ---
 const STUDENTS_COLLECTION = "students";
@@ -1604,6 +1604,96 @@ export async function removeAdminFCMToken(adminFirestoreId: string, tokenToRemov
   } catch (error) {
     console.error("[StudentService] Error removing FCM token for admin:", adminFirestoreId, error);
   }
+}
+
+// --- Insights Service ---
+
+export interface InsightsData {
+  totalActiveStudents: number;
+  peakHour: string;
+  averageSessionDurationHours: number;
+  shiftCounts: { morning: number; evening: number; fullday: number; };
+  hourlyCheckins: { hour: string; checkIns: number; }[];
+  inactiveStudents: { studentId: string; name: string; lastSeen: string; daysSinceLastSeen: number; feeStatus: FeeStatus }[];
+}
+
+export async function getInsightsData(): Promise<InsightsData> {
+  const allStudents = await getAllStudents();
+  const allAttendance = await getAllAttendanceRecords();
+  
+  const activeStudents = allStudents.filter(s => s.activityStatus === 'Active');
+
+  // Total Active Students
+  const totalActiveStudents = activeStudents.length;
+
+  // Shift Counts
+  const shiftCounts = activeStudents.reduce((acc, student) => {
+    acc[student.shift] = (acc[student.shift] || 0) + 1;
+    return acc;
+  }, { morning: 0, evening: 0, fullday: 0 });
+
+  // Hourly Check-ins & Avg Session Duration
+  const hourlyCheckins = Array(24).fill(0).map((_, i) => ({ hour: `${i}:00`, checkIns: 0 }));
+  let totalSessionMillis = 0;
+  let completedSessions = 0;
+
+  allAttendance.forEach(rec => {
+    const checkInHour = getHours(parseISO(rec.checkInTime));
+    hourlyCheckins[checkInHour].checkIns++;
+    
+    if (rec.checkOutTime) {
+      const duration = differenceInMilliseconds(parseISO(rec.checkOutTime), parseISO(rec.checkInTime));
+      if (duration > 0 && duration < 1000 * 60 * 60 * 16) { // Filter out invalid durations
+        totalSessionMillis += duration;
+        completedSessions++;
+      }
+    }
+  });
+
+  // Peak Hour
+  const peakHourIndex = hourlyCheckins.reduce((maxIndex, item, i, arr) => item.checkIns > arr[maxIndex].checkIns ? i : maxIndex, 0);
+  const peakHour = `${peakHourIndex}:00 - ${peakHourIndex + 1}:00`;
+  
+  // Average Session Duration
+  const averageSessionDurationHours = completedSessions > 0 ? (totalSessionMillis / completedSessions) / (1000 * 60 * 60) : 0;
+
+  // Inactive Students
+  const lastSeenMap = new Map<string, Date>();
+  allAttendance.forEach(rec => {
+    const checkInDate = parseISO(rec.checkInTime);
+    const existing = lastSeenMap.get(rec.studentId);
+    if (!existing || checkInDate > existing) {
+      lastSeenMap.set(rec.studentId, checkInDate);
+    }
+  });
+
+  const fourteenDaysAgo = subDays(new Date(), 14);
+  const inactiveStudents = activeStudents
+    .map(student => {
+      const lastSeenDate = lastSeenMap.get(student.studentId);
+      if (!lastSeenDate || lastSeenDate < fourteenDaysAgo) {
+        return {
+          studentId: student.studentId,
+          name: student.name,
+          lastSeen: lastSeenDate ? format(lastSeenDate, 'PP') : 'Never',
+          daysSinceLastSeen: lastSeenDate ? differenceInDays(new Date(), lastSeenDate) : Infinity,
+          feeStatus: student.feeStatus,
+        };
+      }
+      return null;
+    })
+    .filter((s): s is NonNullable<typeof s> => s !== null)
+    .sort((a, b) => b.daysSinceLastSeen - a.daysSinceLastSeen);
+
+
+  return {
+    totalActiveStudents,
+    peakHour,
+    averageSessionDurationHours,
+    shiftCounts,
+    hourlyCheckins,
+    inactiveStudents,
+  };
 }
 
 
