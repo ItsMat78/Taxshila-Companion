@@ -33,6 +33,12 @@ import {
 } from 'lucide-react';
 import type { UserRole } from '@/types/auth';
 
+export const ALL_SEAT_NUMBERS: string[] = [];
+for (let i = 10; i <= 84; i++) {
+    ALL_SEAT_NUMBERS.push(String(i));
+}
+ALL_SEAT_NUMBERS.sort((a, b) => parseInt(a) - parseInt(b));
+
 export type NavItem = {
   title: string;
   href: string;
@@ -149,6 +155,12 @@ export const mainNav: NavItem[] = [
         roles: ['admin'],
       },
     ]
+  },
+  {
+    title: 'Insights',
+    href: '/admin/insights',
+    icon: TrendingUp,
+    roles: ['admin'],
   },
   {
     title: 'Data Management',
