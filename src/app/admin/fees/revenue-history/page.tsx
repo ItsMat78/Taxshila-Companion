@@ -108,44 +108,36 @@ export default function RevenueHistoryPage() {
 
   const graphData = React.useMemo(() => {
     if (isLoading) return [];
-  
+
+    const now = new Date();
+    let startDate;
+    const endDate = endOfMonth(now);
+
+    if (timeRange === 'all') {
+        if (allRevenueHistory.length === 0) return [];
+        startDate = allRevenueHistory.reduce((earliest, item) => item.monthDate < earliest ? item.monthDate : earliest, new Date());
+    } else {
+        const monthsToSubtract = { '3m': 3, '6m': 6, '12m': 12 }[timeRange];
+        startDate = startOfMonth(subMonths(now, monthsToSubtract - 1));
+    }
+
     const revenueMap = new Map<string, number>();
     allRevenueHistory.forEach(item => {
-      const monthKey = format(item.monthDate, 'yyyy-MM');
-      revenueMap.set(monthKey, item.revenue);
+        const monthKey = format(item.monthDate, 'yyyy-MM');
+        revenueMap.set(monthKey, item.revenue);
     });
-  
+
     const chartData = [];
-    const now = new Date();
-  
-    if (timeRange === 'all') {
-      if (allRevenueHistory.length === 0) return [];
-      const earliestDate = allRevenueHistory.reduce((earliest, item) => item.monthDate < earliest ? item.monthDate : earliest, new Date());
-      let currentMonth = startOfMonth(earliestDate);
-      const endDate = endOfMonth(now);
-      
-      let safetyCounter = 0; // Prevent infinite loops
-      while (currentMonth <= endDate && safetyCounter < 240) { // Limit to 20 years
+    let currentMonth = startDate;
+    let safetyCounter = 0; // Avoid infinite loops
+    while (currentMonth <= endDate && safetyCounter < 240) { // Limit to 20 years
         const monthKey = format(currentMonth, 'yyyy-MM');
         chartData.push({
-          month: format(currentMonth, 'MMM yy'),
-          revenue: revenueMap.get(monthKey) || 0,
+            month: format(currentMonth, 'MMM yy'),
+            revenue: revenueMap.get(monthKey) || 0,
         });
         currentMonth = addMonths(currentMonth, 1);
         safetyCounter++;
-      }
-    } else {
-      const monthsCount = { '3m': 3, '6m': 6, '12m': 12 }[timeRange];
-      let currentMonth = startOfMonth(now);
-      for (let i = 0; i < monthsCount; i++) {
-        const monthKey = format(currentMonth, 'yyyy-MM');
-        chartData.push({
-          month: format(currentMonth, 'MMM yy'),
-          revenue: revenueMap.get(monthKey) || 0,
-        });
-        currentMonth = subMonths(currentMonth, 1);
-      }
-      chartData.reverse(); // To get chronological order
     }
     
     return chartData;

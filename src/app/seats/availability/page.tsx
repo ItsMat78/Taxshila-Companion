@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from 'react';
@@ -29,8 +28,7 @@ import { Button } from '@/components/ui/button';
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Armchair, Users, UserCheck, Loader2, Circle, Sunrise, Sunset, Sun, Briefcase, Edit, UserCircle as UserProfileIcon, PhoneIcon } from 'lucide-react';
-import { getAllStudents, getAvailableSeats } from '@/services/student-service';
-import { ALL_SEAT_NUMBERS as serviceAllSeats } from '@/config/nav';
+import { getAllStudents, ALL_SEAT_NUMBERS as serviceAllSeats, getAvailableSeats } from '@/services/student-service';
 import type { Student, Shift } from '@/types/student';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -439,3 +437,5 @@ export default function SeatAvailabilityPage() {
     </>
   );
 }
+
+    
