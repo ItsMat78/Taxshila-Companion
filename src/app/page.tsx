@@ -36,18 +36,12 @@ import {
 import { useAuth } from '@/contexts/auth-context';
 import { useRouter, usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
-import { getAllStudents, getAvailableSeats, getAllAttendanceRecords, calculateMonthlyRevenue } from '@/services/student-service';
-import type { Student, Shift, AttendanceRecord } from '@/types/student';
+import { getAllStudents, getAvailableSeats, getAllAttendanceRecords, calculateMonthlyRevenue, getTodaysActiveAttendanceRecords, processCheckedInStudentsFromSnapshot } from '@/services/student-service';
+import type { Student, Shift, AttendanceRecord, CheckedInStudentInfo } from '@/types/student';
 import type { FeedbackItem } from '@/types/communication';
 import { format, parseISO, isToday, getHours, getMinutes } from 'date-fns';
 import { useNotificationCounts } from '@/hooks/use-notification-counts';
 import { useFinancialCounts } from '@/hooks/use-financial-counts';
-
-interface CheckedInStudentInfo extends Student {
-  checkInTime: string;
-  isOutsideShift: boolean; // Based on check-in time initially, then updated live
-  shift: Shift; // Student's registered shift
-}
 
 const staticAdminActionTilesConfig = [
   { baseTitle: "Manage Students", icon: Users, description: "View, edit student details.", href: "/students/list" },
@@ -79,14 +73,7 @@ function AdminDashboardContent() {
   const [isLoadingCheckedInStudents, setIsLoadingCheckedInStudents] = React.useState(true);
   const [isLoadingRevenue, setIsLoadingRevenue] = React.useState(true);
 
-  const [morningShiftStudentCount, setMorningShiftStudentCount] = React.useState(0);
-  const [eveningShiftStudentCount, setEveningShiftStudentCount] = React.useState(0);
-  const [fullDayShiftStudentCount, setFullDayShiftStudentCount] = React.useState(0);
-
-  const [availableMorningSlotsCount, setAvailableMorningSlotsCount] = React.useState(0);
-  const [availableEveningSlotsCount, setAvailableEveningSlotsCount] = React.useState(0);
-  const [availableFullDaySlotsCount, setAvailableFullDaySlotsCount] = React.useState(0);
-
+  const [allStudents, setAllStudents] = React.useState<Student[]>([]);
   const [baseCheckedInStudents, setBaseCheckedInStudents] = React.useState<CheckedInStudentInfo[]>([]);
   const [liveCheckedInStudents, setLiveCheckedInStudents] = React.useState<CheckedInStudentInfo[]>([]);
   const [showCheckedInDialog, setShowCheckedInDialog] = React.useState(false);
@@ -107,76 +94,26 @@ function AdminDashboardContent() {
       try {
         const [
           allStudentsData,
-          morningAvail,
-          eveningAvail,
-          fulldayAvail,
-          allAttendance,
-          currentMonthRevenue,
+          attendanceSnapshot,
         ] = await Promise.all([
           getAllStudents(),
-          getAvailableSeats('morning'),
-          getAvailableSeats('evening'),
-          getAvailableSeats('fullday'),
-          getAllAttendanceRecords(),
-          calculateMonthlyRevenue(),
+          getTodaysActiveAttendanceRecords(),
         ]);
 
-        const activeStudentsWithSeats = allStudentsData.filter(s => s.activityStatus === "Active" && s.seatNumber);
-        const morningRegistered = activeStudentsWithSeats.filter(s => s.shift === 'morning').length;
-        const eveningRegistered = activeStudentsWithSeats.filter(s => s.shift === 'evening').length;
-        const fulldayRegistered = activeStudentsWithSeats.filter(s => s.shift === 'fullday').length;
+        setAllStudents(allStudentsData);
+        setMonthlyRevenue(calculateMonthlyRevenue(allStudentsData));
 
-        setMorningShiftStudentCount(morningRegistered);
-        setEveningShiftStudentCount(eveningRegistered);
-        setFullDayShiftStudentCount(fulldayRegistered);
-
-        setAvailableMorningSlotsCount(morningAvail.length);
-        setAvailableEveningSlotsCount(eveningAvail.length);
-        setAvailableFullDaySlotsCount(fulldayAvail.length);
-
-        const todayCheckedInRecords = allAttendance.filter(
-          (record) => isToday(parseISO(record.checkInTime)) && !record.checkOutTime
-        );
-
-        const checkedInStudentDetails: CheckedInStudentInfo[] = todayCheckedInRecords
-          .map(record => {
-            const student = allStudentsData.find(s => s.studentId === record.studentId);
-            if (!student) return null;
-
-            let isOutsideAtCheckIn = false;
-            const checkInTime = parseISO(record.checkInTime);
-            const checkInHour = getHours(checkInTime);
-            const checkInMinutes = getMinutes(checkInTime);
-
-            if (student.shift === "morning" && (checkInHour < 7 || checkInHour >= 14)) {
-              isOutsideAtCheckIn = true;
-            } else if (student.shift === "evening" && (checkInHour < 14 || checkInHour > 21 || (checkInHour === 21 && checkInMinutes > 30))) {
-              isOutsideAtCheckIn = true;
-            }
-            // Full day students are never outside their shift by this definition.
-
-            return { ...student, checkInTime: record.checkInTime, isOutsideShift: isOutsideAtCheckIn, shift: student.shift };
-          })
-          .filter((s): s is CheckedInStudentInfo => s !== null)
-          .sort((a, b) => parseISO(a.checkInTime).getTime() - parseISO(b.checkInTime).getTime()) as CheckedInStudentInfo[];
-
-        setBaseCheckedInStudents(checkedInStudentDetails);
-        setMonthlyRevenue(currentMonthRevenue);
-        setCurrentMonthName(format(new Date(), 'MMMM'));
+        const checkedInStudents = await processCheckedInStudentsFromSnapshot(attendanceSnapshot, allStudentsData);
+        setBaseCheckedInStudents(checkedInStudents);
 
       } catch (error) {
         console.error("Failed to load dashboard stats:", error);
-        setMorningShiftStudentCount(0);
-        setEveningShiftStudentCount(0);
-        setFullDayShiftStudentCount(0);
-        setAvailableMorningSlotsCount(0);
-        setAvailableEveningSlotsCount(0);
-        setAvailableFullDaySlotsCount(0);
+        setAllStudents([]);
         setBaseCheckedInStudents([]);
         setMonthlyRevenue("Rs. 0");
       } finally {
         setIsLoadingDashboardStats(false);
-        setIsLoadingAvailabilityStats(false);
+        setIsLoadingAvailabilityStats(false); // This will depend on calculations from allStudents, so turn off loading here.
         setIsLoadingCheckedInStudents(false);
         setIsLoadingRevenue(false);
       }
@@ -224,10 +161,18 @@ function AdminDashboardContent() {
     };
   }, [showCheckedInDialog, baseCheckedInStudents]);
 
-
+  const activeStudents = allStudents.filter(s => s.activityStatus === "Active");
+  const morningShiftStudentCount = activeStudents.filter(s => s.shift === 'morning').length;
+  const eveningShiftStudentCount = activeStudents.filter(s => s.shift === 'evening').length;
+  const fullDayShiftStudentCount = activeStudents.filter(s => s.shift === 'fullday').length;
   const totalRegisteredStudents = morningShiftStudentCount + eveningShiftStudentCount + fullDayShiftStudentCount;
-  const studentsToDisplayInDialog = liveCheckedInStudents.length > 0 ? liveCheckedInStudents : baseCheckedInStudents;
 
+  // Derive available seats from the single student list
+  const occupiedSeatsMorning = new Set(activeStudents.filter(s => s.seatNumber && (s.shift === 'morning' || s.shift === 'fullday')).map(s => s.seatNumber));
+  const occupiedSeatsEvening = new Set(activeStudents.filter(s => s.seatNumber && (s.shift === 'evening' || s.shift === 'fullday')).map(s => s.seatNumber));
+  const occupiedSeatsFullDay = new Set(activeStudents.filter(s => s.seatNumber && s.shift === 'fullday').map(s => s.seatNumber));
+
+  const studentsToDisplayInDialog = liveCheckedInStudents.length > 0 ? liveCheckedInStudents : baseCheckedInStudents;
 
   return (
     <>
@@ -318,11 +263,11 @@ function AdminDashboardContent() {
             <Armchair className="h-6 w-6 mb-1 text-primary" />
             <ShadcnCardTitle className="text-sm font-semibold text-card-foreground mb-1">Available Booking Slots</ShadcnCardTitle>
             <CardContent className="p-0 text-xs text-muted-foreground w-full mt-1 space-y-0.5">
-              {isLoadingAvailabilityStats ? <Loader2 className="h-5 w-5 animate-spin my-2 mx-auto" /> : (
+              {isLoadingDashboardStats ? <Loader2 className="h-5 w-5 animate-spin my-2 mx-auto" /> : (
                 <>
-                  <div className="flex justify-between px-2"><span>Morning Slots:</span> <span className="font-semibold text-foreground">{availableMorningSlotsCount}</span></div>
-                  <div className="flex justify-between px-2"><span>Evening Slots:</span> <span className="font-semibold text-foreground">{availableEveningSlotsCount}</span></div>
-                  <div className="flex justify-between px-2"><span>Full Day Slots:</span> <span className="font-semibold text-foreground">{availableFullDaySlotsCount}</span></div>
+                  <div className="flex justify-between px-2"><span>Morning Slots:</span> <span className="font-semibold text-foreground">{75 - occupiedSeatsMorning.size}</span></div>
+                  <div className="flex justify-between px-2"><span>Evening Slots:</span> <span className="font-semibold text-foreground">{75 - occupiedSeatsEvening.size}</span></div>
+                  <div className="flex justify-between px-2"><span>Full Day Slots:</span> <span className="font-semibold text-foreground">{75 - occupiedSeatsFullDay.size}</span></div>
                 </>
               )}
             </CardContent>
@@ -377,21 +322,15 @@ function AdminDashboardContent() {
           return (
             <Link href={tileConfig.href} key={tileConfig.baseTitle} className="block no-underline focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-lg h-full">
               <Card className={cn(
-                "shadow-md hover:shadow-lg transition-shadow h-full flex flex-col",
-                hasNewBadge && "border-destructive ring-2 ring-destructive/50"
+                "shadow-md hover:shadow-lg transition-shadow h-full w-full flex flex-col p-3 text-center items-center justify-center relative",
+                hasNewBadge && "border-destructive ring-1 ring-destructive/50"
               )}>
-                <CardHeader className="p-3 pb-1 relative">
-                  {hasNewBadge && (
-                    <span className="absolute top-1 right-1 block h-2.5 w-2.5 rounded-full bg-destructive ring-1 ring-white" />
-                  )}
-                  <div className="flex items-center gap-2">
-                    <Icon className="h-6 w-6 text-primary" />
-                    <ShadcnCardTitle className="text-base font-semibold">{currentTitle}</ShadcnCardTitle>
-                  </div>
-                </CardHeader>
-                <CardContent className="p-3 pt-0 flex-grow flex flex-col items-center justify-center">
-                  <ShadcnCardDescription className="text-xs text-muted-foreground text-center">{tileConfig.description}</ShadcnCardDescription>
-                </CardContent>
+                {hasNewBadge && (
+                  <span className="absolute top-2 right-2 block h-2 w-2 rounded-full bg-destructive" />
+                )}
+                <Icon className="h-6 w-6 mb-2 text-primary" />
+                <ShadcnCardTitle className="text-sm font-semibold leading-tight">{currentTitle}</ShadcnCardTitle>
+                <ShadcnCardDescription className="text-xs text-muted-foreground mt-1">{tileConfig.description}</ShadcnCardDescription>
               </Card>
             </Link>
           );

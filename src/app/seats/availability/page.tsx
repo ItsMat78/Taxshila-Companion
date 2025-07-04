@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from 'react';
@@ -28,7 +29,8 @@ import { Button } from '@/components/ui/button';
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Armchair, Users, UserCheck, Loader2, Circle, Sunrise, Sunset, Sun, Briefcase, Edit, UserCircle as UserProfileIcon, PhoneIcon } from 'lucide-react';
-import { getAllStudents, ALL_SEAT_NUMBERS as serviceAllSeats, getAvailableSeats } from '@/services/student-service';
+import { getAvailableSeatsFromList, getAllStudents } from '@/services/student-service';
+import { ALL_SEAT_NUMBERS as serviceAllSeats } from '@/config/seats';
 import type { Student, Shift } from '@/types/student';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -74,9 +76,9 @@ export default function SeatAvailabilityPage() {
         setOccupiedFullDayStudentsCount(activeSeatHolders.filter(s => s.shift === 'fullday').length);
         
         const [morningAvail, eveningAvail, fulldayAvail] = await Promise.all([
-          getAvailableSeats('morning'),
-          getAvailableSeats('evening'),
-          getAvailableSeats('fullday')
+          getAvailableSeatsFromList('morning', studentsData),
+          getAvailableSeatsFromList('evening', studentsData),
+          getAvailableSeatsFromList('fullday', studentsData)
         ]);
         setAvailableMorningSlotsCount(morningAvail.length);
         setAvailableEveningSlotsCount(eveningAvail.length);
@@ -115,7 +117,7 @@ export default function SeatAvailabilityPage() {
     setShowAvailableSeatsDialog(true);
     try {
       const targetShift = selectedShiftView === 'fullday_occupied' ? 'fullday' : selectedShiftView;
-      const seats = await getAvailableSeats(targetShift);
+      const seats = await getAvailableSeatsFromList(targetShift, allStudents);
       setDialogAvailableSeatList(seats.sort((a,b) => parseInt(a) - parseInt(b)));
     } catch (e) {
       toast({ title: "Error", description: `Could not load available seats.`, variant: "destructive"});
@@ -190,13 +192,13 @@ export default function SeatAvailabilityPage() {
         <Card className="shadow-md">
           <CardHeader className="pb-3">
             <CardTitle className="text-lg flex items-center">
-              <Briefcase className="mr-2 h-4 w-4" />
-              Total Theoretical Slots
+              <Briefcase className="mr-2 h-4 w-4 flex-shrink-0" />
+              Total Daily Slots
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold">150</p>
-            <p className="text-xs text-muted-foreground pt-1">75 Morning Slots + 75 Evening Slots</p>
+            <p className="text-3xl font-bold">{serviceAllSeats.length * 2}</p>
+            <p className="text-xs text-muted-foreground pt-1">Across morning & evening shifts</p>
           </CardContent>
         </Card>
 
@@ -205,7 +207,7 @@ export default function SeatAvailabilityPage() {
             <Card className="cursor-pointer hover:shadow-lg transition-shadow shadow-md" onClick={handleOpenOccupiedSeatsDialog}>
               <CardHeader className="pb-3">
                 <CardTitle className="text-lg flex items-center">
-                  <Users className="mr-2 h-4 w-4" />
+                  <Users className="mr-2 h-4 w-4 flex-shrink-0" />
                   Occupied Slots
                 </CardTitle>
                 <CardDescription className="text-xs">Click to view details for '{getShiftViewLabel(selectedShiftView)}'</CardDescription>
@@ -264,7 +266,7 @@ export default function SeatAvailabilityPage() {
             <Card className="cursor-pointer hover:shadow-lg transition-shadow shadow-md" onClick={handleOpenAvailableSeatsDialog}>
               <CardHeader className="pb-3">
                 <CardTitle className="text-lg flex items-center">
-                  <Armchair className="mr-2 h-4 w-4" />
+                  <Armchair className="mr-2 h-4 w-4 flex-shrink-0" />
                   Available Booking Slots
                 </CardTitle>
                 <CardDescription className="text-xs">Click to view details for '{getShiftViewLabel(selectedShiftView)}'</CardDescription>
@@ -347,24 +349,24 @@ export default function SeatAvailabilityPage() {
               <CardDescription>Visual representation of seat occupancy for the selected view. Click a seat for more details.</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="flex flex-wrap items-center space-x-4 mb-4 text-xs sm:text-sm">
-                <div className="flex items-center mr-2 mb-1 sm:mb-0">
-                  <Circle className="h-3 w-3 sm:h-4 sm:w-4 mr-1 fill-sky-200 text-sky-300" />
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mb-4 text-xs sm:text-sm">
+                <div className="flex items-center flex-shrink-0">
+                  <Circle className="h-4 w-4 flex-shrink-0 mr-1.5 fill-sky-200 text-sky-300" />
                   <span>Available for this view</span>
                 </div>
-                <div className="flex items-center mr-2 mb-1 sm:mb-0">
-                  <Sunrise className="h-3 w-3 sm:h-4 sm:w-4 mr-1 text-orange-500" />
-                  <Circle className="h-3 w-3 sm:h-4 sm:w-4 mr-1 fill-orange-200 text-orange-300" />
+                <div className="flex items-center flex-shrink-0">
+                  <Sunrise className="h-4 w-4 flex-shrink-0 mr-1.5 text-orange-500" />
+                  <Circle className="h-4 w-4 flex-shrink-0 mr-1.5 fill-orange-200 text-orange-300" />
                   <span>Morning Shift Occupied</span>
                 </div>
-                <div className="flex items-center mr-2 mb-1 sm:mb-0">
-                  <Sunset className="h-3 w-3 sm:h-4 sm:w-4 mr-1 text-purple-500" />
-                   <Circle className="h-3 w-3 sm:h-4 sm:w-4 mr-1 fill-purple-200 text-purple-300" />
+                <div className="flex items-center flex-shrink-0">
+                  <Sunset className="h-4 w-4 flex-shrink-0 mr-1.5 text-purple-500" />
+                   <Circle className="h-4 w-4 flex-shrink-0 mr-1.5 fill-purple-200 text-purple-300" />
                   <span>Evening Shift Occupied</span>
                 </div>
-                <div className="flex items-center mb-1 sm:mb-0">
-                  <Sun className="h-3 w-3 sm:h-4 sm:w-4 mr-1 text-yellow-500" />
-                  <Circle className="h-3 w-3 sm:h-4 sm:w-4 mr-1 fill-yellow-200 text-yellow-300" />
+                <div className="flex items-center flex-shrink-0">
+                  <Sun className="h-4 w-4 flex-shrink-0 mr-1.5 text-yellow-500" />
+                  <Circle className="h-4 w-4 flex-shrink-0 mr-1.5 fill-yellow-200 text-yellow-300" />
                   <span>Full Day Occupied</span>
                 </div>
               </div>
@@ -437,5 +439,3 @@ export default function SeatAvailabilityPage() {
     </>
   );
 }
-
-    

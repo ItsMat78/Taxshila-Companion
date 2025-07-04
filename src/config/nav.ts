@@ -29,7 +29,8 @@ import {
   UserCircle,
   TrendingUp,
   Settings,
-  UploadCloud
+  UploadCloud,
+  UserX,
 } from 'lucide-react';
 import type { UserRole } from '@/types/auth';
 
@@ -68,6 +69,12 @@ export const mainNav: NavItem[] = [
         title: 'Register Student',
         href: '/students/register',
         icon: UserPlus,
+        roles: ['admin'],
+      },
+      {
+        title: 'Potential Left',
+        href: '/admin/students/potential-left',
+        icon: UserX,
         roles: ['admin'],
       },
     ]
