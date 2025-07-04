@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from 'react';
@@ -20,7 +21,7 @@ import {
 } from "@/components/ui/table";
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { Loader2, UserX, UserCheck, Edit, Eye } from 'lucide-react';
+import { Loader2, UserX, UserCheck, Edit, Eye, CalendarClock } from 'lucide-react';
 import { getAllStudents, getAllAttendanceRecords } from '@/services/student-service';
 import type { Student } from '@/types/student';
 import { useToast } from '@/hooks/use-toast';
@@ -39,6 +40,7 @@ const PotentialLeftCardItem = ({ student }: { student: Student }) => {
         <p><span className="font-medium">Shift:</span> <span className="capitalize">{student.shift}</span></p>
         <p><span className="font-medium">Seat:</span> {student.seatNumber || 'N/A'}</p>
         <p><span className="font-medium">Last Attended:</span> {student.lastAttendanceDate && isValid(parseISO(student.lastAttendanceDate)) ? format(parseISO(student.lastAttendanceDate), 'PPP') : 'Never'}</p>
+        <p><span className="font-medium">Next Due Date:</span> {student.nextDueDate && isValid(parseISO(student.nextDueDate)) ? format(parseISO(student.nextDueDate), 'PPP') : 'N/A'}</p>
       </CardContent>
       <CardFooter className="py-3 border-t flex justify-end gap-2">
          <Link href={`/students/profiles/${student.studentId}`} passHref legacyBehavior>
@@ -162,6 +164,7 @@ export default function PotentialLeftPage() {
                       <TableHead>Student ID</TableHead>
                       <TableHead>Name</TableHead>
                       <TableHead>Last Attended</TableHead>
+                      <TableHead>Next Due Date</TableHead>
                       <TableHead>Shift</TableHead>
                       <TableHead>Seat</TableHead>
                       <TableHead className="text-right">Action</TableHead>
@@ -176,6 +179,9 @@ export default function PotentialLeftPage() {
                           {student.lastAttendanceDate && isValid(parseISO(student.lastAttendanceDate))
                             ? format(parseISO(student.lastAttendanceDate), 'PP')
                             : 'Never'}
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap">
+                          {student.nextDueDate && isValid(parseISO(student.nextDueDate)) ? format(parseISO(student.nextDueDate), 'PP') : 'N/A'}
                         </TableCell>
                          <TableCell className="capitalize">{student.shift}</TableCell>
                         <TableCell>{student.seatNumber || 'N/A'}</TableCell>
@@ -195,7 +201,7 @@ export default function PotentialLeftPage() {
                     ))}
                     {potentialLeftStudents.length === 0 && !isLoading && (
                       <TableRow>
-                        <TableCell colSpan={6} className="text-center text-muted-foreground py-6">
+                        <TableCell colSpan={7} className="text-center text-muted-foreground py-6">
                           <UserCheck className="mx-auto mb-2 h-10 w-10 text-green-500" />
                           All active students have attended recently.
                         </TableCell>
