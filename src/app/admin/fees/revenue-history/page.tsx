@@ -26,9 +26,9 @@ import {
 } from "@/components/ui/chart";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Legend } from 'recharts';
 import { Loader2, TrendingUp, History, IndianRupee } from 'lucide-react';
-import { getMonthlyRevenueHistory, type MonthlyRevenueData } from '@/services/student-service';
+import { getMonthlyRevenueHistory, type MonthlyRevenueData as MonthlyRevenueDataFromService } from '@/services/student-service';
 import { useToast } from '@/hooks/use-toast';
-import { format, parse, compareDesc, subMonths, isAfter, startOfMonth, endOfMonth, addMonths } from 'date-fns';
+import { format, parse, parseISO, compareDesc, subMonths, isAfter, startOfMonth, endOfMonth, addMonths } from 'date-fns';
 import {
   Select,
   SelectContent,
@@ -44,6 +44,12 @@ const revenueChartConfig = {
     color: "hsl(var(--chart-1))",
   },
 } satisfies ChartConfig;
+
+type MonthlyRevenueData = {
+  monthDate: Date;
+  monthDisplay: string;
+  revenue: number;
+};
 
 const staticProvidedRevenueInput: { monthName: string; year: number; revenue: number }[] = [
   { monthName: "September", year: 2024, revenue: 13000 },
@@ -78,9 +84,14 @@ export default function RevenueHistoryPage() {
     const fetchHistory = async () => {
       setIsLoading(true);
       try {
-        const dynamicHistory = await getMonthlyRevenueHistory();
+        const dynamicHistoryFromService: MonthlyRevenueDataFromService[] = await getMonthlyRevenueHistory();
+        const dynamicHistory = dynamicHistoryFromService.map(item => ({
+            ...item,
+            monthDate: parseISO(item.monthDate)
+        }));
         
         const combinedMap = new Map<string, MonthlyRevenueData>();
+        
         dynamicHistory.forEach(item => {
           const monthKey = format(item.monthDate, 'yyyy-MM');
           combinedMap.set(monthKey, item);
