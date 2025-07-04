@@ -73,11 +73,22 @@ export default function PotentialLeftPage() {
           if (student.activityStatus !== "Active") {
             return false;
           }
-          if (!student.lastAttendanceDate || !isValid(parseISO(student.lastAttendanceDate))) {
-            return true; // Include active students who have never attended
+
+          // Case 1: Student has a valid last attendance date
+          if (student.lastAttendanceDate && isValid(parseISO(student.lastAttendanceDate))) {
+              const daysSinceLastAttendance = differenceInDays(today, parseISO(student.lastAttendanceDate));
+              return daysSinceLastAttendance > 5;
           }
-          const daysSinceLastAttendance = differenceInDays(today, parseISO(student.lastAttendanceDate));
-          return daysSinceLastAttendance > 5;
+
+          // Case 2: Student has NEVER attended (lastAttendanceDate is null/undefined)
+          // Only include them if they registered more than 5 days ago.
+          if (!student.lastAttendanceDate && student.registrationDate && isValid(parseISO(student.registrationDate))) {
+              const daysSinceRegistration = differenceInDays(today, parseISO(student.registrationDate));
+              return daysSinceRegistration > 5;
+          }
+
+          // Default case: don't include them if neither condition is met (e.g., newly registered)
+          return false;
         });
 
         filteredStudents.sort((a, b) => {
