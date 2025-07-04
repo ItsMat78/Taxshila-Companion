@@ -198,7 +198,7 @@ export default function SeatAvailabilityPage() {
           </CardHeader>
           <CardContent>
             <p className="text-3xl font-bold">{serviceAllSeats.length}</p>
-            <p className="text-xs text-muted-foreground pt-1">{serviceAllSeats.length} Total Seats</p>
+            <p className="text-xs text-muted-foreground pt-1">Total physical seats in hall</p>
           </CardContent>
         </Card>
 
@@ -349,24 +349,24 @@ export default function SeatAvailabilityPage() {
               <CardDescription>Visual representation of seat occupancy for the selected view. Click a seat for more details.</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="flex flex-wrap items-center space-x-4 mb-4 text-xs sm:text-sm">
-                <div className="flex items-center mr-2 mb-1 sm:mb-0">
-                  <Circle className="h-3 w-3 sm:h-4 sm:w-4 mr-1 fill-sky-200 text-sky-300" />
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mb-4 text-xs sm:text-sm">
+                <div className="flex items-center">
+                  <Circle className="h-4 w-4 flex-shrink-0 mr-1.5 fill-sky-200 text-sky-300" />
                   <span>Available for this view</span>
                 </div>
-                <div className="flex items-center mr-2 mb-1 sm:mb-0">
-                  <Sunrise className="h-3 w-3 sm:h-4 sm:w-4 mr-1 text-orange-500" />
-                  <Circle className="h-3 w-3 sm:h-4 sm:w-4 mr-1 fill-orange-200 text-orange-300" />
+                <div className="flex items-center">
+                  <Sunrise className="h-4 w-4 flex-shrink-0 mr-1.5 text-orange-500" />
+                  <Circle className="h-4 w-4 flex-shrink-0 mr-1.5 fill-orange-200 text-orange-300" />
                   <span>Morning Shift Occupied</span>
                 </div>
-                <div className="flex items-center mr-2 mb-1 sm:mb-0">
-                  <Sunset className="h-3 w-3 sm:h-4 sm:w-4 mr-1 text-purple-500" />
-                   <Circle className="h-3 w-3 sm:h-4 sm:w-4 mr-1 fill-purple-200 text-purple-300" />
+                <div className="flex items-center">
+                  <Sunset className="h-4 w-4 flex-shrink-0 mr-1.5 text-purple-500" />
+                   <Circle className="h-4 w-4 flex-shrink-0 mr-1.5 fill-purple-200 text-purple-300" />
                   <span>Evening Shift Occupied</span>
                 </div>
-                <div className="flex items-center mb-1 sm:mb-0">
-                  <Sun className="h-3 w-3 sm:h-4 sm:w-4 mr-1 text-yellow-500" />
-                  <Circle className="h-3 w-3 sm:h-4 sm:w-4 mr-1 fill-yellow-200 text-yellow-300" />
+                <div className="flex items-center">
+                  <Sun className="h-4 w-4 flex-shrink-0 mr-1.5 text-yellow-500" />
+                  <Circle className="h-4 w-4 flex-shrink-0 mr-1.5 fill-yellow-200 text-yellow-300" />
                   <span>Full Day Occupied</span>
                 </div>
               </div>
