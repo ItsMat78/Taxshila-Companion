@@ -193,12 +193,12 @@ export default function SeatAvailabilityPage() {
           <CardHeader className="pb-3">
             <CardTitle className="text-lg flex items-center">
               <Briefcase className="mr-2 h-4 w-4 flex-shrink-0" />
-              Total Seats
+              Total Daily Slots
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold">{serviceAllSeats.length}</p>
-            <p className="text-xs text-muted-foreground pt-1">Total physical seats in hall</p>
+            <p className="text-3xl font-bold">{serviceAllSeats.length * 2}</p>
+            <p className="text-xs text-muted-foreground pt-1">Across morning & evening shifts</p>
           </CardContent>
         </Card>
 
