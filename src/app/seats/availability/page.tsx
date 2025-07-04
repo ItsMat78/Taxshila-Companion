@@ -29,7 +29,7 @@ import { Button } from '@/components/ui/button';
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Armchair, Users, UserCheck, Loader2, Circle, Sunrise, Sunset, Sun, Briefcase, Edit, UserCircle as UserProfileIcon, PhoneIcon } from 'lucide-react';
-import { getAllStudents, getAvailableSeats } from '@/services/student-service';
+import { getAllStudents, getAvailableSeatsFromList } from '@/services/student-service';
 import { ALL_SEAT_NUMBERS as serviceAllSeats } from '@/config/seats';
 import type { Student, Shift } from '@/types/student';
 import { useToast } from '@/hooks/use-toast';
@@ -76,9 +76,9 @@ export default function SeatAvailabilityPage() {
         setOccupiedFullDayStudentsCount(activeSeatHolders.filter(s => s.shift === 'fullday').length);
         
         const [morningAvail, eveningAvail, fulldayAvail] = await Promise.all([
-          getAvailableSeats('morning'),
-          getAvailableSeats('evening'),
-          getAvailableSeats('fullday')
+          getAvailableSeatsFromList('morning', studentsData),
+          getAvailableSeatsFromList('evening', studentsData),
+          getAvailableSeatsFromList('fullday', studentsData)
         ]);
         setAvailableMorningSlotsCount(morningAvail.length);
         setAvailableEveningSlotsCount(eveningAvail.length);
@@ -117,7 +117,7 @@ export default function SeatAvailabilityPage() {
     setShowAvailableSeatsDialog(true);
     try {
       const targetShift = selectedShiftView === 'fullday_occupied' ? 'fullday' : selectedShiftView;
-      const seats = await getAvailableSeats(targetShift);
+      const seats = await getAvailableSeatsFromList(targetShift, allStudents);
       setDialogAvailableSeatList(seats.sort((a,b) => parseInt(a) - parseInt(b)));
     } catch (e) {
       toast({ title: "Error", description: `Could not load available seats.`, variant: "destructive"});
@@ -193,12 +193,12 @@ export default function SeatAvailabilityPage() {
           <CardHeader className="pb-3">
             <CardTitle className="text-lg flex items-center">
               <Briefcase className="mr-2 h-4 w-4" />
-              Total Theoretical Slots
+              Total Seats
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold">150</p>
-            <p className="text-xs text-muted-foreground pt-1">75 Morning Slots + 75 Evening Slots</p>
+            <p className="text-3xl font-bold">{serviceAllSeats.length}</p>
+            <p className="text-xs text-muted-foreground pt-1">{serviceAllSeats.length} Total Seats</p>
           </CardContent>
         </Card>
 

@@ -61,3 +61,5 @@ export interface PaymentImportData {
   'Transaction ID'?: string;
   'Method'?: string; // "UPI", "Cash", etc. defaults to "Imported"
 }
+
+export type CheckedInStudentInfo = Student & { checkInTime: string; isOutsideShift: boolean; };

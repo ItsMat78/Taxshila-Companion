@@ -24,9 +24,9 @@ import {
   arrayRemove,
   increment,
 } from '@/lib/firebase';
-import type { Student, Shift, FeeStatus, PaymentRecord, ActivityStatus, AttendanceRecord, FeeStructure, AttendanceImportData, PaymentImportData } from '@/types/student';
+import type { Student, Shift, FeeStatus, PaymentRecord, ActivityStatus, AttendanceRecord, FeeStructure, AttendanceImportData, PaymentImportData, CheckedInStudentInfo } from '@/types/student';
 import type { FeedbackItem, FeedbackType, FeedbackStatus, AlertItem } from '@/types/communication';
-import { format, parseISO, differenceInDays, isPast, addMonths, startOfDay, isValid, addDays, isAfter, startOfMonth, endOfMonth, isWithinInterval, parse } from 'date-fns';
+import { format, parseISO, differenceInDays, isPast, addMonths, startOfDay, isValid, addDays, isAfter, getHours, getMinutes, isWithinInterval, startOfMonth, endOfMonth, parse } from 'date-fns';
 import { ALL_SEAT_NUMBERS } from '@/config/seats';
 
 
@@ -1059,6 +1059,54 @@ export async function deleteAllData(): Promise<void> {
 
 export async function getAllStudentsWithPaymentHistory(): Promise<Student[]> {
   return getAllStudents();
+}
+
+export async function getTodaysActiveAttendanceRecords() {
+    const todayStr = format(new Date(), 'yyyy-MM-dd');
+    const q = query(
+        collection(db, ATTENDANCE_COLLECTION),
+        where("date", "==", todayStr),
+        where("checkOutTime", "==", null)
+    );
+    const querySnapshot = await getDocs(q);
+    return querySnapshot;
+}
+
+export async function processCheckedInStudentsFromSnapshot(
+    attendanceSnapshot: any, // Firebase QuerySnapshot
+    allStudents: Student[]
+): Promise<CheckedInStudentInfo[]> {
+    if (attendanceSnapshot.empty) {
+        return [];
+    }
+    
+    const studentMap = new Map(allStudents.map(s => [s.studentId, s]));
+
+    const checkedInStudentDetails: CheckedInStudentInfo[] = attendanceSnapshot.docs
+        .map((attendanceDoc: any) => {
+            const record = attendanceRecordFromDoc(attendanceDoc);
+            if (!record) return null;
+            
+            const student = studentMap.get(record.studentId);
+            if (!student) return null;
+
+            let isOutsideAtCheckIn = false;
+            const checkInTime = parseISO(record.checkInTime);
+            const checkInHour = getHours(checkInTime);
+            const checkInMinutes = getMinutes(checkInTime);
+
+            if (student.shift === "morning" && (checkInHour < 7 || checkInHour >= 14)) {
+                isOutsideAtCheckIn = true;
+            } else if (student.shift === "evening" && (checkInHour < 14 || checkInHour > 21 || (checkInHour === 21 && checkInMinutes > 30))) {
+                isOutsideAtCheckIn = true;
+            }
+
+            return { ...student, checkInTime: record.checkInTime, isOutsideShift: isOutsideAtCheckIn };
+        })
+        .filter((s: any): s is CheckedInStudentInfo => s !== null)
+        .sort((a: any, b: any) => parseISO(a.checkInTime).getTime() - parseISO(b.checkInTime).getTime());
+
+    return checkedInStudentDetails;
 }
 
 // --- FCM Token Management ---
