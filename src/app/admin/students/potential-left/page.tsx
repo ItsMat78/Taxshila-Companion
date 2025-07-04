@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from 'react';
@@ -22,7 +21,7 @@ import {
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { Loader2, UserX, UserCheck, Edit, Eye } from 'lucide-react';
-import { getAllStudents } from '@/services/student-service';
+import { getAllStudents, getAllAttendanceRecords } from '@/services/student-service';
 import type { Student } from '@/types/student';
 import { useToast } from '@/hooks/use-toast';
 import { format, parseISO, isValid, differenceInDays } from 'date-fns';
@@ -66,28 +65,41 @@ export default function PotentialLeftPage() {
     const fetchStudents = async () => {
       setIsLoading(true);
       try {
-        const allStudents = await getAllStudents();
+        const [allStudents, allAttendance] = await Promise.all([
+          getAllStudents(),
+          getAllAttendanceRecords(),
+        ]);
+
+        const lastAttendedMap = new Map<string, string>();
+        allAttendance.forEach(record => {
+          const existing = lastAttendedMap.get(record.studentId);
+          if (!existing || new Date(record.checkInTime) > new Date(existing)) {
+            lastAttendedMap.set(record.studentId, record.checkInTime);
+          }
+        });
+        
         const today = new Date();
 
-        const filteredStudents = allStudents.filter(student => {
+        const filteredStudents = allStudents
+          .map(student => ({
+            ...student,
+            lastAttendanceDate: lastAttendedMap.get(student.studentId),
+          }))
+          .filter(student => {
           if (student.activityStatus !== "Active") {
             return false;
           }
 
-          // Case 1: Student has a valid last attendance date
           if (student.lastAttendanceDate && isValid(parseISO(student.lastAttendanceDate))) {
               const daysSinceLastAttendance = differenceInDays(today, parseISO(student.lastAttendanceDate));
               return daysSinceLastAttendance > 5;
           }
 
-          // Case 2: Student has NEVER attended (lastAttendanceDate is null/undefined)
-          // Only include them if they registered more than 5 days ago.
           if (!student.lastAttendanceDate && student.registrationDate && isValid(parseISO(student.registrationDate))) {
               const daysSinceRegistration = differenceInDays(today, parseISO(student.registrationDate));
               return daysSinceRegistration > 5;
           }
 
-          // Default case: don't include them if neither condition is met (e.g., newly registered)
           return false;
         });
 
