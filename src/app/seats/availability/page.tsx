@@ -29,7 +29,7 @@ import { Button } from '@/components/ui/button';
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Armchair, Users, UserCheck, Loader2, Circle, Sunrise, Sunset, Sun, Briefcase, Edit, UserCircle as UserProfileIcon, PhoneIcon } from 'lucide-react';
-import { getAllStudents, getAvailableSeatsFromList } from '@/services/student-service';
+import { getAvailableSeatsFromList, getAllStudents } from '@/services/student-service';
 import { ALL_SEAT_NUMBERS as serviceAllSeats } from '@/config/seats';
 import type { Student, Shift } from '@/types/student';
 import { useToast } from '@/hooks/use-toast';
@@ -192,7 +192,7 @@ export default function SeatAvailabilityPage() {
         <Card className="shadow-md">
           <CardHeader className="pb-3">
             <CardTitle className="text-lg flex items-center">
-              <Briefcase className="mr-2 h-4 w-4" />
+              <Briefcase className="mr-2 h-4 w-4 flex-shrink-0" />
               Total Seats
             </CardTitle>
           </CardHeader>
@@ -207,7 +207,7 @@ export default function SeatAvailabilityPage() {
             <Card className="cursor-pointer hover:shadow-lg transition-shadow shadow-md" onClick={handleOpenOccupiedSeatsDialog}>
               <CardHeader className="pb-3">
                 <CardTitle className="text-lg flex items-center">
-                  <Users className="mr-2 h-4 w-4" />
+                  <Users className="mr-2 h-4 w-4 flex-shrink-0" />
                   Occupied Slots
                 </CardTitle>
                 <CardDescription className="text-xs">Click to view details for '{getShiftViewLabel(selectedShiftView)}'</CardDescription>
@@ -266,7 +266,7 @@ export default function SeatAvailabilityPage() {
             <Card className="cursor-pointer hover:shadow-lg transition-shadow shadow-md" onClick={handleOpenAvailableSeatsDialog}>
               <CardHeader className="pb-3">
                 <CardTitle className="text-lg flex items-center">
-                  <Armchair className="mr-2 h-4 w-4" />
+                  <Armchair className="mr-2 h-4 w-4 flex-shrink-0" />
                   Available Booking Slots
                 </CardTitle>
                 <CardDescription className="text-xs">Click to view details for '{getShiftViewLabel(selectedShiftView)}'</CardDescription>
