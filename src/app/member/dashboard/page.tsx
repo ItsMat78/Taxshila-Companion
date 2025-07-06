@@ -685,15 +685,15 @@ export default function MemberDashboardPage() {
                 <span>Not Currently Checked In</span>
               </div>
             )}
-            {hoursStudiedToday !== null && hoursStudiedToday > 0 && (
-      <div className="flex items-center">
-        <Hourglass className="mr-1 h-3 w-3 text-blue-500" />
-        <span>
-          Today: {Math.floor(hoursStudiedToday)} hr{" "}
-          {Math.round((hoursStudiedToday % 1) * 60)} min
-        </span>
-      </div>
-    )}
+            {!activeCheckInRecord && hoursStudiedToday !== null && hoursStudiedToday > 0 && (
+              <div className="flex items-center">
+                <Hourglass className="mr-1 h-3 w-3 text-blue-500" />
+                <span>
+                  Today: {Math.floor(hoursStudiedToday)} hr{" "}
+                  {Math.round((hoursStudiedToday % 1) * 60)} min
+                </span>
+              </div>
+            )}
 
             {hoursStudiedToday === 0 && !activeCheckInRecord && !isLoadingCurrentSession && (
                 <div className="flex items-center">
@@ -794,4 +794,3 @@ export default function MemberDashboardPage() {
     
 
     
-
