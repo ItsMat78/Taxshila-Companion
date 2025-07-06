@@ -507,17 +507,27 @@ export async function getAvailableSeatsFromList(shiftToConsider: Shift, studentL
 // --- Attendance Service Functions ---
 export async function getActiveCheckIn(studentId: string): Promise<AttendanceRecord | undefined> {
   const todayStr = format(new Date(), 'yyyy-MM-dd');
+  // Query for today's records for the student. This might need an index on (studentId, date) but is much simpler.
   const q = query(
     collection(db, ATTENDANCE_COLLECTION),
     where("studentId", "==", studentId),
-    where("date", "==", todayStr),
-    where("checkOutTime", "==", null),
-    orderBy("checkInTime", "desc"),
-    limit(1)
+    where("date", "==", todayStr)
   );
   const querySnapshot = await getDocs(q);
-  return querySnapshot.empty ? undefined : attendanceRecordFromDoc(querySnapshot.docs[0]);
+  const records = querySnapshot.docs.map(doc => attendanceRecordFromDoc(doc));
+  
+  // Find the record that is still active (no checkout time)
+  const activeRecords = records.filter(r => !r.checkOutTime);
+  
+  // If there are multiple active records (shouldn't happen with correct logic), find the latest one.
+  if (activeRecords.length > 0) {
+    activeRecords.sort((a, b) => parseISO(b.checkInTime).getTime() - parseISO(a.checkInTime).getTime());
+    return activeRecords[0];
+  }
+  
+  return undefined;
 }
+
 
 export async function addCheckIn(studentId: string): Promise<AttendanceRecord> {
   const student = await getStudentByCustomId(studentId);
@@ -561,11 +571,13 @@ export async function getAttendanceForDate(studentId: string, date: string): Pro
   const q = query(
     collection(db, ATTENDANCE_COLLECTION),
     where("studentId", "==", studentId),
-    where("date", "==", date),
-    orderBy("checkInTime", "asc")
+    where("date", "==", date)
   );
   const querySnapshot = await getDocs(q);
-  return querySnapshot.docs.map(doc => attendanceRecordFromDoc(doc));
+  const records = querySnapshot.docs.map(doc => attendanceRecordFromDoc(doc));
+  // Sort in memory to ensure ascending order by check-in time
+  records.sort((a, b) => parseISO(a.checkInTime).getTime() - parseISO(b.checkInTime).getTime());
+  return records;
 }
 
 export async function getAllAttendanceRecords(): Promise<AttendanceRecord[]> {
@@ -574,12 +586,13 @@ export async function getAllAttendanceRecords(): Promise<AttendanceRecord[]> {
     return querySnapshot.docs.map(doc => attendanceRecordFromDoc(doc));
 }
 
-// ... rest of the file ...
-// The following functions remain the same
 export async function getAttendanceRecordsByStudentId(studentId: string): Promise<AttendanceRecord[]> {
-  const q = query(collection(db, ATTENDANCE_COLLECTION), where("studentId", "==", studentId), orderBy("checkInTime", "desc"));
+  const q = query(collection(db, ATTENDANCE_COLLECTION), where("studentId", "==", studentId));
   const querySnapshot = await getDocs(q);
-  return querySnapshot.docs.map(doc => attendanceRecordFromDoc(doc));
+  const records = querySnapshot.docs.map(doc => attendanceRecordFromDoc(doc));
+  // Sort in memory to ensure descending order by check-in time
+  records.sort((a, b) => parseISO(b.checkInTime).getTime() - parseISO(a.checkInTime).getTime());
+  return records;
 }
 
 
