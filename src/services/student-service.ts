@@ -26,7 +26,7 @@ import {
 } from '@/lib/firebase';
 import type { Student, Shift, FeeStatus, PaymentRecord, ActivityStatus, AttendanceRecord, FeeStructure, AttendanceImportData, PaymentImportData, CheckedInStudentInfo } from '@/types/student';
 import type { FeedbackItem, FeedbackType, FeedbackStatus, AlertItem } from '@/types/communication';
-import { format, parseISO, differenceInDays, isPast, addMonths, startOfDay, isValid, addDays, isAfter, getHours, getMinutes, isWithinInterval, startOfMonth, endOfMonth, parse } from 'date-fns';
+import { format, parseISO, differenceInDays, isPast, addMonths, startOfDay, isValid, addDays, isAfter, getHours, getMinutes, isWithinInterval, startOfMonth, endOfMonth, parse, differenceInMilliseconds } from 'date-fns';
 import { ALL_SEAT_NUMBERS } from '@/config/seats';
 
 
@@ -671,23 +671,34 @@ export async function calculateMonthlyStudyHours(customStudentId: string): Promi
     const records = await getAttendanceRecordsByStudentId(customStudentId);
     let totalMilliseconds = 0;
     const now = new Date();
-    const currentMonthStart = startOfDay(now);
-    const sixtyDaysAgo = startOfDay(addDays(now, -60));
+    const monthStart = startOfMonth(now);
+    const monthEnd = endOfMonth(now);
 
     records.forEach(record => {
       try {
         const checkInDate = parseISO(record.checkInTime);
-        if (isValid(checkInDate) && isAfter(checkInDate, sixtyDaysAgo) && isAfter(currentMonthStart, checkInDate)) {
+        // We only care about sessions that *started* this month.
+        if (isValid(checkInDate) && isWithinInterval(checkInDate, { start: monthStart, end: monthEnd })) {
           if (record.checkOutTime) {
             const checkOutDate = parseISO(record.checkOutTime);
             if (isValid(checkOutDate)) {
-              totalMilliseconds += differenceInDays(checkOutDate, checkInDate);
+              // Standard completed session
+              totalMilliseconds += differenceInMilliseconds(checkOutDate, checkInDate);
             }
+          } else {
+            // This is an active session that started this month. Calculate duration until now.
+            totalMilliseconds += differenceInMilliseconds(now, checkInDate);
           }
         }
-      } catch (e) { }
+      } catch (e) {
+        // Log error but don't crash the entire calculation
+        console.error(`Error processing attendance record ${record.recordId} for student ${customStudentId}:`, e);
+      }
     });
-    return Math.round(totalMilliseconds / (1000 * 60 * 60));
+
+    const totalHours = totalMilliseconds / (1000 * 60 * 60);
+    // Return a number with one decimal place.
+    return Math.round(totalHours * 10) / 10;
 }
 
 // --- Communication Service Functions (Feedback & Alerts) ---
