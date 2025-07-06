@@ -593,7 +593,7 @@ export async function getAttendanceRecordsByStudentId(studentId: string): Promis
   const q = query(collection(db, ATTENDANCE_COLLECTION), where("studentId", "==", studentId));
   const querySnapshot = await getDocs(q);
   const records = querySnapshot.docs.map(doc => attendanceRecordFromDoc(doc));
-  // Sort in memory to ensure descending order by check-in time
+  // Sort in memory after fetching
   records.sort((a, b) => parseISO(b.checkInTime).getTime() - parseISO(a.checkInTime).getTime());
   return records;
 }
@@ -699,11 +699,24 @@ export async function calculateMonthlyStudyHours(customStudentId: string): Promi
         try {
             const checkInDate = parseISO(record.checkInTime);
             if (isValid(checkInDate) && isWithinInterval(checkInDate, { start: monthStart, end: monthEnd })) {
+                
                 if (record.checkOutTime && isValid(parseISO(record.checkOutTime))) {
                     const checkOutDate = parseISO(record.checkOutTime);
                     totalMilliseconds += differenceInMilliseconds(checkOutDate, checkInDate);
                 } else {
-                    totalMilliseconds += differenceInMilliseconds(now, checkInDate);
+                    const isTodayRecord = format(checkInDate, 'yyyy-MM-dd') === format(now, 'yyyy-MM-dd');
+                    let sessionEndDate: Date;
+
+                    if (isTodayRecord) {
+                        sessionEndDate = now;
+                    } else {
+                        sessionEndDate = new Date(checkInDate);
+                        sessionEndDate.setHours(21, 30, 0, 0); // Cap at 9:30 PM for past days
+                    }
+                    
+                    if (isAfter(sessionEndDate, checkInDate)) {
+                        totalMilliseconds += differenceInMilliseconds(sessionEndDate, checkInDate);
+                    }
                 }
             }
         } catch (e) {
