@@ -16,6 +16,7 @@ import {
   LogIn,
   CreditCard,
   History,
+  UserX,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle as ShadcnCardTitle, CardDescription as ShadcnCardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -53,6 +54,12 @@ const staticAdminActionTilesConfig = [
     description: "View students with due fees.",
     href: "/admin/fees/due",
     isFinancialTile: true,
+  },
+  {
+    baseTitle: "Potential Left",
+    icon: UserX,
+    description: "Students with low activity.",
+    href: "/admin/students/potential-left",
   },
   { baseTitle: "Payment History", icon: History, description: "See all past transactions.", href: "/admin/fees/payments-history" },
   { baseTitle: "Send Alert", icon: SendIcon, description: "Broadcast to all members.", href: "/admin/alerts/send" },

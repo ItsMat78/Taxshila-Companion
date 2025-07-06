@@ -22,7 +22,7 @@ import {
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
-import { AlertTriangle, CalendarClock, CheckCircle2, Loader2, User, IndianRupee, Edit, UserCheck } from 'lucide-react';
+import { AlertTriangle, CalendarClock, CheckCircle2, Loader2, User, IndianRupee, Edit, UserCheck, Eye } from 'lucide-react';
 import { getAllStudents, getAllAttendanceRecords } from '@/services/student-service';
 import type { Student } from '@/types/student';
 import { useToast } from '@/hooks/use-toast';
@@ -59,9 +59,14 @@ const FeeDueCardItem = ({ student }: { student: StudentWithLastAttended }) => {
         <p><span className="font-medium">Next Due Date:</span> {student.nextDueDate && isValid(parseISO(student.nextDueDate)) ? format(parseISO(student.nextDueDate), 'MMM d, yyyy') : 'N/A'}</p>
         <p className="flex items-center"><UserCheck className="mr-1 h-3 w-3 text-muted-foreground"/><span className="font-medium">Last Attended:</span>&nbsp;{student.lastAttended && isValid(parseISO(student.lastAttended)) ? format(parseISO(student.lastAttended), 'MMM d, yyyy') : 'Never'}</p>
       </CardContent>
-      <CardFooter className="py-3 border-t">
+      <CardFooter className="py-3 border-t flex justify-end gap-2">
+         <Link href={`/students/profiles/${student.studentId}`} passHref legacyBehavior>
+            <Button variant="outline" size="sm" className="flex-1">
+                <Eye className="mr-2 h-3 w-3" /> View Profile
+            </Button>
+        </Link>
         <Link href={`/admin/students/edit/${student.studentId}`} passHref legacyBehavior>
-            <Button variant="outline" size="sm" className="w-full">
+            <Button variant="outline" size="sm" className="flex-1">
                 <Edit className="mr-2 h-3 w-3" /> Manage Student
             </Button>
         </Link>
@@ -204,7 +209,12 @@ export default function FeesDuePage() {
                             {student.feeStatus}
                           </Badge>
                         </TableCell>
-                        <TableCell className="text-right">
+                        <TableCell className="text-right space-x-2">
+                            <Link href={`/students/profiles/${student.studentId}`} passHref legacyBehavior>
+                                <Button variant="outline" size="sm">
+                                    <Eye className="mr-1 h-3 w-3" /> View
+                                </Button>
+                            </Link>
                             <Link href={`/admin/students/edit/${student.studentId}`} passHref legacyBehavior>
                                 <Button variant="outline" size="sm">
                                     <Edit className="mr-1 h-3 w-3" /> Manage

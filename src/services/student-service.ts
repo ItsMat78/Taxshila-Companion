@@ -26,7 +26,7 @@ import {
 } from '@/lib/firebase';
 import type { Student, Shift, FeeStatus, PaymentRecord, ActivityStatus, AttendanceRecord, FeeStructure, AttendanceImportData, PaymentImportData, CheckedInStudentInfo } from '@/types/student';
 import type { FeedbackItem, FeedbackType, FeedbackStatus, AlertItem } from '@/types/communication';
-import { format, parseISO, differenceInDays, isPast, addMonths, startOfDay, isValid, addDays, isAfter, getHours, getMinutes, isWithinInterval, startOfMonth, endOfMonth, parse } from 'date-fns';
+import { format, parseISO, differenceInDays, isPast, addMonths, startOfDay, isValid, addDays, isAfter, getHours, getMinutes, isWithinInterval, startOfMonth, endOfMonth, parse, differenceInMilliseconds } from 'date-fns';
 import { ALL_SEAT_NUMBERS } from '@/config/seats';
 
 
@@ -507,17 +507,27 @@ export async function getAvailableSeatsFromList(shiftToConsider: Shift, studentL
 // --- Attendance Service Functions ---
 export async function getActiveCheckIn(studentId: string): Promise<AttendanceRecord | undefined> {
   const todayStr = format(new Date(), 'yyyy-MM-dd');
+  // Query for today's records for the student. This might need an index on (studentId, date) but is much simpler.
   const q = query(
     collection(db, ATTENDANCE_COLLECTION),
     where("studentId", "==", studentId),
-    where("date", "==", todayStr),
-    where("checkOutTime", "==", null),
-    orderBy("checkInTime", "desc"),
-    limit(1)
+    where("date", "==", todayStr)
   );
   const querySnapshot = await getDocs(q);
-  return querySnapshot.empty ? undefined : attendanceRecordFromDoc(querySnapshot.docs[0]);
+  const records = querySnapshot.docs.map(doc => attendanceRecordFromDoc(doc));
+  
+  // Find the record that is still active (no checkout time)
+  const activeRecords = records.filter(r => !r.checkOutTime);
+  
+  // If there are multiple active records (shouldn't happen with correct logic), find the latest one.
+  if (activeRecords.length > 0) {
+    activeRecords.sort((a, b) => parseISO(b.checkInTime).getTime() - parseISO(a.checkInTime).getTime());
+    return activeRecords[0];
+  }
+  
+  return undefined;
 }
+
 
 export async function addCheckIn(studentId: string): Promise<AttendanceRecord> {
   const student = await getStudentByCustomId(studentId);
@@ -561,25 +571,31 @@ export async function getAttendanceForDate(studentId: string, date: string): Pro
   const q = query(
     collection(db, ATTENDANCE_COLLECTION),
     where("studentId", "==", studentId),
-    where("date", "==", date),
-    orderBy("checkInTime", "asc")
+    where("date", "==", date)
   );
   const querySnapshot = await getDocs(q);
-  return querySnapshot.docs.map(doc => attendanceRecordFromDoc(doc));
+  const records = querySnapshot.docs.map(doc => attendanceRecordFromDoc(doc));
+  // Sort in memory to ensure ascending order by check-in time
+  records.sort((a, b) => parseISO(a.checkInTime).getTime() - parseISO(b.checkInTime).getTime());
+  return records;
 }
 
 export async function getAllAttendanceRecords(): Promise<AttendanceRecord[]> {
-    const q = query(collection(db, ATTENDANCE_COLLECTION), orderBy("checkInTime", "desc"));
+    const q = query(collection(db, ATTENDANCE_COLLECTION));
     const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map(doc => attendanceRecordFromDoc(doc));
+    const records = querySnapshot.docs.map(doc => attendanceRecordFromDoc(doc));
+    // Sort in memory after fetching
+    records.sort((a,b) => parseISO(b.checkInTime).getTime() - parseISO(a.checkInTime).getTime());
+    return records;
 }
 
-// ... rest of the file ...
-// The following functions remain the same
 export async function getAttendanceRecordsByStudentId(studentId: string): Promise<AttendanceRecord[]> {
-  const q = query(collection(db, ATTENDANCE_COLLECTION), where("studentId", "==", studentId), orderBy("checkInTime", "desc"));
+  const q = query(collection(db, ATTENDANCE_COLLECTION), where("studentId", "==", studentId));
   const querySnapshot = await getDocs(q);
-  return querySnapshot.docs.map(doc => attendanceRecordFromDoc(doc));
+  const records = querySnapshot.docs.map(doc => attendanceRecordFromDoc(doc));
+  // Sort in memory after fetching
+  records.sort((a, b) => parseISO(b.checkInTime).getTime() - parseISO(a.checkInTime).getTime());
+  return records;
 }
 
 
@@ -668,27 +684,50 @@ export async function recordStudentPayment(
 }
 
 export async function calculateMonthlyStudyHours(customStudentId: string): Promise<number> {
-    const records = await getAttendanceRecordsByStudentId(customStudentId);
-    let totalMilliseconds = 0;
+    const q = query(collection(db, ATTENDANCE_COLLECTION), where("studentId", "==", customStudentId));
+    const querySnapshot = await getDocs(q);
+    const records = querySnapshot.docs.map(doc => attendanceRecordFromDoc(doc));
+
     const now = new Date();
-    const currentMonthStart = startOfDay(now);
-    const sixtyDaysAgo = startOfDay(addDays(now, -60));
+    const monthStart = startOfMonth(now);
+    const monthEnd = endOfMonth(now);
+
+    let totalMilliseconds = 0;
 
     records.forEach(record => {
-      try {
-        const checkInDate = parseISO(record.checkInTime);
-        if (isValid(checkInDate) && isAfter(checkInDate, sixtyDaysAgo) && isAfter(currentMonthStart, checkInDate)) {
-          if (record.checkOutTime) {
-            const checkOutDate = parseISO(record.checkOutTime);
-            if (isValid(checkOutDate)) {
-              totalMilliseconds += differenceInDays(checkOutDate, checkInDate);
+        if (!record) return;
+        try {
+            const checkInDate = parseISO(record.checkInTime);
+            if (isValid(checkInDate) && isWithinInterval(checkInDate, { start: monthStart, end: monthEnd })) {
+                
+                if (record.checkOutTime && isValid(parseISO(record.checkOutTime))) {
+                    const checkOutDate = parseISO(record.checkOutTime);
+                    totalMilliseconds += differenceInMilliseconds(checkOutDate, checkInDate);
+                } else {
+                    const isTodayRecord = format(checkInDate, 'yyyy-MM-dd') === format(now, 'yyyy-MM-dd');
+                    let sessionEndDate: Date;
+
+                    if (isTodayRecord) {
+                        sessionEndDate = now;
+                    } else {
+                        sessionEndDate = new Date(checkInDate);
+                        sessionEndDate.setHours(21, 30, 0, 0); // Cap at 9:30 PM for past days
+                    }
+                    
+                    if (isAfter(sessionEndDate, checkInDate)) {
+                        totalMilliseconds += differenceInMilliseconds(sessionEndDate, checkInDate);
+                    }
+                }
             }
-          }
+        } catch (e) {
+            console.error(`Error processing attendance record ${record.recordId} for student ${customStudentId}:`, e);
         }
-      } catch (e) { }
     });
-    return Math.round(totalMilliseconds / (1000 * 60 * 60));
+
+    const totalHours = totalMilliseconds / (1000 * 60 * 60);
+    return Math.round(totalHours * 10) / 10;
 }
+
 
 // --- Communication Service Functions (Feedback & Alerts) ---
 export async function submitFeedback(

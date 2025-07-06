@@ -181,6 +181,39 @@ export default function MemberDashboardPage() {
   const [studentFeeStatus, setStudentFeeStatus] = React.useState<FeeStatus | null>(null);
   const [studentNextDueDate, setStudentNextDueDate] = React.useState<string | null>(null);
   const [isOverdueDialogOpen, setIsOverdueDialogOpen] = React.useState(false);
+  const [elapsedTime, setElapsedTime] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    let intervalId: NodeJS.Timeout | null = null;
+
+    if (activeCheckInRecord?.checkInTime && isValid(parseISO(activeCheckInRecord.checkInTime))) {
+      const checkInTime = parseISO(activeCheckInRecord.checkInTime);
+
+      intervalId = setInterval(() => {
+        const now = new Date();
+        const diff = now.getTime() - checkInTime.getTime();
+
+        if (diff < 0) return;
+
+        const hours = Math.floor(diff / 3600000);
+        const minutes = Math.floor((diff % 3600000) / 60000);
+        const seconds = Math.floor((diff % 60000) / 1000);
+
+        setElapsedTime(
+          `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+        );
+      }, 1000);
+    } else {
+      setElapsedTime(null);
+    }
+
+    return () => {
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
+    };
+  }, [activeCheckInRecord]);
+
 
   const fetchAllDashboardData = React.useCallback(async () => {
     if (user?.studentId || user?.email) {
@@ -602,6 +635,21 @@ export default function MemberDashboardPage() {
     <>
       <PageTitle title={pageTitleText} description="Your Taxshila Companion dashboard." />
 
+      {activeCheckInRecord && elapsedTime && (
+        <Card className="my-4 text-center shadow-lg bg-background">
+          <CardHeader className="pb-2">
+            <ShadcnCardTitle className="text-muted-foreground font-medium text-sm tracking-widest uppercase">
+              Current Session Time
+            </ShadcnCardTitle>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <div className="text-5xl sm:text-7xl font-bold font-mono tracking-tighter text-primary">
+              {elapsedTime}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <AlertDialog open={isOverdueDialogOpen} onOpenChange={setIsOverdueDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -637,15 +685,15 @@ export default function MemberDashboardPage() {
                 <span>Not Currently Checked In</span>
               </div>
             )}
-            {hoursStudiedToday !== null && hoursStudiedToday > 0 && (
-      <div className="flex items-center">
-        <Hourglass className="mr-1 h-3 w-3 text-blue-500" />
-        <span>
-          Today: {Math.floor(hoursStudiedToday)} hr{" "}
-          {Math.round((hoursStudiedToday % 1) * 60)} min
-        </span>
-      </div>
-    )}
+            {!activeCheckInRecord && hoursStudiedToday !== null && hoursStudiedToday > 0 && (
+              <div className="flex items-center">
+                <Hourglass className="mr-1 h-3 w-3 text-blue-500" />
+                <span>
+                  Today: {Math.floor(hoursStudiedToday)} hr{" "}
+                  {Math.round((hoursStudiedToday % 1) * 60)} min
+                </span>
+              </div>
+            )}
 
             {hoursStudiedToday === 0 && !activeCheckInRecord && !isLoadingCurrentSession && (
                 <div className="flex items-center">
