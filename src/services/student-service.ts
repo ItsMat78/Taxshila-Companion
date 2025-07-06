@@ -581,9 +581,12 @@ export async function getAttendanceForDate(studentId: string, date: string): Pro
 }
 
 export async function getAllAttendanceRecords(): Promise<AttendanceRecord[]> {
-    const q = query(collection(db, ATTENDANCE_COLLECTION), orderBy("checkInTime", "desc"));
+    const q = query(collection(db, ATTENDANCE_COLLECTION));
     const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map(doc => attendanceRecordFromDoc(doc));
+    const records = querySnapshot.docs.map(doc => attendanceRecordFromDoc(doc));
+    // Sort in memory after fetching
+    records.sort((a,b) => parseISO(b.checkInTime).getTime() - parseISO(a.checkInTime).getTime());
+    return records;
 }
 
 export async function getAttendanceRecordsByStudentId(studentId: string): Promise<AttendanceRecord[]> {
@@ -681,47 +684,37 @@ export async function recordStudentPayment(
 }
 
 export async function calculateMonthlyStudyHours(customStudentId: string): Promise<number> {
+    const q = query(collection(db, ATTENDANCE_COLLECTION), where("studentId", "==", customStudentId));
+    const querySnapshot = await getDocs(q);
+    const records = querySnapshot.docs.map(doc => attendanceRecordFromDoc(doc));
+
     const now = new Date();
     const monthStart = startOfMonth(now);
     const monthEnd = endOfMonth(now);
 
-    // Query for records that started within the current month
-    const q = query(
-        collection(db, ATTENDANCE_COLLECTION),
-        where("studentId", "==", customStudentId),
-        where("checkInTime", ">=", monthStart),
-        where("checkInTime", "<=", monthEnd)
-    );
-    
-    const querySnapshot = await getDocs(q);
-    const records = querySnapshot.docs.map(doc => attendanceRecordFromDoc(doc));
-    
     let totalMilliseconds = 0;
 
     records.forEach(record => {
-      if (!record) return;
-      try {
-        const checkInDate = parseISO(record.checkInTime);
-        // The query already ensures the check-in is in the current month.
-        if (isValid(checkInDate)) {
-          if (record.checkOutTime) {
-            const checkOutDate = parseISO(record.checkOutTime);
-            if (isValid(checkOutDate)) {
-              totalMilliseconds += differenceInMilliseconds(checkOutDate, checkInDate);
+        if (!record) return;
+        try {
+            const checkInDate = parseISO(record.checkInTime);
+            if (isValid(checkInDate) && isWithinInterval(checkInDate, { start: monthStart, end: monthEnd })) {
+                if (record.checkOutTime && isValid(parseISO(record.checkOutTime))) {
+                    const checkOutDate = parseISO(record.checkOutTime);
+                    totalMilliseconds += differenceInMilliseconds(checkOutDate, checkInDate);
+                } else {
+                    totalMilliseconds += differenceInMilliseconds(now, checkInDate);
+                }
             }
-          } else {
-            // This is an active session that started this month. Calculate duration until now.
-            totalMilliseconds += differenceInMilliseconds(now, checkInDate);
-          }
+        } catch (e) {
+            console.error(`Error processing attendance record ${record.recordId} for student ${customStudentId}:`, e);
         }
-      } catch (e) {
-        console.error(`Error processing attendance record ${record.recordId} for student ${customStudentId}:`, e);
-      }
     });
 
     const totalHours = totalMilliseconds / (1000 * 60 * 60);
     return Math.round(totalHours * 10) / 10;
 }
+
 
 // --- Communication Service Functions (Feedback & Alerts) ---
 export async function submitFeedback(
