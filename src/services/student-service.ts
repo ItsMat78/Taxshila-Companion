@@ -668,21 +668,32 @@ export async function recordStudentPayment(
 }
 
 export async function calculateMonthlyStudyHours(customStudentId: string): Promise<number> {
-    const records = await getAttendanceRecordsByStudentId(customStudentId);
-    let totalMilliseconds = 0;
     const now = new Date();
     const monthStart = startOfMonth(now);
     const monthEnd = endOfMonth(now);
 
+    // Query for records that started within the current month
+    const q = query(
+        collection(db, ATTENDANCE_COLLECTION),
+        where("studentId", "==", customStudentId),
+        where("checkInTime", ">=", monthStart),
+        where("checkInTime", "<=", monthEnd)
+    );
+    
+    const querySnapshot = await getDocs(q);
+    const records = querySnapshot.docs.map(doc => attendanceRecordFromDoc(doc));
+    
+    let totalMilliseconds = 0;
+
     records.forEach(record => {
+      if (!record) return;
       try {
         const checkInDate = parseISO(record.checkInTime);
-        // We only care about sessions that *started* this month.
-        if (isValid(checkInDate) && isWithinInterval(checkInDate, { start: monthStart, end: monthEnd })) {
+        // The query already ensures the check-in is in the current month.
+        if (isValid(checkInDate)) {
           if (record.checkOutTime) {
             const checkOutDate = parseISO(record.checkOutTime);
             if (isValid(checkOutDate)) {
-              // Standard completed session
               totalMilliseconds += differenceInMilliseconds(checkOutDate, checkInDate);
             }
           } else {
@@ -691,13 +702,11 @@ export async function calculateMonthlyStudyHours(customStudentId: string): Promi
           }
         }
       } catch (e) {
-        // Log error but don't crash the entire calculation
         console.error(`Error processing attendance record ${record.recordId} for student ${customStudentId}:`, e);
       }
     });
 
     const totalHours = totalMilliseconds / (1000 * 60 * 60);
-    // Return a number with one decimal place.
     return Math.round(totalHours * 10) / 10;
 }
 
