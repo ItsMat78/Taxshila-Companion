@@ -638,9 +638,9 @@ export default function MemberDashboardPage() {
       {activeCheckInRecord && elapsedTime && (
         <Card className="my-4 text-center shadow-lg bg-background">
           <CardHeader className="pb-2">
-            <CardTitle className="text-muted-foreground font-medium text-sm tracking-widest uppercase">
+            <ShadcnCardTitle className="text-muted-foreground font-medium text-sm tracking-widest uppercase">
               Current Session Time
-            </CardTitle>
+            </ShadcnCardTitle>
           </CardHeader>
           <CardContent className="pt-0">
             <div className="text-5xl sm:text-7xl font-bold font-mono tracking-tighter text-primary">
@@ -794,3 +794,4 @@ export default function MemberDashboardPage() {
     
 
     
+
