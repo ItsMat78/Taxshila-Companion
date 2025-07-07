@@ -22,8 +22,8 @@ import {
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
-import { AlertTriangle, CalendarClock, CheckCircle2, Loader2, User, IndianRupee, Edit, UserCheck, Eye, UserX } from 'lucide-react';
-import { getAllStudents, getAllAttendanceRecords } from '@/services/student-service';
+import { AlertTriangle, CalendarClock, CheckCircle2, Loader2, User, IndianRupee, Edit, UserCheck, Eye, UserX, RefreshCw } from 'lucide-react';
+import { getAllStudents, getAllAttendanceRecords, refreshAllStudentFeeStatuses } from '@/services/student-service';
 import type { Student } from '@/types/student';
 import { useToast } from '@/hooks/use-toast';
 import { format, parseISO, isValid } from 'date-fns';
@@ -79,62 +79,86 @@ export default function FeesDuePage() {
   const { toast } = useToast();
   const [feesDueStudents, setFeesDueStudents] = React.useState<StudentWithLastAttended[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
+  const [isRefreshing, setIsRefreshing] = React.useState(false);
+
+  const fetchFeesDue = React.useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const [allStudents, allAttendance] = await Promise.all([
+        getAllStudents(),
+        getAllAttendanceRecords(),
+      ]);
+
+      const lastAttendedMap = new Map<string, string>();
+      allAttendance.forEach(record => {
+        const existing = lastAttendedMap.get(record.studentId);
+        if (!existing || new Date(record.checkInTime) > new Date(existing)) {
+          lastAttendedMap.set(record.studentId, record.checkInTime);
+        }
+      });
+
+      const dueStudents = allStudents
+        .filter(student =>
+          student.activityStatus === "Active" &&
+          (student.feeStatus === "Due" || student.feeStatus === "Overdue")
+        )
+        .map(student => ({
+          ...student,
+          lastAttended: lastAttendedMap.get(student.studentId)
+        }));
+
+      dueStudents.sort((a, b) => {
+        const statusOrder = (status: Student['feeStatus']) => status === "Overdue" ? 0 : 1;
+        if (statusOrder(a.feeStatus) !== statusOrder(b.feeStatus)) {
+          return statusOrder(a.feeStatus) - statusOrder(b.feeStatus);
+        }
+        try {
+          const dateA = a.nextDueDate && isValid(parseISO(a.nextDueDate)) ? parseISO(a.nextDueDate) : new Date(0);
+          const dateB = b.nextDueDate && isValid(parseISO(b.nextDueDate)) ? parseISO(b.nextDueDate) : new Date(0);
+          return dateA.getTime() - dateB.getTime();
+        } catch (e) {
+          return 0;
+        }
+      });
+
+      setFeesDueStudents(dueStudents);
+    } catch (error) {
+      console.error("Failed to fetch fees due:", error);
+      toast({ title: "Error", description: "Could not load fees due list.", variant: "destructive" });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [toast]);
 
   React.useEffect(() => {
-    const fetchFeesDue = async () => {
-      setIsLoading(true);
-      try {
-        const [allStudents, allAttendance] = await Promise.all([
-          getAllStudents(),
-          getAllAttendanceRecords(),
-        ]);
-
-        const lastAttendedMap = new Map<string, string>();
-        allAttendance.forEach(record => {
-          const existing = lastAttendedMap.get(record.studentId);
-          if (!existing || new Date(record.checkInTime) > new Date(existing)) {
-            lastAttendedMap.set(record.studentId, record.checkInTime);
-          }
-        });
-
-        const dueStudents = allStudents
-          .filter(student =>
-            student.activityStatus === "Active" &&
-            (student.feeStatus === "Due" || student.feeStatus === "Overdue")
-          )
-          .map(student => ({
-            ...student,
-            lastAttended: lastAttendedMap.get(student.studentId)
-          }));
-
-        dueStudents.sort((a, b) => {
-          const statusOrder = (status: Student['feeStatus']) => status === "Overdue" ? 0 : 1;
-          if (statusOrder(a.feeStatus) !== statusOrder(b.feeStatus)) {
-            return statusOrder(a.feeStatus) - statusOrder(b.feeStatus);
-          }
-          try {
-            const dateA = a.nextDueDate && isValid(parseISO(a.nextDueDate)) ? parseISO(a.nextDueDate) : new Date(0);
-            const dateB = b.nextDueDate && isValid(parseISO(b.nextDueDate)) ? parseISO(b.nextDueDate) : new Date(0);
-            return dateA.getTime() - dateB.getTime();
-          } catch (e) {
-            return 0;
-          }
-        });
-
-        setFeesDueStudents(dueStudents);
-      } catch (error) {
-        console.error("Failed to fetch fees due:", error);
-        toast({ title: "Error", description: "Could not load fees due list.", variant: "destructive" });
-      } finally {
-        setIsLoading(false);
-      }
-    };
     fetchFeesDue();
-  }, [toast]);
+  }, [fetchFeesDue]);
+
+  const handleRefreshStatuses = async () => {
+    setIsRefreshing(true);
+    try {
+      const result = await refreshAllStudentFeeStatuses();
+      toast({
+        title: "Fee Statuses Refreshed",
+        description: `${result.updatedCount} student(s) had their fee status updated.`,
+      });
+      await fetchFeesDue(); // Re-fetch the list to show updated results
+    } catch (error: any) {
+      console.error("Failed to refresh fee statuses:", error);
+      toast({ title: "Error", description: error.message || "Could not refresh fee statuses.", variant: "destructive" });
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
 
   return (
     <>
-      <PageTitle title="Student Fees Due" description="Manage and track students with outstanding fee payments." />
+      <PageTitle title="Student Fees Due" description="Manage and track students with outstanding fee payments.">
+         <Button onClick={handleRefreshStatuses} variant="outline" disabled={isRefreshing || isLoading}>
+          {isRefreshing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+          Refresh Statuses
+        </Button>
+      </PageTitle>
 
       <Link href="/admin/students/potential-left" className="block no-underline">
         <Card className="mb-6 shadow-md border-orange-500/20 bg-orange-500/5 hover:shadow-lg hover:border-orange-500/40 transition-shadow cursor-pointer">
