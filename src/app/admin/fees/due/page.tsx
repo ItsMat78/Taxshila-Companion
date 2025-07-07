@@ -22,7 +22,7 @@ import {
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
-import { AlertTriangle, CalendarClock, CheckCircle2, Loader2, User, IndianRupee, Edit, UserCheck, Eye } from 'lucide-react';
+import { AlertTriangle, CalendarClock, CheckCircle2, Loader2, User, IndianRupee, Edit, UserCheck, Eye, UserX } from 'lucide-react';
 import { getAllStudents, getAllAttendanceRecords } from '@/services/student-service';
 import type { Student } from '@/types/student';
 import { useToast } from '@/hooks/use-toast';
@@ -62,12 +62,12 @@ const FeeDueCardItem = ({ student }: { student: StudentWithLastAttended }) => {
       <CardFooter className="py-3 border-t flex justify-end gap-2">
          <Link href={`/students/profiles/${student.studentId}`} passHref legacyBehavior>
             <Button variant="outline" size="sm" className="flex-1">
-                <Eye className="mr-2 h-3 w-3" /> View Profile
+                <Eye className="mr-2 h-3 w-3" /> View
             </Button>
         </Link>
         <Link href={`/admin/students/edit/${student.studentId}`} passHref legacyBehavior>
             <Button variant="outline" size="sm" className="flex-1">
-                <Edit className="mr-2 h-3 w-3" /> Manage Student
+                <Edit className="mr-2 h-3 w-3" /> Manage
             </Button>
         </Link>
       </CardFooter>
@@ -135,6 +135,20 @@ export default function FeesDuePage() {
   return (
     <>
       <PageTitle title="Student Fees Due" description="Manage and track students with outstanding fee payments." />
+
+      <Link href="/admin/students/potential-left" className="block no-underline">
+        <Card className="mb-6 shadow-md border-orange-500/20 bg-orange-500/5 hover:shadow-lg hover:border-orange-500/40 transition-shadow cursor-pointer">
+          <CardHeader>
+            <CardTitle className="flex items-center text-orange-700">
+              <UserX className="mr-2 h-5 w-5" />
+              Potentially Left Students
+            </CardTitle>
+            <CardDescription className="text-orange-600">
+              Click here to view active students who have not attended in the last 5 days and manage them.
+            </CardDescription>
+          </CardHeader>
+        </Card>
+      </Link>
 
       <Card className="shadow-lg w-full">
         <CardHeader>

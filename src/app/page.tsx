@@ -43,6 +43,7 @@ import type { FeedbackItem } from '@/types/communication';
 import { format, parseISO, isToday, getHours, getMinutes } from 'date-fns';
 import { useNotificationCounts } from '@/hooks/use-notification-counts';
 import { useFinancialCounts } from '@/hooks/use-financial-counts';
+import { ALL_SEAT_NUMBERS as serviceAllSeats } from '@/config/seats';
 
 const staticAdminActionTilesConfig = [
   { baseTitle: "Manage Students", icon: Users, description: "View, edit student details.", href: "/students/list" },
@@ -54,12 +55,6 @@ const staticAdminActionTilesConfig = [
     description: "View students with due fees.",
     href: "/admin/fees/due",
     isFinancialTile: true,
-  },
-  {
-    baseTitle: "Potential Left",
-    icon: UserX,
-    description: "Students with low activity.",
-    href: "/admin/students/potential-left",
   },
   { baseTitle: "Payment History", icon: History, description: "See all past transactions.", href: "/admin/fees/payments-history" },
   { baseTitle: "Send Alert", icon: SendIcon, description: "Broadcast to all members.", href: "/admin/alerts/send" },
@@ -177,7 +172,9 @@ function AdminDashboardContent() {
   // Derive available seats from the single student list
   const occupiedSeatsMorning = new Set(activeStudents.filter(s => s.seatNumber && (s.shift === 'morning' || s.shift === 'fullday')).map(s => s.seatNumber));
   const occupiedSeatsEvening = new Set(activeStudents.filter(s => s.seatNumber && (s.shift === 'evening' || s.shift === 'fullday')).map(s => s.seatNumber));
-  const occupiedSeatsFullDay = new Set(activeStudents.filter(s => s.seatNumber && s.shift === 'fullday').map(s => s.seatNumber));
+  const allOccupiedSeatNumbers = new Set(activeStudents.filter(s => s.seatNumber).map(s => s.seatNumber));
+  const availableForFullDayBookingCount = serviceAllSeats.length - allOccupiedSeatNumbers.size;
+
 
   const studentsToDisplayInDialog = liveCheckedInStudents.length > 0 ? liveCheckedInStudents : baseCheckedInStudents;
 
@@ -272,9 +269,9 @@ function AdminDashboardContent() {
             <CardContent className="p-0 text-xs text-muted-foreground w-full mt-1 space-y-0.5">
               {isLoadingDashboardStats ? <Loader2 className="h-5 w-5 animate-spin my-2 mx-auto" /> : (
                 <>
-                  <div className="flex justify-between px-2"><span>Morning Slots:</span> <span className="font-semibold text-foreground">{75 - occupiedSeatsMorning.size}</span></div>
-                  <div className="flex justify-between px-2"><span>Evening Slots:</span> <span className="font-semibold text-foreground">{75 - occupiedSeatsEvening.size}</span></div>
-                  <div className="flex justify-between px-2"><span>Full Day Slots:</span> <span className="font-semibold text-foreground">{75 - occupiedSeatsFullDay.size}</span></div>
+                  <div className="flex justify-between px-2"><span>Morning Slots:</span> <span className="font-semibold text-foreground">{serviceAllSeats.length - occupiedSeatsMorning.size}</span></div>
+                  <div className="flex justify-between px-2"><span>Evening Slots:</span> <span className="font-semibold text-foreground">{serviceAllSeats.length - occupiedSeatsEvening.size}</span></div>
+                  <div className="flex justify-between px-2"><span>Full Day Slots:</span> <span className="font-semibold text-foreground">{availableForFullDayBookingCount}</span></div>
                 </>
               )}
             </CardContent>
