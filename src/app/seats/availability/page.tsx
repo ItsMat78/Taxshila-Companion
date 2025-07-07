@@ -127,10 +127,8 @@ export default function SeatAvailabilityPage() {
     }
   };
 
-  const getSeatStatusForLayout = (seatNumber: string, view: ShiftView): { student?: Student, isAvailable: boolean, colorClass: string, shiftIcon?: React.ElementType } => {
-    let studentOnSeat: Student | undefined;
-    let isAvailable = true;
-    let colorClass = 'bg-sky-200 border-sky-300 text-sky-800 hover:bg-sky-300'; 
+  const getSeatStatusForLayout = (seatNumber: string, view: ShiftView): { colorClass: string; shiftIcon?: React.ElementType } => {
+    let colorClass = 'bg-sky-200 border-sky-300 text-sky-800 hover:bg-sky-300';
     let shiftIcon;
 
     const studentMorning = activeStudents.find(s => s.seatNumber === seatNumber && s.shift === 'morning');
@@ -139,26 +137,29 @@ export default function SeatAvailabilityPage() {
 
     if (view === 'morning') {
       if (studentFullDay) {
-        studentOnSeat = studentFullDay; isAvailable = false; colorClass = 'bg-yellow-200 border-yellow-300 text-yellow-800 hover:bg-yellow-300'; shiftIcon = Sun;
+        colorClass = 'bg-yellow-200 border-yellow-300 text-yellow-800 hover:bg-yellow-300'; shiftIcon = Sun;
       } else if (studentMorning) {
-        studentOnSeat = studentMorning; isAvailable = false; colorClass = 'bg-orange-200 border-orange-300 text-orange-800 hover:bg-orange-300'; shiftIcon = Sunrise;
+        colorClass = 'bg-orange-200 border-orange-300 text-orange-800 hover:bg-orange-300'; shiftIcon = Sunrise;
       }
     } else if (view === 'evening') {
       if (studentFullDay) {
-        studentOnSeat = studentFullDay; isAvailable = false; colorClass = 'bg-yellow-200 border-yellow-300 text-yellow-800 hover:bg-yellow-300'; shiftIcon = Sun;
+        colorClass = 'bg-yellow-200 border-yellow-300 text-yellow-800 hover:bg-yellow-300'; shiftIcon = Sun;
       } else if (studentEvening) {
-        studentOnSeat = studentEvening; isAvailable = false; colorClass = 'bg-purple-200 border-purple-300 text-purple-800 hover:bg-purple-300'; shiftIcon = Sunset;
+        colorClass = 'bg-purple-200 border-purple-300 text-purple-800 hover:bg-purple-300'; shiftIcon = Sunset;
       }
-    } else if (view === 'fullday_occupied') { 
+    } else if (view === 'fullday_occupied') {
       if (studentFullDay) {
-        studentOnSeat = studentFullDay; isAvailable = false; colorClass = 'bg-yellow-200 border-yellow-300 text-yellow-800 hover:bg-yellow-300'; shiftIcon = Sun;
+        colorClass = 'bg-yellow-200 border-yellow-300 text-yellow-800 hover:bg-yellow-300'; shiftIcon = Sun;
+      } else if (studentMorning && studentEvening) {
+        colorClass = 'diagonal-split-background border-slate-400';
+        shiftIcon = Users;
       } else if (studentMorning) {
-        studentOnSeat = studentMorning; isAvailable = false; colorClass = 'bg-orange-200 border-orange-300 text-orange-800 hover:bg-orange-300'; shiftIcon = Sunrise;
+        colorClass = 'bg-orange-200 border-orange-300 text-orange-800 hover:bg-orange-300'; shiftIcon = Sunrise;
       } else if (studentEvening) {
-        studentOnSeat = studentEvening; isAvailable = false; colorClass = 'bg-purple-200 border-purple-300 text-purple-800 hover:bg-purple-300'; shiftIcon = Sunset;
+        colorClass = 'bg-purple-200 border-purple-300 text-purple-800 hover:bg-purple-300'; shiftIcon = Sunset;
       }
     }
-    return { student: studentOnSeat, isAvailable, colorClass, shiftIcon };
+    return { colorClass, shiftIcon };
   };
   
   const occupiedDialogTitle = React.useMemo(() => {
@@ -369,11 +370,15 @@ export default function SeatAvailabilityPage() {
                   <Circle className="h-4 w-4 flex-shrink-0 mr-1.5 fill-yellow-200 text-yellow-300" />
                   <span>Full Day Occupied</span>
                 </div>
+                <div className="flex items-center flex-shrink-0">
+                  <Users className="h-4 w-4 flex-shrink-0 mr-1.5 text-slate-500" />
+                  <div className="h-4 w-4 flex-shrink-0 mr-1.5 rounded-sm border border-slate-400 diagonal-split-background" />
+                  <span>Split Shift Occupied</span>
+                </div>
               </div>
               <div className="grid grid-cols-[repeat(auto-fill,minmax(2.75rem,1fr))] sm:grid-cols-[repeat(auto-fill,minmax(3.25rem,1fr))] gap-1 sm:gap-1.5">
                 {serviceAllSeats.map((seatNum) => {
-                  const { colorClass } = getSeatStatusForLayout(seatNum, selectedShiftView);
-                  const ShiftIcon = getSeatStatusForLayout(seatNum, selectedShiftView).shiftIcon;
+                  const { colorClass, shiftIcon: ShiftIcon } = getSeatStatusForLayout(seatNum, selectedShiftView);
                   
                   const studentsOnThisSeat = activeStudents.filter(s => s.seatNumber === seatNum);
 
