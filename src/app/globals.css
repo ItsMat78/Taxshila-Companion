@@ -121,6 +121,10 @@
   transform-origin: left;
 }
 
+.diagonal-split-background {
+  background: linear-gradient(135deg, #fed7aa 0%, #fed7aa 50%, #e9d5ff 50%, #e9d5ff 100%);
+}
+
 .female-only-seat {
   outline: 2px solid rgb(255, 162, 177);
 }
