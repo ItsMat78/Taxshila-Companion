@@ -1254,6 +1254,73 @@ export async function calculateMonthlyRevenue(): Promise<string> {
   return `Rs. ${totalRevenue.toLocaleString('en-IN')}`;
 }
 
+export async function refreshAllStudentFeeStatuses(): Promise<{ updatedCount: number }> {
+  const allStudents = await getAllStudents();
+  const feeStructure = await getFeeStructure();
+  const today = startOfDay(new Date());
+  const batch = writeBatch(db);
+  let updatedCount = 0;
+
+  for (const student of allStudents) {
+    if (student.activityStatus !== 'Active' || !student.firestoreId || !student.nextDueDate) {
+      continue; // Skip inactive students or those without a due date
+    }
+
+    const dueDate = startOfDay(parseISO(student.nextDueDate));
+    let newFeeStatus: FeeStatus | null = null;
+    let newAmountDue: string | null = null;
+
+    if (isAfter(dueDate, today)) {
+      // Due date is in the future
+      newFeeStatus = 'Paid';
+      newAmountDue = 'Rs. 0';
+    } else {
+      // Due date is today or in the past
+      const daysOverdue = differenceInDays(today, dueDate);
+      if (daysOverdue > 5) {
+        newFeeStatus = 'Overdue';
+      } else {
+        newFeeStatus = 'Due';
+      }
+      
+      // Set amount due if it's not already set or is 'Rs. 0'
+      if (student.amountDue === 'Rs. 0' || !student.amountDue || student.amountDue === 'N/A') {
+          switch (student.shift) {
+            case "morning": newAmountDue = `Rs. ${feeStructure.morningFee}`; break;
+            case "evening": newAmountDue = `Rs. ${feeStructure.eveningFee}`; break;
+            case "fullday": newAmountDue = `Rs. ${feeStructure.fullDayFee}`; break;
+            default: newAmountDue = "Rs. 0";
+          }
+      }
+    }
+
+    // Check if an update is needed
+    const needsUpdate = (newFeeStatus && newFeeStatus !== student.feeStatus) || (newAmountDue && newAmountDue !== student.amountDue);
+
+    if (needsUpdate) {
+      const studentDocRef = doc(db, STUDENTS_COLLECTION, student.firestoreId);
+      const updatePayload: { feeStatus?: FeeStatus; amountDue?: string } = {};
+      if (newFeeStatus && newFeeStatus !== student.feeStatus) {
+        updatePayload.feeStatus = newFeeStatus;
+      }
+      if (newAmountDue && newAmountDue !== student.amountDue) {
+          updatePayload.amountDue = newAmountDue;
+      }
+      
+      if(Object.keys(updatePayload).length > 0) {
+          batch.update(studentDocRef, updatePayload);
+          updatedCount++;
+      }
+    }
+  }
+
+  if (updatedCount > 0) {
+    await batch.commit();
+  }
+
+  return { updatedCount };
+}
+
 
 declare module '@/types/student' {
   interface Student {
