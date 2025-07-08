@@ -506,9 +506,11 @@ export async function getAvailableSeatsFromList(shiftToConsider: Shift, studentL
 
 // --- Attendance Service Functions ---
 export async function getActiveCheckIn(studentId: string): Promise<AttendanceRecord | undefined> {
+  const todayStr = format(new Date(), 'yyyy-MM-dd');
   const q = query(
     collection(db, ATTENDANCE_COLLECTION),
     where("studentId", "==", studentId),
+    where("date", "==", todayStr),
     where("checkOutTime", "==", null)
   );
   const querySnapshot = await getDocs(q);
@@ -517,8 +519,7 @@ export async function getActiveCheckIn(studentId: string): Promise<AttendanceRec
     return undefined;
   }
 
-  // To handle the edge case of multiple active check-ins (which this fix aims to prevent),
-  // we return the most recent one.
+  // To handle the edge case of multiple active check-ins, return the most recent one.
   const records = querySnapshot.docs.map(doc => attendanceRecordFromDoc(doc));
   records.sort((a, b) => parseISO(b.checkInTime).getTime() - parseISO(a.checkInTime).getTime());
   return records[0];
@@ -686,22 +687,22 @@ export async function recordStudentPayment(
 }
 
 export async function calculateMonthlyStudyHours(customStudentId: string): Promise<number> {
+    const allRecordsForStudent = await getAttendanceRecordsByStudentId(customStudentId);
+    
     const now = new Date();
     const monthStart = startOfMonth(now);
     const monthEnd = endOfMonth(now);
 
-    const q = query(
-        collection(db, ATTENDANCE_COLLECTION),
-        where("studentId", "==", customStudentId),
-        where("checkInTime", ">=", monthStart),
-        where("checkInTime", "<=", monthEnd)
-    );
-    const querySnapshot = await getDocs(q);
-    const records = querySnapshot.docs.map(doc => attendanceRecordFromDoc(doc));
+    const recordsInMonth = allRecordsForStudent.filter(record => {
+        try {
+            const checkInDate = parseISO(record.checkInTime);
+            return isValid(checkInDate) && isWithinInterval(checkInDate, { start: monthStart, end: monthEnd });
+        } catch(e) { return false; }
+    });
 
     let totalMilliseconds = 0;
 
-    records.forEach(record => {
+    recordsInMonth.forEach(record => {
         if (!record) return;
         try {
             const checkInDate = parseISO(record.checkInTime);
@@ -1346,3 +1347,4 @@ declare module '@/types/communication' {
     firestoreId?: string;
   }
 }
+
