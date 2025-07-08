@@ -507,25 +507,22 @@ export async function getAvailableSeatsFromList(shiftToConsider: Shift, studentL
 // --- Attendance Service Functions ---
 export async function getActiveCheckIn(studentId: string): Promise<AttendanceRecord | undefined> {
   const todayStr = format(new Date(), 'yyyy-MM-dd');
-  // Query for today's records for the student. This might need an index on (studentId, date) but is much simpler.
   const q = query(
     collection(db, ATTENDANCE_COLLECTION),
     where("studentId", "==", studentId),
-    where("date", "==", todayStr)
+    where("date", "==", todayStr),
+    where("checkOutTime", "==", null)
   );
   const querySnapshot = await getDocs(q);
-  const records = querySnapshot.docs.map(doc => attendanceRecordFromDoc(doc));
-  
-  // Find the record that is still active (no checkout time)
-  const activeRecords = records.filter(r => !r.checkOutTime);
-  
-  // If there are multiple active records (shouldn't happen with correct logic), find the latest one.
-  if (activeRecords.length > 0) {
-    activeRecords.sort((a, b) => parseISO(b.checkInTime).getTime() - parseISO(a.checkInTime).getTime());
-    return activeRecords[0];
+
+  if (querySnapshot.empty) {
+    return undefined;
   }
-  
-  return undefined;
+
+  // To handle the edge case of multiple active check-ins, return the most recent one.
+  const records = querySnapshot.docs.map(doc => attendanceRecordFromDoc(doc));
+  records.sort((a, b) => parseISO(b.checkInTime).getTime() - parseISO(a.checkInTime).getTime());
+  return records[0];
 }
 
 
@@ -533,6 +530,12 @@ export async function addCheckIn(studentId: string): Promise<AttendanceRecord> {
   const student = await getStudentByCustomId(studentId);
   if (!student) {
     throw new Error("Student not found for check-in.");
+  }
+  
+  const existingActiveCheckIn = await getActiveCheckIn(studentId);
+  if (existingActiveCheckIn) {
+    console.warn(`[StudentService] Blocked duplicate check-in for student ${studentId}. Active record: ${existingActiveCheckIn.recordId}`);
+    throw new Error("You are already checked in. Please check out before checking in again.");
   }
   
   const now = new Date();
@@ -684,39 +687,46 @@ export async function recordStudentPayment(
 }
 
 export async function calculateMonthlyStudyHours(customStudentId: string): Promise<number> {
-    const q = query(collection(db, ATTENDANCE_COLLECTION), where("studentId", "==", customStudentId));
-    const querySnapshot = await getDocs(q);
-    const records = querySnapshot.docs.map(doc => attendanceRecordFromDoc(doc));
-
+    const allRecordsForStudent = await getAttendanceRecordsByStudentId(customStudentId);
+    
     const now = new Date();
     const monthStart = startOfMonth(now);
     const monthEnd = endOfMonth(now);
 
+    const recordsInMonth = allRecordsForStudent.filter(record => {
+        try {
+            const checkInDate = parseISO(record.checkInTime);
+            return isValid(checkInDate) && isWithinInterval(checkInDate, { start: monthStart, end: monthEnd });
+        } catch(e) { return false; }
+    });
+
     let totalMilliseconds = 0;
 
-    records.forEach(record => {
+    recordsInMonth.forEach(record => {
         if (!record) return;
         try {
             const checkInDate = parseISO(record.checkInTime);
-            if (isValid(checkInDate) && isWithinInterval(checkInDate, { start: monthStart, end: monthEnd })) {
-                
-                if (record.checkOutTime && isValid(parseISO(record.checkOutTime))) {
-                    const checkOutDate = parseISO(record.checkOutTime);
-                    totalMilliseconds += differenceInMilliseconds(checkOutDate, checkInDate);
-                } else {
-                    const isTodayRecord = format(checkInDate, 'yyyy-MM-dd') === format(now, 'yyyy-MM-dd');
-                    let sessionEndDate: Date;
+            
+            if (record.checkOutTime && isValid(parseISO(record.checkOutTime))) {
+                // Case 1: Session is complete (has check-in and check-out)
+                const checkOutDate = parseISO(record.checkOutTime);
+                totalMilliseconds += differenceInMilliseconds(checkOutDate, checkInDate);
+            } else {
+                // Case 2: Session is still active (no check-out)
+                const isTodayRecord = format(checkInDate, 'yyyy-MM-dd') === format(now, 'yyyy-MM-dd');
+                let sessionEndDate: Date;
 
-                    if (isTodayRecord) {
-                        sessionEndDate = now;
-                    } else {
-                        sessionEndDate = new Date(checkInDate);
-                        sessionEndDate.setHours(21, 30, 0, 0); // Cap at 9:30 PM for past days
-                    }
-                    
-                    if (isAfter(sessionEndDate, checkInDate)) {
-                        totalMilliseconds += differenceInMilliseconds(sessionEndDate, checkInDate);
-                    }
+                if (isTodayRecord) {
+                    // If it's an active session from today, calculate up to now
+                    sessionEndDate = now;
+                } else {
+                    // If it's a "stuck" active session from a previous day, cap it at 9:30 PM of that day
+                    sessionEndDate = new Date(checkInDate);
+                    sessionEndDate.setHours(21, 30, 0, 0); 
+                }
+                
+                if (isAfter(sessionEndDate, checkInDate)) {
+                    totalMilliseconds += differenceInMilliseconds(sessionEndDate, checkInDate);
                 }
             }
         } catch (e) {
@@ -1337,3 +1347,4 @@ declare module '@/types/communication' {
     firestoreId?: string;
   }
 }
+
