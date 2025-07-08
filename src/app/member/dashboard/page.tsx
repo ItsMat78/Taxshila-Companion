@@ -364,7 +364,7 @@ export default function MemberDashboardPage() {
             verbose: false, // Added to prevent header message errors
         };
 
-        const scanner = new Html5QrcodeScanner(DASHBOARD_QR_SCANNER_ELEMENT_ID, config, true);
+        const scanner = new Html5QrcodeScanner(DASHBOARD_QR_SCANNER_ELEMENT_ID, config);
         html5QrcodeScannerRef.current = scanner;
 
         const onScanSuccess = async (decodedText: string, decodedResult: any) => {
@@ -790,7 +790,3 @@ export default function MemberDashboardPage() {
     </>
   );
 }
-
-    
-
-    
