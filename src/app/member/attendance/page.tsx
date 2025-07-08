@@ -266,11 +266,10 @@ export default function MemberAttendancePage() {
           rememberLastUsedCamera: true,
           videoConstraints: { 
             facingMode: "environment" 
-          },
-          verbose: false
+          }
         };
 
-        const scanner = new Html5QrcodeScanner( QR_SCANNER_ELEMENT_ID_ATTENDANCE, config );
+        const scanner = new Html5QrcodeScanner( QR_SCANNER_ELEMENT_ID_ATTENDANCE, config, false );
         html5QrcodeScannerRef.current = scanner;
 
         const onScanSuccess = async (decodedText: string) => {

@@ -360,11 +360,9 @@ export default function MemberDashboardPage() {
             rememberLastUsedCamera: true,
             videoConstraints: {
               facingMode: "environment" }
-            ,
-            verbose: false, // Added to prevent header message errors
         };
 
-        const scanner = new Html5QrcodeScanner(DASHBOARD_QR_SCANNER_ELEMENT_ID, config);
+        const scanner = new Html5QrcodeScanner(DASHBOARD_QR_SCANNER_ELEMENT_ID, config, false);
         html5QrcodeScannerRef.current = scanner;
 
         const onScanSuccess = async (decodedText: string, decodedResult: any) => {
@@ -695,7 +693,7 @@ export default function MemberDashboardPage() {
               </div>
             )}
 
-            {hoursStudiedToday === 0 && !activeCheckInRecord && !isLoadingCurrentSession && (
+            {!activeCheckInRecord && hoursStudiedToday === 0 && !isLoadingCurrentSession && (
                 <div className="flex items-center">
                 <Hourglass className="mr-1 h-3 w-3 text-blue-500" />
                 <span>No study today.</span>
