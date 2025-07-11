@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from 'react';
@@ -10,6 +11,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  CardFooter
 } from "@/components/ui/card";
 import {
   Table,
@@ -19,46 +21,77 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Loader2, UserPlus, UserMinus, Eye, Edit } from 'lucide-react';
 import { getAllStudents, getAllAttendanceRecords } from '@/services/student-service';
 import type { Student as StudentData } from '@/types/student';
-import { format, parseISO, isValid, isWithinInterval, startOfMonth, endOfMonth, subMonths } from 'date-fns';
+import { format, parseISO, isValid, isWithinInterval, startOfMonth, endOfMonth, subMonths, parse } from 'date-fns';
 
 type StudentWithAttendance = StudentData & {
     lastAttendanceDate?: string;
 };
 
-type ViewPeriod = 'currentMonth' | 'previousMonth';
+// Component for individual student card (for mobile view)
+const StudentMovementCardItem = ({ student, type }: { student: StudentWithAttendance; type: 'new' | 'left' }) => {
+  return (
+    <Card className="w-full shadow-sm">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-md break-words">{student.name}</CardTitle>
+        <CardDescription className="text-xs break-words">ID: {student.studentId}</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-1 text-xs pb-3">
+        <p><span className="font-medium">Date {type === 'new' ? 'Registered' : 'Left'}:</span> {type === 'new' ? (student.registrationDate && isValid(parseISO(student.registrationDate)) ? format(parseISO(student.registrationDate), 'PP') : 'N/A') : (student.leftDate && isValid(parseISO(student.leftDate)) ? format(parseISO(student.leftDate), 'PP') : 'N/A')}</p>
+        <p><span className="font-medium">Shift:</span> <span className="capitalize">{student.shift}</span></p>
+        <p><span className="font-medium">Seat:</span> {student.seatNumber || 'N/A'}</p>
+      </CardContent>
+      <CardFooter className="flex justify-end space-x-2 py-2 border-t">
+        <Link href={`/students/profiles/${student.studentId}`} passHref legacyBehavior>
+          <Button variant="outline" size="sm" title="View Profile">
+            <Eye className="h-4 w-4" /> <span className="hidden sm:inline ml-1">View</span>
+          </Button>
+        </Link>
+        <Link href={`/admin/students/edit/${student.studentId}`} passHref legacyBehavior>
+          <Button variant="outline" size="sm" title="Edit Student">
+            <Edit className="h-4 w-4" /> <span className="hidden sm:inline ml-1">Edit</span>
+          </Button>
+        </Link>
+      </CardFooter>
+    </Card>
+  );
+};
+
 
 export default function StudentMovementPage() {
   const [allStudents, setAllStudents] = React.useState<StudentData[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
-  const [viewPeriod, setViewPeriod] = React.useState<ViewPeriod>('currentMonth');
+  const [selectedMonth, setSelectedMonth] = React.useState<string>(format(new Date(), 'yyyy-MM'));
+
+  // Generate month options for the dropdown
+  const monthOptions = React.useMemo(() => {
+    const options = [];
+    const now = new Date();
+    for (let i = 0; i < 12; i++) {
+      const month = subMonths(now, i);
+      options.push({
+        value: format(month, 'yyyy-MM'),
+        label: format(month, 'MMMM yyyy'),
+      });
+    }
+    return options;
+  }, []);
 
   React.useEffect(() => {
     const fetchStudents = async () => {
       try {
         setIsLoading(true);
-        const [students, attendance] = await Promise.all([
-            getAllStudents(),
-            getAllAttendanceRecords()
-        ]);
-        
-        const lastAttendedMap = new Map<string, string>();
-        attendance.forEach(record => {
-            const existing = lastAttendedMap.get(record.studentId);
-            if (!existing || new Date(record.checkInTime) > new Date(existing)) {
-                lastAttendedMap.set(record.studentId, record.checkInTime);
-            }
-        });
-        
-        const studentsWithAttendance = students.map(s => ({
-            ...s,
-            lastAttendanceDate: lastAttendedMap.get(s.studentId)
-        }));
-
-        setAllStudents(studentsWithAttendance);
+        const students = await getAllStudents();
+        setAllStudents(students);
       } catch (error) {
         console.error("Failed to fetch students:", error);
       } finally {
@@ -69,9 +102,8 @@ export default function StudentMovementPage() {
   }, []);
 
   const { newRegistrations, studentsWhoLeft, periodLabel } = React.useMemo(() => {
-    const now = new Date();
-    const periodStart = startOfMonth(viewPeriod === 'currentMonth' ? now : subMonths(now, 1));
-    const periodEnd = endOfMonth(viewPeriod === 'currentMonth' ? now : subMonths(now, 1));
+    const periodStart = parse(selectedMonth, 'yyyy-MM', new Date());
+    const periodEnd = endOfMonth(periodStart);
 
     const newRegs = allStudents.filter(student => 
         student.registrationDate && isValid(parseISO(student.registrationDate)) && 
@@ -88,7 +120,7 @@ export default function StudentMovementPage() {
         studentsWhoLeft: whoLeft,
         periodLabel: format(periodStart, 'MMMM yyyy')
     };
-  }, [allStudents, viewPeriod]);
+  }, [allStudents, selectedMonth]);
 
 
   const renderStudentTable = (students: StudentWithAttendance[], type: 'new' | 'left') => (
@@ -141,25 +173,37 @@ export default function StudentMovementPage() {
     </div>
   );
 
+  const renderStudentCards = (students: StudentWithAttendance[], type: 'new' | 'left') => (
+    <div className="space-y-3">
+        {students.length > 0 ? students.map(student => (
+            <StudentMovementCardItem key={student.studentId} student={student} type={type} />
+        )) : (
+            <p className="py-4 text-center text-muted-foreground">
+                No students {type === 'new' ? 'registered' : 'left'} in this period.
+            </p>
+        )}
+    </div>
+  );
+
 
   return (
     <>
       <PageTitle title="Student Movement Report" description="Track new registrations and students who have left.">
-        <ToggleGroup 
-            type="single" 
-            defaultValue="currentMonth"
-            value={viewPeriod}
-            onValueChange={(value) => {
-                if (value) setViewPeriod(value as ViewPeriod);
-            }}
-            aria-label="Select period"
-        >
-            <ToggleGroupItem value="currentMonth" aria-label="Current Month">Current Month</ToggleGroupItem>
-            <ToggleGroupItem value="previousMonth" aria-label="Previous Month">Previous Month</ToggleGroupItem>
-        </ToggleGroup>
+        <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+            <SelectTrigger className="w-full sm:w-[200px]">
+                <SelectValue placeholder="Select a month" />
+            </SelectTrigger>
+            <SelectContent>
+                {monthOptions.map(option => (
+                    <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                    </SelectItem>
+                ))}
+            </SelectContent>
+        </Select>
       </PageTitle>
 
-      <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-2">
+      <div className="grid gap-6 md:grid-cols-2">
         <Card className="shadow-lg">
           <CardHeader>
             <CardTitle className="flex items-center">
@@ -173,7 +217,12 @@ export default function StudentMovementPage() {
                 <div className="flex items-center justify-center py-10">
                     <Loader2 className="h-8 w-8 animate-spin text-primary" />
                 </div>
-            ) : renderStudentTable(newRegistrations, 'new')}
+            ) : (
+                <>
+                    <div className="hidden md:block">{renderStudentTable(newRegistrations, 'new')}</div>
+                    <div className="md:hidden">{renderStudentCards(newRegistrations, 'new')}</div>
+                </>
+            )}
           </CardContent>
         </Card>
         
@@ -190,7 +239,12 @@ export default function StudentMovementPage() {
                 <div className="flex items-center justify-center py-10">
                     <Loader2 className="h-8 w-8 animate-spin text-primary" />
                 </div>
-            ) : renderStudentTable(studentsWhoLeft, 'left')}
+            ) : (
+                <>
+                    <div className="hidden md:block">{renderStudentTable(studentsWhoLeft, 'left')}</div>
+                    <div className="md:hidden">{renderStudentCards(studentsWhoLeft, 'left')}</div>
+                </>
+            )}
           </CardContent>
         </Card>
       </div>
