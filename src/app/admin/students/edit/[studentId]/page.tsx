@@ -258,6 +258,7 @@ export default function EditStudentPage() {
         registrationDate: studentData.registrationDate, 
         idCardFileName: data.idCardFileName,
         nextDueDate: data.nextDueDate ? format(data.nextDueDate, 'yyyy-MM-dd') : undefined,
+        leftDate: null, // Clear left date on reactivation
       };
       successMessage = `${data.name} has been re-activated.`;
       wasReactivated = true;
@@ -363,6 +364,7 @@ export default function EditStudentPage() {
     try {
       const updatedStudent = await updateStudent(studentId, {
         activityStatus: 'Left',
+        leftDate: format(new Date(), 'yyyy-MM-dd'),
       });
       if (updatedStudent) {
         setStudentData(updatedStudent); 
