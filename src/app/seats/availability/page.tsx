@@ -127,9 +127,11 @@ export default function SeatAvailabilityPage() {
     }
   };
 
-  const getSeatStatusForLayout = (seatNumber: string, view: ShiftView): { colorClass: string; shiftIcon?: React.ElementType } => {
-    let colorClass = 'bg-sky-200 border-sky-300 text-sky-800 hover:bg-sky-300';
-    let shiftIcon;
+  const getSeatStatusForLayout = (seatNumber: string, view: ShiftView): { backgroundClass: string; borderClass: string; icon?: React.ElementType, iconClass?: string } => {
+    let backgroundClass = 'bg-sky-200 hover:bg-sky-300';
+    let borderClass = 'border-sky-300';
+    let icon;
+    let iconClass = 'text-gray-600';
 
     const studentMorning = activeStudents.find(s => s.seatNumber === seatNumber && s.shift === 'morning');
     const studentEvening = activeStudents.find(s => s.seatNumber === seatNumber && s.shift === 'evening');
@@ -137,29 +139,31 @@ export default function SeatAvailabilityPage() {
 
     if (view === 'morning') {
       if (studentFullDay) {
-        colorClass = 'bg-yellow-200 border-yellow-300 text-yellow-800 hover:bg-yellow-300'; shiftIcon = Sun;
+        backgroundClass = 'bg-yellow-200 hover:bg-yellow-300'; borderClass='border-yellow-300'; icon = Sun; iconClass='text-yellow-800';
       } else if (studentMorning) {
-        colorClass = 'bg-orange-200 border-orange-300 text-orange-800 hover:bg-orange-300'; shiftIcon = Sunrise;
+        backgroundClass = 'bg-orange-200 hover:bg-orange-300'; borderClass='border-orange-300'; icon = Sunrise; iconClass='text-orange-800';
       }
     } else if (view === 'evening') {
       if (studentFullDay) {
-        colorClass = 'bg-yellow-200 border-yellow-300 text-yellow-800 hover:bg-yellow-300'; shiftIcon = Sun;
+        backgroundClass = 'bg-yellow-200 hover:bg-yellow-300'; borderClass='border-yellow-300'; icon = Sun; iconClass='text-yellow-800';
       } else if (studentEvening) {
-        colorClass = 'bg-purple-200 border-purple-300 text-purple-800 hover:bg-purple-300'; shiftIcon = Sunset;
+        backgroundClass = 'bg-purple-200 hover:bg-purple-300'; borderClass='border-purple-300'; icon = Sunset; iconClass='text-purple-800';
       }
     } else if (view === 'fullday_occupied') {
       if (studentFullDay) {
-        colorClass = 'bg-yellow-200 border-yellow-300 text-yellow-800 hover:bg-yellow-300'; shiftIcon = Sun;
+        backgroundClass = 'bg-yellow-200 hover:bg-yellow-300'; borderClass='border-yellow-300'; icon = Sun; iconClass='text-yellow-800';
       } else if (studentMorning && studentEvening) {
-        colorClass = 'diagonal-split-background border-slate-400';
-        shiftIcon = Users;
+        backgroundClass = 'bg-diagonal-split hover:opacity-80'; 
+        borderClass = 'border-t-orange-300 border-l-orange-300 border-b-purple-300 border-r-purple-300';
+        icon = Users;
+        iconClass='text-orange-800';
       } else if (studentMorning) {
-        colorClass = 'bg-orange-200 border-orange-300 text-orange-800 hover:bg-orange-300'; shiftIcon = Sunrise;
+        backgroundClass = 'bg-orange-200 hover:bg-orange-300'; borderClass='border-orange-300'; icon = Sunrise; iconClass='text-orange-800';
       } else if (studentEvening) {
-        colorClass = 'bg-purple-200 border-purple-300 text-purple-800 hover:bg-purple-300'; shiftIcon = Sunset;
+        backgroundClass = 'bg-purple-200 hover:bg-purple-300'; borderClass='border-purple-300'; icon = Sunset; iconClass='text-purple-800';
       }
     }
-    return { colorClass, shiftIcon };
+    return { backgroundClass, borderClass, icon, iconClass };
   };
   
   const occupiedDialogTitle = React.useMemo(() => {
@@ -371,14 +375,14 @@ export default function SeatAvailabilityPage() {
                   <span>Full Day Occupied</span>
                 </div>
                 <div className="flex items-center flex-shrink-0">
-                  <Users className="h-4 w-4 flex-shrink-0 mr-1.5 text-slate-500" />
-                  <div className="h-4 w-4 flex-shrink-0 mr-1.5 rounded-sm border border-slate-400 diagonal-split-background" />
+                  <Users className="h-4 w-4 flex-shrink-0 mr-1.5 text-orange-800" />
+                  <div className="h-4 w-4 flex-shrink-0 mr-1.5 rounded-sm bg-diagonal-split" />
                   <span>Split Shift Occupied</span>
                 </div>
               </div>
               <div className="grid grid-cols-[repeat(auto-fill,minmax(2.75rem,1fr))] sm:grid-cols-[repeat(auto-fill,minmax(3.25rem,1fr))] gap-1 sm:gap-1.5">
                 {serviceAllSeats.map((seatNum) => {
-                  const { colorClass, shiftIcon: ShiftIcon } = getSeatStatusForLayout(seatNum, selectedShiftView);
+                  const { backgroundClass, borderClass, icon: ShiftIcon, iconClass } = getSeatStatusForLayout(seatNum, selectedShiftView);
                   
                   const studentsOnThisSeat = activeStudents.filter(s => s.seatNumber === seatNum);
 
@@ -389,13 +393,14 @@ export default function SeatAvailabilityPage() {
                       <PopoverTrigger asChild>
                         <div
                           className={cn(
-                            "relative flex items-center justify-center h-10 w-10 sm:h-12 sm:w-12 text-xs sm:text-sm rounded-md border transition-colors font-medium cursor-pointer",
-                            colorClass,
-                            isFemaleOnly ? "female-only-seat" : "" // Add the class here
+                            "relative flex items-center justify-center h-10 w-10 sm:h-12 sm:w-12 text-xs sm:text-sm rounded-md border-2 transition-colors font-medium cursor-pointer text-foreground",
+                            backgroundClass,
+                            borderClass,
+                            isFemaleOnly ? "female-only-seat" : ""
                           )}
                           title={studentsOnThisSeat.length > 0 ? `Seat ${seatNum} - Click for details` : `Seat ${seatNum} - Available`}
                         >
-                          {ShiftIcon && <ShiftIcon className="absolute top-1 right-1 h-3 w-3" />}
+                          {ShiftIcon && <ShiftIcon className={cn("absolute top-1 right-1 h-3 w-3", iconClass)} />}
                           {seatNum}
                         </div>
                       </PopoverTrigger>

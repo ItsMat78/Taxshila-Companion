@@ -31,6 +31,7 @@ import {
   Settings,
   UploadCloud,
   UserX,
+  Shuffle,
 } from 'lucide-react';
 import type { UserRole } from '@/types/auth';
 
@@ -69,6 +70,12 @@ export const mainNav: NavItem[] = [
         title: 'Register Student',
         href: '/students/register',
         icon: UserPlus,
+        roles: ['admin'],
+      },
+      {
+        title: 'Student Movement',
+        href: '/admin/students/movement',
+        icon: Shuffle,
         roles: ['admin'],
       },
       {

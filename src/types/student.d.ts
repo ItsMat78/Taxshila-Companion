@@ -18,6 +18,7 @@ export interface Student {
   registrationDate: string; 
   lastPaymentDate?: string; 
   nextDueDate?: string; 
+  leftDate?: string; // New field for when student is marked as left
   amountDue?: string; 
   paymentHistory?: PaymentRecord[];
   profilePictureUrl?: string;

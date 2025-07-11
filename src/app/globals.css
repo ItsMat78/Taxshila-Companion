@@ -121,8 +121,14 @@
   transform-origin: left;
 }
 
-.diagonal-split-background {
-  background: linear-gradient(135deg, #fed7aa 0%, #fed7aa 50%, #e9d5ff 50%, #e9d5ff 100%);
+.bg-diagonal-split {
+  background-image: linear-gradient(
+    to bottom right,
+    rgb(254 215 170 / 1) 0%, /* orange-200 */
+    rgb(254 215 170 / 1) 49.9%, /* orange-200 */
+    rgb(221 214 254 / 1) 50.1%, /* Correct purple-200 */
+    rgb(221 214 254 / 1) 100% /* Correct purple-200 */
+  );
 }
 
 .female-only-seat {

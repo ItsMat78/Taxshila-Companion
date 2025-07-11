@@ -9,9 +9,9 @@ import {
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
+  CardFooter,
 } from "@/components/ui/card";
 import {
   Table,
@@ -23,72 +23,143 @@ import {
 } from "@/components/ui/table";
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Eye, Edit, Loader2, Users, UserX, UserCheck, Search as SearchIcon, Phone, Mail, MapPin } from 'lucide-react';
-import { getAllStudents } from '@/services/student-service';
+import { Eye, Edit, Loader2, Users, UserX, UserCheck, Search as SearchIcon, Phone, Mail, MapPin, CalendarDays, CalendarX2, CalendarCheck, CalendarClock } from 'lucide-react';
+import { getAllStudents, getAllAttendanceRecords } from '@/services/student-service';
 import type { Student as StudentData } from '@/types/student';
 import { cn } from '@/lib/utils';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { format, parseISO, isValid } from 'date-fns';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+
+
+type StudentWithAttendance = StudentData & {
+    lastAttendanceDate?: string;
+};
+
+// Helper function to get color class based on shift
+const getShiftColorClass = (shift: StudentData['shift']) => {
+  switch (shift) {
+    case 'morning': return 'bg-orange-100 text-orange-800 border-orange-200';
+    case 'evening': return 'bg-purple-100 text-purple-800 border-purple-200';
+    case 'fullday': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+    default: return 'bg-gray-100 text-gray-800';
+  }
+};
+
 
 // Component for individual student card on mobile
-const StudentCardItem = ({ student, isLeftTable, getStatusBadge }: { student: StudentData; isLeftTable?: boolean; getStatusBadge: (s: StudentData) => JSX.Element }) => {
+const StudentCardItem = ({ student, isLeftTable, getStatusBadge }: { student: StudentWithAttendance; isLeftTable?: boolean; getStatusBadge: (s: StudentData) => JSX.Element }) => {
   return (
     <Card className="w-full shadow-md">
-      <CardHeader className="pb-3">
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex-grow min-w-0">
-            <CardTitle className="text-md break-words">{student.name}</CardTitle>
-            <CardDescription className="text-xs break-words">ID: {student.studentId}</CardDescription>
-          </div>
-          <div className="flex-shrink-0">{getStatusBadge(student)}</div>
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-1 text-xs pb-3">
-        <p className="flex items-center"><Phone className="mr-2 h-3 w-3 text-muted-foreground" /><span className="font-medium">Phone:</span>&nbsp;{student.phone}</p>
-        <p><span className="font-medium">Shift:</span> <span className="capitalize">{student.shift}</span></p>
-        <p><span className="font-medium">Seat:</span> {student.seatNumber || 'N/A'}</p>
-      </CardContent>
-      <CardFooter className="flex justify-end space-x-2 py-3 px-4 border-t">
-        <Link href={`/students/profiles/${student.studentId}`} passHref legacyBehavior>
-          <Button variant="outline" size="sm" title="View Profile" className="px-2 sm:px-3">
-            <Eye className="h-4 w-4" /> <span className="hidden sm:inline ml-1">View</span>
-          </Button>
-        </Link>
-        {isLeftTable ? (
-          <Link href={`/admin/students/edit/${student.studentId}`} passHref legacyBehavior>
-            <Button variant="outline" size="sm" title="Re-activate Student" className="px-2 sm:px-3">
-              <UserCheck className="h-4 w-4" /> <span className="hidden sm:inline ml-1">Re-activate</span>
-            </Button>
-          </Link>
-        ) : (
-          <Link href={`/admin/students/edit/${student.studentId}`} passHref legacyBehavior>
-            <Button variant="outline" size="sm" title="Edit Student" className="px-2 sm:px-3">
-              <Edit className="h-4 w-4" /> <span className="hidden sm:inline ml-1">Edit</span>
-            </Button>
-          </Link>
-        )}
-      </CardFooter>
+       <Accordion type="single" collapsible className="w-full">
+        <AccordionItem value={student.studentId} className="border-b-0">
+          <AccordionTrigger className="p-4 hover:no-underline">
+            <div className="flex items-start justify-between gap-2 w-full">
+              <div className="flex-grow min-w-0 text-left">
+                <h4 className="text-md font-semibold break-words">{student.name}</h4>
+                <p className="text-xs text-muted-foreground break-words">ID: {student.studentId}</p>
+              </div>
+              <div className="flex-shrink-0 flex items-center gap-2">
+                {student.seatNumber && student.activityStatus === 'Active' && (
+                  <div
+                    className={cn(
+                      'h-6 w-6 flex items-center justify-center rounded-md border text-xs font-bold',
+                      getShiftColorClass(student.shift)
+                    )}
+                    title={`${student.shift.charAt(0).toUpperCase() + student.shift.slice(1)} Shift, Seat ${student.seatNumber}`}
+                  >
+                    {student.seatNumber}
+                  </div>
+                )}
+                {getStatusBadge(student)}
+              </div>
+            </div>
+          </AccordionTrigger>
+          <AccordionContent>
+            <div className="px-4 pb-4">
+              <div className="space-y-1.5 text-xs mb-3 border-t pt-3">
+                 <p className="flex items-center"><Phone className="mr-2 h-3 w-3 text-muted-foreground flex-shrink-0" /><span className="font-bold">Phone:</span>&nbsp;<span className="break-all">{student.phone}</span></p>
+                 <p className="flex items-center"><Mail className="mr-2 h-3 w-3 text-muted-foreground flex-shrink-0" /><span className="font-bold">Email:</span>&nbsp;<span className="break-all">{student.email || 'N/A'}</span></p>
+                 <p className="flex items-start"><MapPin className="mr-2 h-3 w-3 text-muted-foreground flex-shrink-0 mt-0.5" /><span className="font-bold">Address:</span>&nbsp;<span className="break-words">{student.address || 'N/A'}</span></p>
+                
+                <p className="flex items-center"><CalendarDays className="mr-2 h-3 w-3 text-muted-foreground" /><span className="font-bold">Registered:</span>&nbsp;{student.registrationDate && isValid(parseISO(student.registrationDate)) ? format(parseISO(student.registrationDate), 'PP') : 'N/A'}</p>
+                <p className="flex items-center"><CalendarClock className="mr-2 h-3 w-3 text-muted-foreground" /><span className="font-bold">Last Attended:</span>&nbsp;{student.lastAttendanceDate && isValid(parseISO(student.lastAttendanceDate)) ? format(parseISO(student.lastAttendanceDate), 'PP') : 'Never'}</p>
+                 
+                {isLeftTable ? (
+                    <p className="flex items-center"><CalendarX2 className="mr-2 h-3 w-3 text-muted-foreground" /><span className="font-bold">Date Left:</span>&nbsp;{student.leftDate && isValid(parseISO(student.leftDate)) ? format(parseISO(student.leftDate), 'PP') : 'N/A'}</p>
+                ) : (
+                    <p className="flex items-center"><CalendarCheck className="mr-2 h-3 w-3 text-muted-foreground" /><span className="font-bold">Next Due:</span>&nbsp;{student.nextDueDate && isValid(parseISO(student.nextDueDate)) ? format(parseISO(student.nextDueDate), 'PP') : 'N/A'}</p>
+                )}
+              </div>
+              <div className="flex justify-end space-x-2 pt-3 border-t">
+                <Link href={`/students/profiles/${student.studentId}`} passHref legacyBehavior>
+                  <Button variant="outline" size="sm" title="View Profile" className="px-2 sm:px-3">
+                    <Eye className="h-4 w-4" /> <span className="hidden sm:inline ml-1">View</span>
+                  </Button>
+                </Link>
+                {isLeftTable ? (
+                  <Link href={`/admin/students/edit/${student.studentId}`} passHref legacyBehavior>
+                    <Button variant="outline" size="sm" title="Re-activate Student" className="px-2 sm:px-3">
+                      <UserCheck className="h-4 w-4" /> <span className="hidden sm:inline ml-1">Re-activate</span>
+                    </Button>
+                  </Link>
+                ) : (
+                  <Link href={`/admin/students/edit/${student.studentId}`} passHref legacyBehavior>
+                    <Button variant="outline" size="sm" title="Edit Student" className="px-2 sm:px-3">
+                      <Edit className="h-4 w-4" /> <span className="hidden sm:inline ml-1">Edit</span>
+                    </Button>
+                  </Link>
+                )}
+              </div>
+            </div>
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
     </Card>
   );
 };
 
 
 export default function StudentListPage() {
-  const [allStudents, setAllStudents] = React.useState<StudentData[]>([]);
+  const [allStudents, setAllStudents] = React.useState<StudentWithAttendance[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [searchTerm, setSearchTerm] = React.useState("");
 
   React.useEffect(() => {
-    const fetchStudents = async () => {
+    const fetchStudentsAndAttendance = async () => {
       try {
         setIsLoading(true);
-        const fetchedStudents = await getAllStudents();
-        setAllStudents(fetchedStudents);
+        const [students, attendance] = await Promise.all([
+            getAllStudents(),
+            getAllAttendanceRecords()
+        ]);
+        
+        const lastAttendedMap = new Map<string, string>();
+        attendance.forEach(record => {
+            const existing = lastAttendedMap.get(record.studentId);
+            if (!existing || new Date(record.checkInTime) > new Date(existing)) {
+                lastAttendedMap.set(record.studentId, record.checkInTime);
+            }
+        });
+        
+        const studentsWithAttendance = students.map(s => ({
+            ...s,
+            lastAttendanceDate: lastAttendedMap.get(s.studentId)
+        }));
+
+        setAllStudents(studentsWithAttendance);
       } catch (error) {
         console.error("Failed to fetch students:", error);
       } finally {
         setIsLoading(false);
       }
     };
-    fetchStudents();
+    fetchStudentsAndAttendance();
   }, []);
 
   const filteredStudents = React.useMemo(() => {
@@ -123,97 +194,97 @@ export default function StudentListPage() {
     }
   };
 
-  const renderStudentList = (studentsToRender: StudentData[], tableTitle: string, tableDescription: string, icon: React.ReactNode, emptyMessage: string, isLeftTable: boolean = false) => (
-    <Card className="mt-6 shadow-lg w-full">
-      <CardHeader>
-        <CardTitle className="flex items-center">
-          {icon}
-          <span className="ml-2">{tableTitle}</span> ({studentsToRender.length})
-        </CardTitle>
-        <CardDescription>{tableDescription}</CardDescription>
-      </CardHeader>
-      <CardContent>
-        {isLoading ? (
-          <div className="flex items-center justify-center py-10">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            <p className="ml-2 text-muted-foreground">Loading students...</p>
+  const renderStudentList = (studentsToRender: StudentWithAttendance[], isLeftTable: boolean = false) => (
+    <>
+      {isLoading ? (
+        <div className="flex items-center justify-center py-10">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <p className="ml-2 text-muted-foreground">Loading students...</p>
+        </div>
+      ) : (
+        <>
+          {/* Mobile Card View */}
+          <div className="md:hidden space-y-2">
+            {studentsToRender.length > 0 ? (
+              studentsToRender.map((student) => (
+                <StudentCardItem key={student.studentId} student={student} isLeftTable={isLeftTable} getStatusBadge={getStatusBadgeForStudent} />
+              ))
+            ) : (
+              <div className="py-4 text-center text-muted-foreground">
+                {searchTerm.trim() && allStudents.length > 0 ? "No students match your search." : (isLeftTable ? "No students have left." : "No active students found.")}
+              </div>
+            )}
           </div>
-        ) : (
-          <>
-            {/* Mobile Card View */}
-            <div className="md:hidden space-y-3">
-              {studentsToRender.length > 0 ? (
-                studentsToRender.map((student) => (
-                  <StudentCardItem key={student.studentId} student={student} isLeftTable={isLeftTable} getStatusBadge={getStatusBadgeForStudent} />
-                ))
-              ) : (
-                <div className="py-4 text-center text-muted-foreground">
-                  {searchTerm.trim() && allStudents.length > 0 ? "No students match your search." : emptyMessage}
-                </div>
-              )}
-            </div>
 
-            {/* Desktop Table View */}
-            <div className="hidden md:block">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead className="whitespace-nowrap">Phone</TableHead>
-                    <TableHead>Shift</TableHead>
-                    <TableHead>Seat</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {studentsToRender.map((student) => (
-                    <TableRow key={student.studentId}>
-                      <TableCell className="font-medium">
-                        <Link href={`/students/profiles/${student.studentId}`} className="hover:underline text-primary">
-                          {student.name}
-                        </Link>
-                      </TableCell>
-                      <TableCell>{student.phone}</TableCell>
-                      <TableCell className="capitalize">{student.shift}</TableCell>
-                      <TableCell>{student.seatNumber || 'N/A'}</TableCell>
-                      <TableCell>{getStatusBadgeForStudent(student)}</TableCell>
-                      <TableCell className="space-x-1 text-right whitespace-nowrap">
-                        <Link href={`/students/profiles/${student.studentId}`} passHref legacyBehavior>
-                          <Button variant="outline" size="sm" title="View Profile">
-                            <Eye className="h-4 w-4" />
+          {/* Desktop Table View */}
+          <div className="hidden md:block">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead className="whitespace-nowrap">Phone</TableHead>
+                  <TableHead>Shift</TableHead>
+                  <TableHead>Seat</TableHead>
+                  {isLeftTable && <TableHead>Last Attended</TableHead>}
+                  {isLeftTable && <TableHead>Date Left</TableHead>}
+                  {!isLeftTable && <TableHead>Fee Status</TableHead>}
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {studentsToRender.map((student) => (
+                  <TableRow key={student.studentId}>
+                    <TableCell className="font-medium">
+                      <Link href={`/students/profiles/${student.studentId}`} className="hover:underline text-primary">
+                        {student.name}
+                      </Link>
+                    </TableCell>
+                    <TableCell>{student.phone}</TableCell>
+                    <TableCell className="capitalize">{student.shift}</TableCell>
+                    <TableCell>{student.seatNumber || 'N/A'}</TableCell>
+                    {isLeftTable ? (
+                        <>
+                            <TableCell>{student.lastAttendanceDate && isValid(parseISO(student.lastAttendanceDate)) ? format(parseISO(student.lastAttendanceDate), 'PP') : 'Never'}</TableCell>
+                            <TableCell>{student.leftDate && isValid(parseISO(student.leftDate)) ? format(parseISO(student.leftDate), 'PP') : 'N/A'}</TableCell>
+                        </>
+                    ) : (
+                       <TableCell>{getStatusBadgeForStudent(student)}</TableCell>
+                    )}
+                    <TableCell className="space-x-1 text-right whitespace-nowrap">
+                      <Link href={`/students/profiles/${student.studentId}`} passHref legacyBehavior>
+                        <Button variant="outline" size="sm" title="View Profile">
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                      </Link>
+                      {isLeftTable ? (
+                        <Link href={`/admin/students/edit/${student.studentId}`} passHref legacyBehavior>
+                          <Button variant="outline" size="sm" title="Re-activate Student">
+                            <UserCheck className="h-4 w-4" />
                           </Button>
                         </Link>
-                        {isLeftTable ? (
-                          <Link href={`/admin/students/edit/${student.studentId}`} passHref legacyBehavior>
-                            <Button variant="outline" size="sm" title="Re-activate Student">
-                              <UserCheck className="h-4 w-4" />
-                            </Button>
-                          </Link>
-                        ) : (
-                          <Link href={`/admin/students/edit/${student.studentId}`} passHref legacyBehavior>
-                            <Button variant="outline" size="sm" title="Edit Student">
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                          </Link>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                  {studentsToRender.length === 0 && !isLoading && (
-                    <TableRow>
-                      <TableCell colSpan={6} className="py-4 text-center text-muted-foreground">
-                        {searchTerm.trim() && allStudents.length > 0 ? "No students match your search." : emptyMessage}
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </div>
-          </>
-        )}
-      </CardContent>
-    </Card>
+                      ) : (
+                        <Link href={`/admin/students/edit/${student.studentId}`} passHref legacyBehavior>
+                          <Button variant="outline" size="sm" title="Edit Student">
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                        </Link>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+                {studentsToRender.length === 0 && !isLoading && (
+                  <TableRow>
+                    <TableCell colSpan={isLeftTable ? 7 : 6} className="py-4 text-center text-muted-foreground">
+                        {searchTerm.trim() && allStudents.length > 0 ? "No students match your search." : (isLeftTable ? "No students have left." : "No active students found.")}
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </>
+      )}
+    </>
   );
 
   return (
@@ -231,22 +302,22 @@ export default function StudentListPage() {
           </div>
       </PageTitle>
 
-      {renderStudentList(
-        activeStudents,
-        "Active Students",
-        "A list of all students currently active in the system.",
-        <Users className="h-5 w-5" />,
-        "No active students found."
-      )}
-
-      {renderStudentList(
-        leftStudents,
-        "Students Who Have Left",
-        "A list of students who are no longer active. Click re-activate icon to manage their details and re-assign a seat.",
-        <UserX className="h-5 w-5" />,
-        "No students have left the study hall.",
-        true 
-      )}
+      <Tabs defaultValue="active" className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="active">
+                <Users className="mr-2 h-4 w-4" /> Active ({activeStudents.length})
+            </TabsTrigger>
+            <TabsTrigger value="left">
+                <UserX className="mr-2 h-4 w-4" /> Left ({leftStudents.length})
+            </TabsTrigger>
+        </TabsList>
+        <TabsContent value="active" className="mt-4">
+            {renderStudentList(activeStudents, false)}
+        </TabsContent>
+        <TabsContent value="left" className="mt-4">
+            {renderStudentList(leftStudents, true)}
+        </TabsContent>
+      </Tabs>
     </>
   );
 }
