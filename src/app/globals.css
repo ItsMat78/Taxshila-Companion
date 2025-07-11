@@ -124,10 +124,10 @@
 .bg-diagonal-split {
   background-image: linear-gradient(
     to bottom right,
-    rgb(254 215 170) 0%, /* orange-200 */
-    rgb(254 215 170) 50%, /* orange-200 */
-    rgb(221 214 254) 50%, /* purple-200 */
-    rgb(221 214 254) 100% /* purple-200 */
+    rgb(254 215 170 / 1) 0%, /* orange-200 */
+    rgb(254 215 170 / 1) 49.9%, /* orange-200 */
+    rgb(221 214 254 / 1) 50.1%, /* Correct purple-200 */
+    rgb(221 214 254 / 1) 100% /* Correct purple-200 */
   );
 }
 
