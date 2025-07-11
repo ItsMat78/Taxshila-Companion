@@ -83,17 +83,17 @@ const StudentCardItem = ({ student, isLeftTable, getStatusBadge }: { student: St
           <AccordionContent>
             <div className="px-4 pb-4">
               <div className="space-y-1.5 text-xs mb-3 border-t pt-3">
-                 <p className="flex items-center"><Phone className="mr-2 h-3 w-3 text-muted-foreground flex-shrink-0" /><span className="font-medium">Phone:</span>&nbsp;<span className="break-all">{student.phone}</span></p>
-                 <p className="flex items-center"><Mail className="mr-2 h-3 w-3 text-muted-foreground flex-shrink-0" /><span className="font-medium">Email:</span>&nbsp;<span className="break-all">{student.email || 'N/A'}</span></p>
-                 <p className="flex items-start"><MapPin className="mr-2 h-3 w-3 text-muted-foreground flex-shrink-0 mt-0.5" /><span className="font-medium">Address:</span>&nbsp;<span className="break-words">{student.address || 'N/A'}</span></p>
+                 <p className="flex items-center"><Phone className="mr-2 h-3 w-3 text-muted-foreground flex-shrink-0" /><span className="font-bold">Phone:</span>&nbsp;<span className="break-all">{student.phone}</span></p>
+                 <p className="flex items-center"><Mail className="mr-2 h-3 w-3 text-muted-foreground flex-shrink-0" /><span className="font-bold">Email:</span>&nbsp;<span className="break-all">{student.email || 'N/A'}</span></p>
+                 <p className="flex items-start"><MapPin className="mr-2 h-3 w-3 text-muted-foreground flex-shrink-0 mt-0.5" /><span className="font-bold">Address:</span>&nbsp;<span className="break-words">{student.address || 'N/A'}</span></p>
                 
-                <p className="flex items-center"><CalendarDays className="mr-2 h-3 w-3 text-muted-foreground" /><span className="font-medium">Registered:</span>&nbsp;{student.registrationDate && isValid(parseISO(student.registrationDate)) ? format(parseISO(student.registrationDate), 'PP') : 'N/A'}</p>
-                <p className="flex items-center"><CalendarClock className="mr-2 h-3 w-3 text-muted-foreground" /><span className="font-medium">Last Attended:</span>&nbsp;{student.lastAttendanceDate && isValid(parseISO(student.lastAttendanceDate)) ? format(parseISO(student.lastAttendanceDate), 'PP') : 'Never'}</p>
+                <p className="flex items-center"><CalendarDays className="mr-2 h-3 w-3 text-muted-foreground" /><span className="font-bold">Registered:</span>&nbsp;{student.registrationDate && isValid(parseISO(student.registrationDate)) ? format(parseISO(student.registrationDate), 'PP') : 'N/A'}</p>
+                <p className="flex items-center"><CalendarClock className="mr-2 h-3 w-3 text-muted-foreground" /><span className="font-bold">Last Attended:</span>&nbsp;{student.lastAttendanceDate && isValid(parseISO(student.lastAttendanceDate)) ? format(parseISO(student.lastAttendanceDate), 'PP') : 'Never'}</p>
                  
                 {isLeftTable ? (
-                    <p className="flex items-center"><CalendarX2 className="mr-2 h-3 w-3 text-muted-foreground" /><span className="font-medium">Date Left:</span>&nbsp;{student.leftDate && isValid(parseISO(student.leftDate)) ? format(parseISO(student.leftDate), 'PP') : 'N/A'}</p>
+                    <p className="flex items-center"><CalendarX2 className="mr-2 h-3 w-3 text-muted-foreground" /><span className="font-bold">Date Left:</span>&nbsp;{student.leftDate && isValid(parseISO(student.leftDate)) ? format(parseISO(student.leftDate), 'PP') : 'N/A'}</p>
                 ) : (
-                    <p className="flex items-center"><CalendarCheck className="mr-2 h-3 w-3 text-muted-foreground" /><span className="font-medium">Next Due:</span>&nbsp;{student.nextDueDate && isValid(parseISO(student.nextDueDate)) ? format(parseISO(student.nextDueDate), 'PP') : 'N/A'}</p>
+                    <p className="flex items-center"><CalendarCheck className="mr-2 h-3 w-3 text-muted-foreground" /><span className="font-bold">Next Due:</span>&nbsp;{student.nextDueDate && isValid(parseISO(student.nextDueDate)) ? format(parseISO(student.nextDueDate), 'PP') : 'N/A'}</p>
                 )}
               </div>
               <div className="flex justify-end space-x-2 pt-3 border-t">
