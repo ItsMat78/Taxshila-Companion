@@ -58,10 +58,12 @@ const StudentCardItem = ({ student, isLeftTable, getStatusBadge }: { student: St
           </AccordionTrigger>
           <AccordionContent>
             <div className="px-4 pb-4">
-              <div className="space-y-1 text-xs mb-3">
-                <p className="flex items-center"><Phone className="mr-2 h-3 w-3 text-muted-foreground" /><span className="font-medium">Phone:</span>&nbsp;{student.phone}</p>
-                <p><span className="font-medium">Shift:</span> <span className="capitalize">{student.shift}</span></p>
-                <p><span className="font-medium">Seat:</span> {student.seatNumber || 'N/A'}</p>
+              <div className="space-y-1.5 text-xs mb-3 border-t pt-3">
+                 <p className="flex items-center"><Phone className="mr-2 h-3 w-3 text-muted-foreground flex-shrink-0" /><span className="font-medium">Phone:</span>&nbsp;<span className="break-all">{student.phone}</span></p>
+                 <p className="flex items-center"><Mail className="mr-2 h-3 w-3 text-muted-foreground flex-shrink-0" /><span className="font-medium">Email:</span>&nbsp;<span className="break-all">{student.email || 'N/A'}</span></p>
+                 <p className="flex items-start"><MapPin className="mr-2 h-3 w-3 text-muted-foreground flex-shrink-0 mt-0.5" /><span className="font-medium">Address:</span>&nbsp;<span className="break-words">{student.address || 'N/A'}</span></p>
+                 <p><span className="font-medium">Shift:</span> <span className="capitalize">{student.shift}</span></p>
+                 <p><span className="font-medium">Seat:</span> {student.seatNumber || 'N/A'}</p>
                 {isLeftTable && (
                     <>
                         <p className="flex items-center"><CalendarDays className="mr-2 h-3 w-3 text-muted-foreground" /><span className="font-medium">Last Attended:</span>&nbsp;{student.lastAttendanceDate && isValid(parseISO(student.lastAttendanceDate)) ? format(parseISO(student.lastAttendanceDate), 'PP') : 'Never'}</p>
