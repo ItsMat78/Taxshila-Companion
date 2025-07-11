@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from 'react';
@@ -28,6 +29,13 @@ import type { Student as StudentData } from '@/types/student';
 import { cn } from '@/lib/utils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { format, parseISO, isValid } from 'date-fns';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+
 
 type StudentWithAttendance = StudentData & {
     lastAttendanceDate?: string;
@@ -37,46 +45,54 @@ type StudentWithAttendance = StudentData & {
 const StudentCardItem = ({ student, isLeftTable, getStatusBadge }: { student: StudentWithAttendance; isLeftTable?: boolean; getStatusBadge: (s: StudentData) => JSX.Element }) => {
   return (
     <Card className="w-full shadow-md">
-      <CardHeader className="pb-3">
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex-grow min-w-0">
-            <CardTitle className="text-md break-words">{student.name}</CardTitle>
-            <CardDescription className="text-xs break-words">ID: {student.studentId}</CardDescription>
-          </div>
-          <div className="flex-shrink-0">{getStatusBadge(student)}</div>
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-1 text-xs pb-3">
-        <p className="flex items-center"><Phone className="mr-2 h-3 w-3 text-muted-foreground" /><span className="font-medium">Phone:</span>&nbsp;{student.phone}</p>
-        <p><span className="font-medium">Shift:</span> <span className="capitalize">{student.shift}</span></p>
-        <p><span className="font-medium">Seat:</span> {student.seatNumber || 'N/A'}</p>
-        {isLeftTable && (
-            <>
-                <p className="flex items-center"><CalendarDays className="mr-2 h-3 w-3 text-muted-foreground" /><span className="font-medium">Last Attended:</span>&nbsp;{student.lastAttendanceDate && isValid(parseISO(student.lastAttendanceDate)) ? format(parseISO(student.lastAttendanceDate), 'PP') : 'Never'}</p>
-                <p className="flex items-center"><CalendarX2 className="mr-2 h-3 w-3 text-muted-foreground" /><span className="font-medium">Date Left:</span>&nbsp;{student.leftDate && isValid(parseISO(student.leftDate)) ? format(parseISO(student.leftDate), 'PP') : 'N/A'}</p>
-            </>
-        )}
-      </CardContent>
-      <CardFooter className="flex justify-end space-x-2 py-3 px-4 border-t">
-        <Link href={`/students/profiles/${student.studentId}`} passHref legacyBehavior>
-          <Button variant="outline" size="sm" title="View Profile" className="px-2 sm:px-3">
-            <Eye className="h-4 w-4" /> <span className="hidden sm:inline ml-1">View</span>
-          </Button>
-        </Link>
-        {isLeftTable ? (
-          <Link href={`/admin/students/edit/${student.studentId}`} passHref legacyBehavior>
-            <Button variant="outline" size="sm" title="Re-activate Student" className="px-2 sm:px-3">
-              <UserCheck className="h-4 w-4" /> <span className="hidden sm:inline ml-1">Re-activate</span>
-            </Button>
-          </Link>
-        ) : (
-          <Link href={`/admin/students/edit/${student.studentId}`} passHref legacyBehavior>
-            <Button variant="outline" size="sm" title="Edit Student" className="px-2 sm:px-3">
-              <Edit className="h-4 w-4" /> <span className="hidden sm:inline ml-1">Edit</span>
-            </Button>
-          </Link>
-        )}
-      </CardFooter>
+       <Accordion type="single" collapsible className="w-full">
+        <AccordionItem value={student.studentId} className="border-b-0">
+          <AccordionTrigger className="p-4 hover:no-underline">
+            <div className="flex items-start justify-between gap-2 w-full">
+              <div className="flex-grow min-w-0 text-left">
+                <h4 className="text-md font-semibold break-words">{student.name}</h4>
+                <p className="text-xs text-muted-foreground break-words">ID: {student.studentId}</p>
+              </div>
+              <div className="flex-shrink-0">{getStatusBadge(student)}</div>
+            </div>
+          </AccordionTrigger>
+          <AccordionContent>
+            <div className="px-4 pb-4">
+              <div className="space-y-1 text-xs mb-3">
+                <p className="flex items-center"><Phone className="mr-2 h-3 w-3 text-muted-foreground" /><span className="font-medium">Phone:</span>&nbsp;{student.phone}</p>
+                <p><span className="font-medium">Shift:</span> <span className="capitalize">{student.shift}</span></p>
+                <p><span className="font-medium">Seat:</span> {student.seatNumber || 'N/A'}</p>
+                {isLeftTable && (
+                    <>
+                        <p className="flex items-center"><CalendarDays className="mr-2 h-3 w-3 text-muted-foreground" /><span className="font-medium">Last Attended:</span>&nbsp;{student.lastAttendanceDate && isValid(parseISO(student.lastAttendanceDate)) ? format(parseISO(student.lastAttendanceDate), 'PP') : 'Never'}</p>
+                        <p className="flex items-center"><CalendarX2 className="mr-2 h-3 w-3 text-muted-foreground" /><span className="font-medium">Date Left:</span>&nbsp;{student.leftDate && isValid(parseISO(student.leftDate)) ? format(parseISO(student.leftDate), 'PP') : 'N/A'}</p>
+                    </>
+                )}
+              </div>
+              <div className="flex justify-end space-x-2 pt-3 border-t">
+                <Link href={`/students/profiles/${student.studentId}`} passHref legacyBehavior>
+                  <Button variant="outline" size="sm" title="View Profile" className="px-2 sm:px-3">
+                    <Eye className="h-4 w-4" /> <span className="hidden sm:inline ml-1">View</span>
+                  </Button>
+                </Link>
+                {isLeftTable ? (
+                  <Link href={`/admin/students/edit/${student.studentId}`} passHref legacyBehavior>
+                    <Button variant="outline" size="sm" title="Re-activate Student" className="px-2 sm:px-3">
+                      <UserCheck className="h-4 w-4" /> <span className="hidden sm:inline ml-1">Re-activate</span>
+                    </Button>
+                  </Link>
+                ) : (
+                  <Link href={`/admin/students/edit/${student.studentId}`} passHref legacyBehavior>
+                    <Button variant="outline" size="sm" title="Edit Student" className="px-2 sm:px-3">
+                      <Edit className="h-4 w-4" /> <span className="hidden sm:inline ml-1">Edit</span>
+                    </Button>
+                  </Link>
+                )}
+              </div>
+            </div>
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
     </Card>
   );
 };
@@ -161,7 +177,7 @@ export default function StudentListPage() {
       ) : (
         <>
           {/* Mobile Card View */}
-          <div className="md:hidden space-y-3">
+          <div className="md:hidden space-y-2">
             {studentsToRender.length > 0 ? (
               studentsToRender.map((student) => (
                 <StudentCardItem key={student.studentId} student={student} isLeftTable={isLeftTable} getStatusBadge={getStatusBadgeForStudent} />
