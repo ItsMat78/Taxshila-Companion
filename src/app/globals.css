@@ -121,8 +121,12 @@
   transform-origin: left;
 }
 
-.diagonal-split-background {
-  background: linear-gradient(135deg, #fed7aa 0%, #fed7aa 50%, #e9d5ff 50%, #e9d5ff 100%);
+.split-shift-seat {
+  border-top-color: #f97316; /* orange-500 */
+  border-left-color: #f97316; /* orange-500 */
+  border-bottom-color: #9333ea; /* purple-600 */
+  border-right-color: #9333ea; /* purple-600 */
+  border-width: 1px;
 }
 
 .female-only-seat {

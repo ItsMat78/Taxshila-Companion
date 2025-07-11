@@ -151,7 +151,7 @@ export default function SeatAvailabilityPage() {
       if (studentFullDay) {
         colorClass = 'bg-yellow-200 border-yellow-300 text-yellow-800 hover:bg-yellow-300'; shiftIcon = Sun;
       } else if (studentMorning && studentEvening) {
-        colorClass = 'diagonal-split-background border-orange-400';
+        colorClass = 'split-shift-seat text-orange-500 bg-sky-100 hover:bg-sky-200';
         shiftIcon = Users;
       } else if (studentMorning) {
         colorClass = 'bg-orange-200 border-orange-300 text-orange-800 hover:bg-orange-300'; shiftIcon = Sunrise;
@@ -372,7 +372,7 @@ export default function SeatAvailabilityPage() {
                 </div>
                 <div className="flex items-center flex-shrink-0">
                   <Users className="h-4 w-4 flex-shrink-0 mr-1.5 text-orange-500" />
-                  <div className="h-4 w-4 flex-shrink-0 mr-1.5 rounded-sm border border-orange-400 diagonal-split-background" />
+                  <div className="h-4 w-4 flex-shrink-0 mr-1.5 rounded-sm split-shift-seat" />
                   <span>Split Shift Occupied</span>
                 </div>
               </div>
