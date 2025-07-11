@@ -41,6 +41,17 @@ type StudentWithAttendance = StudentData & {
     lastAttendanceDate?: string;
 };
 
+// Helper function to get color class based on shift
+const getShiftColorClass = (shift: StudentData['shift']) => {
+  switch (shift) {
+    case 'morning': return 'bg-orange-100 text-orange-800 border-orange-200';
+    case 'evening': return 'bg-purple-100 text-purple-800 border-purple-200';
+    case 'fullday': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+    default: return 'bg-gray-100 text-gray-800';
+  }
+};
+
+
 // Component for individual student card on mobile
 const StudentCardItem = ({ student, isLeftTable, getStatusBadge }: { student: StudentWithAttendance; isLeftTable?: boolean; getStatusBadge: (s: StudentData) => JSX.Element }) => {
   return (
@@ -53,7 +64,20 @@ const StudentCardItem = ({ student, isLeftTable, getStatusBadge }: { student: St
                 <h4 className="text-md font-semibold break-words">{student.name}</h4>
                 <p className="text-xs text-muted-foreground break-words">ID: {student.studentId}</p>
               </div>
-              <div className="flex-shrink-0">{getStatusBadge(student)}</div>
+              <div className="flex-shrink-0 flex items-center gap-2">
+                {student.seatNumber && student.activityStatus === 'Active' && (
+                  <div
+                    className={cn(
+                      'h-6 w-6 flex items-center justify-center rounded-md border text-xs font-bold',
+                      getShiftColorClass(student.shift)
+                    )}
+                    title={`${student.shift.charAt(0).toUpperCase() + student.shift.slice(1)} Shift, Seat ${student.seatNumber}`}
+                  >
+                    {student.seatNumber}
+                  </div>
+                )}
+                {getStatusBadge(student)}
+              </div>
             </div>
           </AccordionTrigger>
           <AccordionContent>
@@ -62,8 +86,6 @@ const StudentCardItem = ({ student, isLeftTable, getStatusBadge }: { student: St
                  <p className="flex items-center"><Phone className="mr-2 h-3 w-3 text-muted-foreground flex-shrink-0" /><span className="font-medium">Phone:</span>&nbsp;<span className="break-all">{student.phone}</span></p>
                  <p className="flex items-center"><Mail className="mr-2 h-3 w-3 text-muted-foreground flex-shrink-0" /><span className="font-medium">Email:</span>&nbsp;<span className="break-all">{student.email || 'N/A'}</span></p>
                  <p className="flex items-start"><MapPin className="mr-2 h-3 w-3 text-muted-foreground flex-shrink-0 mt-0.5" /><span className="font-medium">Address:</span>&nbsp;<span className="break-words">{student.address || 'N/A'}</span></p>
-                 <p><span className="font-medium">Shift:</span> <span className="capitalize">{student.shift}</span></p>
-                 <p><span className="font-medium">Seat:</span> {student.seatNumber || 'N/A'}</p>
                 
                 <p className="flex items-center"><CalendarDays className="mr-2 h-3 w-3 text-muted-foreground" /><span className="font-medium">Registered:</span>&nbsp;{student.registrationDate && isValid(parseISO(student.registrationDate)) ? format(parseISO(student.registrationDate), 'PP') : 'N/A'}</p>
                 <p className="flex items-center"><CalendarClock className="mr-2 h-3 w-3 text-muted-foreground" /><span className="font-medium">Last Attended:</span>&nbsp;{student.lastAttendanceDate && isValid(parseISO(student.lastAttendanceDate)) ? format(parseISO(student.lastAttendanceDate), 'PP') : 'Never'}</p>
