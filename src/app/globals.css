@@ -121,12 +121,14 @@
   transform-origin: left;
 }
 
-.split-shift-seat {
-  border-top-color: #fdba74; /* orange-300 */
-  border-left-color: #fdba74; /* orange-300 */
-  border-bottom-color: #c4b5fd; /* purple-300 */
-  border-right-color: #c4b5fd; /* purple-300 */
-  border-width: 1px;
+.bg-diagonal-split {
+  background-image: linear-gradient(
+    to bottom right,
+    rgb(254 215 170) 0%, /* orange-200 */
+    rgb(254 215 170) 50%, /* orange-200 */
+    rgb(221 214 254) 50%, /* purple-200 */
+    rgb(221 214 254) 100% /* purple-200 */
+  );
 }
 
 .female-only-seat {
