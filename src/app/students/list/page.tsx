@@ -23,7 +23,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Eye, Edit, Loader2, Users, UserX, UserCheck, Search as SearchIcon, Phone, Mail, MapPin, CalendarDays, CalendarX2 } from 'lucide-react';
+import { Eye, Edit, Loader2, Users, UserX, UserCheck, Search as SearchIcon, Phone, Mail, MapPin, CalendarDays, CalendarX2, CalendarCheck, CalendarClock } from 'lucide-react';
 import { getAllStudents, getAllAttendanceRecords } from '@/services/student-service';
 import type { Student as StudentData } from '@/types/student';
 import { cn } from '@/lib/utils';
@@ -64,11 +64,14 @@ const StudentCardItem = ({ student, isLeftTable, getStatusBadge }: { student: St
                  <p className="flex items-start"><MapPin className="mr-2 h-3 w-3 text-muted-foreground flex-shrink-0 mt-0.5" /><span className="font-medium">Address:</span>&nbsp;<span className="break-words">{student.address || 'N/A'}</span></p>
                  <p><span className="font-medium">Shift:</span> <span className="capitalize">{student.shift}</span></p>
                  <p><span className="font-medium">Seat:</span> {student.seatNumber || 'N/A'}</p>
-                {isLeftTable && (
-                    <>
-                        <p className="flex items-center"><CalendarDays className="mr-2 h-3 w-3 text-muted-foreground" /><span className="font-medium">Last Attended:</span>&nbsp;{student.lastAttendanceDate && isValid(parseISO(student.lastAttendanceDate)) ? format(parseISO(student.lastAttendanceDate), 'PP') : 'Never'}</p>
-                        <p className="flex items-center"><CalendarX2 className="mr-2 h-3 w-3 text-muted-foreground" /><span className="font-medium">Date Left:</span>&nbsp;{student.leftDate && isValid(parseISO(student.leftDate)) ? format(parseISO(student.leftDate), 'PP') : 'N/A'}</p>
-                    </>
+                
+                <p className="flex items-center"><CalendarDays className="mr-2 h-3 w-3 text-muted-foreground" /><span className="font-medium">Registered:</span>&nbsp;{student.registrationDate && isValid(parseISO(student.registrationDate)) ? format(parseISO(student.registrationDate), 'PP') : 'N/A'}</p>
+                <p className="flex items-center"><CalendarClock className="mr-2 h-3 w-3 text-muted-foreground" /><span className="font-medium">Last Attended:</span>&nbsp;{student.lastAttendanceDate && isValid(parseISO(student.lastAttendanceDate)) ? format(parseISO(student.lastAttendanceDate), 'PP') : 'Never'}</p>
+                 
+                {isLeftTable ? (
+                    <p className="flex items-center"><CalendarX2 className="mr-2 h-3 w-3 text-muted-foreground" /><span className="font-medium">Date Left:</span>&nbsp;{student.leftDate && isValid(parseISO(student.leftDate)) ? format(parseISO(student.leftDate), 'PP') : 'N/A'}</p>
+                ) : (
+                    <p className="flex items-center"><CalendarCheck className="mr-2 h-3 w-3 text-muted-foreground" /><span className="font-medium">Next Due:</span>&nbsp;{student.nextDueDate && isValid(parseISO(student.nextDueDate)) ? format(parseISO(student.nextDueDate), 'PP') : 'N/A'}</p>
                 )}
               </div>
               <div className="flex justify-end space-x-2 pt-3 border-t">
