@@ -122,10 +122,10 @@
 }
 
 .split-shift-seat {
-  border-top-color: #f97316; /* orange-500 */
-  border-left-color: #f97316; /* orange-500 */
-  border-bottom-color: #9333ea; /* purple-600 */
-  border-right-color: #9333ea; /* purple-600 */
+  border-top-color: #fdba74; /* orange-300 */
+  border-left-color: #fdba74; /* orange-300 */
+  border-bottom-color: #c4b5fd; /* purple-300 */
+  border-right-color: #c4b5fd; /* purple-300 */
   border-width: 1px;
 }
 
