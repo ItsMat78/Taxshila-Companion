@@ -84,6 +84,12 @@ export default {
           foreground: 'hsl(var(--seat-fullday-foreground))',
         },
       },
+      borderColor: {
+        'seat-available': 'hsl(206, 81%, 82%)', // sky-300
+        'seat-morning': 'hsl(33, 91%, 79%)',   // orange-300
+        'seat-evening': 'hsl(274, 82%, 84%)',  // purple-300
+        'seat-fullday': 'hsl(54, 95%, 79%)',   // yellow-300
+      },
       borderRadius: {
         lg: 'var(--radius)',
         md: 'calc(var(--radius) - 2px)',
@@ -115,3 +121,4 @@ export default {
   },
   plugins: [require('tailwindcss-animate')],
 } satisfies Config;
+

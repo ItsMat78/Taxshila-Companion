@@ -38,32 +38,35 @@ import { cn } from '@/lib/utils';
 type ShiftView = Shift | 'fullday_occupied';
 type SeatStatusKey = "available" | "morning" | "evening" | "fullday" | "split";
 
-// Statically define all possible class combinations
-// This ensures Tailwind's JIT compiler can see and generate them.
-const SEAT_STYLES: Record<SeatStatusKey, { bgClass: string; textClass: string; icon?: React.ElementType }> = {
+const SEAT_STYLES: Record<SeatStatusKey, { bgClass: string; textClass: string; borderClass: string; icon?: React.ElementType }> = {
   available: {
-    bgClass: 'bg-seat-available text-seat-available-foreground',
+    bgClass: 'bg-seat-available hover:opacity-80',
     textClass: 'text-seat-available-foreground',
+    borderClass: 'border-seat-available',
     icon: undefined
   },
   morning: {
-    bgClass: 'bg-seat-morning text-seat-morning-foreground',
+    bgClass: 'bg-seat-morning hover:opacity-80',
     textClass: 'text-seat-morning-foreground',
+    borderClass: 'border-seat-morning',
     icon: Sunrise
   },
   evening: {
-    bgClass: 'bg-seat-evening text-seat-evening-foreground',
+    bgClass: 'bg-seat-evening hover:opacity-80',
     textClass: 'text-seat-evening-foreground',
+    borderClass: 'border-seat-evening',
     icon: Sunset
   },
   fullday: {
-    bgClass: 'bg-seat-fullday text-seat-fullday-foreground',
+    bgClass: 'bg-seat-fullday hover:opacity-80',
     textClass: 'text-seat-fullday-foreground',
+    borderClass: 'border-seat-fullday',
     icon: Sun
   },
   split: {
-    bgClass: 'bg-diagonal-split', // Special class defined in globals.css
-    textClass: 'text-seat-morning-foreground', // Default to morning text color for the icon
+    bgClass: 'bg-diagonal-split hover:opacity-80',
+    textClass: 'text-seat-morning-foreground dark:text-seat-morning-foreground', // Keeping it consistent
+    borderClass: 'border-t-seat-morning border-l-seat-morning border-b-seat-evening border-r-seat-evening',
     icon: Users
   },
 };
@@ -402,8 +405,9 @@ export default function SeatAvailabilityPage() {
                       <PopoverTrigger asChild>
                         <div
                           className={cn(
-                            "relative flex items-center justify-center h-10 w-10 sm:h-12 sm:w-12 text-xs sm:text-sm rounded-md border-2 transition-colors font-medium cursor-pointer hover:opacity-80",
+                            "relative flex items-center justify-center h-10 w-10 sm:h-12 sm:w-12 text-xs sm:text-sm rounded-md border-2 transition-colors font-medium cursor-pointer",
                             styles.bgClass,
+                            styles.borderClass,
                             isFemaleOnly && "female-only-seat"
                           )}
                           title={studentsOnThisSeat.length > 0 ? `Seat ${seatNum} - Click for details` : `Seat ${seatNum} - Available`}
