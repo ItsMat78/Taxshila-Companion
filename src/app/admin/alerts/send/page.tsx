@@ -34,11 +34,15 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useToast } from "@/hooks/use-toast";
-import { Send, Megaphone, Info, AlertTriangle, Loader2, User, Users } from 'lucide-react';
-import { sendGeneralAlert, sendAlertToStudent, getStudentByCustomId } from '@/services/student-service';
+import { Send, Megaphone, Info, AlertTriangle, Loader2, User, Users, Check, ChevronsUpDown } from 'lucide-react';
+import { sendGeneralAlert, sendAlertToStudent, getStudentByCustomId, getAllStudents } from '@/services/student-service';
 import type { AlertItem } from '@/types/communication';
+import type { Student } from '@/types/student';
 import { cn } from '@/lib/utils';
 import { Label } from '@/components/ui/label';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+
 
 const alertFormSchema = z.object({
   audienceType: z.enum(["general", "targeted"], { required_error: "Please select an audience." }),
@@ -52,7 +56,7 @@ const alertFormSchema = z.object({
     }
     return true;
 }, {
-    message: "Student ID is required for targeted alerts.",
+    message: "A student must be selected for targeted alerts.",
     path: ["studentId"],
 });
 
@@ -68,6 +72,9 @@ const alertTypeOptions = [
 export default function AdminSendAlertPage() {
   const { toast } = useToast();
   const [isSending, setIsSending] = React.useState(false);
+  const [students, setStudents] = React.useState<Student[]>([]);
+  const [isLoadingStudents, setIsLoadingStudents] = React.useState(true);
+
   const form = useForm<AlertFormValues>({
     resolver: zodResolver(alertFormSchema),
     defaultValues: {
@@ -80,6 +87,25 @@ export default function AdminSendAlertPage() {
   });
 
   const audienceType = form.watch("audienceType");
+
+  React.useEffect(() => {
+    async function fetchStudents() {
+      try {
+        const allStudents = await getAllStudents();
+        const activeStudents = allStudents.filter(s => s.activityStatus === 'Active');
+        setStudents(activeStudents);
+      } catch (error) {
+        toast({
+          title: "Error Loading Students",
+          description: "Could not fetch the student list for the dropdown.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoadingStudents(false);
+      }
+    }
+    fetchStudents();
+  }, [toast]);
 
   async function onSubmit(data: AlertFormValues) {
     setIsSending(true);
@@ -100,7 +126,7 @@ export default function AdminSendAlertPage() {
         await sendAlertToStudent(data.studentId, data.alertTitle, data.alertMessage, data.alertType as AlertItem['type']);
         toast({
           title: `Targeted Alert Sent`,
-          description: `"${data.alertTitle}" has been sent to student ${data.studentId}.`,
+          description: `"${data.alertTitle}" has been sent to student ${studentExists.name} (${data.studentId}).`,
         });
 
       } else {
@@ -111,7 +137,13 @@ export default function AdminSendAlertPage() {
           description: `"${data.alertTitle}" has been broadcasted to all members.`,
         });
       }
-      form.reset();
+      form.reset({
+        audienceType: "general",
+        studentId: "",
+        alertTitle: "",
+        alertMessage: "",
+        alertType: "info",
+      });
     } catch (error) {
       toast({
         title: "Failed to Send Alert",
@@ -143,13 +175,13 @@ export default function AdminSendAlertPage() {
                 control={form.control}
                 name="audienceType"
                 render={({ field }) => (
-                  <FormItem className="space-y-3">
+                  <FormItem>
                     <FormLabel>Select Audience</FormLabel>
                     <FormControl>
                       <RadioGroup
                         onValueChange={field.onChange}
                         defaultValue={field.value}
-                        className="grid grid-cols-2 gap-2 p-1 rounded-md bg-muted"
+                        className="grid grid-cols-2 gap-2 p-1 rounded-md bg-muted max-w-sm"
                         disabled={isSending}
                       >
                         <FormItem>
@@ -185,17 +217,67 @@ export default function AdminSendAlertPage() {
                 )}
               />
 
-              <div className={cn("space-y-6 transition-all duration-300", audienceType === 'targeted' ? 'opacity-100' : 'opacity-0 h-0 overflow-hidden')}>
+              <div className={cn("space-y-6 transition-opacity duration-300", audienceType === 'targeted' ? 'opacity-100' : 'opacity-0 h-0 overflow-hidden pointer-events-none')}>
                  <FormField
                     control={form.control}
                     name="studentId"
                     render={({ field }) => (
-                    <FormItem>
-                        <FormLabel>Student ID</FormLabel>
-                        <FormControl>
-                        <Input placeholder="Enter student ID (e.g., TSMEM123)" {...field} disabled={isSending || audienceType !== 'targeted'} />
-                        </FormControl>
-                        <FormMessage />
+                    <FormItem className="flex flex-col">
+                      <FormLabel>Select Student</FormLabel>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <FormControl>
+                              <Button
+                                variant="outline"
+                                role="combobox"
+                                className={cn(
+                                  "w-full justify-between",
+                                  !field.value && "text-muted-foreground"
+                                )}
+                                disabled={isSending || audienceType !== 'targeted' || isLoadingStudents}
+                              >
+                                {isLoadingStudents ? "Loading students..." : (
+                                  field.value
+                                    ? students.find(
+                                        (student) => student.studentId === field.value
+                                      )?.name
+                                    : "Select a student"
+                                )}
+                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                              </Button>
+                            </FormControl>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                            <Command>
+                              <CommandInput placeholder="Search student..." />
+                              <CommandList>
+                                <CommandEmpty>No student found.</CommandEmpty>
+                                <CommandGroup>
+                                  {students.map((student) => (
+                                    <CommandItem
+                                      value={`${student.name} ${student.studentId}`}
+                                      key={student.studentId}
+                                      onSelect={() => {
+                                        form.setValue("studentId", student.studentId)
+                                      }}
+                                    >
+                                      <Check
+                                        className={cn(
+                                          "mr-2 h-4 w-4",
+                                          student.studentId === field.value
+                                            ? "opacity-100"
+                                            : "opacity-0"
+                                        )}
+                                      />
+                                      {student.name} ({student.studentId})
+                                    </CommandItem>
+                                  ))}
+                                </CommandGroup>
+                              </CommandList>
+                            </Command>
+                          </PopoverContent>
+                        </Popover>
+                      <FormMessage />
                     </FormItem>
                     )}
                 />
