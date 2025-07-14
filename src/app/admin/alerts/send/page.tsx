@@ -255,7 +255,7 @@ export default function AdminSendAlertPage() {
                                   {students.map((student) => (
                                     <CommandItem
                                       key={student.studentId}
-                                      value={student.studentId}
+                                      value={`${student.name} ${student.studentId} ${student.email}`} // Provide a value for searching
                                       onSelect={() => {
                                         form.setValue("studentId", student.studentId);
                                         setIsPopoverOpen(false);
