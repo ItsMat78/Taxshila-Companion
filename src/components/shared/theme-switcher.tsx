@@ -39,7 +39,7 @@ export function ThemeSwitcher() {
           <span className="group-data-[collapsible=icon]:hidden">Theme</span>
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" side="right" sideOffset={10} className="w-56">
+      <DropdownMenuContent align="end" side="top" sideOffset={10} className="w-56">
         <DropdownMenuLabel>Appearance</DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuRadioGroup value={theme} onValueChange={setTheme}>
