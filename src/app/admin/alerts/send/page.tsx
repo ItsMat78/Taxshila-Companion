@@ -38,6 +38,7 @@ import { Send, Megaphone, Info, AlertTriangle, Loader2, User, Users } from 'luci
 import { sendGeneralAlert, sendAlertToStudent, getStudentByCustomId } from '@/services/student-service';
 import type { AlertItem } from '@/types/communication';
 import { cn } from '@/lib/utils';
+import { Label } from '@/components/ui/label';
 
 const alertFormSchema = z.object({
   audienceType: z.enum(["general", "targeted"], { required_error: "Please select an audience." }),
