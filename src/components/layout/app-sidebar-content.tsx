@@ -26,6 +26,7 @@ import { useAuth } from '@/contexts/auth-context';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useNotificationCounts } from '@/hooks/use-notification-counts'; // Import the hook
 import { useFinancialCounts } from '@/hooks/use-financial-counts'; // Import the new hook
+import { ThemeSwitcher } from '@/components/shared/theme-switcher';
 
 const ACTUAL_LOGO_URL = '/logo.png'; // Use the actual logo path
 
@@ -247,6 +248,7 @@ export function AppSidebarContent() {
         </SidebarMenu>
       </SidebarContent>
       <SidebarFooter className="p-2">
+        <ThemeSwitcher />
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton onClick={logout}>

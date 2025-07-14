@@ -16,6 +16,7 @@ import { initPushNotifications, VAPID_KEY_FROM_CLIENT_LIB } from '@/lib/firebase
 // Removed getStudentByEmail as it's no longer directly needed here for admin token check
 import { useToast } from '@/hooks/use-toast';
 import { useNotificationContext } from '@/contexts/notification-context';
+import { useTheme } from "next-themes";
 
 function NotificationIconArea() {
   const { user } = useAuth();
@@ -59,6 +60,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const prevPathnameRef = React.useRef(pathname);
   const { toast } = useToast();
   const { refreshNotifications } = useNotificationContext();
+  const { theme } = useTheme();
 
   React.useEffect(() => {
     if (!isAuthLoading && !user && !pathname.startsWith('/login')) {
