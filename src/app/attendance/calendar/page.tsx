@@ -55,31 +55,21 @@ const AttendanceRecordCard = ({ record }: { record: DailyAttendanceDetail }) => 
               {record.seatNumber || 'N/A'}
             </div>
         </div>
-        <CardDescription className="text-xs pt-1 capitalize">{record.shift} Shift</CardDescription>
       </CardHeader>
-      <CardContent className="pb-3 text-sm space-y-2">
-         <div className="flex items-center justify-between p-2 rounded-md bg-green-500/10 text-green-800">
-            <div className="flex items-center font-medium">
-                <LogIn className="mr-2 h-4 w-4" />
-                Check-In
-            </div>
-            <span>{format(parseISO(record.checkInTime), 'p')}</span>
-         </div>
+      <CardContent className="pb-3 text-sm flex items-center justify-between gap-4">
+          <div className="flex items-center gap-1.5 text-green-600 font-medium">
+              <LogIn className="h-4 w-4" />
+              <span>{format(parseISO(record.checkInTime), 'p')}</span>
+          </div>
          {record.checkOutTime ? (
-            <div className="flex items-center justify-between p-2 rounded-md bg-red-500/10 text-red-800">
-                <div className="flex items-center font-medium">
-                    <LogOut className="mr-2 h-4 w-4" />
-                    Check-Out
-                </div>
+            <div className="flex items-center gap-1.5 text-red-600 font-medium">
+                <LogOut className="h-4 w-4" />
                 <span>{format(parseISO(record.checkOutTime), 'p')}</span>
             </div>
          ) : (
-            <div className="flex items-center justify-between p-2 rounded-md bg-yellow-500/10 text-yellow-800">
-                <div className="flex items-center font-medium">
-                    <Clock className="mr-2 h-4 w-4" />
-                    Status
-                </div>
-                <span className="font-semibold">Active</span>
+            <div className="flex items-center gap-1.5 text-yellow-600 font-semibold">
+                <Clock className="h-4 w-4" />
+                <span>Active</span>
             </div>
          )}
       </CardContent>
