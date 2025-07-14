@@ -4,11 +4,12 @@
 import type { UserRole } from '@/types/auth';
 import * as React from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { getStudentByIdentifier, getStudentByEmail, removeFCMTokenForStudent, getAdminByEmail, removeAdminFCMToken } from '@/services/student-service'; // Added admin functions
+import { getStudentByIdentifier, getStudentByEmail, removeFCMTokenForStudent, getAdminByEmail, removeAdminFCMToken, updateUserTheme } from '@/services/student-service'; // Added admin functions and updateUserTheme
 import { useToast } from "@/hooks/use-toast";
 import { getMessaging, getToken, deleteToken } from 'firebase/messaging';
 import { app as firebaseApp } from '@/lib/firebase'; // For messaging
 import { VAPID_KEY_FROM_CLIENT_LIB } from '@/lib/firebase-messaging-client'; // Import VAPID key
+import { useTheme } from 'next-themes';
 
 interface User {
   email?: string;
@@ -17,6 +18,7 @@ interface User {
   firestoreId?: string;
   studentId?: string;
   identifierForDisplay?: string;
+  theme?: string; // Add theme to user object
 }
 
 interface AuthContextType {
@@ -24,6 +26,7 @@ interface AuthContextType {
   login: (identifier: string, passwordAttempt: string) => Promise<User | null>;
   logout: () => void;
   isLoading: boolean;
+  saveThemePreference: (theme: string) => void;
 }
 
 const AuthContext = React.createContext<AuthContextType | undefined>(undefined);
@@ -39,17 +42,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const { toast } = useToast();
+  const { setTheme } = useTheme();
 
   React.useEffect(() => {
     const mockSessionCheck = setTimeout(() => {
       const storedUser = localStorage.getItem('taxshilaUser');
       if (storedUser) {
-        setUser(JSON.parse(storedUser));
+        const parsedUser: User = JSON.parse(storedUser);
+        setUser(parsedUser);
+        if (parsedUser.theme) {
+          setTheme(parsedUser.theme);
+        }
       }
       setIsLoading(false);
     }, 500);
     return () => clearTimeout(mockSessionCheck);
-  }, []);
+  }, [setTheme]);
 
   React.useEffect(() => {
     if (!isLoading && !user && !pathname.startsWith('/login')) {
@@ -76,27 +84,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             profilePictureUrl: matchedHardcodedAdmin.profilePictureUrl, // Keep using hardcoded one if any
             firestoreId: adminFromDb.firestoreId,
             identifierForDisplay: adminFromDb.email, // Set identifier for admin
+            theme: adminFromDb.theme || 'light-default',
           };
           setUser(userData);
           localStorage.setItem('taxshilaUser', JSON.stringify(userData));
+          setTheme(userData.theme);
           setIsLoading(false);
           return userData;
         } else {
-          // Admin exists in hardcoded list but not in Firestore 'admins' collection
-          // Log them in with hardcoded details but without firestoreId for now.
-          // This means they won't get FCM tokens saved until their DB entry is created.
           console.warn(`[AuthContext] Admin ${matchedHardcodedAdmin.email} found in hardcoded list but not in Firestore 'admins' collection. FCM tokens won't be saved.`);
-          const userData: User = { email: matchedHardcodedAdmin.email, role: matchedHardcodedAdmin.role, profilePictureUrl: matchedHardcodedAdmin.profilePictureUrl, firestoreId: undefined, identifierForDisplay: matchedHardcodedAdmin.email };
+          const userData: User = { email: matchedHardcodedAdmin.email, role: matchedHardcodedAdmin.role, profilePictureUrl: matchedHardcodedAdmin.profilePictureUrl, firestoreId: undefined, identifierForDisplay: matchedHardcodedAdmin.email, theme: 'light-default' };
           setUser(userData);
           localStorage.setItem('taxshilaUser', JSON.stringify(userData));
+          setTheme(userData.theme);
           setIsLoading(false);
           return userData;
         }
       } catch (dbError) {
         console.error("[AuthContext] Error fetching admin from Firestore, logging in with hardcoded details only:", dbError);
-        const userData: User = { email: matchedHardcodedAdmin.email, role: matchedHardcodedAdmin.role, profilePictureUrl: matchedHardcodedAdmin.profilePictureUrl, firestoreId: undefined, identifierForDisplay: matchedHardcodedAdmin.email };
+        const userData: User = { email: matchedHardcodedAdmin.email, role: matchedHardcodedAdmin.role, profilePictureUrl: matchedHardcodedAdmin.profilePictureUrl, firestoreId: undefined, identifierForDisplay: matchedHardcodedAdmin.email, theme: 'light-default' };
         setUser(userData);
         localStorage.setItem('taxshilaUser', JSON.stringify(userData));
+        setTheme(userData.theme);
         setIsLoading(false);
         return userData;
       }
@@ -112,9 +121,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           firestoreId: member.firestoreId,
           studentId: member.studentId,
           identifierForDisplay: member.email || member.phone,
+          theme: member.theme || 'light-default',
         };
         setUser(userData);
         localStorage.setItem('taxshilaUser', JSON.stringify(userData));
+        setTheme(userData.theme);
         setIsLoading(false);
         return userData;
       } else if (member && member.password !== passwordAttempt) {
@@ -162,11 +173,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     setUser(null);
     localStorage.removeItem('taxshilaUser');
+    setTheme('light-default'); // Reset to default on logout
     router.push('/login');
   };
 
+  const saveThemePreference = React.useCallback(async (newTheme: string) => {
+    if (user && user.firestoreId && user.role && user.theme !== newTheme) {
+      try {
+        await updateUserTheme(user.firestoreId, user.role, newTheme);
+        const updatedUser = { ...user, theme: newTheme };
+        setUser(updatedUser);
+        localStorage.setItem('taxshilaUser', JSON.stringify(updatedUser));
+      } catch (error) {
+        console.error("Failed to save theme preference:", error);
+        toast({
+          title: "Theme Error",
+          description: "Could not save your theme preference.",
+          variant: "destructive"
+        });
+      }
+    }
+  }, [user, toast]);
+
   return (
-    <AuthContext.Provider value={{ user, login, logout, isLoading }}>
+    <AuthContext.Provider value={{ user, login, logout, isLoading, saveThemePreference }}>
       {children}
     </AuthContext.Provider>
   );

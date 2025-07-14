@@ -5,6 +5,7 @@ import { AppLayout } from '@/components/layout/app-layout';
 import { Toaster } from "@/components/ui/toaster";
 import { AuthProvider } from '@/contexts/auth-context';
 import { NotificationProvider } from '@/contexts/notification-context';
+import { ThemeProvider } from '@/contexts/theme-context'; // Import ThemeProvider
 
 export const metadata: Metadata = {
   title: 'Taxshila Companion',
@@ -39,14 +40,21 @@ export default function RootLayout({
         <link href="https://fonts.googleapis.com/css2?family=PT+Sans:wght@400;700&display=swap" rel="stylesheet" />
       </head>
       <body className="font-body antialiased">
-        <AuthProvider>
-          <NotificationProvider>
-            <AppLayout>
-              {children}
-            </AppLayout>
-            <Toaster />
-          </NotificationProvider>
-        </AuthProvider>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="light-default"
+          enableSystem={false}
+          themes={['light-default', 'light-mint', 'light-sunrise', 'light-sakura', 'dark-default', 'dark-midnight', 'dark-forest', 'dark-rose']}
+        >
+          <AuthProvider>
+            <NotificationProvider>
+              <AppLayout>
+                {children}
+              </AppLayout>
+              <Toaster />
+            </NotificationProvider>
+          </AuthProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

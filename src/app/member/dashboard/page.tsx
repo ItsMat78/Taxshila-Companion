@@ -25,13 +25,14 @@ import {
 import { Alert, AlertDescription, AlertTitle as ShadcnAlertTitle } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/auth-context';
-import { Camera, QrCode, Receipt, IndianRupee, MessageSquare, Bell, ScrollText, Star, Loader2, XCircle, Home, BarChart3, PlayCircle, CheckCircle, Hourglass, ScanLine, LogOut, AlertCircle } from 'lucide-react';
+import { Camera, QrCode, Receipt, IndianRupee, MessageSquare, Bell, ScrollText, Star, Loader2, XCircle, Home, BarChart3, PlayCircle, CheckCircle, Hourglass, ScanLine, LogOut, AlertCircle, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getStudentByEmail, getAlertsForStudent, calculateMonthlyStudyHours, addCheckIn, addCheckOut, getActiveCheckIn, getAttendanceForDate, getStudentByCustomId } from '@/services/student-service';
 import type { AlertItem } from '@/types/communication';
 import type { Student, AttendanceRecord, FeeStatus } from '@/types/student';
 import { format, parseISO, differenceInMilliseconds, isValid } from 'date-fns';
 import { Html5QrcodeScanner, Html5QrcodeSupportedFormats, Html5QrcodeScanType } from 'html5-qrcode';
+import { initPushNotifications } from '@/lib/firebase-messaging-client';
 
 const DASHBOARD_QR_SCANNER_ELEMENT_ID = "qr-reader-dashboard";
 const LIBRARY_QR_CODE_PAYLOAD = "TAXSHILA_LIBRARY_CHECKIN_QR_V1";
@@ -154,6 +155,33 @@ const DashboardTile: React.FC<DashboardTileProps> = ({
   return <div className={cn(className, disabled ? 'cursor-not-allowed' : '')}>{content}</div>;
 };
 
+function NotificationPrompt({ onDismiss }: { onDismiss: () => void }) {
+  const { user } = useAuth();
+
+  const handleEnableNotifications = async () => {
+    if (user && user.firestoreId && user.role) {
+      await initPushNotifications(user.firestoreId, user.role);
+    }
+    onDismiss();
+  };
+
+  return (
+    <Alert className="mb-6 border-primary/30 bg-primary/5 relative">
+      <Bell className="h-4 w-4 text-primary" />
+      <ShadcnAlertTitle className="font-semibold text-primary">Enable Notifications</ShadcnAlertTitle>
+      <AlertDescription>
+        Stay up-to-date with important alerts and announcements from the library.
+      </AlertDescription>
+      <div className="mt-3 flex gap-2">
+        <Button onClick={handleEnableNotifications} size="sm">Enable Notifications</Button>
+        <Button onClick={onDismiss} size="sm" variant="ghost" className="absolute top-2 right-2 h-6 w-6 p-0">
+          <X className="h-4 w-4" />
+        </Button>
+      </div>
+    </Alert>
+  );
+}
+
 
 export default function MemberDashboardPage() {
   const { user } = useAuth();
@@ -182,6 +210,25 @@ export default function MemberDashboardPage() {
   const [studentNextDueDate, setStudentNextDueDate] = React.useState<string | null>(null);
   const [isOverdueDialogOpen, setIsOverdueDialogOpen] = React.useState(false);
   const [elapsedTime, setElapsedTime] = React.useState<string | null>(null);
+  const [showNotificationPrompt, setShowNotificationPrompt] = React.useState(false);
+
+  React.useEffect(() => {
+    if (typeof window !== 'undefined' && 'Notification' in window) {
+      if (Notification.permission === 'default') {
+        // Check if the prompt has been dismissed before
+        const dismissed = localStorage.getItem('notificationPromptDismissed');
+        if (!dismissed) {
+          setShowNotificationPrompt(true);
+        }
+      }
+    }
+  }, []);
+
+  const handleDismissPrompt = () => {
+    localStorage.setItem('notificationPromptDismissed', 'true');
+    setShowNotificationPrompt(false);
+  };
+
 
   React.useEffect(() => {
     let intervalId: NodeJS.Timeout | null = null;
@@ -632,6 +679,8 @@ export default function MemberDashboardPage() {
   return (
     <>
       <PageTitle title={pageTitleText} description="Your Taxshila Companion dashboard." />
+
+      {showNotificationPrompt && <NotificationPrompt onDismiss={handleDismissPrompt} />}
 
       {activeCheckInRecord && elapsedTime && (
         <Card className="my-4 text-center shadow-lg bg-background">

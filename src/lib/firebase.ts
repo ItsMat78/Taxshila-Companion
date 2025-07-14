@@ -43,7 +43,7 @@ const storage = getStorage(app); // Initialize Firebase Storage
 
 // Initialize Firebase Messaging
 // Ensure messaging is initialized only on the client side
-let messaging = null;
+let messaging;
 if (typeof window !== 'undefined') {
   try {
     messaging = getMessaging(app);

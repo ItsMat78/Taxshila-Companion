@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from 'react';
@@ -49,7 +50,7 @@ import { ArrowLeft, Save, ClipboardCheck, Loader2, UserX, UserCheck, FileText, K
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { getStudentById, updateStudent, getAvailableSeats, recordStudentPayment, deleteStudentCompletely, getFeeStructure } from '@/services/student-service';
-import type { Student, Shift, FeeStructure } from '@/types/student';
+import type { Student, Shift, FeeStructure, PaymentRecord } from '@/types/student';
 import { format, addMonths } from 'date-fns';
 import { Calendar } from '@/components/ui/calendar'
 import {
@@ -121,7 +122,7 @@ export default function EditStudentPage() {
   const [isConfirmPaymentOpen, setIsConfirmPaymentOpen] = React.useState(false);
   const [isConfirmMarkLeftOpen, setIsConfirmMarkLeftOpen] = React.useState(false);
   const [feeStructure, setFeeStructure] = React.useState<FeeStructure | null>(null);
-
+  const [paymentMethod, setPaymentMethod] = React.useState<PaymentRecord['method']>('Desk Payment');
 
   const form = useForm<StudentEditFormValues>({
     resolver: zodResolver(studentEditFormSchema),
@@ -316,7 +317,7 @@ export default function EditStudentPage() {
     }
   }
 
-  async function handleMarkPaymentPaid() {
+  async function handleMarkPaymentPaid(selectedMethod: PaymentRecord['method']) {
     if (!studentId || !studentData || isStudentLeft || !feeStructure) return;
     setIsSaving(true);
     
@@ -334,14 +335,14 @@ export default function EditStudentPage() {
     }
 
     try {
-      const updatedStudent = await recordStudentPayment(studentId, amountToPay, "Admin Recorded");
+      const updatedStudent = await recordStudentPayment(studentId, amountToPay, selectedMethod);
       if (updatedStudent) {
         setStudentData(updatedStudent); 
         setIsDirtyOverride(false);
         refreshNotifications(); // Refresh sidebar counts
          toast({
           title: "Payment Status Updated",
-          description: `Payment for ${updatedStudent.name} has been marked as Paid. An alert has been sent.`,
+          description: `Payment for ${updatedStudent.name} has been marked as Paid via ${selectedMethod}. An alert has been sent.`,
         });
       } else {
         toast({ title: "Error", description: "Failed to update payment status.", variant: "destructive"});
@@ -704,7 +705,10 @@ export default function EditStudentPage() {
                             type="button"
                             variant="outline"
                             disabled={isSaving || isDeleting || studentData.feeStatus === "Paid" || isStudentLeft}
-                            onClick={() => setIsConfirmPaymentOpen(true)}
+                            onClick={() => {
+                              setPaymentMethod('Cash'); // Default to Cash when opening dialog
+                              setIsConfirmPaymentOpen(true)
+                            }}
                         >
                             <ClipboardCheck className="mr-2 h-4 w-4" /> Mark Payment as Paid
                         </Button>
@@ -713,12 +717,24 @@ export default function EditStudentPage() {
                         <AlertDialogHeader>
                             <AlertDialogTitle>Confirm Payment for {studentData.name}?</AlertDialogTitle>
                             <AlertDialogDescription>
-                                This will mark the current due amount of <strong>{amountDueDisplay}</strong> as paid and advance the due date by one month.
+                                This will mark the current due amount of <strong>{amountDueDisplay}</strong> as paid and advance the due date by one month. Please select the payment method used.
                             </AlertDialogDescription>
                         </AlertDialogHeader>
+                        <div className="py-4">
+                           <RadioGroup defaultValue="Cash" onValueChange={(value) => setPaymentMethod(value as PaymentRecord['method'])}>
+                              <div className="flex items-center space-x-2">
+                                <RadioGroupItem value="Cash" id="payment-cash" />
+                                <FormLabel htmlFor="payment-cash">Cash</FormLabel>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <RadioGroupItem value="Online" id="payment-online" />
+                                <FormLabel htmlFor="payment-online">Online (UPI/Card)</FormLabel>
+                              </div>
+                            </RadioGroup>
+                        </div>
                         <AlertDialogFooter>
                             <AlertDialogCancel onClick={() => setIsConfirmPaymentOpen(false)} disabled={isSaving}>Cancel</AlertDialogCancel>
-                            <AlertDialogAction onClick={handleMarkPaymentPaid} disabled={isSaving}>
+                            <AlertDialogAction onClick={() => handleMarkPaymentPaid(paymentMethod)} disabled={isSaving}>
                                 {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                                 Confirm Payment
                             </AlertDialogAction>

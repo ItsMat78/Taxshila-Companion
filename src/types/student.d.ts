@@ -23,6 +23,7 @@ export interface Student {
   paymentHistory?: PaymentRecord[];
   profilePictureUrl?: string;
   fcmTokens?: string[]; // Added for storing FCM tokens
+  theme?: string; // Added for storing user's preferred theme
 }
 
 export interface PaymentRecord {
@@ -30,7 +31,7 @@ export interface PaymentRecord {
   date: string; 
   amount: string; 
   transactionId: string;
-  method: "UPI" | "Cash" | "Card" | "Online" | "Desk Payment" | "Imported"; // Added Imported
+  method: "Cash" | "Online" | "Desk Payment" | "UPI" | "Card" | "Imported";
 }
 
 export interface AttendanceRecord {

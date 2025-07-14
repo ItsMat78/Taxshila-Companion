@@ -1,7 +1,8 @@
+
 import type {Config} from 'tailwindcss';
 
 export default {
-  darkMode: ['class'],
+  darkMode: "class",
   content: [
     './src/pages/**/*.{js,ts,jsx,tsx,mdx}',
     './src/components/**/*.{js,ts,jsx,tsx,mdx}',
@@ -65,6 +66,29 @@ export default {
           border: 'hsl(var(--sidebar-border))',
           ring: 'hsl(var(--sidebar-ring))',
         },
+        // Seat Colors defined via CSS variables
+        'seat-available': {
+          DEFAULT: 'hsl(var(--seat-available))',
+          foreground: 'hsl(var(--seat-available-foreground))',
+        },
+        'seat-morning': {
+          DEFAULT: 'hsl(var(--seat-morning))',
+          foreground: 'hsl(var(--seat-morning-foreground))',
+        },
+        'seat-evening': {
+          DEFAULT: 'hsl(var(--seat-evening))',
+          foreground: 'hsl(var(--seat-evening-foreground))',
+        },
+        'seat-fullday': {
+          DEFAULT: 'hsl(var(--seat-fullday))',
+          foreground: 'hsl(var(--seat-fullday-foreground))',
+        },
+      },
+      borderColor: {
+        'seat-available': 'hsl(206, 81%, 82%)', // sky-300
+        'seat-morning': 'hsl(33, 91%, 79%)',   // orange-300
+        'seat-evening': 'hsl(274, 82%, 84%)',  // purple-300
+        'seat-fullday': 'hsl(54, 95%, 79%)',   // yellow-300
       },
       borderRadius: {
         lg: 'var(--radius)',
@@ -97,3 +121,4 @@ export default {
   },
   plugins: [require('tailwindcss-animate')],
 } satisfies Config;
+

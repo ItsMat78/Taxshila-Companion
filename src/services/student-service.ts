@@ -46,6 +46,7 @@ interface AdminUserFirestore {
   name: string;
   role: 'admin';
   fcmTokens?: string[];
+  theme?: string; // Added for storing user's preferred theme
 }
 
 
@@ -65,6 +66,7 @@ const studentFromDoc = (docSnapshot: any): Student => {
       date: p.date instanceof Timestamp ? format(p.date.toDate(), 'yyyy-MM-dd') : p.date,
     })),
     fcmTokens: data.fcmTokens || [], // Ensure fcmTokens is an array
+    theme: data.theme || 'light-default', // Add theme with a default
   } as Student;
 };
 
@@ -74,6 +76,7 @@ const adminUserFromDoc = (docSnapshot: any): AdminUserFirestore => {
     ...data,
     firestoreId: docSnapshot.id,
     fcmTokens: data.fcmTokens || [],
+    theme: data.theme || 'light-default', // Add theme with a default
   } as AdminUserFirestore;
 }
 
@@ -312,6 +315,7 @@ export async function addStudent(studentData: AddStudentData): Promise<Student> 
     paymentHistory: [],
     readGeneralAlertIds: [],
     fcmTokens: [],
+    theme: 'light-default', // Default theme
   };
 
   const firestoreReadyData: any = {
@@ -451,7 +455,23 @@ export async function updateStudent(customStudentId: string, studentUpdateData: 
     payload.nextDueDate = null;
   }
 
+  const hasRelevantChanges = Object.keys(payload).some(key => key !== 'newPassword' && key !== 'confirmNewPassword' && key !== 'theme');
+
   await updateDoc(studentDocRef, payload);
+  
+  if (hasRelevantChanges) {
+    try {
+      await sendAlertToStudent(
+        customStudentId,
+        "Profile Details Updated",
+        `Hi ${studentToUpdate.name}, your profile details have been updated by the admin. Please review them in the app.`,
+        "info"
+      );
+    } catch (alertError) { 
+      console.warn("Failed to send profile update alert for student:", customStudentId, alertError);
+    }
+  }
+  
   const updatedDocSnap = await getDoc(studentDocRef);
   return studentFromDoc(updatedDocSnap);
 }
@@ -606,7 +626,7 @@ export async function getAttendanceRecordsByStudentId(studentId: string): Promis
 export async function recordStudentPayment(
   customStudentId: string,
   totalAmountPaidString: string,
-  paymentMethod: PaymentRecord['method'] | "Admin Recorded",
+  paymentMethod: PaymentRecord['method'],
   numberOfMonthsPaid: number = 1
 ): Promise<Student | undefined> {
   const studentToUpdate = await getStudentByCustomId(customStudentId);
@@ -639,14 +659,14 @@ export async function recordStudentPayment(
   const studentDocRef = doc(db, STUDENTS_COLLECTION, studentToUpdate.firestoreId);
   const today = new Date(); // Actual payment date
   const newPaymentId = `PAY${String(Date.now()).slice(-6)}${String(Math.floor(Math.random() * 100)).padStart(2,'0')}`;
-  const newTransactionId = `TXN${paymentMethod === "Admin Recorded" ? "ADMIN" : (paymentMethod === "UPI" ? "UPI" : "MEM")}${String(Date.now()).slice(-7)}`;
+  const newTransactionId = `TXN${paymentMethod.substring(0,3).toUpperCase()}${String(Date.now()).slice(-7)}`;
 
   const newPaymentRecord: PaymentRecord = {
     paymentId: newPaymentId,
     date: format(today, 'yyyy-MM-dd'),
     amount: `Rs. ${amountToPayNumeric}`,
     transactionId: newTransactionId,
-    method: paymentMethod === "Admin Recorded" ? "Desk Payment" : paymentMethod,
+    method: paymentMethod,
   };
 
   const firestorePaymentRecord = {
@@ -1332,6 +1352,15 @@ export async function refreshAllStudentFeeStatuses(): Promise<{ updatedCount: nu
 }
 
 
+// --- Theme Persistence ---
+export async function updateUserTheme(firestoreId: string, role: 'admin' | 'member', theme: string): Promise<void> {
+  if (!firestoreId || !role || !theme) return;
+  const collectionName = role === 'admin' ? ADMINS_COLLECTION : STUDENTS_COLLECTION;
+  const userDocRef = doc(db, collectionName, firestoreId);
+  await updateDoc(userDocRef, { theme: theme });
+}
+
+
 declare module '@/types/student' {
   interface Student {
     id?: string;
@@ -1347,4 +1376,3 @@ declare module '@/types/communication' {
     firestoreId?: string;
   }
 }
-

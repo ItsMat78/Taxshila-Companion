@@ -1,3 +1,4 @@
+
 "use client";
 import * as React from 'react';
 import { usePathname, useRouter } from 'next/navigation';
@@ -16,6 +17,7 @@ import { initPushNotifications, VAPID_KEY_FROM_CLIENT_LIB } from '@/lib/firebase
 // Removed getStudentByEmail as it's no longer directly needed here for admin token check
 import { useToast } from '@/hooks/use-toast';
 import { useNotificationContext } from '@/contexts/notification-context';
+import { useTheme } from "next-themes";
 
 function NotificationIconArea() {
   const { user } = useAuth();
@@ -59,6 +61,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const prevPathnameRef = React.useRef(pathname);
   const { toast } = useToast();
   const { refreshNotifications } = useNotificationContext();
+  const { theme, setTheme } = useTheme();
 
   React.useEffect(() => {
     if (!isAuthLoading && !user && !pathname.startsWith('/login')) {
@@ -76,6 +79,14 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       return () => clearTimeout(timer);
     }
   }, [pathname]);
+
+  // Apply theme from user context when it loads
+  React.useEffect(() => {
+    if (user?.theme && user.theme !== theme) {
+      setTheme(user.theme);
+    }
+  }, [user, theme, setTheme]);
+
 
   React.useEffect(() => {
     const setupPush = async () => {
