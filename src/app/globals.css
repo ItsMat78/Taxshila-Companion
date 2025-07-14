@@ -4,7 +4,7 @@
 @tailwind utilities;
 
 @layer base {
-  :root, .theme-light-default {
+  :root, [class="light-default"] {
     --background: 240 7% 84%; /* Light gray #D6D5D8 */
     --foreground: 210 25% 15%; /* Dark grayish blue for text */
 
@@ -53,7 +53,7 @@
     --sidebar-ring: 0 84% 63%;
   }
 
-  .theme-dark-default {
+  [class="dark-default"] {
     --background: 220 13% 18%; /* Dark Slate Gray */
     --foreground: 210 20% 90%; /* Light Cool Gray */
 
@@ -104,7 +104,7 @@
   /* --- Additional Themes --- */
   
   /* Light Theme 2: Mint */
-  .theme-light-mint {
+  [class="light-mint"] {
     --background: 150 50% 96%;
     --foreground: 180 25% 20%;
     --muted: 150 40% 90%;
@@ -133,7 +133,7 @@
   }
 
   /* Light Theme 3: Sunrise */
-  .theme-light-sunrise {
+  [class="light-sunrise"] {
     --background: 40 100% 97%;
     --foreground: 260 25% 20%;
     --muted: 40 80% 92%;
@@ -162,7 +162,7 @@
   }
 
   /* Dark Theme 2: Midnight */
-  .theme-dark-midnight {
+  [class="dark-midnight"] {
     --background: 220 40% 10%;
     --foreground: 210 40% 90%;
     --muted: 220 30% 15%;
@@ -191,7 +191,7 @@
   }
 
   /* Dark Theme 3: Forest */
-  .theme-dark-forest {
+  [class="dark-forest"] {
     --background: 120 20% 8%;
     --foreground: 90 30% 85%;
     --muted: 120 15% 12%;
