@@ -4,6 +4,7 @@
 import * as React from "react"
 import { Moon, Sun } from "lucide-react"
 import { useTheme } from "next-themes"
+import { useAuth } from "@/contexts/auth-context"; // Import useAuth
 
 import {
   DropdownMenu,
@@ -30,11 +31,17 @@ const themes = [
 
 export function ThemeSwitcher() {
   const { theme, setTheme } = useTheme();
+  const { saveThemePreference } = useAuth(); // Get the save function from auth context
   const [mounted, setMounted] = React.useState(false);
 
   React.useEffect(() => {
     setMounted(true)
   }, []);
+
+  const handleThemeChange = (newTheme: string) => {
+    setTheme(newTheme);
+    saveThemePreference(newTheme); // Save the new theme to Firestore
+  }
 
   const currentThemeName = React.useMemo(() => {
     if (!mounted) return "Theme";
@@ -55,7 +62,7 @@ export function ThemeSwitcher() {
       <DropdownMenuContent align="end" side="top" sideOffset={10} className="w-56">
         <DropdownMenuLabel>Appearance</DropdownMenuLabel>
         <DropdownMenuSeparator />
-        <DropdownMenuRadioGroup value={theme} onValueChange={setTheme}>
+        <DropdownMenuRadioGroup value={theme} onValueChange={handleThemeChange}>
             <DropdownMenuLabel className="text-xs font-normal text-muted-foreground px-2">Light Themes</DropdownMenuLabel>
             {themes.filter(t => t.value.startsWith('light')).map((t) => (
                 <DropdownMenuRadioItem key={t.value} value={t.value}>

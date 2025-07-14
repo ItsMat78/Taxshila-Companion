@@ -1,3 +1,4 @@
+
 "use client";
 import * as React from 'react';
 import { usePathname, useRouter } from 'next/navigation';
@@ -60,7 +61,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const prevPathnameRef = React.useRef(pathname);
   const { toast } = useToast();
   const { refreshNotifications } = useNotificationContext();
-  const { theme } = useTheme();
+  const { theme, setTheme } = useTheme();
 
   React.useEffect(() => {
     if (!isAuthLoading && !user && !pathname.startsWith('/login')) {
@@ -78,6 +79,14 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       return () => clearTimeout(timer);
     }
   }, [pathname]);
+
+  // Apply theme from user context when it loads
+  React.useEffect(() => {
+    if (user?.theme && user.theme !== theme) {
+      setTheme(user.theme);
+    }
+  }, [user, theme, setTheme]);
+
 
   React.useEffect(() => {
     const setupPush = async () => {

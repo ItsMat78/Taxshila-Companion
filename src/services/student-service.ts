@@ -46,6 +46,7 @@ interface AdminUserFirestore {
   name: string;
   role: 'admin';
   fcmTokens?: string[];
+  theme?: string; // Added for storing user's preferred theme
 }
 
 
@@ -65,6 +66,7 @@ const studentFromDoc = (docSnapshot: any): Student => {
       date: p.date instanceof Timestamp ? format(p.date.toDate(), 'yyyy-MM-dd') : p.date,
     })),
     fcmTokens: data.fcmTokens || [], // Ensure fcmTokens is an array
+    theme: data.theme || 'light-default', // Add theme with a default
   } as Student;
 };
 
@@ -74,6 +76,7 @@ const adminUserFromDoc = (docSnapshot: any): AdminUserFirestore => {
     ...data,
     firestoreId: docSnapshot.id,
     fcmTokens: data.fcmTokens || [],
+    theme: data.theme || 'light-default', // Add theme with a default
   } as AdminUserFirestore;
 }
 
@@ -312,6 +315,7 @@ export async function addStudent(studentData: AddStudentData): Promise<Student> 
     paymentHistory: [],
     readGeneralAlertIds: [],
     fcmTokens: [],
+    theme: 'light-default', // Default theme
   };
 
   const firestoreReadyData: any = {
@@ -451,7 +455,7 @@ export async function updateStudent(customStudentId: string, studentUpdateData: 
     payload.nextDueDate = null;
   }
 
-  const hasRelevantChanges = Object.keys(payload).some(key => key !== 'newPassword' && key !== 'confirmNewPassword');
+  const hasRelevantChanges = Object.keys(payload).some(key => key !== 'newPassword' && key !== 'confirmNewPassword' && key !== 'theme');
 
   await updateDoc(studentDocRef, payload);
   
@@ -1345,6 +1349,15 @@ export async function refreshAllStudentFeeStatuses(): Promise<{ updatedCount: nu
   }
 
   return { updatedCount };
+}
+
+
+// --- Theme Persistence ---
+export async function updateUserTheme(firestoreId: string, role: 'admin' | 'member', theme: string): Promise<void> {
+  if (!firestoreId || !role || !theme) return;
+  const collectionName = role === 'admin' ? ADMINS_COLLECTION : STUDENTS_COLLECTION;
+  const userDocRef = doc(db, collectionName, firestoreId);
+  await updateDoc(userDocRef, { theme: theme });
 }
 
 

@@ -23,6 +23,7 @@ export interface Student {
   paymentHistory?: PaymentRecord[];
   profilePictureUrl?: string;
   fcmTokens?: string[]; // Added for storing FCM tokens
+  theme?: string; // Added for storing user's preferred theme
 }
 
 export interface PaymentRecord {

@@ -65,7 +65,7 @@ const SEAT_STYLES: Record<SeatStatusKey, { bgClass: string; textClass: string; b
   },
   split: {
     bgClass: 'bg-diagonal-split hover:opacity-80',
-    textClass: 'text-orange-800 dark:text-orange-200', // A specific case for split view text
+    textClass: 'text-seat-morning-foreground', // A specific case for split view text
     borderClass: 'border-t-orange-300 dark:border-t-orange-700 border-l-orange-300 dark:border-l-orange-700 border-b-purple-300 dark:border-b-purple-700 border-r-purple-300 dark:border-r-purple-700',
     icon: Users
   },
