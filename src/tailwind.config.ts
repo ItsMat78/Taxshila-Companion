@@ -82,18 +82,6 @@ export default {
           DEFAULT: 'hsl(var(--seat-fullday))',
           foreground: 'hsl(var(--seat-fullday-foreground))',
         },
-        'status-paid': {
-          DEFAULT: 'hsl(var(--status-paid-bg))',
-          foreground: 'hsl(var(--status-paid-text))',
-        },
-        'status-due': {
-          DEFAULT: 'hsl(var(--status-due-bg))',
-          foreground: 'hsl(var(--status-due-text))',
-        },
-        'status-left': {
-          DEFAULT: 'hsl(var(--status-left-bg))',
-          foreground: 'hsl(var(--status-left-text))',
-        },
       },
       borderColor: {
         'seat-available': 'hsl(206, 81%, 82%)', // sky-300

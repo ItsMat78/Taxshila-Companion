@@ -215,17 +215,14 @@ export default function MemberDashboardPage() {
   React.useEffect(() => {
     if (typeof window !== 'undefined' && 'Notification' in window) {
       if (Notification.permission === 'default') {
-        // Check if the prompt has been dismissed before
-        const dismissed = localStorage.getItem('notificationPromptDismissed');
-        if (!dismissed) {
-          setShowNotificationPrompt(true);
-        }
+        setShowNotificationPrompt(true);
+      } else {
+        setShowNotificationPrompt(false);
       }
     }
   }, []);
 
   const handleDismissPrompt = () => {
-    localStorage.setItem('notificationPromptDismissed', 'true');
     setShowNotificationPrompt(false);
   };
 
