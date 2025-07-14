@@ -34,19 +34,34 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useToast } from "@/hooks/use-toast";
-import { Send, Megaphone, Info, AlertTriangle, Loader2, User, Users, Check, ChevronsUpDown } from 'lucide-react';
-import { sendGeneralAlert, sendAlertToStudent, getStudentByCustomId, getAllStudents } from '@/services/student-service';
+import { Send, Megaphone, Info, AlertTriangle, Loader2, User, Users } from 'lucide-react';
+import { sendGeneralAlert, sendAlertToStudent, getAllStudents } from '@/services/student-service';
 import type { AlertItem } from '@/types/communication';
 import type { Student } from '@/types/student';
 import { cn } from '@/lib/utils';
 import { Label } from '@/components/ui/label';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 
 const alertFormSchema = z.object({
   audienceType: z.enum(["general", "targeted"], { required_error: "Please select an audience." }),
   studentId: z.string().optional(),
+  studentName: z.string().optional(), // To display selected student name
   alertTitle: z.string().min(5, { message: "Title must be at least 5 characters." }).max(100, {message: "Title must not exceed 100 characters."}),
   alertMessage: z.string().min(10, { message: "Message must be at least 10 characters." }).max(500, {message: "Message must not exceed 500 characters."}),
   alertType: z.enum(["info", "warning", "closure"], { required_error: "Alert type is required."}),
@@ -69,18 +84,89 @@ const alertTypeOptions = [
   { value: "closure" as AlertItem['type'], label: "Closure / Important Notice", icon: <Info className="mr-2 h-4 w-4 text-blue-500" /> },
 ];
 
+interface StudentSelectionDialogProps {
+  students: Student[];
+  onSelectStudent: (student: Student) => void;
+  isLoading: boolean;
+}
+
+function StudentSelectionDialog({ students, onSelectStudent, isLoading }: StudentSelectionDialogProps) {
+  const [searchTerm, setSearchTerm] = React.useState("");
+
+  const filteredStudents = students.filter(student =>
+    student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    student.studentId.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  return (
+    <DialogContent className="sm:max-w-2xl">
+      <DialogHeader>
+        <DialogTitle>Select a Student</DialogTitle>
+        <DialogDescription>Search for a student by name or ID and click 'Select' to choose them.</DialogDescription>
+      </DialogHeader>
+      <div className="py-4">
+        <Input
+          placeholder="Search students..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="mb-4"
+        />
+        <div className="max-h-[60vh] overflow-y-auto border rounded-md">
+          {isLoading ? (
+            <div className="flex justify-center items-center h-48">
+              <Loader2 className="h-8 w-8 animate-spin" />
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Student ID</TableHead>
+                  <TableHead>Action</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredStudents.length > 0 ? filteredStudents.map((student) => (
+                  <TableRow key={student.studentId}>
+                    <TableCell className="font-medium">{student.name}</TableCell>
+                    <TableCell>{student.studentId}</TableCell>
+                    <TableCell>
+                      <DialogTrigger asChild>
+                        <Button variant="outline" size="sm" onClick={() => onSelectStudent(student)}>
+                          Select
+                        </Button>
+                      </DialogTrigger>
+                    </TableCell>
+                  </TableRow>
+                )) : (
+                   <TableRow>
+                    <TableCell colSpan={3} className="text-center text-muted-foreground py-4">
+                      No students found.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          )}
+        </div>
+      </div>
+    </DialogContent>
+  );
+}
+
+
 export default function AdminSendAlertPage() {
   const { toast } = useToast();
   const [isSending, setIsSending] = React.useState(false);
   const [students, setStudents] = React.useState<Student[]>([]);
   const [isLoadingStudents, setIsLoadingStudents] = React.useState(true);
-  const [isPopoverOpen, setIsPopoverOpen] = React.useState(false);
 
   const form = useForm<AlertFormValues>({
     resolver: zodResolver(alertFormSchema),
     defaultValues: {
       audienceType: "general",
       studentId: "",
+      studentName: "",
       alertTitle: "",
       alertMessage: "",
       alertType: "info",
@@ -98,7 +184,7 @@ export default function AdminSendAlertPage() {
       } catch (error) {
         toast({
           title: "Error Loading Students",
-          description: "Could not fetch the student list for the dropdown.",
+          description: "Could not fetch the student list.",
           variant: "destructive",
         });
       } finally {
@@ -112,26 +198,13 @@ export default function AdminSendAlertPage() {
     setIsSending(true);
     try {
       if (data.audienceType === 'targeted' && data.studentId) {
-        // Targeted alert logic
-        const studentExists = await getStudentByCustomId(data.studentId);
-        if (!studentExists) {
-          toast({
-            title: "Student Not Found",
-            description: `No student found with ID "${data.studentId}". Please check the ID and try again.`,
-            variant: "destructive",
-          });
-          setIsSending(false);
-          return;
-        }
-
         await sendAlertToStudent(data.studentId, data.alertTitle, data.alertMessage, data.alertType as AlertItem['type']);
         toast({
           title: `Targeted Alert Sent`,
-          description: `"${data.alertTitle}" has been sent to student ${studentExists.name} (${data.studentId}).`,
+          description: `"${data.alertTitle}" has been sent to student ${data.studentName} (${data.studentId}).`,
         });
 
       } else {
-        // General alert logic
         await sendGeneralAlert(data.alertTitle, data.alertMessage, data.alertType as AlertItem['type']);
         toast({
           title: `General Alert Sent`,
@@ -141,6 +214,7 @@ export default function AdminSendAlertPage() {
       form.reset({
         audienceType: "general",
         studentId: "",
+        studentName: "",
         alertTitle: "",
         alertMessage: "",
         alertType: "info",
@@ -156,6 +230,11 @@ export default function AdminSendAlertPage() {
       setIsSending(false);
     }
   }
+  
+  const handleStudentSelect = (student: Student) => {
+    form.setValue("studentId", student.studentId, { shouldValidate: true });
+    form.setValue("studentName", student.name);
+  };
 
   return (
     <>
@@ -223,60 +302,18 @@ export default function AdminSendAlertPage() {
                     render={({ field }) => (
                     <FormItem className="flex flex-col">
                       <FormLabel>Select Student</FormLabel>
-                        <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
-                          <PopoverTrigger asChild>
-                            <FormControl>
-                              <Button
-                                variant="outline"
-                                role="combobox"
-                                className={cn(
-                                  "w-full justify-between",
-                                  !field.value && "text-muted-foreground"
-                                )}
-                                disabled={isSending || audienceType !== 'targeted' || isLoadingStudents}
-                              >
-                                {isLoadingStudents ? "Loading students..." : (
-                                  field.value
-                                    ? students.find(
-                                        (student) => student.studentId === field.value
-                                      )?.name
-                                    : "Select a student"
-                                )}
-                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                              </Button>
-                            </FormControl>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                            <Command>
-                              <CommandInput placeholder="Search student..." />
-                              <CommandList>
-                                <CommandEmpty>No student found.</CommandEmpty>
-                                <CommandGroup>
-                                  {students.map((student) => (
-                                    <CommandItem
-                                      value={student.name}
-                                      key={student.studentId}
-                                      onSelect={() => {
-                                        form.setValue("studentId", student.studentId);
-                                        setIsPopoverOpen(false);
-                                      }}
-                                    >
-                                      <Check
-                                        className={cn(
-                                          "mr-2 h-4 w-4",
-                                          student.studentId === field.value
-                                            ? "opacity-100"
-                                            : "opacity-0"
-                                        )}
-                                      />
-                                      {student.name} ({student.studentId})
-                                    </CommandItem>
-                                  ))}
-                                </CommandGroup>
-                              </CommandList>
-                            </Command>
-                          </PopoverContent>
-                        </Popover>
+                       <Dialog>
+                          <DialogTrigger asChild>
+                            <Button variant="outline" disabled={isSending || isLoadingStudents}>
+                              {field.value ? `Selected: ${form.getValues("studentName")}` : "Select a Student"}
+                            </Button>
+                          </DialogTrigger>
+                          <StudentSelectionDialog 
+                            students={students}
+                            onSelectStudent={handleStudentSelect}
+                            isLoading={isLoadingStudents}
+                          />
+                        </Dialog>
                       <FormMessage />
                     </FormItem>
                     )}
