@@ -36,6 +36,7 @@ import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
 type ShiftView = Shift | 'fullday_occupied';
+type SeatStatus = "available" | "morning" | "evening" | "fullday" | "split";
 
 export default function SeatAvailabilityPage() {
   const { toast } = useToast();
@@ -127,36 +128,25 @@ export default function SeatAvailabilityPage() {
     }
   };
 
-  const getSeatStatusForLayout = (seatNumber: string, view: ShiftView): { backgroundClass: string; borderClass: string; textClass: string; icon?: React.ElementType } => {
+  const getSeatStatusKey = (seatNumber: string, view: ShiftView): SeatStatus => {
     const studentMorning = activeStudents.find(s => s.seatNumber === seatNumber && s.shift === 'morning');
     const studentEvening = activeStudents.find(s => s.seatNumber === seatNumber && s.shift === 'evening');
     const studentFullDay = activeStudents.find(s => s.seatNumber === seatNumber && s.shift === 'fullday');
 
     if (view === 'morning') {
-        if (studentFullDay) {
-            return { backgroundClass: 'bg-yellow-200 dark:bg-yellow-800 hover:bg-yellow-300 dark:hover:bg-yellow-700', borderClass: 'border-yellow-300 dark:border-yellow-600', textClass: 'text-yellow-800 dark:text-yellow-100', icon: Sun };
-        } else if (studentMorning) {
-            return { backgroundClass: 'bg-orange-200 dark:bg-orange-800 hover:bg-orange-300 dark:hover:bg-orange-700', borderClass: 'border-orange-300 dark:border-orange-600', textClass: 'text-orange-800 dark:text-orange-100', icon: Sunrise };
-        }
+        if (studentFullDay) return 'fullday';
+        if (studentMorning) return 'morning';
     } else if (view === 'evening') {
-        if (studentFullDay) {
-            return { backgroundClass: 'bg-yellow-200 dark:bg-yellow-800 hover:bg-yellow-300 dark:hover:bg-yellow-700', borderClass: 'border-yellow-300 dark:border-yellow-600', textClass: 'text-yellow-800 dark:text-yellow-100', icon: Sun };
-        } else if (studentEvening) {
-            return { backgroundClass: 'bg-purple-200 dark:bg-purple-800 hover:bg-purple-300 dark:hover:bg-purple-700', borderClass: 'border-purple-300 dark:border-purple-600', textClass: 'text-purple-800 dark:text-purple-100', icon: Sunset };
-        }
+        if (studentFullDay) return 'fullday';
+        if (studentEvening) return 'evening';
     } else if (view === 'fullday_occupied') {
-        if (studentFullDay) {
-            return { backgroundClass: 'bg-yellow-200 dark:bg-yellow-800 hover:bg-yellow-300 dark:hover:bg-yellow-700', borderClass: 'border-yellow-300 dark:border-yellow-600', textClass: 'text-yellow-800 dark:text-yellow-100', icon: Sun };
-        } else if (studentMorning && studentEvening) {
-            return { backgroundClass: 'bg-diagonal-split hover:opacity-80', borderClass: 'border-t-orange-300 border-l-orange-300 border-b-purple-300 border-r-purple-300 dark:border-t-orange-600 dark:border-l-orange-600 dark:border-b-purple-600 dark:border-r-purple-600', textClass: 'text-orange-800 dark:text-orange-100', icon: Users };
-        } else if (studentMorning) {
-            return { backgroundClass: 'bg-orange-200 dark:bg-orange-800 hover:bg-orange-300 dark:hover:bg-orange-700', borderClass: 'border-orange-300 dark:border-orange-600', textClass: 'text-orange-800 dark:text-orange-100', icon: Sunrise };
-        } else if (studentEvening) {
-            return { backgroundClass: 'bg-purple-200 dark:bg-purple-800 hover:bg-purple-300 dark:hover:bg-purple-700', borderClass: 'border-purple-300 dark:border-purple-600', textClass: 'text-purple-800 dark:text-purple-100', icon: Sunset };
-        }
+        if (studentFullDay) return 'fullday';
+        if (studentMorning && studentEvening) return 'split';
+        if (studentMorning) return 'morning';
+        if (studentEvening) return 'evening';
     }
 
-    return { backgroundClass: 'bg-sky-200 dark:bg-sky-800 hover:bg-sky-300 dark:hover:bg-sky-700', borderClass: 'border-sky-300 dark:border-sky-600', textClass: 'text-sky-800 dark:text-sky-100' };
+    return 'available';
   };
   
   const occupiedDialogTitle = React.useMemo(() => {
@@ -180,6 +170,14 @@ export default function SeatAvailabilityPage() {
       case 'fullday_occupied': return 'Full Day Bookings';
       default: return 'Selected View';
     }
+  };
+  
+  const SEAT_ICONS: Record<SeatStatus, React.ElementType | undefined> = {
+    available: undefined,
+    morning: Sunrise,
+    evening: Sunset,
+    fullday: Sun,
+    split: Users,
   };
 
   return (
@@ -349,37 +347,36 @@ export default function SeatAvailabilityPage() {
             <CardContent>
               <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mb-4 text-xs sm:text-sm">
                 <div className="flex items-center flex-shrink-0">
-                  <Circle className="h-4 w-4 flex-shrink-0 mr-1.5 fill-sky-200 dark:fill-sky-800 text-sky-300 dark:text-sky-600" />
+                  <Circle className="h-4 w-4 flex-shrink-0 mr-1.5 fill-seat-available-bg text-seat-available-border" />
                   <span>Available for this view</span>
                 </div>
                 <div className="flex items-center flex-shrink-0">
-                  <Sunrise className="h-4 w-4 flex-shrink-0 mr-1.5 text-orange-500 dark:text-orange-400" />
-                  <Circle className="h-4 w-4 flex-shrink-0 mr-1.5 fill-orange-200 dark:fill-orange-800 text-orange-300 dark:text-orange-600" />
+                  <Sunrise className="h-4 w-4 flex-shrink-0 mr-1.5 text-seat-morning-text" />
+                   <Circle className="h-4 w-4 flex-shrink-0 mr-1.5 fill-seat-morning-bg text-seat-morning-border" />
                   <span>Morning Shift Occupied</span>
                 </div>
                 <div className="flex items-center flex-shrink-0">
-                  <Sunset className="h-4 w-4 flex-shrink-0 mr-1.5 text-purple-500 dark:text-purple-400" />
-                   <Circle className="h-4 w-4 flex-shrink-0 mr-1.5 fill-purple-200 dark:fill-purple-800 text-purple-300 dark:text-purple-600" />
+                  <Sunset className="h-4 w-4 flex-shrink-0 mr-1.5 text-seat-evening-text" />
+                   <Circle className="h-4 w-4 flex-shrink-0 mr-1.5 fill-seat-evening-bg text-seat-evening-border" />
                   <span>Evening Shift Occupied</span>
                 </div>
                 <div className="flex items-center flex-shrink-0">
-                  <Sun className="h-4 w-4 flex-shrink-0 mr-1.5 text-yellow-500 dark:text-yellow-400" />
-                  <Circle className="h-4 w-4 flex-shrink-0 mr-1.5 fill-yellow-200 dark:fill-yellow-800 text-yellow-300 dark:text-yellow-600" />
+                  <Sun className="h-4 w-4 flex-shrink-0 mr-1.5 text-seat-fullday-text" />
+                  <Circle className="h-4 w-4 flex-shrink-0 mr-1.5 fill-seat-fullday-bg text-seat-fullday-border" />
                   <span>Full Day Occupied</span>
                 </div>
                 <div className="flex items-center flex-shrink-0">
-                  <Users className="h-4 w-4 flex-shrink-0 mr-1.5 text-orange-800 dark:text-orange-300" />
+                  <Users className="h-4 w-4 flex-shrink-0 mr-1.5 text-seat-morning-text" />
                   <div className="h-4 w-4 flex-shrink-0 mr-1.5 rounded-sm bg-diagonal-split" />
                   <span>Split Shift Occupied</span>
                 </div>
               </div>
               <div className="grid grid-cols-[repeat(auto-fill,minmax(2.75rem,1fr))] sm:grid-cols-[repeat(auto-fill,minmax(3.25rem,1fr))] gap-1 sm:gap-1.5">
                 {serviceAllSeats.map((seatNum) => {
-                  const { backgroundClass, borderClass, textClass, icon: ShiftIcon } = getSeatStatusForLayout(seatNum, selectedShiftView);
-                  
+                  const seatStatusKey = getSeatStatusKey(seatNum, selectedShiftView);
                   const studentsOnThisSeat = activeStudents.filter(s => s.seatNumber === seatNum);
-
                   const isFemaleOnly = (parseInt(seatNum) >= 18 && parseInt(seatNum) <= 27) || (parseInt(seatNum) >= 50 && parseInt(seatNum) <= 58) || (parseInt(seatNum) == 84);
+                  const ShiftIcon = SEAT_ICONS[seatStatusKey];
 
                   return (
                     <Popover key={seatNum}>
@@ -387,14 +384,13 @@ export default function SeatAvailabilityPage() {
                         <div
                           className={cn(
                             "relative flex items-center justify-center h-10 w-10 sm:h-12 sm:w-12 text-xs sm:text-sm rounded-md border-2 transition-colors font-medium cursor-pointer",
-                            backgroundClass,
-                            borderClass,
-                            textClass,
-                            isFemaleOnly ? "female-only-seat" : ""
+                            `bg-seat-${seatStatusKey}-bg border-seat-${seatStatusKey}-border text-seat-${seatStatusKey}-text`,
+                            seatStatusKey === 'split' && 'bg-diagonal-split border-t-orange-300 border-l-orange-300 border-b-purple-300 border-r-purple-300',
+                            isFemaleOnly && "female-only-seat"
                           )}
                           title={studentsOnThisSeat.length > 0 ? `Seat ${seatNum} - Click for details` : `Seat ${seatNum} - Available`}
                         >
-                          {ShiftIcon && <ShiftIcon className={cn("absolute top-1 right-1 h-3 w-3", textClass)} />}
+                          {ShiftIcon && <ShiftIcon className="absolute top-1 right-1 h-3 w-3" />}
                           {seatNum}
                         </div>
                       </PopoverTrigger>
