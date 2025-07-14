@@ -254,11 +254,14 @@ export default function AdminSendAlertPage() {
                                 <CommandGroup>
                                   {students.map((student) => (
                                     <CommandItem
-                                      value={`${student.name} ${student.studentId}`}
+                                      value={student.name}
                                       key={student.studentId}
-                                      onSelect={() => {
-                                        form.setValue("studentId", student.studentId)
-                                        setIsPopoverOpen(false);
+                                      onSelect={(currentValue) => {
+                                        const selectedStudent = students.find(s => s.name.toLowerCase() === currentValue.toLowerCase());
+                                        if (selectedStudent) {
+                                          form.setValue("studentId", selectedStudent.studentId)
+                                        }
+                                        setIsPopoverOpen(false)
                                       }}
                                     >
                                       <Check
