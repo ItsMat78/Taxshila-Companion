@@ -56,7 +56,8 @@ const AttendanceRecordCard = ({ record }: { record: DailyAttendanceDetail }) => 
             </div>
         </div>
       </CardHeader>
-      <CardContent className="pb-3 text-sm flex items-center justify-between gap-4">
+      <CardContent className="pb-3 text-sm flex items-center justify-start gap-4">
+        <div className="flex items-center gap-4">
           <div className="flex items-center gap-1.5 text-green-600 font-medium">
               <LogIn className="h-4 w-4" />
               <span>{format(parseISO(record.checkInTime), 'p')}</span>
@@ -72,6 +73,7 @@ const AttendanceRecordCard = ({ record }: { record: DailyAttendanceDetail }) => 
                 <span>Active</span>
             </div>
          )}
+        </div>
       </CardContent>
     </Card>
   );
