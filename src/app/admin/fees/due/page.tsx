@@ -37,7 +37,10 @@ const FeeDueCardItem = ({ student }: { student: StudentWithLastAttended }) => {
   const feeStatusBadge = (
     <Badge
       variant={student.feeStatus === "Overdue" ? "destructive" : "default"}
-      className={cn("capitalize text-xs px-1.5 py-0.5", student.feeStatus === "Due" ? "bg-yellow-100 text-yellow-700 border-yellow-300 hover:bg-yellow-200" : "")}
+      className={cn(
+        "capitalize text-xs px-1.5 py-0.5 border-transparent",
+        student.feeStatus === "Due" && "bg-status-due text-status-due-foreground"
+      )}
     >
       {student.feeStatus === "Overdue" && <CalendarClock className="mr-1 h-3 w-3" />}
       {student.feeStatus}
@@ -241,7 +244,10 @@ export default function FeesDuePage() {
                         <TableCell>
                           <Badge
                             variant={student.feeStatus === "Overdue" ? "destructive" : "default"}
-                            className={cn("capitalize", student.feeStatus === "Due" ? "bg-yellow-100 text-yellow-700 border-yellow-300 hover:bg-yellow-200" : "")}
+                            className={cn(
+                              "capitalize border-transparent",
+                              student.feeStatus === "Due" && "bg-status-due text-status-due-foreground"
+                            )}
                           >
                             {student.feeStatus === "Overdue" && <CalendarClock className="mr-1 h-3 w-3" />}
                             {student.feeStatus}

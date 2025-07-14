@@ -213,6 +213,14 @@ export default function AdminSendAlertPage() {
           title: `Targeted Alert Sent`,
           description: `"${data.alertTitle}" has been sent to student ${data.studentName} (${data.studentId}).`,
         });
+         form.reset({
+            audienceType: "targeted", // Keep on targeted view
+            studentId: "",
+            studentName: "",
+            alertTitle: "",
+            alertMessage: "",
+            alertType: "info",
+        });
 
       } else {
         await sendGeneralAlert(data.alertTitle, data.alertMessage, data.alertType as AlertItem['type']);
@@ -220,15 +228,15 @@ export default function AdminSendAlertPage() {
           title: `General Alert Sent`,
           description: `"${data.alertTitle}" has been broadcasted to all members.`,
         });
+        form.reset({
+            audienceType: "general",
+            studentId: "",
+            studentName: "",
+            alertTitle: "",
+            alertMessage: "",
+            alertType: "info",
+        });
       }
-      form.reset({
-        audienceType: "general",
-        studentId: "",
-        studentName: "",
-        alertTitle: "",
-        alertMessage: "",
-        alertType: "info",
-      });
     } catch (error) {
       toast({
         title: "Failed to Send Alert",

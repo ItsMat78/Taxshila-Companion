@@ -52,7 +52,7 @@
     --sidebar-border: 210 31% 20%;
     --sidebar-ring: 0 84% 63%;
 
-    /* Seat Colors for Light Mode (Original) */
+    /* Seat Colors */
     --seat-available: 207 90% 89%;      /* sky-200 */
     --seat-available-foreground: 196 64% 31%; /* sky-800 */
     --seat-morning: 33 92% 84%;         /* orange-200 */
@@ -61,6 +61,14 @@
     --seat-evening-foreground: 262 57% 37%;   /* purple-800 */
     --seat-fullday: 55 96% 84%;         /* yellow-200 */
     --seat-fullday-foreground: 46 84% 31%;    /* yellow-800 */
+
+    /* Status Badge Colors */
+    --status-paid-bg: 142 76% 94%;    /* green-100 */
+    --status-paid-text: 143 76% 28%;  /* green-700 */
+    --status-due-bg: 48 96% 89%;      /* yellow-100 */
+    --status-due-text: 44 95% 28%;    /* yellow-700 */
+    --status-left-bg: 220 13% 91%;    /* gray-100 */
+    --status-left-text: 220 9% 46%;   /* gray-700 */
   }
 
   [class="dark-default"] {
@@ -111,14 +119,22 @@
     --sidebar-ring: 210 20% 80%;
 
     /* Seat Colors for Dark Mode */
-    --seat-available: 198 93% 23%; /* sky-800 */
-    --seat-available-foreground: 200 86% 90%; /* sky-100 */
-    --seat-morning: 24 80% 36%;    /* orange-800 */
-    --seat-morning-foreground: 36 94% 91%;    /* orange-100 */
-    --seat-evening: 262 57% 37%;   /* purple-800 */
-    --seat-evening-foreground: 265 92% 92%;   /* purple-100 */
-    --seat-fullday: 46 84% 31%;    /* yellow-800 */
-    --seat-fullday-foreground: 54 100% 91%;   /* yellow-100 */
+    --seat-available: 198 93% 23%;
+    --seat-available-foreground: 200 86% 90%;
+    --seat-morning: 24 80% 36%;
+    --seat-morning-foreground: 36 94% 91%;
+    --seat-evening: 262 57% 37%;
+    --seat-evening-foreground: 265 92% 92%;
+    --seat-fullday: 46 84% 31%;
+    --seat-fullday-foreground: 54 100% 91%;
+
+    /* Status Badge Colors */
+    --status-paid-bg: 143 76% 28%;   /* green-700 */
+    --status-paid-text: 142 76% 94%;   /* green-100 */
+    --status-due-bg: 44 95% 28%;     /* yellow-700 */
+    --status-due-text: 48 96% 89%;     /* yellow-100 */
+    --status-left-bg: 220 9% 46%;    /* gray-700 */
+    --status-left-text: 220 13% 91%;   /* gray-100 */
   }
 
   /* --- Additional Themes --- */
@@ -127,13 +143,13 @@
   [class="light-mint"] {
     --background: 150 50% 96%;
     --foreground: 180 25% 20%;
-    --muted: 150 40% 90%;
+    --muted: 150 40% 92%;
     --muted-foreground: 180 25% 40%;
     --popover: 150 50% 100%;
     --popover-foreground: 180 25% 20%;
     --card: 150 50% 100%;
     --card-foreground: 180 25% 20%;
-    --border: 150 30% 85%;
+    --border: 150 30% 88%;
     --input: 150 30% 98%;
     --primary: 180 40% 35%;
     --primary-foreground: 150 50% 98%;
@@ -152,27 +168,35 @@
     --sidebar-accent-foreground: 150 50% 98%;
 
     /* Seat Colors */
-    --seat-available: 207 90% 89%;      /* sky-200 */
-    --seat-available-foreground: 196 64% 31%; /* sky-800 */
-    --seat-morning: 33 92% 84%;         /* orange-200 */
-    --seat-morning-foreground: 24 80% 36%;    /* orange-800 */
-    --seat-evening: 275 91% 88%;        /* purple-200 */
-    --seat-evening-foreground: 262 57% 37%;   /* purple-800 */
-    --seat-fullday: 55 96% 84%;         /* yellow-200 */
-    --seat-fullday-foreground: 46 84% 31%;    /* yellow-800 */
+    --seat-available: 207 90% 89%;
+    --seat-available-foreground: 196 64% 31%;
+    --seat-morning: 33 92% 84%;
+    --seat-morning-foreground: 24 80% 36%;
+    --seat-evening: 275 91% 88%;
+    --seat-evening-foreground: 262 57% 37%;
+    --seat-fullday: 55 96% 84%;
+    --seat-fullday-foreground: 46 84% 31%;
+    
+    /* Status Badge Colors */
+    --status-paid-bg: 142 76% 94%;
+    --status-paid-text: 143 76% 28%;
+    --status-due-bg: 48 96% 89%;
+    --status-due-text: 44 95% 28%;
+    --status-left-bg: 220 13% 91%;
+    --status-left-text: 220 9% 46%;
   }
 
   /* Light Theme 3: Sunrise */
   [class="light-sunrise"] {
     --background: 40 100% 97%;
     --foreground: 260 25% 20%;
-    --muted: 40 80% 92%;
+    --muted: 40 80% 94%;
     --muted-foreground: 260 25% 40%;
     --popover: 0 0% 100%;
     --popover-foreground: 260 25% 20%;
     --card: 0 0% 100%;
     --card-foreground: 260 25% 20%;
-    --border: 40 50% 88%;
+    --border: 40 50% 90%;
     --input: 40 50% 98%;
     --primary: 260 50% 40%;
     --primary-foreground: 0 0% 98%;
@@ -191,33 +215,41 @@
     --sidebar-accent-foreground: 0 0% 98%;
 
     /* Seat Colors */
-    --seat-available: 207 90% 89%;      /* sky-200 */
-    --seat-available-foreground: 196 64% 31%; /* sky-800 */
-    --seat-morning: 33 92% 84%;         /* orange-200 */
-    --seat-morning-foreground: 24 80% 36%;    /* orange-800 */
-    --seat-evening: 275 91% 88%;        /* purple-200 */
-    --seat-evening-foreground: 262 57% 37%;   /* purple-800 */
-    --seat-fullday: 55 96% 84%;         /* yellow-200 */
-    --seat-fullday-foreground: 46 84% 31%;    /* yellow-800 */
+    --seat-available: 207 90% 89%;
+    --seat-available-foreground: 196 64% 31%;
+    --seat-morning: 33 92% 84%;
+    --seat-morning-foreground: 24 80% 36%;
+    --seat-evening: 275 91% 88%;
+    --seat-evening-foreground: 262 57% 37%;
+    --seat-fullday: 55 96% 84%;
+    --seat-fullday-foreground: 46 84% 31%;
+
+    /* Status Badge Colors */
+    --status-paid-bg: 142 76% 94%;
+    --status-paid-text: 143 76% 28%;
+    --status-due-bg: 48 96% 89%;
+    --status-due-text: 44 95% 28%;
+    --status-left-bg: 220 13% 91%;
+    --status-left-text: 220 9% 46%;
   }
 
   /* NEW Light Theme 4: Sakura (Pink) */
   [class="light-sakura"] {
-    --background: 345 60% 97%; /* Very light pink */
-    --foreground: 345 25% 20%; /* Dark muted magenta */
-    --muted: 345 50% 92%;
+    --background: 345 60% 97%;
+    --foreground: 345 25% 20%;
+    --muted: 345 50% 94%;
     --muted-foreground: 345 25% 40%;
     --popover: 0 0% 100%;
     --popover-foreground: 345 25% 20%;
     --card: 0 0% 100%;
     --card-foreground: 345 25% 20%;
-    --border: 345 40% 88%;
+    --border: 345 40% 90%;
     --input: 345 40% 98%;
-    --primary: 340 65% 50%; /* Main pink color */
+    --primary: 340 65% 50%;
     --primary-foreground: 0 0% 98%;
     --secondary: 340 50% 70%;
     --secondary-foreground: 340 65% 15%;
-    --accent: 180 40% 40%; /* Contrasting teal */
+    --accent: 180 40% 40%;
     --accent-foreground: 0 0% 98%;
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 98%;
@@ -230,14 +262,22 @@
     --sidebar-accent-foreground: 0 0% 98%;
     
     /* Seat Colors */
-    --seat-available: 207 90% 89%;      /* sky-200 */
-    --seat-available-foreground: 196 64% 31%; /* sky-800 */
-    --seat-morning: 33 92% 84%;         /* orange-200 */
-    --seat-morning-foreground: 24 80% 36%;    /* orange-800 */
-    --seat-evening: 275 91% 88%;        /* purple-200 */
-    --seat-evening-foreground: 262 57% 37%;   /* purple-800 */
-    --seat-fullday: 55 96% 84%;         /* yellow-200 */
-    --seat-fullday-foreground: 46 84% 31%;    /* yellow-800 */
+    --seat-available: 207 90% 89%;
+    --seat-available-foreground: 196 64% 31%;
+    --seat-morning: 33 92% 84%;
+    --seat-morning-foreground: 24 80% 36%;
+    --seat-evening: 275 91% 88%;
+    --seat-evening-foreground: 262 57% 37%;
+    --seat-fullday: 55 96% 84%;
+    --seat-fullday-foreground: 46 84% 31%;
+
+    /* Status Badge Colors */
+    --status-paid-bg: 142 76% 94%;
+    --status-paid-text: 143 76% 28%;
+    --status-due-bg: 48 96% 89%;
+    --status-due-text: 44 95% 28%;
+    --status-left-bg: 220 13% 91%;
+    --status-left-text: 220 9% 46%;
   }
 
   /* Dark Theme 2: Midnight */
@@ -277,6 +317,14 @@
     --seat-evening-foreground: 265 92% 92%;
     --seat-fullday: 46 84% 31%;
     --seat-fullday-foreground: 54 100% 91%;
+    
+    /* Status Badge Colors */
+    --status-paid-bg: 143 76% 28%;
+    --status-paid-text: 142 76% 94%;
+    --status-due-bg: 44 95% 28%;
+    --status-due-text: 48 96% 89%;
+    --status-left-bg: 220 9% 46%;
+    --status-left-text: 220 13% 91%;
   }
 
   /* Dark Theme 3: Forest */
@@ -316,6 +364,14 @@
     --seat-evening-foreground: 265 92% 92%;
     --seat-fullday: 46 84% 31%;
     --seat-fullday-foreground: 54 100% 91%;
+
+    /* Status Badge Colors */
+    --status-paid-bg: 143 76% 28%;
+    --status-paid-text: 142 76% 94%;
+    --status-due-bg: 44 95% 28%;
+    --status-due-text: 48 96% 89%;
+    --status-left-bg: 220 9% 46%;
+    --status-left-text: 220 13% 91%;
   }
 
   /* NEW Dark Theme 4: Rose (Pink) */
@@ -355,6 +411,14 @@
     --seat-evening-foreground: 265 92% 92%;
     --seat-fullday: 46 84% 31%;
     --seat-fullday-foreground: 54 100% 91%;
+    
+    /* Status Badge Colors */
+    --status-paid-bg: 143 76% 28%;
+    --status-paid-text: 142 76% 94%;
+    --status-due-bg: 44 95% 28%;
+    --status-due-text: 48 96% 89%;
+    --status-left-bg: 220 9% 46%;
+    --status-left-text: 220 13% 91%;
   }
 }
 
@@ -401,4 +465,3 @@
 .female-only-seat {
   outline: 2px solid rgb(255, 162, 177);
 }
-

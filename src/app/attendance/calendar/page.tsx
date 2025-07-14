@@ -31,10 +31,10 @@ import type { Shift } from '@/types/student';
 // Helper function to get color class based on shift
 const getShiftColorClass = (shift: Shift) => {
   switch (shift) {
-    case 'morning': return 'bg-orange-100 text-orange-800 border-orange-200';
-    case 'evening': return 'bg-purple-100 text-purple-800 border-purple-200';
-    case 'fullday': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-    default: return 'bg-gray-100 text-gray-800';
+    case 'morning': return 'bg-seat-morning text-seat-morning-foreground border-orange-200 dark:border-orange-700/50';
+    case 'evening': return 'bg-seat-evening text-seat-evening-foreground border-purple-200 dark:border-purple-700/50';
+    case 'fullday': return 'bg-seat-fullday text-seat-fullday-foreground border-yellow-200 dark:border-yellow-700/50';
+    default: return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200';
   }
 };
 

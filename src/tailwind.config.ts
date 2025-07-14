@@ -82,12 +82,18 @@ export default {
           DEFAULT: 'hsl(var(--seat-fullday))',
           foreground: 'hsl(var(--seat-fullday-foreground))',
         },
-        'status-paid-bg': 'hsl(var(--status-paid-bg))',
-        'status-paid-text': 'hsl(var(--status-paid-text))',
-        'status-due-bg': 'hsl(var(--status-due-bg))',
-        'status-due-text': 'hsl(var(--status-due-text))',
-        'status-left-bg': 'hsl(var(--status-left-bg))',
-        'status-left-text': 'hsl(var(--status-left-text))',
+        'status-paid': {
+          DEFAULT: 'hsl(var(--status-paid-bg))',
+          foreground: 'hsl(var(--status-paid-text))',
+        },
+        'status-due': {
+          DEFAULT: 'hsl(var(--status-due-bg))',
+          foreground: 'hsl(var(--status-due-text))',
+        },
+        'status-left': {
+          DEFAULT: 'hsl(var(--status-left-bg))',
+          foreground: 'hsl(var(--status-left-text))',
+        },
       },
       borderColor: {
         'seat-available': 'hsl(206, 81%, 82%)', // sky-300
