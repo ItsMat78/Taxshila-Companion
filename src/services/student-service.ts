@@ -451,7 +451,23 @@ export async function updateStudent(customStudentId: string, studentUpdateData: 
     payload.nextDueDate = null;
   }
 
+  const hasRelevantChanges = Object.keys(payload).some(key => key !== 'newPassword' && key !== 'confirmNewPassword');
+
   await updateDoc(studentDocRef, payload);
+  
+  if (hasRelevantChanges) {
+    try {
+      await sendAlertToStudent(
+        customStudentId,
+        "Profile Details Updated",
+        `Hi ${studentToUpdate.name}, your profile details have been updated by the admin. Please review them in the app.`,
+        "info"
+      );
+    } catch (alertError) { 
+      console.warn("Failed to send profile update alert for student:", customStudentId, alertError);
+    }
+  }
+  
   const updatedDocSnap = await getDoc(studentDocRef);
   return studentFromDoc(updatedDocSnap);
 }
