@@ -606,7 +606,7 @@ export async function getAttendanceRecordsByStudentId(studentId: string): Promis
 export async function recordStudentPayment(
   customStudentId: string,
   totalAmountPaidString: string,
-  paymentMethod: PaymentRecord['method'] | "Admin Recorded",
+  paymentMethod: PaymentRecord['method'],
   numberOfMonthsPaid: number = 1
 ): Promise<Student | undefined> {
   const studentToUpdate = await getStudentByCustomId(customStudentId);
@@ -639,14 +639,14 @@ export async function recordStudentPayment(
   const studentDocRef = doc(db, STUDENTS_COLLECTION, studentToUpdate.firestoreId);
   const today = new Date(); // Actual payment date
   const newPaymentId = `PAY${String(Date.now()).slice(-6)}${String(Math.floor(Math.random() * 100)).padStart(2,'0')}`;
-  const newTransactionId = `TXN${paymentMethod === "Admin Recorded" ? "ADMIN" : (paymentMethod === "UPI" ? "UPI" : "MEM")}${String(Date.now()).slice(-7)}`;
+  const newTransactionId = `TXN${paymentMethod.substring(0,3).toUpperCase()}${String(Date.now()).slice(-7)}`;
 
   const newPaymentRecord: PaymentRecord = {
     paymentId: newPaymentId,
     date: format(today, 'yyyy-MM-dd'),
     amount: `Rs. ${amountToPayNumeric}`,
     transactionId: newTransactionId,
-    method: paymentMethod === "Admin Recorded" ? "Desk Payment" : paymentMethod,
+    method: paymentMethod,
   };
 
   const firestorePaymentRecord = {
@@ -1347,4 +1347,3 @@ declare module '@/types/communication' {
     firestoreId?: string;
   }
 }
-
