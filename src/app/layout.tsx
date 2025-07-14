@@ -44,7 +44,7 @@ export default function RootLayout({
           attribute="class"
           defaultTheme="light-default"
           enableSystem={false}
-          themes={['light-default', 'light-mint', 'light-sunrise', 'dark-default', 'dark-midnight', 'dark-forest']}
+          themes={['light-default', 'light-mint', 'light-sunrise', 'light-sakura', 'dark-default', 'dark-midnight', 'dark-forest', 'dark-rose']}
         >
           <AuthProvider>
             <NotificationProvider>

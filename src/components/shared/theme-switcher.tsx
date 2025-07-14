@@ -21,9 +21,11 @@ const themes = [
     { name: "Light Default", value: "light-default", icon: Sun },
     { name: "Mint", value: "light-mint", icon: Sun },
     { name: "Sunrise", value: "light-sunrise", icon: Sun },
+    { name: "Sakura", value: "light-sakura", icon: Sun },
     { name: "Dark Default", value: "dark-default", icon: Moon },
     { name: "Midnight", value: "dark-midnight", icon: Moon },
     { name: "Forest", value: "dark-forest", icon: Moon },
+    { name: "Rose", value: "dark-rose", icon: Moon },
 ];
 
 export function ThemeSwitcher() {

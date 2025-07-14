@@ -161,6 +161,35 @@
     --sidebar-accent-foreground: 0 0% 98%;
   }
 
+  /* NEW Light Theme 4: Sakura (Pink) */
+  [class="light-sakura"] {
+    --background: 345 60% 97%; /* Very light pink */
+    --foreground: 345 25% 20%; /* Dark muted magenta */
+    --muted: 345 50% 92%;
+    --muted-foreground: 345 25% 40%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 345 25% 20%;
+    --card: 0 0% 100%;
+    --card-foreground: 345 25% 20%;
+    --border: 345 40% 88%;
+    --input: 345 40% 98%;
+    --primary: 340 65% 50%; /* Main pink color */
+    --primary-foreground: 0 0% 98%;
+    --secondary: 340 50% 70%;
+    --secondary-foreground: 340 65% 15%;
+    --accent: 180 40% 40%; /* Contrasting teal */
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+    --ring: 340 65% 50%;
+    --sidebar-background: 340 65% 45%;
+    --sidebar-foreground: 340 30% 90%;
+    --sidebar-primary: 180 40% 40%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 340 65% 52%;
+    --sidebar-accent-foreground: 0 0% 98%;
+  }
+
   /* Dark Theme 2: Midnight */
   [class="dark-midnight"] {
     --background: 220 40% 10%;
@@ -217,6 +246,35 @@
     --sidebar-primary-foreground: 120 20% 10%;
     --sidebar-accent: 120 15% 12%;
     --sidebar-accent-foreground: 90 30% 85%;
+  }
+
+  /* NEW Dark Theme 4: Rose (Pink) */
+  [class="dark-rose"] {
+    --background: 340 15% 10%;
+    --foreground: 340 30% 90%;
+    --muted: 340 10% 15%;
+    --muted-foreground: 340 20% 60%;
+    --popover: 340 15% 8%;
+    --popover-foreground: 340 30% 90%;
+    --card: 340 15% 8%;
+    --card-foreground: 340 30% 90%;
+    --border: 340 10% 20%;
+    --input: 340 10% 15%;
+    --primary: 340 80% 75%; /* Bright, saturated pink for primary action */
+    --primary-foreground: 340 30% 10%;
+    --secondary: 340 20% 25%;
+    --secondary-foreground: 340 30% 90%;
+    --accent: 190 80% 70%; /* Contrasting light blue/cyan */
+    --accent-foreground: 190 30% 10%;
+    --destructive: 0 70% 50%;
+    --destructive-foreground: 0 0% 100%;
+    --ring: 340 80% 75%;
+    --sidebar-background: 340 15% 6%;
+    --sidebar-foreground: 340 30% 85%;
+    --sidebar-primary: 190 80% 70%;
+    --sidebar-primary-foreground: 190 30% 10%;
+    --sidebar-accent: 340 10% 15%;
+    --sidebar-accent-foreground: 340 30% 90%;
   }
 }
 
