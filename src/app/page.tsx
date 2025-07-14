@@ -97,13 +97,15 @@ function AdminDashboardContent() {
         const [
           allStudentsData,
           attendanceSnapshot,
+          revenueData,
         ] = await Promise.all([
           getAllStudents(),
           getTodaysActiveAttendanceRecords(),
+          calculateMonthlyRevenue(),
         ]);
 
         setAllStudents(allStudentsData);
-        setMonthlyRevenue(calculateMonthlyRevenue(allStudentsData));
+        setMonthlyRevenue(revenueData);
 
         const checkedInStudents = await processCheckedInStudentsFromSnapshot(attendanceSnapshot, allStudentsData);
         setBaseCheckedInStudents(checkedInStudents);

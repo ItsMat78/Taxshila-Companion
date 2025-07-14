@@ -2,72 +2,32 @@
 "use client"
 
 import * as React from "react"
-import { Moon, Sun, Monitor, Palette } from "lucide-react"
+import { Moon, Sun } from "lucide-react"
 import { useTheme } from "next-themes"
 
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { cn } from "@/lib/utils"
+import { Palette } from "lucide-react"
 
 const themes = [
-    { name: "Light Default", value: "light-default", isDark: false },
-    { name: "Mint", value: "light-mint", isDark: false },
-    { name: "Sunrise", value: "light-sunrise", isDark: false },
-    { name: "Dark Default", value: "dark-default", isDark: true },
-    { name: "Midnight", value: "dark-midnight", isDark: true },
-    { name: "Forest", value: "dark-forest", isDark: true },
+    { name: "Light Default", value: "light-default", icon: Sun },
+    { name: "Mint", value: "light-mint", icon: Sun },
+    { name: "Sunrise", value: "light-sunrise", icon: Sun },
+    { name: "Dark Default", value: "dark-default", icon: Moon },
+    { name: "Midnight", value: "dark-midnight", icon: Moon },
+    { name: "Forest", value: "dark-forest", icon: Moon },
 ];
 
 export function ThemeSwitcher() {
-  const { theme, setTheme, systemTheme } = useTheme()
-
-  const handleThemeChange = (newThemeValue: string) => {
-    const selectedTheme = themes.find(t => t.value === newThemeValue);
-    if (selectedTheme) {
-        // next-themes uses 'dark' or 'light' for the mode
-        const mode = selectedTheme.isDark ? 'dark' : 'light';
-        setTheme(mode);
-        
-        // Remove all theme classes and add the new one
-        const allThemeClasses = themes.map(t => `theme-${t.value}`);
-        document.documentElement.classList.remove(...allThemeClasses);
-        document.documentElement.classList.add(`theme-${newThemeValue}`);
-    }
-  };
-  
-  // This effect ensures the correct specific theme class is applied on initial load or when system theme changes
-  React.useEffect(() => {
-    const currentMode = theme === "system" ? systemTheme : theme;
-    
-    let themeClassFound = false;
-    document.documentElement.classList.forEach(c => {
-        if (c.startsWith('theme-')) {
-            themeClassFound = true;
-        }
-    });
-
-    if (!themeClassFound) {
-      // Apply default based on the mode (light/dark)
-      const defaultThemeClass = currentMode === 'dark' ? 'theme-dark-default' : 'theme-light-default';
-      document.documentElement.classList.add(defaultThemeClass);
-    }
-  }, [theme, systemTheme]);
-  
-
-  const currentThemeClass = React.useMemo(() => {
-    if (typeof window === 'undefined') return 'light-default';
-    const classList = Array.from(document.documentElement.classList);
-    return classList.find(c => c.startsWith('theme-'))?.replace('theme-', '') || 'light-default';
-  }, [theme, systemTheme]);
+  const { theme, setTheme } = useTheme()
 
   return (
     <DropdownMenu>
@@ -80,19 +40,19 @@ export function ThemeSwitcher() {
       <DropdownMenuContent align="end" side="right" sideOffset={10} className="w-56">
         <DropdownMenuLabel>Appearance</DropdownMenuLabel>
         <DropdownMenuSeparator />
-        <DropdownMenuRadioGroup value={currentThemeClass} onValueChange={handleThemeChange}>
+        <DropdownMenuRadioGroup value={theme} onValueChange={setTheme}>
             <DropdownMenuLabel className="text-xs font-normal text-muted-foreground px-2">Light Themes</DropdownMenuLabel>
-            {themes.filter(t => !t.isDark).map((t) => (
+            {themes.filter(t => t.value.startsWith('light')).map((t) => (
                 <DropdownMenuRadioItem key={t.value} value={t.value}>
-                    <Sun className="mr-2 h-4 w-4" />
+                    <t.icon className="mr-2 h-4 w-4" />
                     {t.name}
                 </DropdownMenuRadioItem>
             ))}
             <DropdownMenuSeparator />
             <DropdownMenuLabel className="text-xs font-normal text-muted-foreground px-2">Dark Themes</DropdownMenuLabel>
-             {themes.filter(t => t.isDark).map((t) => (
+             {themes.filter(t => t.value.startsWith('dark')).map((t) => (
                 <DropdownMenuRadioItem key={t.value} value={t.value}>
-                    <Moon className="mr-2 h-4 w-4" />
+                    <t.icon className="mr-2 h-4 w-4" />
                     {t.name}
                 </DropdownMenuRadioItem>
             ))}

@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -52,43 +53,52 @@
     --sidebar-ring: 0 84% 63%;
   }
 
-  .dark, .theme-dark-default {
-    --background: 222 47% 11%;
-    --foreground: 210 40% 98%;
-    --card: 222 47% 11%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222 47% 11%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 210 40% 98%;
-    --primary-foreground: 222 47% 11%;
-    --secondary: 217 33% 17%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217 33% 17%;
-    --muted-foreground: 215 20% 65%;
-    --accent: 0 84% 63%; /* Deep orange for dark theme */
-    --accent-foreground: 210 40% 98%;
+  .theme-dark-default {
+    --background: 220 13% 18%; /* Dark Slate Gray */
+    --foreground: 210 20% 90%; /* Light Cool Gray */
+
+    --muted: 220 13% 25%; /* Slightly Lighter Slate */
+    --muted-foreground: 210 15% 65%; /* Medium Cool Gray */
+
+    --popover: 220 13% 15%; /* Near Black Slate */
+    --popover-foreground: 210 20% 90%;
+
+    --card: 220 13% 15%; /* Near Black Slate */
+    --card-foreground: 210 20% 90%;
+
+    --border: 220 13% 30%; /* Lighter border */
+    --input: 220 13% 22%; /* Input background */
+
+    --primary: 210 20% 80%; /* Primary action text/icon color */
+    --primary-foreground: 220 13% 12%; /* Dark text on primary buttons */
+
+    --secondary: 220 13% 35%; /* Secondary button background */
+    --secondary-foreground: 210 20% 90%; /* Text on secondary buttons */
+
+    --accent: 210 20% 70%; /* Accent for hover states */
+    --accent-foreground: 220 13% 10%; /* Dark text on accent hover */
+    
     --destructive: 0 63% 31%;
     --destructive-foreground: 210 40% 98%;
-    --border: 217 33% 17%;
-    --input: 217 33% 17%;
-    --ring: 212 72% 51%;
+
+    --ring: 210 20% 80%;
     
     /* Chart colors */
-    --chart-1: 210 40% 98%; /* Primary (light) */
-    --chart-2: 0 84% 63%;   /* Accent (orange) */
-    --chart-3: 215 20% 65%; /* A mid-tone gray */
-    --chart-4: 30 70% 70%;  /* A lighter orange/yellow */
-    --chart-5: 217 33% 17%; /* A darker gray */
+    --chart-1: 210 20% 80%;
+    --chart-2: 210 15% 65%;
+    --chart-3: 210 20% 50%;
+    --chart-4: 210 15% 40%;
+    --chart-5: 210 20% 30%;
 
-    /* Dark Sidebar */
-    --sidebar-background: 222 47% 9%;
-    --sidebar-foreground: 210 40% 85%;
-    --sidebar-primary: 0 84% 63%; /* Orange accent */
-    --sidebar-primary-foreground: 210 40% 98%;
-    --sidebar-accent: 217 33% 17%;
-    --sidebar-accent-foreground: 210 40% 98%;
-    --sidebar-border: 217 33% 17%;
-    --sidebar-ring: 212 72% 51%;
+    /* Sidebar */
+    --sidebar-background: 220 13% 12%;
+    --sidebar-foreground: 210 20% 85%;
+    --sidebar-primary: 210 20% 80%;
+    --sidebar-primary-foreground: 220 13% 10%;
+    --sidebar-accent: 220 13% 25%;
+    --sidebar-accent-foreground: 210 20% 95%;
+    --sidebar-border: 220 13% 25%;
+    --sidebar-ring: 210 20% 80%;
   }
 
   /* --- Additional Themes --- */

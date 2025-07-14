@@ -42,9 +42,9 @@ export default function RootLayout({
       <body className="font-body antialiased">
         <ThemeProvider
           attribute="class"
-          defaultTheme="light"
-          enableSystem
-          disableTransitionOnChange
+          defaultTheme="light-default"
+          enableSystem={false}
+          themes={['light-default', 'light-mint', 'light-sunrise', 'dark-default', 'dark-midnight', 'dark-forest']}
         >
           <AuthProvider>
             <NotificationProvider>
