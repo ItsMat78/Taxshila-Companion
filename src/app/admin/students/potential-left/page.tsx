@@ -27,12 +27,19 @@ import type { Student } from '@/types/student';
 import { useToast } from '@/hooks/use-toast';
 import { format, parseISO, isValid, differenceInDays } from 'date-fns';
 
-const PotentialLeftCardItem = ({ student }: { student: Student }) => {
+interface PotentialLeftStudent extends Student {
+  daysSinceLastAttended?: number | null;
+}
+
+const PotentialLeftCardItem = ({ student }: { student: PotentialLeftStudent }) => {
   return (
     <Card className="w-full shadow-md border-orange-500/20 bg-orange-500/5">
       <CardHeader className="pb-2">
         <div className="flex justify-between items-start gap-2">
           <CardTitle className="text-md break-words">{student.name}</CardTitle>
+          {student.daysSinceLastAttended !== undefined && student.daysSinceLastAttended !== null && (
+            <div className="text-sm font-bold text-orange-600">{student.daysSinceLastAttended} days absent</div>
+          )}
         </div>
         <CardDescription className="text-xs break-words">ID: {student.studentId}</CardDescription>
       </CardHeader>
@@ -60,7 +67,7 @@ const PotentialLeftCardItem = ({ student }: { student: Student }) => {
 
 export default function PotentialLeftPage() {
   const { toast } = useToast();
-  const [potentialLeftStudents, setPotentialLeftStudents] = React.useState<Student[]>([]);
+  const [potentialLeftStudents, setPotentialLeftStudents] = React.useState<PotentialLeftStudent[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
 
   React.useEffect(() => {
@@ -83,27 +90,28 @@ export default function PotentialLeftPage() {
         const today = new Date();
 
         const filteredStudents = allStudents
-          .map(student => ({
-            ...student,
-            lastAttendanceDate: lastAttendedMap.get(student.studentId),
-          }))
+          .map((student): PotentialLeftStudent => {
+            const lastAttendanceDate = lastAttendedMap.get(student.studentId);
+            let daysSinceLastAttended: number | null = null;
+            let referenceDate: string | undefined = lastAttendanceDate || student.registrationDate;
+
+            if(referenceDate && isValid(parseISO(referenceDate))) {
+                daysSinceLastAttended = differenceInDays(today, parseISO(referenceDate));
+            }
+
+            return {
+              ...student,
+              lastAttendanceDate: lastAttendanceDate,
+              daysSinceLastAttended: daysSinceLastAttended
+            };
+          })
           .filter(student => {
-          if (student.activityStatus !== "Active") {
-            return false;
-          }
-
-          if (student.lastAttendanceDate && isValid(parseISO(student.lastAttendanceDate))) {
-              const daysSinceLastAttendance = differenceInDays(today, parseISO(student.lastAttendanceDate));
-              return daysSinceLastAttendance > 5;
-          }
-
-          if (!student.lastAttendanceDate && student.registrationDate && isValid(parseISO(student.registrationDate))) {
-              const daysSinceRegistration = differenceInDays(today, parseISO(student.registrationDate));
-              return daysSinceRegistration > 5;
-          }
-
-          return false;
-        });
+            if (student.activityStatus !== "Active") {
+              return false;
+            }
+            // Use the pre-calculated days
+            return student.daysSinceLastAttended !== null && student.daysSinceLastAttended > 5;
+          });
 
         filteredStudents.sort((a, b) => {
            const dateA = a.lastAttendanceDate ? parseISO(a.lastAttendanceDate).getTime() : 0;
@@ -161,9 +169,9 @@ export default function PotentialLeftPage() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Student ID</TableHead>
                       <TableHead>Name</TableHead>
                       <TableHead>Last Attended</TableHead>
+                      <TableHead>Days Absent</TableHead>
                       <TableHead>Next Due Date</TableHead>
                       <TableHead>Shift</TableHead>
                       <TableHead>Seat</TableHead>
@@ -173,12 +181,14 @@ export default function PotentialLeftPage() {
                   <TableBody>
                     {potentialLeftStudents.map((student) => (
                       <TableRow key={student.studentId}>
-                        <TableCell>{student.studentId}</TableCell>
                         <TableCell className="font-medium">{student.name}</TableCell>
                         <TableCell className="whitespace-nowrap">
                           {student.lastAttendanceDate && isValid(parseISO(student.lastAttendanceDate))
                             ? format(parseISO(student.lastAttendanceDate), 'PP')
                             : 'Never'}
+                        </TableCell>
+                         <TableCell className="font-semibold text-orange-600">
+                          {student.daysSinceLastAttended ?? 'N/A'}
                         </TableCell>
                         <TableCell className="whitespace-nowrap">
                           {student.nextDueDate && isValid(parseISO(student.nextDueDate)) ? format(parseISO(student.nextDueDate), 'PP') : 'N/A'}
