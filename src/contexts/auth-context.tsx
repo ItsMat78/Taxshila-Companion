@@ -34,6 +34,8 @@ const AuthContext = React.createContext<AuthContextType | undefined>(undefined);
 const hardcodedAdminUsers = [
   { name: "Shreyash Rai", email: 'shreyashrai078@gmail.com', phone: '8210183751', password: 'meowmeow123', role: 'admin' as UserRole, profilePictureUrl: undefined },
   { name: "Kritika Rai", email: 'kritigrace@gmail.com', phone: '9621678184', password: 'meowmeow123', role: 'admin' as UserRole, profilePictureUrl: undefined },
+  { name: "Kartikey Rai", email: 'kartikrai14@gmail.com', phone: '', password: 'meowmeow123', role: 'admin' as UserRole, profilePictureUrl: undefined },
+  { name: "Saksham Mishra", email: '', phone: '7991528885', password: 'meowmeow123', role: 'admin' as UserRole, profilePictureUrl: undefined },
 ];
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -69,11 +71,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setIsLoading(true);
 
     const matchedHardcodedAdmin = hardcodedAdminUsers.find(
-      (u) => (u.email.toLowerCase() === identifier.toLowerCase() || u.phone === identifier) && u.password === passwordAttempt
+      (u) => ((u.email && u.email.toLowerCase() === identifier.toLowerCase()) || (u.phone && u.phone === identifier)) && u.password === passwordAttempt
     );
 
     if (matchedHardcodedAdmin) {
-      console.log("[AuthContext] Admin login attempt for:", matchedHardcodedAdmin.email);
+      console.log("[AuthContext] Admin login attempt for:", matchedHardcodedAdmin.email || matchedHardcodedAdmin.phone);
       try {
         const adminFromDb = await getAdminByEmail(matchedHardcodedAdmin.email);
         if (adminFromDb) {
