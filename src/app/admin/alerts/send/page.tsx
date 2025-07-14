@@ -74,6 +74,7 @@ export default function AdminSendAlertPage() {
   const [isSending, setIsSending] = React.useState(false);
   const [students, setStudents] = React.useState<Student[]>([]);
   const [isLoadingStudents, setIsLoadingStudents] = React.useState(true);
+  const [isPopoverOpen, setIsPopoverOpen] = React.useState(false);
 
   const form = useForm<AlertFormValues>({
     resolver: zodResolver(alertFormSchema),
@@ -181,7 +182,7 @@ export default function AdminSendAlertPage() {
                       <RadioGroup
                         onValueChange={field.onChange}
                         defaultValue={field.value}
-                        className="grid grid-cols-2 gap-2 p-1 rounded-md bg-muted max-w-sm"
+                        className="grid grid-cols-2 gap-2 p-1 rounded-md bg-muted max-w-sm mt-1"
                         disabled={isSending}
                       >
                         <FormItem>
@@ -224,7 +225,7 @@ export default function AdminSendAlertPage() {
                     render={({ field }) => (
                     <FormItem className="flex flex-col">
                       <FormLabel>Select Student</FormLabel>
-                        <Popover>
+                        <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
                           <PopoverTrigger asChild>
                             <FormControl>
                               <Button
@@ -259,6 +260,7 @@ export default function AdminSendAlertPage() {
                                       key={student.studentId}
                                       onSelect={() => {
                                         form.setValue("studentId", student.studentId)
+                                        setIsPopoverOpen(false);
                                       }}
                                     >
                                       <Check
