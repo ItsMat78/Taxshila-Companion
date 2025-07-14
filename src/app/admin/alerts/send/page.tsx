@@ -176,7 +176,7 @@ export default function AdminSendAlertPage() {
                 control={form.control}
                 name="audienceType"
                 render={({ field }) => (
-                  <FormItem>
+                  <FormItem className="space-y-3">
                     <FormLabel>Select Audience</FormLabel>
                     <FormControl>
                       <RadioGroup
@@ -216,7 +216,7 @@ export default function AdminSendAlertPage() {
                 )}
               />
 
-              <div className={cn("space-y-6 transition-opacity duration-300", audienceType === 'targeted' ? 'opacity-100' : 'opacity-0 h-0 overflow-hidden pointer-events-none')}>
+              {audienceType === 'targeted' && (
                  <FormField
                     control={form.control}
                     name="studentId"
@@ -254,8 +254,8 @@ export default function AdminSendAlertPage() {
                                 <CommandGroup>
                                   {students.map((student) => (
                                     <CommandItem
+                                      value={student.name}
                                       key={student.studentId}
-                                      value={`${student.name} ${student.studentId} ${student.email}`} // Provide a value for searching
                                       onSelect={() => {
                                         form.setValue("studentId", student.studentId);
                                         setIsPopoverOpen(false);
@@ -281,7 +281,7 @@ export default function AdminSendAlertPage() {
                     </FormItem>
                     )}
                 />
-              </div>
+              )}
 
               <div className="space-y-4">
                 <FormField
