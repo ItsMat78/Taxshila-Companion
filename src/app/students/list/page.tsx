@@ -181,7 +181,7 @@ export default function StudentListPage() {
   const getStatusBadgeForStudent = (student: StudentData) => {
     const baseClasses = "text-xs px-1.5 py-0.5 border-transparent";
     if (student.activityStatus === 'Left') {
-      return <Badge variant="secondary" className={cn(baseClasses, "bg-status-left text-status-left-foreground")}>Left</Badge>;
+      return <Badge variant="outline" className={cn(baseClasses, "bg-status-left text-status-left-foreground")}>Left</Badge>;
     }
     switch (student.feeStatus) {
       case 'Overdue':
