@@ -111,29 +111,29 @@
     --sidebar-ring: 210 20% 80%;
 
     /* Seat Colors for Dark Mode */
-    --seat-available: 198 93% 23%; /* sky-800 */
-    --seat-available-foreground: 200 86% 90%; /* sky-100 */
-    --seat-morning: 24 80% 36%;    /* orange-800 */
-    --seat-morning-foreground: 36 94% 91%;    /* orange-100 */
-    --seat-evening: 262 57% 37%;   /* purple-800 */
-    --seat-evening-foreground: 265 92% 92%;   /* purple-100 */
-    --seat-fullday: 46 84% 31%;    /* yellow-800 */
-    --seat-fullday-foreground: 54 100% 91%;   /* yellow-100 */
+    --seat-available: 198 93% 23%;
+    --seat-available-foreground: 200 86% 90%;
+    --seat-morning: 24 80% 36%;
+    --seat-morning-foreground: 36 94% 91%;
+    --seat-evening: 262 57% 37%;
+    --seat-evening-foreground: 265 92% 92%;
+    --seat-fullday: 46 84% 31%;
+    --seat-fullday-foreground: 54 100% 91%;
   }
 
   /* --- Additional Themes --- */
   
   /* Light Theme 2: Mint */
   [class="light-mint"] {
-    --background: 150 50% 96%;
+    --background: 150 50% 98%;
     --foreground: 180 25% 20%;
-    --muted: 150 40% 90%;
+    --muted: 150 40% 92%;
     --muted-foreground: 180 25% 40%;
     --popover: 150 50% 100%;
     --popover-foreground: 180 25% 20%;
     --card: 150 50% 100%;
     --card-foreground: 180 25% 20%;
-    --border: 150 30% 85%;
+    --border: 150 30% 88%;
     --input: 150 30% 98%;
     --primary: 180 40% 35%;
     --primary-foreground: 150 50% 98%;
@@ -164,15 +164,15 @@
 
   /* Light Theme 3: Sunrise */
   [class="light-sunrise"] {
-    --background: 40 100% 97%;
+    --background: 40 100% 98%;
     --foreground: 260 25% 20%;
-    --muted: 40 80% 92%;
+    --muted: 40 80% 94%;
     --muted-foreground: 260 25% 40%;
     --popover: 0 0% 100%;
     --popover-foreground: 260 25% 20%;
     --card: 0 0% 100%;
     --card-foreground: 260 25% 20%;
-    --border: 40 50% 88%;
+    --border: 40 50% 90%;
     --input: 40 50% 98%;
     --primary: 260 50% 40%;
     --primary-foreground: 0 0% 98%;
@@ -203,15 +203,15 @@
 
   /* NEW Light Theme 4: Sakura (Pink) */
   [class="light-sakura"] {
-    --background: 345 60% 97%; /* Very light pink */
+    --background: 345 60% 98%; /* Very light pink */
     --foreground: 345 25% 20%; /* Dark muted magenta */
-    --muted: 345 50% 92%;
+    --muted: 345 50% 94%;
     --muted-foreground: 345 25% 40%;
     --popover: 0 0% 100%;
     --popover-foreground: 345 25% 20%;
     --card: 0 0% 100%;
     --card-foreground: 345 25% 20%;
-    --border: 345 40% 88%;
+    --border: 345 40% 90%;
     --input: 345 40% 98%;
     --primary: 340 65% 50%; /* Main pink color */
     --primary-foreground: 0 0% 98%;
@@ -401,4 +401,3 @@
 .female-only-seat {
   outline: 2px solid rgb(255, 162, 177);
 }
-
