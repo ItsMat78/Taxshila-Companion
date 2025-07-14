@@ -26,6 +26,17 @@ import { format, parseISO } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import type { Shift } from '@/types/student';
+
+// Helper function to get color class based on shift
+const getShiftColorClass = (shift: Shift) => {
+  switch (shift) {
+    case 'morning': return 'bg-orange-100 text-orange-800 border-orange-200';
+    case 'evening': return 'bg-purple-100 text-purple-800 border-purple-200';
+    case 'fullday': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+    default: return 'bg-gray-100 text-gray-800';
+  }
+};
 
 // Mobile Card Item
 const AttendanceRecordCard = ({ record }: { record: DailyAttendanceDetail }) => {
@@ -34,10 +45,15 @@ const AttendanceRecordCard = ({ record }: { record: DailyAttendanceDetail }) => 
       <CardHeader className="pb-2">
         <div className="flex justify-between items-start">
             <CardTitle className="text-md break-words">{record.studentName}</CardTitle>
-            <Badge variant="outline" className="capitalize text-xs px-1.5 py-0.5">
-                <Armchair className="mr-1 h-3 w-3" />
-                {record.seatNumber || 'N/A'}
-            </Badge>
+            <div
+              className={cn(
+                'h-7 w-7 flex items-center justify-center rounded-md border text-xs font-bold',
+                getShiftColorClass(record.shift)
+              )}
+              title={`${record.shift.charAt(0).toUpperCase() + record.shift.slice(1)} Shift, Seat ${record.seatNumber}`}
+            >
+              {record.seatNumber || 'N/A'}
+            </div>
         </div>
         <CardDescription className="text-xs pt-1 capitalize">{record.shift} Shift</CardDescription>
       </CardHeader>
