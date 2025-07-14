@@ -66,20 +66,23 @@ export default {
           border: 'hsl(var(--sidebar-border))',
           ring: 'hsl(var(--sidebar-ring))',
         },
-        'seat-available-bg': 'hsl(var(--seat-available-bg))',
-        'seat-available-text': 'hsl(var(--seat-available-text))',
-        'seat-morning-bg': 'hsl(var(--seat-morning-bg))',
-        'seat-morning-text': 'hsl(var(--seat-morning-text))',
-        'seat-evening-bg': 'hsl(var(--seat-evening-bg))',
-        'seat-evening-text': 'hsl(var(--seat-evening-text))',
-        'seat-fullday-bg': 'hsl(var(--seat-fullday-bg))',
-        'seat-fullday-text': 'hsl(var(--seat-fullday-text))',
-      },
-      borderColor: {
-        'seat-available-border': 'hsl(var(--seat-available-bg) / 0.8)',
-        'seat-morning-border': 'hsl(var(--seat-morning-bg) / 0.8)',
-        'seat-evening-border': 'hsl(var(--seat-evening-bg) / 0.8)',
-        'seat-fullday-border': 'hsl(var(--seat-fullday-bg) / 0.8)',
+        // Seat Colors defined via CSS variables
+        'seat-available': {
+          DEFAULT: 'hsl(var(--seat-available))',
+          foreground: 'hsl(var(--seat-available-foreground))',
+        },
+        'seat-morning': {
+          DEFAULT: 'hsl(var(--seat-morning))',
+          foreground: 'hsl(var(--seat-morning-foreground))',
+        },
+        'seat-evening': {
+          DEFAULT: 'hsl(var(--seat-evening))',
+          foreground: 'hsl(var(--seat-evening-foreground))',
+        },
+        'seat-fullday': {
+          DEFAULT: 'hsl(var(--seat-fullday))',
+          foreground: 'hsl(var(--seat-fullday-foreground))',
+        },
       },
       borderRadius: {
         lg: 'var(--radius)',

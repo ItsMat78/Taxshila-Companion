@@ -52,15 +52,15 @@
     --sidebar-border: 210 31% 20%;
     --sidebar-ring: 0 84% 63%;
 
-    /* Seat Colors */
-    --seat-available-bg: 195 53% 79%;   /* sky-200 */
-    --seat-available-text: 196 64% 31%; /* sky-800 */
-    --seat-morning-bg: 34 92% 78%;      /* orange-200 */
-    --seat-morning-text: 24 80% 36%;    /* orange-800 */
-    --seat-evening-bg: 265 91% 83%;     /* purple-200 */
-    --seat-evening-text: 262 57% 37%;   /* purple-800 */
-    --seat-fullday-bg: 54 96% 78%;      /* yellow-200 */
-    --seat-fullday-text: 46 84% 31%;    /* yellow-800 */
+    /* Seat Colors for Light Mode */
+    --seat-available: 195 53% 79%; /* sky-200 */
+    --seat-available-foreground: 196 64% 31%; /* sky-800 */
+    --seat-morning: 34 92% 78%;      /* orange-200 */
+    --seat-morning-foreground: 24 80% 36%;    /* orange-800 */
+    --seat-evening: 265 91% 83%;     /* purple-200 */
+    --seat-evening-foreground: 262 57% 37%;   /* purple-800 */
+    --seat-fullday: 54 96% 78%;      /* yellow-200 */
+    --seat-fullday-foreground: 46 84% 31%;    /* yellow-800 */
   }
 
   [class="dark-default"] {
@@ -110,15 +110,15 @@
     --sidebar-border: 220 13% 18%;
     --sidebar-ring: 210 20% 80%;
 
-    /* Seat Colors */
-    --seat-available-bg: 198 93% 23%; /* sky-800 */
-    --seat-available-text: 200 86% 90%; /* sky-100 */
-    --seat-morning-bg: 24 80% 36%;    /* orange-800 */
-    --seat-morning-text: 36 94% 91%;    /* orange-100 */
-    --seat-evening-bg: 262 57% 37%;   /* purple-800 */
-    --seat-evening-text: 265 92% 92%;   /* purple-100 */
-    --seat-fullday-bg: 46 84% 31%;    /* yellow-800 */
-    --seat-fullday-text: 54 100% 91%;   /* yellow-100 */
+    /* Seat Colors for Dark Mode */
+    --seat-available: 198 93% 23%; /* sky-800 */
+    --seat-available-foreground: 200 86% 90%; /* sky-100 */
+    --seat-morning: 24 80% 36%;    /* orange-800 */
+    --seat-morning-foreground: 36 94% 91%;    /* orange-100 */
+    --seat-evening: 262 57% 37%;   /* purple-800 */
+    --seat-evening-foreground: 265 92% 92%;   /* purple-100 */
+    --seat-fullday: 46 84% 31%;    /* yellow-800 */
+    --seat-fullday-foreground: 54 100% 91%;   /* yellow-100 */
   }
 
   /* --- Additional Themes --- */
@@ -152,14 +152,14 @@
     --sidebar-accent-foreground: 150 50% 98%;
 
     /* Seat Colors */
-    --seat-available-bg: 195 53% 79%;
-    --seat-available-text: 196 64% 31%;
-    --seat-morning-bg: 34 92% 78%;
-    --seat-morning-text: 24 80% 36%;
-    --seat-evening-bg: 265 91% 83%;
-    --seat-evening-text: 262 57% 37%;
-    --seat-fullday-bg: 54 96% 78%;
-    --seat-fullday-text: 46 84% 31%;
+    --seat-available: 195 53% 79%;
+    --seat-available-foreground: 196 64% 31%;
+    --seat-morning: 34 92% 78%;
+    --seat-morning-foreground: 24 80% 36%;
+    --seat-evening: 265 91% 83%;
+    --seat-evening-foreground: 262 57% 37%;
+    --seat-fullday: 54 96% 78%;
+    --seat-fullday-foreground: 46 84% 31%;
   }
 
   /* Light Theme 3: Sunrise */
@@ -191,14 +191,14 @@
     --sidebar-accent-foreground: 0 0% 98%;
 
     /* Seat Colors */
-    --seat-available-bg: 195 53% 79%;
-    --seat-available-text: 196 64% 31%;
-    --seat-morning-bg: 34 92% 78%;
-    --seat-morning-text: 24 80% 36%;
-    --seat-evening-bg: 265 91% 83%;
-    --seat-evening-text: 262 57% 37%;
-    --seat-fullday-bg: 54 96% 78%;
-    --seat-fullday-text: 46 84% 31%;
+    --seat-available: 195 53% 79%;
+    --seat-available-foreground: 196 64% 31%;
+    --seat-morning: 34 92% 78%;
+    --seat-morning-foreground: 24 80% 36%;
+    --seat-evening: 265 91% 83%;
+    --seat-evening-foreground: 262 57% 37%;
+    --seat-fullday: 54 96% 78%;
+    --seat-fullday-foreground: 46 84% 31%;
   }
 
   /* NEW Light Theme 4: Sakura (Pink) */
@@ -230,14 +230,14 @@
     --sidebar-accent-foreground: 0 0% 98%;
     
     /* Seat Colors */
-    --seat-available-bg: 195 53% 79%;
-    --seat-available-text: 196 64% 31%;
-    --seat-morning-bg: 34 92% 78%;
-    --seat-morning-text: 24 80% 36%;
-    --seat-evening-bg: 265 91% 83%;
-    --seat-evening-text: 262 57% 37%;
-    --seat-fullday-bg: 54 96% 78%;
-    --seat-fullday-text: 46 84% 31%;
+    --seat-available: 195 53% 79%;
+    --seat-available-foreground: 196 64% 31%;
+    --seat-morning: 34 92% 78%;
+    --seat-morning-foreground: 24 80% 36%;
+    --seat-evening: 265 91% 83%;
+    --seat-evening-foreground: 262 57% 37%;
+    --seat-fullday: 54 96% 78%;
+    --seat-fullday-foreground: 46 84% 31%;
   }
 
   /* Dark Theme 2: Midnight */
@@ -269,14 +269,14 @@
     --sidebar-accent-foreground: 210 40% 90%;
 
     /* Seat Colors */
-    --seat-available-bg: 198 93% 23%;
-    --seat-available-text: 200 86% 90%;
-    --seat-morning-bg: 24 80% 36%;
-    --seat-morning-text: 36 94% 91%;
-    --seat-evening-bg: 262 57% 37%;
-    --seat-evening-text: 265 92% 92%;
-    --seat-fullday-bg: 46 84% 31%;
-    --seat-fullday-text: 54 100% 91%;
+    --seat-available: 198 93% 23%;
+    --seat-available-foreground: 200 86% 90%;
+    --seat-morning: 24 80% 36%;
+    --seat-morning-foreground: 36 94% 91%;
+    --seat-evening: 262 57% 37%;
+    --seat-evening-foreground: 265 92% 92%;
+    --seat-fullday: 46 84% 31%;
+    --seat-fullday-foreground: 54 100% 91%;
   }
 
   /* Dark Theme 3: Forest */
@@ -308,14 +308,14 @@
     --sidebar-accent-foreground: 90 30% 85%;
     
     /* Seat Colors */
-    --seat-available-bg: 198 93% 23%;
-    --seat-available-text: 200 86% 90%;
-    --seat-morning-bg: 24 80% 36%;
-    --seat-morning-text: 36 94% 91%;
-    --seat-evening-bg: 262 57% 37%;
-    --seat-evening-text: 265 92% 92%;
-    --seat-fullday-bg: 46 84% 31%;
-    --seat-fullday-text: 54 100% 91%;
+    --seat-available: 198 93% 23%;
+    --seat-available-foreground: 200 86% 90%;
+    --seat-morning: 24 80% 36%;
+    --seat-morning-foreground: 36 94% 91%;
+    --seat-evening: 262 57% 37%;
+    --seat-evening-foreground: 265 92% 92%;
+    --seat-fullday: 46 84% 31%;
+    --seat-fullday-foreground: 54 100% 91%;
   }
 
   /* NEW Dark Theme 4: Rose (Pink) */
@@ -347,14 +347,14 @@
     --sidebar-accent-foreground: 340 30% 90%;
     
     /* Seat Colors */
-    --seat-available-bg: 198 93% 23%;
-    --seat-available-text: 200 86% 90%;
-    --seat-morning-bg: 24 80% 36%;
-    --seat-morning-text: 36 94% 91%;
-    --seat-evening-bg: 262 57% 37%;
-    --seat-evening-text: 265 92% 92%;
-    --seat-fullday-bg: 46 84% 31%;
-    --seat-fullday-text: 54 100% 91%;
+    --seat-available: 198 93% 23%;
+    --seat-available-foreground: 200 86% 90%;
+    --seat-morning: 24 80% 36%;
+    --seat-morning-foreground: 36 94% 91%;
+    --seat-evening: 262 57% 37%;
+    --seat-evening-foreground: 265 92% 92%;
+    --seat-fullday: 46 84% 31%;
+    --seat-fullday-foreground: 54 100% 91%;
   }
 }
 
@@ -391,10 +391,10 @@
 .bg-diagonal-split {
   background-image: linear-gradient(
     to bottom right,
-    rgb(254 215 170 / 1) 0%, /* orange-200 */
-    rgb(254 215 170 / 1) 49.9%, /* orange-200 */
-    rgb(221 214 254 / 1) 50.1%, /* Correct purple-200 */
-    rgb(221 214 254 / 1) 100% /* Correct purple-200 */
+    hsl(var(--seat-morning)) 0%,
+    hsl(var(--seat-morning)) 49.9%,
+    hsl(var(--seat-evening)) 50.1%,
+    hsl(var(--seat-evening)) 100%
   );
 }
 

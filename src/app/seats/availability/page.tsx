@@ -36,7 +36,37 @@ import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
 type ShiftView = Shift | 'fullday_occupied';
-type SeatStatus = "available" | "morning" | "evening" | "fullday" | "split";
+type SeatStatusKey = "available" | "morning" | "evening" | "fullday" | "split";
+
+// Statically define all possible class combinations
+// This ensures Tailwind's JIT compiler can see and generate them.
+const SEAT_STYLES: Record<SeatStatusKey, { bgClass: string; textClass: string; icon?: React.ElementType }> = {
+  available: {
+    bgClass: 'bg-seat-available text-seat-available-foreground',
+    textClass: 'text-seat-available-foreground',
+    icon: undefined
+  },
+  morning: {
+    bgClass: 'bg-seat-morning text-seat-morning-foreground',
+    textClass: 'text-seat-morning-foreground',
+    icon: Sunrise
+  },
+  evening: {
+    bgClass: 'bg-seat-evening text-seat-evening-foreground',
+    textClass: 'text-seat-evening-foreground',
+    icon: Sunset
+  },
+  fullday: {
+    bgClass: 'bg-seat-fullday text-seat-fullday-foreground',
+    textClass: 'text-seat-fullday-foreground',
+    icon: Sun
+  },
+  split: {
+    bgClass: 'bg-diagonal-split', // Special class defined in globals.css
+    textClass: 'text-seat-morning-foreground', // Default to morning text color for the icon
+    icon: Users
+  },
+};
 
 export default function SeatAvailabilityPage() {
   const { toast } = useToast();
@@ -128,7 +158,7 @@ export default function SeatAvailabilityPage() {
     }
   };
 
-  const getSeatStatusKey = (seatNumber: string, view: ShiftView): SeatStatus => {
+  const getSeatStatusKey = (seatNumber: string, view: ShiftView): SeatStatusKey => {
     const studentMorning = activeStudents.find(s => s.seatNumber === seatNumber && s.shift === 'morning');
     const studentEvening = activeStudents.find(s => s.seatNumber === seatNumber && s.shift === 'evening');
     const studentFullDay = activeStudents.find(s => s.seatNumber === seatNumber && s.shift === 'fullday');
@@ -170,14 +200,6 @@ export default function SeatAvailabilityPage() {
       case 'fullday_occupied': return 'Full Day Bookings';
       default: return 'Selected View';
     }
-  };
-  
-  const SEAT_ICONS: Record<SeatStatus, React.ElementType | undefined> = {
-    available: undefined,
-    morning: Sunrise,
-    evening: Sunset,
-    fullday: Sun,
-    split: Users,
   };
 
   return (
@@ -347,51 +369,47 @@ export default function SeatAvailabilityPage() {
             <CardContent>
               <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mb-4 text-xs sm:text-sm">
                 <div className="flex items-center flex-shrink-0">
-                  <Circle className="h-4 w-4 flex-shrink-0 mr-1.5 fill-seat-available-bg text-seat-available-border" />
-                  <span>Available for this view</span>
+                  <Circle className="h-4 w-4 flex-shrink-0 mr-1.5 fill-seat-available text-seat-available" />
+                  <span>Available</span>
                 </div>
                 <div className="flex items-center flex-shrink-0">
-                  <Sunrise className="h-4 w-4 flex-shrink-0 mr-1.5 text-seat-morning-text" />
-                   <Circle className="h-4 w-4 flex-shrink-0 mr-1.5 fill-seat-morning-bg text-seat-morning-border" />
-                  <span>Morning Shift Occupied</span>
+                  <Circle className="h-4 w-4 flex-shrink-0 mr-1.5 fill-seat-morning text-seat-morning" />
+                  <span>Morning Shift</span>
                 </div>
                 <div className="flex items-center flex-shrink-0">
-                  <Sunset className="h-4 w-4 flex-shrink-0 mr-1.5 text-seat-evening-text" />
-                   <Circle className="h-4 w-4 flex-shrink-0 mr-1.5 fill-seat-evening-bg text-seat-evening-border" />
-                  <span>Evening Shift Occupied</span>
+                  <Circle className="h-4 w-4 flex-shrink-0 mr-1.5 fill-seat-evening text-seat-evening" />
+                  <span>Evening Shift</span>
                 </div>
                 <div className="flex items-center flex-shrink-0">
-                  <Sun className="h-4 w-4 flex-shrink-0 mr-1.5 text-seat-fullday-text" />
-                  <Circle className="h-4 w-4 flex-shrink-0 mr-1.5 fill-seat-fullday-bg text-seat-fullday-border" />
-                  <span>Full Day Occupied</span>
+                  <Circle className="h-4 w-4 flex-shrink-0 mr-1.5 fill-seat-fullday text-seat-fullday" />
+                  <span>Full Day</span>
                 </div>
                 <div className="flex items-center flex-shrink-0">
-                  <Users className="h-4 w-4 flex-shrink-0 mr-1.5 text-seat-morning-text" />
-                  <div className="h-4 w-4 flex-shrink-0 mr-1.5 rounded-sm bg-diagonal-split" />
-                  <span>Split Shift Occupied</span>
+                  <div className="h-4 w-4 flex-shrink-0 mr-1.5 rounded-sm bg-diagonal-split border-2 border-muted" />
+                  <span>Split Shift</span>
                 </div>
               </div>
               <div className="grid grid-cols-[repeat(auto-fill,minmax(2.75rem,1fr))] sm:grid-cols-[repeat(auto-fill,minmax(3.25rem,1fr))] gap-1 sm:gap-1.5">
                 {serviceAllSeats.map((seatNum) => {
                   const seatStatusKey = getSeatStatusKey(seatNum, selectedShiftView);
+                  const styles = SEAT_STYLES[seatStatusKey];
+                  const ShiftIcon = styles.icon;
                   const studentsOnThisSeat = activeStudents.filter(s => s.seatNumber === seatNum);
                   const isFemaleOnly = (parseInt(seatNum) >= 18 && parseInt(seatNum) <= 27) || (parseInt(seatNum) >= 50 && parseInt(seatNum) <= 58) || (parseInt(seatNum) == 84);
-                  const ShiftIcon = SEAT_ICONS[seatStatusKey];
 
                   return (
                     <Popover key={seatNum}>
                       <PopoverTrigger asChild>
                         <div
                           className={cn(
-                            "relative flex items-center justify-center h-10 w-10 sm:h-12 sm:w-12 text-xs sm:text-sm rounded-md border-2 transition-colors font-medium cursor-pointer",
-                            `bg-seat-${seatStatusKey}-bg border-seat-${seatStatusKey}-border text-seat-${seatStatusKey}-text`,
-                            seatStatusKey === 'split' && 'bg-diagonal-split border-t-orange-300 border-l-orange-300 border-b-purple-300 border-r-purple-300',
+                            "relative flex items-center justify-center h-10 w-10 sm:h-12 sm:w-12 text-xs sm:text-sm rounded-md border-2 transition-colors font-medium cursor-pointer hover:opacity-80",
+                            styles.bgClass,
                             isFemaleOnly && "female-only-seat"
                           )}
                           title={studentsOnThisSeat.length > 0 ? `Seat ${seatNum} - Click for details` : `Seat ${seatNum} - Available`}
                         >
-                          {ShiftIcon && <ShiftIcon className="absolute top-1 right-1 h-3 w-3" />}
-                          {seatNum}
+                          {ShiftIcon && <ShiftIcon className={cn("absolute top-1 right-1 h-3 w-3", styles.textClass)} />}
+                          <span className={cn(styles.textClass)}>{seatNum}</span>
                         </div>
                       </PopoverTrigger>
                       <PopoverContent className="w-auto p-4" side="top" align="center">
