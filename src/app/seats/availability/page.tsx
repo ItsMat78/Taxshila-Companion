@@ -18,6 +18,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
   Popover,
@@ -126,64 +127,36 @@ export default function SeatAvailabilityPage() {
     }
   };
 
-  const getSeatStatusForLayout = (seatNumber: string, view: ShiftView): { backgroundClass: string; borderClass: string; textClass: string, icon?: React.ElementType } => {
-    let backgroundClass = 'bg-sky-200 dark:bg-sky-800 hover:bg-sky-300 dark:hover:bg-sky-700';
-    let borderClass = 'border-sky-300 dark:border-sky-600';
-    let textClass = 'text-sky-800 dark:text-sky-100';
-    let icon;
-
+  const getSeatStatusForLayout = (seatNumber: string, view: ShiftView): { backgroundClass: string; borderClass: string; textClass: string; icon?: React.ElementType } => {
     const studentMorning = activeStudents.find(s => s.seatNumber === seatNumber && s.shift === 'morning');
     const studentEvening = activeStudents.find(s => s.seatNumber === seatNumber && s.shift === 'evening');
     const studentFullDay = activeStudents.find(s => s.seatNumber === seatNumber && s.shift === 'fullday');
 
     if (view === 'morning') {
-      if (studentFullDay) {
-        backgroundClass = 'bg-yellow-200 dark:bg-yellow-800 hover:bg-yellow-300 dark:hover:bg-yellow-700'; 
-        borderClass='border-yellow-300 dark:border-yellow-600'; 
-        textClass='text-yellow-800 dark:text-yellow-100';
-        icon = Sun;
-      } else if (studentMorning) {
-        backgroundClass = 'bg-orange-200 dark:bg-orange-800 hover:bg-orange-300 dark:hover:bg-orange-700'; 
-        borderClass='border-orange-300 dark:border-orange-600'; 
-        textClass='text-orange-800 dark:text-orange-100';
-        icon = Sunrise;
-      }
+        if (studentFullDay) {
+            return { backgroundClass: 'bg-yellow-200 dark:bg-yellow-800 hover:bg-yellow-300 dark:hover:bg-yellow-700', borderClass: 'border-yellow-300 dark:border-yellow-600', textClass: 'text-yellow-800 dark:text-yellow-100', icon: Sun };
+        } else if (studentMorning) {
+            return { backgroundClass: 'bg-orange-200 dark:bg-orange-800 hover:bg-orange-300 dark:hover:bg-orange-700', borderClass: 'border-orange-300 dark:border-orange-600', textClass: 'text-orange-800 dark:text-orange-100', icon: Sunrise };
+        }
     } else if (view === 'evening') {
-      if (studentFullDay) {
-        backgroundClass = 'bg-yellow-200 dark:bg-yellow-800 hover:bg-yellow-300 dark:hover:bg-yellow-700'; 
-        borderClass='border-yellow-300 dark:border-yellow-600';
-        textClass='text-yellow-800 dark:text-yellow-100';
-        icon = Sun;
-      } else if (studentEvening) {
-        backgroundClass = 'bg-purple-200 dark:bg-purple-800 hover:bg-purple-300 dark:hover:bg-purple-700'; 
-        borderClass='border-purple-300 dark:border-purple-600'; 
-        textClass='text-purple-800 dark:text-purple-100';
-        icon = Sunset;
-      }
+        if (studentFullDay) {
+            return { backgroundClass: 'bg-yellow-200 dark:bg-yellow-800 hover:bg-yellow-300 dark:hover:bg-yellow-700', borderClass: 'border-yellow-300 dark:border-yellow-600', textClass: 'text-yellow-800 dark:text-yellow-100', icon: Sun };
+        } else if (studentEvening) {
+            return { backgroundClass: 'bg-purple-200 dark:bg-purple-800 hover:bg-purple-300 dark:hover:bg-purple-700', borderClass: 'border-purple-300 dark:border-purple-600', textClass: 'text-purple-800 dark:text-purple-100', icon: Sunset };
+        }
     } else if (view === 'fullday_occupied') {
-      if (studentFullDay) {
-        backgroundClass = 'bg-yellow-200 dark:bg-yellow-800 hover:bg-yellow-300 dark:hover:bg-yellow-700'; 
-        borderClass='border-yellow-300 dark:border-yellow-600'; 
-        textClass='text-yellow-800 dark:text-yellow-100';
-        icon = Sun;
-      } else if (studentMorning && studentEvening) {
-        backgroundClass = 'bg-diagonal-split hover:opacity-80'; 
-        borderClass = 'border-t-orange-300 border-l-orange-300 border-b-purple-300 border-r-purple-300 dark:border-t-orange-600 dark:border-l-orange-600 dark:border-b-purple-600 dark:border-r-purple-600';
-        textClass = 'text-orange-800 dark:text-orange-100';
-        icon = Users;
-      } else if (studentMorning) {
-        backgroundClass = 'bg-orange-200 dark:bg-orange-800 hover:bg-orange-300 dark:hover:bg-orange-700'; 
-        borderClass='border-orange-300 dark:border-orange-600'; 
-        textClass='text-orange-800 dark:text-orange-100';
-        icon = Sunrise;
-      } else if (studentEvening) {
-        backgroundClass = 'bg-purple-200 dark:bg-purple-800 hover:bg-purple-300 dark:hover:bg-purple-700'; 
-        borderClass='border-purple-300 dark:border-purple-600'; 
-        textClass='text-purple-800 dark:text-purple-100';
-        icon = Sunset;
-      }
+        if (studentFullDay) {
+            return { backgroundClass: 'bg-yellow-200 dark:bg-yellow-800 hover:bg-yellow-300 dark:hover:bg-yellow-700', borderClass: 'border-yellow-300 dark:border-yellow-600', textClass: 'text-yellow-800 dark:text-yellow-100', icon: Sun };
+        } else if (studentMorning && studentEvening) {
+            return { backgroundClass: 'bg-diagonal-split hover:opacity-80', borderClass: 'border-t-orange-300 border-l-orange-300 border-b-purple-300 border-r-purple-300 dark:border-t-orange-600 dark:border-l-orange-600 dark:border-b-purple-600 dark:border-r-purple-600', textClass: 'text-orange-800 dark:text-orange-100', icon: Users };
+        } else if (studentMorning) {
+            return { backgroundClass: 'bg-orange-200 dark:bg-orange-800 hover:bg-orange-300 dark:hover:bg-orange-700', borderClass: 'border-orange-300 dark:border-orange-600', textClass: 'text-orange-800 dark:text-orange-100', icon: Sunrise };
+        } else if (studentEvening) {
+            return { backgroundClass: 'bg-purple-200 dark:bg-purple-800 hover:bg-purple-300 dark:hover:bg-purple-700', borderClass: 'border-purple-300 dark:border-purple-600', textClass: 'text-purple-800 dark:text-purple-100', icon: Sunset };
+        }
     }
-    return { backgroundClass, borderClass, textClass, icon };
+
+    return { backgroundClass: 'bg-sky-200 dark:bg-sky-800 hover:bg-sky-300 dark:hover:bg-sky-700', borderClass: 'border-sky-300 dark:border-sky-600', textClass: 'text-sky-800 dark:text-sky-100' };
   };
   
   const occupiedDialogTitle = React.useMemo(() => {
