@@ -33,26 +33,25 @@ interface StudentWithLastAttended extends Student {
   lastAttended?: string; // ISO string
 }
 
-const FeeDueCardItem = ({ student }: { student: StudentWithLastAttended }) => {
-  const feeStatusBadge = (
-    <Badge
-      variant={student.feeStatus === "Overdue" ? "destructive" : "default"}
-      className={cn(
-        "capitalize text-xs px-1.5 py-0.5 border-transparent",
-        student.feeStatus === "Due" && "bg-status-due text-status-due-foreground"
-      )}
-    >
-      {student.feeStatus === "Overdue" && <CalendarClock className="mr-1 h-3 w-3" />}
-      {student.feeStatus}
-    </Badge>
-  );
+const getFeeStatusBadge = (student: Student) => {
+    const baseClasses = "text-xs px-1.5 py-0.5 border-transparent";
+    switch (student.feeStatus) {
+      case 'Overdue':
+        return <Badge variant="destructive" className={cn(baseClasses, "capitalize")}><CalendarClock className="mr-1 h-3 w-3" />{student.feeStatus}</Badge>;
+      case 'Due':
+        return <Badge style={{ backgroundColor: 'hsl(var(--status-due-bg))', color: 'hsl(var(--status-due-text))' }} className={cn(baseClasses, "capitalize")}>{student.feeStatus}</Badge>;
+      default:
+        return <Badge variant="outline" className={cn("text-xs px-1.5 py-0.5")}>{student.feeStatus}</Badge>;
+    }
+};
 
+const FeeDueCardItem = ({ student }: { student: StudentWithLastAttended }) => {
   return (
     <Card className={cn("w-full shadow-md", student.feeStatus === "Overdue" ? "bg-destructive/5 border-destructive/30" : "")}>
       <CardHeader className="pb-2">
         <div className="flex justify-between items-start gap-2">
           <CardTitle className="text-md break-words">{student.name}</CardTitle>
-          {feeStatusBadge}
+          {getFeeStatusBadge(student)}
         </div>
         <CardDescription className="text-xs break-words">ID: {student.studentId}</CardDescription>
       </CardHeader>
@@ -242,16 +241,7 @@ export default function FeesDuePage() {
                             : 'Never'}
                         </TableCell>
                         <TableCell>
-                          <Badge
-                            variant={student.feeStatus === "Overdue" ? "destructive" : "default"}
-                            className={cn(
-                              "capitalize border-transparent",
-                              student.feeStatus === "Due" && "bg-status-due text-status-due-foreground"
-                            )}
-                          >
-                            {student.feeStatus === "Overdue" && <CalendarClock className="mr-1 h-3 w-3" />}
-                            {student.feeStatus}
-                          </Badge>
+                          {getFeeStatusBadge(student)}
                         </TableCell>
                         <TableCell className="text-right space-x-2">
                             <Link href={`/students/profiles/${student.studentId}`} passHref legacyBehavior>

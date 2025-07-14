@@ -181,15 +181,15 @@ export default function StudentListPage() {
   const getStatusBadgeForStudent = (student: StudentData) => {
     const baseClasses = "text-xs px-1.5 py-0.5 border-transparent";
     if (student.activityStatus === 'Left') {
-      return <Badge variant="outline" className={cn(baseClasses, "bg-status-left text-status-left-foreground")}>Left</Badge>;
+      return <Badge style={{ backgroundColor: 'hsl(var(--status-left-bg))', color: 'hsl(var(--status-left-text))' }} className={cn(baseClasses)}>Left</Badge>;
     }
     switch (student.feeStatus) {
       case 'Overdue':
         return <Badge variant="destructive" className={cn(baseClasses)}>Overdue</Badge>;
       case 'Due':
-        return <Badge className={cn(baseClasses, "bg-status-due text-status-due-foreground")}>Due</Badge>;
+        return <Badge style={{ backgroundColor: 'hsl(var(--status-due-bg))', color: 'hsl(var(--status-due-text))' }} className={cn(baseClasses)}>Due</Badge>;
       case 'Paid':
-        return <Badge className={cn(baseClasses, "bg-status-paid text-status-paid-foreground")}>Paid</Badge>;
+        return <Badge style={{ backgroundColor: 'hsl(var(--status-paid-bg))', color: 'hsl(var(--status-paid-text))' }} className={cn(baseClasses)}>Paid</Badge>;
       default:
         return <Badge variant="outline" className={cn("text-xs px-1.5 py-0.5")}>{student.feeStatus}</Badge>;
     }
