@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -32,16 +33,13 @@ export function ThemeSwitcher() {
   const handleThemeChange = (newThemeValue: string) => {
     const selectedTheme = themes.find(t => t.value === newThemeValue);
     if (selectedTheme) {
-        // next-themes uses 'dark' or 'light' for the mode, and we use a class for the specific theme
+        // next-themes uses 'dark' or 'light' for the mode
         const mode = selectedTheme.isDark ? 'dark' : 'light';
-        setTheme(mode); // Set the mode (dark/light)
+        setTheme(mode);
         
-        // Remove other theme classes and add the new one
-        document.documentElement.classList.forEach(c => {
-            if (c.startsWith('theme-')) {
-                document.documentElement.classList.remove(c);
-            }
-        });
+        // Remove all theme classes and add the new one
+        const allThemeClasses = themes.map(t => `theme-${t.value}`);
+        document.documentElement.classList.remove(...allThemeClasses);
         document.documentElement.classList.add(`theme-${newThemeValue}`);
     }
   };
@@ -49,9 +47,6 @@ export function ThemeSwitcher() {
   // This effect ensures the correct specific theme class is applied on initial load or when system theme changes
   React.useEffect(() => {
     const currentMode = theme === "system" ? systemTheme : theme;
-    // Simple logic: if dark mode, apply default dark, otherwise default light.
-    // This could be enhanced to remember the specific theme choice within a mode.
-    const defaultThemeClass = currentMode === 'dark' ? 'theme-dark-default' : 'theme-light-default';
     
     let themeClassFound = false;
     document.documentElement.classList.forEach(c => {
@@ -61,14 +56,15 @@ export function ThemeSwitcher() {
     });
 
     if (!themeClassFound) {
-        document.documentElement.classList.add(defaultThemeClass);
+      // Apply default based on the mode (light/dark)
+      const defaultThemeClass = currentMode === 'dark' ? 'theme-dark-default' : 'theme-light-default';
+      document.documentElement.classList.add(defaultThemeClass);
     }
-
   }, [theme, systemTheme]);
   
 
   const currentThemeClass = React.useMemo(() => {
-    if (typeof window === 'undefined') return 'theme-light-default';
+    if (typeof window === 'undefined') return 'light-default';
     const classList = Array.from(document.documentElement.classList);
     return classList.find(c => c.startsWith('theme-'))?.replace('theme-', '') || 'light-default';
   }, [theme, systemTheme]);
@@ -81,7 +77,7 @@ export function ThemeSwitcher() {
           <span className="group-data-[collapsible=icon]:hidden">Theme</span>
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" side="right" className="w-56">
+      <DropdownMenuContent align="end" side="right" sideOffset={10} className="w-56">
         <DropdownMenuLabel>Appearance</DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuRadioGroup value={currentThemeClass} onValueChange={handleThemeChange}>

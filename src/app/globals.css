@@ -17,7 +17,7 @@
     --card-foreground: 210 25% 15%;
 
     --border: 210 10% 75%; /* Border color, slightly darker than background */
-    --input: 0 0% 100%; /* White for input backgrounds */
+    --input: 210 15% 95%; /* Lighter shade for input backgrounds */
 
     --primary: 210 31% 28%; /* Dark blue #30475E */
     --primary-foreground: 0 0% 98%; /* Light text on primary */
@@ -117,7 +117,9 @@
     --sidebar-background: 180 40% 30%;
     --sidebar-foreground: 150 40% 85%;
     --sidebar-primary: 340 82% 60%;
+    --sidebar-primary-foreground: 0 0% 98%;
     --sidebar-accent: 180 40% 38%;
+    --sidebar-accent-foreground: 150 50% 98%;
   }
 
   /* Light Theme 3: Sunrise */
@@ -144,7 +146,9 @@
     --sidebar-background: 260 50% 35%;
     --sidebar-foreground: 260 30% 85%;
     --sidebar-primary: 45 100% 55%;
+    --sidebar-primary-foreground: 260 50% 15%;
     --sidebar-accent: 260 50% 42%;
+    --sidebar-accent-foreground: 0 0% 98%;
   }
 
   /* Dark Theme 2: Midnight */
@@ -171,7 +175,9 @@
     --sidebar-background: 220 40% 6%;
     --sidebar-foreground: 210 40% 85%;
     --sidebar-primary: 45 100% 60%;
+    --sidebar-primary-foreground: 220 40% 10%;
     --sidebar-accent: 220 30% 15%;
+    --sidebar-accent-foreground: 210 40% 90%;
   }
 
   /* Dark Theme 3: Forest */
@@ -198,7 +204,9 @@
     --sidebar-background: 120 20% 5%;
     --sidebar-foreground: 90 30% 85%;
     --sidebar-primary: 30 80% 65%;
+    --sidebar-primary-foreground: 120 20% 10%;
     --sidebar-accent: 120 15% 12%;
+    --sidebar-accent-foreground: 90 30% 85%;
   }
 }
 
