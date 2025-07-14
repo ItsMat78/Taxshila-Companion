@@ -47,6 +47,7 @@ import {
   DialogTitle,
   DialogTrigger,
   DialogDescription,
+  DialogFooter,
 } from "@/components/ui/dialog";
 import {
   Table,
@@ -88,15 +89,21 @@ interface StudentSelectionDialogProps {
   students: Student[];
   onSelectStudent: (student: Student) => void;
   isLoading: boolean;
+  onClose: () => void;
 }
 
-function StudentSelectionDialog({ students, onSelectStudent, isLoading }: StudentSelectionDialogProps) {
+function StudentSelectionDialog({ students, onSelectStudent, isLoading, onClose }: StudentSelectionDialogProps) {
   const [searchTerm, setSearchTerm] = React.useState("");
 
   const filteredStudents = students.filter(student =>
     student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     student.studentId.toLowerCase().includes(searchTerm.toLowerCase())
   );
+  
+  const handleStudentSelectedAndClose = (student: Student) => {
+    onSelectStudent(student);
+    onClose();
+  }
 
   return (
     <DialogContent className="sm:max-w-2xl">
@@ -131,11 +138,9 @@ function StudentSelectionDialog({ students, onSelectStudent, isLoading }: Studen
                     <TableCell className="font-medium">{student.name}</TableCell>
                     <TableCell>{student.studentId}</TableCell>
                     <TableCell>
-                      <DialogTrigger asChild>
-                        <Button variant="outline" size="sm" onClick={() => onSelectStudent(student)}>
-                          Select
-                        </Button>
-                      </DialogTrigger>
+                      <Button variant="outline" size="sm" onClick={() => handleStudentSelectedAndClose(student)}>
+                        Select
+                      </Button>
                     </TableCell>
                   </TableRow>
                 )) : (
@@ -150,6 +155,9 @@ function StudentSelectionDialog({ students, onSelectStudent, isLoading }: Studen
           )}
         </div>
       </div>
+      <DialogFooter>
+        <Button variant="ghost" onClick={onClose}>Close</Button>
+      </DialogFooter>
     </DialogContent>
   );
 }
@@ -160,6 +168,8 @@ export default function AdminSendAlertPage() {
   const [isSending, setIsSending] = React.useState(false);
   const [students, setStudents] = React.useState<Student[]>([]);
   const [isLoadingStudents, setIsLoadingStudents] = React.useState(true);
+  const [isStudentDialogOpen, setIsStudentDialogOpen] = React.useState(false);
+
 
   const form = useForm<AlertFormValues>({
     resolver: zodResolver(alertFormSchema),
@@ -234,7 +244,10 @@ export default function AdminSendAlertPage() {
   const handleStudentSelect = (student: Student) => {
     form.setValue("studentId", student.studentId, { shouldValidate: true });
     form.setValue("studentName", student.name);
+    // Manually trigger validation for the entire form to re-evaluate button state
+    form.trigger();
   };
+
 
   return (
     <>
@@ -302,7 +315,7 @@ export default function AdminSendAlertPage() {
                     render={({ field }) => (
                     <FormItem className="flex flex-col">
                       <FormLabel>Select Student</FormLabel>
-                       <Dialog>
+                       <Dialog open={isStudentDialogOpen} onOpenChange={setIsStudentDialogOpen}>
                           <DialogTrigger asChild>
                             <Button variant="outline" disabled={isSending || isLoadingStudents}>
                               {field.value ? `Selected: ${form.getValues("studentName")}` : "Select a Student"}
@@ -312,6 +325,7 @@ export default function AdminSendAlertPage() {
                             students={students}
                             onSelectStudent={handleStudentSelect}
                             isLoading={isLoadingStudents}
+                            onClose={() => setIsStudentDialogOpen(false)}
                           />
                         </Dialog>
                       <FormMessage />
