@@ -393,7 +393,7 @@ export default function SeatAvailabilityPage() {
                       <PopoverTrigger asChild>
                         <div
                           className={cn(
-                            "relative flex items-center justify-center h-10 w-10 sm:h-12 sm:w-12 text-xs sm:text-sm rounded-md border-2 transition-colors font-medium cursor-pointer text-foreground dark:text-foreground",
+                            "relative flex items-center justify-center h-10 w-10 sm:h-12 sm:w-12 text-xs sm:text-sm rounded-md border-2 transition-colors font-medium cursor-pointer text-gray-800",
                             backgroundClass,
                             borderClass,
                             isFemaleOnly ? "female-only-seat" : ""
@@ -449,3 +449,4 @@ export default function SeatAvailabilityPage() {
     </>
   );
 }
+
