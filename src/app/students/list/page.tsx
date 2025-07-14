@@ -44,9 +44,9 @@ type StudentWithAttendance = StudentData & {
 // Helper function to get color class based on shift
 const getShiftColorClass = (shift: StudentData['shift']) => {
   switch (shift) {
-    case 'morning': return 'bg-orange-100 text-orange-800 border-orange-200 dark:bg-orange-800/50 dark:text-orange-200 dark:border-orange-700/50';
-    case 'evening': return 'bg-purple-100 text-purple-800 border-purple-200 dark:bg-purple-800/50 dark:text-purple-200 dark:border-purple-700/50';
-    case 'fullday': return 'bg-yellow-100 text-yellow-800 border-yellow-200 dark:bg-yellow-800/50 dark:text-yellow-200 dark:border-yellow-700/50';
+    case 'morning': return 'bg-seat-morning text-seat-morning-foreground border-orange-200 dark:border-orange-700/50';
+    case 'evening': return 'bg-seat-evening text-seat-evening-foreground border-purple-200 dark:border-purple-700/50';
+    case 'fullday': return 'bg-seat-fullday text-seat-fullday-foreground border-yellow-200 dark:border-yellow-700/50';
     default: return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200';
   }
 };
@@ -181,15 +181,15 @@ export default function StudentListPage() {
   const getStatusBadgeForStudent = (student: StudentData) => {
     const baseClasses = "text-xs px-1.5 py-0.5";
     if (student.activityStatus === 'Left') {
-      return <Badge variant="secondary" className={cn(baseClasses, "border-transparent bg-status-left-bg text-status-left-text")}>Left</Badge>;
+      return <Badge variant="secondary" className={cn(baseClasses, "border-transparent bg-status-left text-status-left-foreground")}>Left</Badge>;
     }
     switch (student.feeStatus) {
       case 'Overdue':
         return <Badge variant="destructive" className={cn(baseClasses)}>Overdue</Badge>;
       case 'Due':
-        return <Badge className={cn(baseClasses, "border-transparent bg-status-due-bg text-status-due-text")}>Due</Badge>;
+        return <Badge className={cn(baseClasses, "border-transparent bg-status-due text-status-due-foreground")}>Due</Badge>;
       case 'Paid':
-        return <Badge className={cn(baseClasses, "border-transparent bg-status-paid-bg text-status-paid-text")}>Paid</Badge>;
+        return <Badge className={cn(baseClasses, "border-transparent bg-status-paid text-status-paid-foreground")}>Paid</Badge>;
       default:
         return <Badge variant="outline" className={baseClasses}>{student.feeStatus}</Badge>;
     }
