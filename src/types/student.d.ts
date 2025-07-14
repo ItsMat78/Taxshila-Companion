@@ -30,7 +30,7 @@ export interface PaymentRecord {
   date: string; 
   amount: string; 
   transactionId: string;
-  method: "UPI" | "Cash" | "Card" | "Online" | "Desk Payment" | "Imported"; // Added Imported
+  method: "Cash" | "Online" | "Desk Payment" | "UPI" | "Card" | "Imported";
 }
 
 export interface AttendanceRecord {
