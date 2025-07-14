@@ -29,19 +29,32 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useToast } from "@/hooks/use-toast";
-import { Send, Megaphone, Info, AlertTriangle, Loader2 } from 'lucide-react';
-import { sendGeneralAlert } from '@/services/student-service';
+import { Send, Megaphone, Info, AlertTriangle, Loader2, User, Users } from 'lucide-react';
+import { sendGeneralAlert, sendAlertToStudent, getStudentByCustomId } from '@/services/student-service';
 import type { AlertItem } from '@/types/communication';
+import { cn } from '@/lib/utils';
 
 const alertFormSchema = z.object({
+  audienceType: z.enum(["general", "targeted"], { required_error: "Please select an audience." }),
+  studentId: z.string().optional(),
   alertTitle: z.string().min(5, { message: "Title must be at least 5 characters." }).max(100, {message: "Title must not exceed 100 characters."}),
   alertMessage: z.string().min(10, { message: "Message must be at least 10 characters." }).max(500, {message: "Message must not exceed 500 characters."}),
   alertType: z.enum(["info", "warning", "closure"], { required_error: "Alert type is required."}),
+}).refine(data => {
+    if (data.audienceType === 'targeted') {
+        return !!data.studentId && data.studentId.trim().length > 0;
+    }
+    return true;
+}, {
+    message: "Student ID is required for targeted alerts.",
+    path: ["studentId"],
 });
+
 
 type AlertFormValues = z.infer<typeof alertFormSchema>;
 
@@ -57,20 +70,46 @@ export default function AdminSendAlertPage() {
   const form = useForm<AlertFormValues>({
     resolver: zodResolver(alertFormSchema),
     defaultValues: {
+      audienceType: "general",
+      studentId: "",
       alertTitle: "",
       alertMessage: "",
       alertType: "info",
     },
   });
 
+  const audienceType = form.watch("audienceType");
+
   async function onSubmit(data: AlertFormValues) {
     setIsSending(true);
     try {
-      await sendGeneralAlert(data.alertTitle, data.alertMessage, data.alertType as AlertItem['type']);
-      toast({
-        title: `General Alert Sent (Type: ${data.alertType.toUpperCase()})`,
-        description: `"${data.alertTitle}" has been broadcasted to all members.`,
-      });
+      if (data.audienceType === 'targeted' && data.studentId) {
+        // Targeted alert logic
+        const studentExists = await getStudentByCustomId(data.studentId);
+        if (!studentExists) {
+          toast({
+            title: "Student Not Found",
+            description: `No student found with ID "${data.studentId}". Please check the ID and try again.`,
+            variant: "destructive",
+          });
+          setIsSending(false);
+          return;
+        }
+
+        await sendAlertToStudent(data.studentId, data.alertTitle, data.alertMessage, data.alertType as AlertItem['type']);
+        toast({
+          title: `Targeted Alert Sent`,
+          description: `"${data.alertTitle}" has been sent to student ${data.studentId}.`,
+        });
+
+      } else {
+        // General alert logic
+        await sendGeneralAlert(data.alertTitle, data.alertMessage, data.alertType as AlertItem['type']);
+        toast({
+          title: `General Alert Sent`,
+          description: `"${data.alertTitle}" has been broadcasted to all members.`,
+        });
+      }
       form.reset();
     } catch (error) {
       toast({
@@ -86,76 +125,130 @@ export default function AdminSendAlertPage() {
 
   return (
     <>
-      <PageTitle title="Send Alert to Members" description="Broadcast important messages or announcements to all registered students." />
+      <PageTitle title="Send Alert" description="Broadcast important messages or send a targeted announcement to a specific member." />
       <Card className="w-full md:max-w-2xl mx-auto shadow-lg">
         <CardHeader>
           <CardTitle className="flex items-center">
             <Megaphone className="mr-2 h-5 w-5" />
              Compose Alert
           </CardTitle>
-          <CardDescription>The message will be visible to all members in their 'Alerts' tab with the chosen type.</CardDescription>
+          <CardDescription>The message will be sent as a push notification and appear in the member's 'Alerts' tab.</CardDescription>
         </CardHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)}>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-6">
+              
               <FormField
                 control={form.control}
-                name="alertTitle"
+                name="audienceType"
                 render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Alert Title</FormLabel>
+                  <FormItem className="space-y-3">
+                    <FormLabel>Select Audience</FormLabel>
                     <FormControl>
-                      <Input placeholder="e.g., Library Closure, Maintenance Update" {...field} disabled={isSending} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="alertType"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Alert Type</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isSending}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select an alert type" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {alertTypeOptions.map(option => (
-                          <SelectItem key={option.value} value={option.value}>
-                            <div className="flex items-center">
-                              {React.cloneElement(option.icon, {className: "mr-2 h-4 w-4"})}
-                              {option.label}
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="alertMessage"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Alert Message</FormLabel>
-                    <FormControl>
-                      <Textarea
-                        placeholder="Type the full alert message here..."
-                        className="min-h-[120px]"
-                        {...field}
+                      <RadioGroup
+                        onValueChange={field.onChange}
+                        defaultValue={field.value}
+                        className="flex flex-col sm:flex-row gap-4"
                         disabled={isSending}
-                      />
+                      >
+                        <FormItem className="flex-1">
+                          <RadioGroupItem value="general" id="r-general" className="peer sr-only" />
+                          <Label htmlFor="r-general" className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer">
+                            <Users className="mb-3 h-6 w-6" />
+                            General Alert
+                          </Label>
+                        </FormItem>
+                        <FormItem className="flex-1">
+                          <RadioGroupItem value="targeted" id="r-targeted" className="peer sr-only" />
+                          <Label htmlFor="r-targeted" className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer">
+                            <User className="mb-3 h-6 w-6" />
+                            Targeted Alert
+                          </Label>
+                        </FormItem>
+                      </RadioGroup>
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
+
+              <div className={cn("space-y-6 transition-all duration-300", audienceType === 'targeted' ? 'opacity-100' : 'opacity-0 h-0 overflow-hidden')}>
+                 <FormField
+                    control={form.control}
+                    name="studentId"
+                    render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>Student ID</FormLabel>
+                        <FormControl>
+                        <Input placeholder="Enter student ID (e.g., TSMEM123)" {...field} disabled={isSending || audienceType !== 'targeted'} />
+                        </FormControl>
+                        <FormMessage />
+                    </FormItem>
+                    )}
+                />
+              </div>
+
+              <div className="space-y-4">
+                <FormField
+                    control={form.control}
+                    name="alertTitle"
+                    render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>Alert Title</FormLabel>
+                        <FormControl>
+                        <Input placeholder="e.g., Library Closure, Maintenance Update" {...field} disabled={isSending} />
+                        </FormControl>
+                        <FormMessage />
+                    </FormItem>
+                    )}
+                />
+                <FormField
+                    control={form.control}
+                    name="alertType"
+                    render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>Alert Type</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isSending}>
+                        <FormControl>
+                            <SelectTrigger>
+                            <SelectValue placeholder="Select an alert type" />
+                            </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                            {alertTypeOptions.map(option => (
+                            <SelectItem key={option.value} value={option.value}>
+                                <div className="flex items-center">
+                                {React.cloneElement(option.icon, {className: "mr-2 h-4 w-4"})}
+                                {option.label}
+                                </div>
+                            </SelectItem>
+                            ))}
+                        </SelectContent>
+                        </Select>
+                        <FormMessage />
+                    </FormItem>
+                    )}
+                />
+                <FormField
+                    control={form.control}
+                    name="alertMessage"
+                    render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>Alert Message</FormLabel>
+                        <FormControl>
+                        <Textarea
+                            placeholder="Type the full alert message here..."
+                            className="min-h-[120px]"
+                            {...field}
+                            disabled={isSending}
+                        />
+                        </FormControl>
+                        <FormMessage />
+                    </FormItem>
+                    )}
+                />
+              </div>
+
             </CardContent>
             <CardFooter>
               <Button type="submit" className="w-full sm:w-auto" disabled={isSending}>
