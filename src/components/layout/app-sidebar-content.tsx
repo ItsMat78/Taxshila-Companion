@@ -248,8 +248,8 @@ export function AppSidebarContent() {
         </SidebarMenu>
       </SidebarContent>
       <SidebarFooter className="p-2">
-        <ThemeSwitcher />
         <SidebarMenu>
+          <ThemeSwitcher />
           <SidebarMenuItem>
             <SidebarMenuButton onClick={logout}>
               <LogOut className="h-4 w-4" />

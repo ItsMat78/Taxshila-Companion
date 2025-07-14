@@ -5,7 +5,6 @@ import * as React from "react"
 import { Moon, Sun } from "lucide-react"
 import { useTheme } from "next-themes"
 
-import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -16,6 +15,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Palette } from "lucide-react"
+import { SidebarMenuItem, SidebarMenuButton } from "@/components/ui/sidebar"
 
 const themes = [
     { name: "Light Default", value: "light-default", icon: Sun },
@@ -29,16 +29,29 @@ const themes = [
 ];
 
 export function ThemeSwitcher() {
-  const { theme, setTheme } = useTheme()
+  const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = React.useState(false);
+
+  React.useEffect(() => {
+    setMounted(true)
+  }, []);
+
+  const currentThemeName = React.useMemo(() => {
+    if (!mounted) return "Theme";
+    return themes.find(t => t.value === theme)?.name || "Theme";
+  }, [theme, mounted]);
+
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="ghost" className="w-full justify-start gap-2 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:p-0">
-          <Palette className="h-4 w-4" />
-          <span className="group-data-[collapsible=icon]:hidden">Theme</span>
-        </Button>
-      </DropdownMenuTrigger>
+        <SidebarMenuItem>
+            <DropdownMenuTrigger asChild>
+                <SidebarMenuButton className="w-full">
+                    <Palette className="h-4 w-4" />
+                    <span className="truncate">Theme: {currentThemeName}</span>
+                </SidebarMenuButton>
+            </DropdownMenuTrigger>
+        </SidebarMenuItem>
       <DropdownMenuContent align="end" side="top" sideOffset={10} className="w-56">
         <DropdownMenuLabel>Appearance</DropdownMenuLabel>
         <DropdownMenuSeparator />
