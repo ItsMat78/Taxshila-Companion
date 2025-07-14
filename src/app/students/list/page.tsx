@@ -181,15 +181,15 @@ export default function StudentListPage() {
   const getStatusBadgeForStudent = (student: StudentData) => {
     const baseClasses = "text-xs px-1.5 py-0.5";
     if (student.activityStatus === 'Left') {
-      return <Badge variant="secondary" className={cn(baseClasses, "bg-gray-100 text-gray-700 border-gray-300 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600")}>Left</Badge>;
+      return <Badge variant="secondary" className={cn(baseClasses, "border-transparent bg-status-left-bg text-status-left-text")}>Left</Badge>;
     }
     switch (student.feeStatus) {
       case 'Overdue':
-        return <Badge variant="destructive" className={cn(baseClasses, "dark:text-destructive-foreground")}>Overdue</Badge>;
+        return <Badge variant="destructive" className={cn(baseClasses)}>Overdue</Badge>;
       case 'Due':
-        return <Badge className={cn(baseClasses, "bg-yellow-100 text-yellow-700 border-yellow-300 hover:bg-yellow-200 dark:bg-yellow-900/50 dark:text-yellow-300 dark:border-yellow-700")}>Due</Badge>;
+        return <Badge className={cn(baseClasses, "border-transparent bg-status-due-bg text-status-due-text")}>Due</Badge>;
       case 'Paid':
-        return <Badge className={cn(baseClasses, "bg-green-100 text-green-700 border-green-300 hover:bg-green-200 dark:bg-green-900/50 dark:text-green-300 dark:border-green-700")}>Paid</Badge>;
+        return <Badge className={cn(baseClasses, "border-transparent bg-status-paid-bg text-status-paid-text")}>Paid</Badge>;
       default:
         return <Badge variant="outline" className={baseClasses}>{student.feeStatus}</Badge>;
     }
