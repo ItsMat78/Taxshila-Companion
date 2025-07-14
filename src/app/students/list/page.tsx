@@ -179,19 +179,19 @@ export default function StudentListPage() {
   const leftStudents = filteredStudents.filter(student => student.activityStatus === 'Left').sort((a,b) => a.name.localeCompare(b.name));
 
   const getStatusBadgeForStudent = (student: StudentData) => {
-    const baseClasses = "text-xs px-1.5 py-0.5";
+    const baseClasses = "text-xs px-1.5 py-0.5 border-transparent";
     if (student.activityStatus === 'Left') {
-      return <Badge variant="secondary" className={cn(baseClasses, "border-transparent bg-status-left text-status-left-foreground")}>Left</Badge>;
+      return <Badge variant="secondary" className={cn(baseClasses, "bg-status-left text-status-left-foreground")}>Left</Badge>;
     }
     switch (student.feeStatus) {
       case 'Overdue':
         return <Badge variant="destructive" className={cn(baseClasses)}>Overdue</Badge>;
       case 'Due':
-        return <Badge className={cn(baseClasses, "border-transparent bg-status-due text-status-due-foreground")}>Due</Badge>;
+        return <Badge className={cn(baseClasses, "bg-status-due text-status-due-foreground")}>Due</Badge>;
       case 'Paid':
-        return <Badge className={cn(baseClasses, "border-transparent bg-status-paid text-status-paid-foreground")}>Paid</Badge>;
+        return <Badge className={cn(baseClasses, "bg-status-paid text-status-paid-foreground")}>Paid</Badge>;
       default:
-        return <Badge variant="outline" className={baseClasses}>{student.feeStatus}</Badge>;
+        return <Badge variant="outline" className={cn("text-xs px-1.5 py-0.5")}>{student.feeStatus}</Badge>;
     }
   };
 
