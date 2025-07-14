@@ -149,21 +149,33 @@ export default function AdminSendAlertPage() {
                       <RadioGroup
                         onValueChange={field.onChange}
                         defaultValue={field.value}
-                        className="flex flex-col sm:flex-row gap-4"
+                        className="grid grid-cols-2 gap-2 p-1 rounded-md bg-muted"
                         disabled={isSending}
                       >
-                        <FormItem className="flex-1">
-                          <RadioGroupItem value="general" id="r-general" className="peer sr-only" />
-                          <Label htmlFor="r-general" className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer">
-                            <Users className="mb-3 h-6 w-6" />
-                            General Alert
+                        <FormItem>
+                          <RadioGroupItem value="general" id="r-general" className="sr-only" />
+                          <Label
+                            htmlFor="r-general"
+                            className={cn(
+                              "flex items-center justify-center rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 cursor-pointer",
+                              field.value === 'general' ? 'bg-background text-foreground shadow-sm' : 'hover:bg-background/50'
+                            )}
+                          >
+                            <Users className="mr-2 h-4 w-4" />
+                            General
                           </Label>
                         </FormItem>
-                        <FormItem className="flex-1">
-                          <RadioGroupItem value="targeted" id="r-targeted" className="peer sr-only" />
-                          <Label htmlFor="r-targeted" className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer">
-                            <User className="mb-3 h-6 w-6" />
-                            Targeted Alert
+                        <FormItem>
+                          <RadioGroupItem value="targeted" id="r-targeted" className="sr-only" />
+                           <Label
+                            htmlFor="r-targeted"
+                            className={cn(
+                              "flex items-center justify-center rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 cursor-pointer",
+                              field.value === 'targeted' ? 'bg-background text-foreground shadow-sm' : 'hover:bg-background/50'
+                            )}
+                          >
+                             <User className="mr-2 h-4 w-4" />
+                            Targeted
                           </Label>
                         </FormItem>
                       </RadioGroup>
