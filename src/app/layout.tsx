@@ -11,17 +11,28 @@ export const metadata: Metadata = {
   title: 'Taxshila Companion',
   description: 'Your companion app for Taxshila study hall.',
   manifest: '/manifest.json',
-  // themeColor is removed from here to allow dynamic updates by next-themes
+  themeColor: [
+    // Light Themes
+    { media: '(prefers-color-scheme: light)', color: 'hsl(240 7% 84%)' },
+    { media: '(prefers-theme: light-default)', color: 'hsl(240 7% 84%)' },
+    { media: '(prefers-theme: light-mint)', color: 'hsl(150 50% 92%)' },
+    { media: '(prefers-theme: light-sunrise)', color: 'hsl(40 100% 94%)' },
+    { media: '(prefers-theme: light-sakura)', color: 'hsl(345 60% 94%)' },
+    // Dark Themes
+    { media: '(prefers-color-scheme: dark)', color: 'hsl(0 0% 0%)' },
+    { media: '(prefers-theme: dark-default)', color: 'hsl(0 0% 0%)' },
+    { media: '(prefers-theme: dark-midnight)', color: 'hsl(220 40% 10%)' },
+    { media: '(prefers-theme: dark-forest)', color: 'hsl(120 20% 8%)' },
+    { media: '(prefers-theme: dark-rose)', color: 'hsl(340 15% 10%)' },
+  ],
   icons: {
     icon: [
-      // Primary icon is now the renamed custom ICO file
       { url: '/custom-favicon.ico', type: 'image/x-icon', sizes: 'any' },
-      // PNG fallbacks
       { url: '/favicon-16x16.png', type: 'image/png', sizes: '16x16' },
       { url: '/favicon-32x32.png', type: 'image/png', sizes: '32x32' },
     ],
-    apple: '/apple-touch-icon.png', // Apple touch icon
-    shortcut: '/logo.png' // General PWA shortcut icon, can also be specific if you have one
+    apple: '/apple-touch-icon.png',
+    shortcut: '/logo.png'
   },
 };
 
@@ -33,7 +44,6 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        {/* No direct <link rel="icon"> or <meta name="theme-color"> tags here; Next.js metadata and ThemeProvider handle them */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet" />
@@ -45,6 +55,7 @@ export default function RootLayout({
           defaultTheme="light-default"
           enableSystem={false}
           themes={['light-default', 'light-mint', 'light-sunrise', 'light-sakura', 'dark-default', 'dark-midnight', 'dark-forest', 'dark-rose']}
+          disableTransitionOnChange={true}
         >
           <AuthProvider>
             <NotificationProvider>
