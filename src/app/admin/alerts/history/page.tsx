@@ -132,12 +132,12 @@ const AlertCardItem = ({ alert, onCardClick }: { alert: AlertItem, onCardClick: 
             {label}
           </Badge>
           {alert.studentId ? (
-            <Badge variant="secondary" className="bg-audience-targeted text-audience-targeted-foreground text-xs px-1.5 py-0.5">
+            <Badge variant="secondary" style={{ backgroundColor: 'hsl(var(--audience-targeted-bg))', color: 'hsl(var(--audience-targeted-foreground))' }} className="text-xs px-1.5 py-0.5">
               <User className="mr-1 h-3 w-3" />
               Targeted
             </Badge>
           ) : (
-            <Badge variant="secondary" className="bg-audience-general text-audience-general-foreground text-xs px-1.5 py-0.5">
+            <Badge variant="secondary" style={{ backgroundColor: 'hsl(var(--audience-general-bg))', color: 'hsl(var(--audience-general-foreground))' }} className="text-xs px-1.5 py-0.5">
               <Users className="mr-1 h-3 w-3" />
               General
             </Badge>
@@ -293,12 +293,12 @@ export default function AdminAlertsHistoryPage() {
                           </TableCell>
                           <TableCell>
                             {alert.studentId ? (
-                              <Badge variant="secondary" className="bg-audience-targeted text-audience-targeted-foreground">
+                              <Badge variant="secondary" style={{ backgroundColor: 'hsl(var(--audience-targeted-bg))', color: 'hsl(var(--audience-targeted-foreground))' }}>
                                 <User className="mr-1 h-3 w-3" />
                                 Targeted: {alert.studentId}
                               </Badge>
                             ) : (
-                              <Badge variant="secondary" className="bg-audience-general text-audience-general-foreground">
+                              <Badge variant="secondary" style={{ backgroundColor: 'hsl(var(--audience-general-bg))', color: 'hsl(var(--audience-general-foreground))' }}>
                                 <Users className="mr-1 h-3 w-3" />
                                 General
                               </Badge>
