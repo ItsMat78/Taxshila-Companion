@@ -5,26 +5,13 @@ import { AppLayout } from '@/components/layout/app-layout';
 import { Toaster } from "@/components/ui/toaster";
 import { AuthProvider } from '@/contexts/auth-context';
 import { NotificationProvider } from '@/contexts/notification-context';
-import { ThemeProvider } from '@/contexts/theme-context'; // Import ThemeProvider
+import { ThemeProvider } from '@/contexts/theme-context';
+import { DynamicThemeColor } from '@/components/shared/dynamic-theme-color';
 
 export const metadata: Metadata = {
   title: 'Taxshila Companion',
   description: 'Your companion app for Taxshila study hall.',
   manifest: '/manifest.json',
-  themeColor: [
-    // Light Themes
-    { media: '(prefers-color-scheme: light)', color: 'hsl(240 7% 84%)' },
-    { media: '(prefers-theme: light-default)', color: 'hsl(240 7% 84%)' },
-    { media: '(prefers-theme: light-mint)', color: 'hsl(150 50% 92%)' },
-    { media: '(prefers-theme: light-sunrise)', color: 'hsl(40 100% 94%)' },
-    { media: '(prefers-theme: light-sakura)', color: 'hsl(345 60% 94%)' },
-    // Dark Themes
-    { media: '(prefers-color-scheme: dark)', color: 'hsl(0 0% 0%)' },
-    { media: '(prefers-theme: dark-default)', color: 'hsl(0 0% 0%)' },
-    { media: '(prefers-theme: dark-midnight)', color: 'hsl(220 40% 10%)' },
-    { media: '(prefers-theme: dark-forest)', color: 'hsl(120 20% 8%)' },
-    { media: '(prefers-theme: dark-rose)', color: 'hsl(340 15% 10%)' },
-  ],
   icons: {
     icon: [
       { url: '/custom-favicon.ico', type: 'image/x-icon', sizes: 'any' },
@@ -57,6 +44,7 @@ export default function RootLayout({
           themes={['light-default', 'light-mint', 'light-sunrise', 'light-sakura', 'dark-default', 'dark-midnight', 'dark-forest', 'dark-rose']}
           disableTransitionOnChange={true}
         >
+          <DynamicThemeColor />
           <AuthProvider>
             <NotificationProvider>
               <AppLayout>
