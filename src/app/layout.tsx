@@ -11,7 +11,7 @@ export const metadata: Metadata = {
   title: 'Taxshila Companion',
   description: 'Your companion app for Taxshila study hall.',
   manifest: '/manifest.json',
-  // themeColor is removed from here to allow dynamic updates
+  // themeColor is removed from here to allow dynamic updates by next-themes
   icons: {
     icon: [
       // Primary icon is now the renamed custom ICO file
