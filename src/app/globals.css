@@ -153,7 +153,7 @@
   
   /* Light Theme 2: Mint */
   [class="light-mint"] {
-    --background: 150 50% 96%;
+    --background: 150 50% 92%;
     --foreground: 180 25% 20%;
     --muted: 150 40% 92%;
     --muted-foreground: 180 25% 40%;
@@ -206,7 +206,7 @@
 
   /* Light Theme 3: Sunrise */
   [class="light-sunrise"] {
-    --background: 40 100% 97%;
+    --background: 40 100% 94%;
     --foreground: 260 25% 20%;
     --muted: 40 80% 94%;
     --muted-foreground: 260 25% 40%;
@@ -259,7 +259,7 @@
 
   /* NEW Light Theme 4: Sakura (Pink) */
   [class="light-sakura"] {
-    --background: 345 60% 97%;
+    --background: 345 60% 94%;
     --foreground: 345 25% 20%;
     --muted: 345 50% 94%;
     --muted-foreground: 345 25% 40%;
