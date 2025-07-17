@@ -62,7 +62,6 @@ export default function DataManagementPage() {
   const [isImporting, setIsImporting] = React.useState<ImportType | null>(null);
   const [isExporting, setIsExporting] = React.useState<string | null>(null);
   const [isDeletingDatabase, setIsDeletingDatabase] = React.useState(false);
-  const [isMigratingUsers, setIsMigratingUsers] = React.useState(false);
 
   const handleFileSelected = (event: React.ChangeEvent<HTMLInputElement>, importType: ImportType) => {
     const file = event.target.files?.[0];
@@ -505,42 +504,6 @@ export default function DataManagementPage() {
     }
   };
 
-  const handleMigrateUsers = async () => {
-    setIsMigratingUsers(true);
-    try {
-      const response = await fetch('/api/migrate-users', {
-        method: 'POST',
-      });
-      const result = await response.json();
-
-      if (!response.ok || !result.success) {
-        throw new Error(result.error || 'Failed to start migration.');
-      }
-
-      const { createdCount, skippedCount, errorCount, phoneOnlyUsersCount } = result.summary;
-      let description = `Created: ${createdCount}, Skipped: ${skippedCount}, Errors: ${errorCount}.`;
-      if (phoneOnlyUsersCount > 0) {
-        description += ` Phone-only users skipped: ${phoneOnlyUsersCount}.`;
-      }
-
-      toast({
-        title: 'User Migration Complete',
-        description: description,
-        duration: 10000,
-      });
-
-    } catch (error: any) {
-      console.error("Error migrating users:", error);
-      toast({
-        title: 'Migration Failed',
-        description: error.message || 'An unexpected error occurred.',
-        variant: 'destructive',
-        duration: 7000,
-      });
-    } finally {
-      setIsMigratingUsers(false);
-    }
-  };
 
   return (
     <>
@@ -634,48 +597,6 @@ export default function DataManagementPage() {
         </CardFooter>
       </Card>
       
-      <Card className="shadow-lg mt-6 border-orange-500/50">
-        <CardHeader>
-          <CardTitle className="flex items-center text-orange-600">
-            <KeyRound className="mr-2 h-5 w-5" />One-Time Operations
-          </CardTitle>
-          <CardDescription className="text-orange-600">
-            These are special actions for system setup, like data migration. Proceed with caution.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button variant="outline" className="w-full sm:w-auto" disabled={isMigratingUsers}>
-                {isMigratingUsers ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <KeyRound className="mr-2 h-4 w-4" />}
-                {isMigratingUsers ? 'Migrating Users...' : 'Migrate Users to Auth'}
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Migrate users to Firebase Authentication?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  This will read all students from your database and create corresponding accounts in Firebase Authentication for those with an email and password. This is a one-time setup action.
-                  <br /><br />
-                  <strong>This process is safe to run multiple times - existing users will be skipped.</strong>
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel disabled={isMigratingUsers}>Cancel</AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={handleMigrateUsers}
-                  disabled={isMigratingUsers}
-                  className="bg-primary hover:bg-primary/90"
-                >
-                  {isMigratingUsers ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                  Confirm and Start Migration
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-        </CardContent>
-      </Card>
-
       <Card className="shadow-lg mt-6 border-destructive">
         <CardHeader>
           <CardTitle className="flex items-center text-destructive">

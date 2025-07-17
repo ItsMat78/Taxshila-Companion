@@ -49,41 +49,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const { setTheme } = useTheme();
 
   React.useEffect(() => {
-    const auth = getAuth(firebaseApp);
-    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
-      if (firebaseUser) {
-        // If a user is logged in via Firebase Auth, they are the source of truth.
-        // We restore their session from localStorage if available, otherwise fetch.
-        const storedUser = localStorage.getItem('taxshilaUser');
-        if (storedUser) {
-          const parsedUser: User = JSON.parse(storedUser);
-          if (parsedUser.email === firebaseUser.email) {
-            setUser(parsedUser);
-            if (parsedUser.theme) setTheme(parsedUser.theme);
-          }
+    // This effect runs once on mount to restore the user session from localStorage
+    try {
+      const storedUser = localStorage.getItem('taxshilaUser');
+      if (storedUser) {
+        const parsedUser = JSON.parse(storedUser);
+        setUser(parsedUser);
+        if (parsedUser.theme) {
+            setTheme(parsedUser.theme);
         }
-      } else {
-        // No Firebase user, clear local state
-        setUser(null);
-        localStorage.removeItem('taxshilaUser');
       }
+    } catch (error) {
+      console.error("Failed to parse user from localStorage", error);
+      localStorage.removeItem('taxshilaUser');
+    } finally {
       setIsLoading(false);
-    });
-    return () => unsubscribe();
+    }
   }, [setTheme]);
 
-
   React.useEffect(() => {
+    // This effect handles redirection based on auth state
     if (!isLoading && !user && !pathname.startsWith('/login')) {
       router.replace('/login');
     }
   }, [user, isLoading, pathname, router]);
 
-
   const login = async (identifier: string, passwordAttempt: string): Promise<User | null> => {
     setIsLoading(true);
 
-    // --- Legacy Login Method ---
     const matchedHardcodedAdmin = hardcodedAdminUsers.find(
       (u) => ((u.email && u.email.toLowerCase() === identifier.toLowerCase()) || (u.phone && u.phone === identifier)) && u.password === passwordAttempt
     );
