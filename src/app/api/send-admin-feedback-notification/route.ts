@@ -13,36 +13,44 @@ interface AdminDoc {
   fcmTokens?: string[];
 }
 
-// Initialize Firebase Admin SDK
-try {
-  if (!admin.apps.length) {
-    const privateKeyRaw = process.env.FIREBASE_PRIVATE_KEY;
-    if (!privateKeyRaw) {
-      throw new Error("FIREBASE_PRIVATE_KEY environment variable is not set.");
-    }
-    const privateKey = privateKeyRaw.replace(/\\n/g, '\n');
-    admin.initializeApp({
+function initializeFirebaseAdmin() {
+  if (admin.apps.length > 0) {
+    return admin.app();
+  }
+
+  const privateKey = process.env.FIREBASE_PRIVATE_KEY;
+  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
+  const projectId = process.env.FIREBASE_PROJECT_ID;
+
+  if (!privateKey || !clientEmail || !projectId) {
+    console.error("[API Route (Admin Feedback)] Missing Firebase Admin credentials in environment.");
+    throw new Error("Server configuration error: Missing Firebase Admin environment variables.");
+  }
+  
+  try {
+    return admin.initializeApp({
       credential: admin.credential.cert({
-        projectId: process.env.FIREBASE_PROJECT_ID,
-        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-        privateKey: privateKey,
+        projectId: projectId,
+        clientEmail: clientEmail,
+        privateKey: privateKey.replace(/\\n/g, '\n'),
       }),
     });
+  } catch (error: any) {
+    console.error(`[API Route (Admin Feedback)] Firebase Admin SDK initialization error: ${error.message}`);
+    throw new Error(`Could not initialize Firebase Admin SDK. Check your .env file. Internal error: ${error.message}`);
   }
-} catch (e: any) {
-  console.error('API Route (Admin Feedback): Firebase Admin SDK initialization error:', e.message);
 }
 
 const getDb = () => {
-  if (!admin.apps.length) {
-    throw new Error("Firebase Admin SDK not initialized.");
-  }
+  initializeFirebaseAdmin();
   return admin.firestore();
 };
 
 export async function POST(request: NextRequest) {
   console.log("API Route: /api/send-admin-feedback-notification POST request received.");
-  if (!admin.apps.length) {
+  try {
+    initializeFirebaseAdmin();
+  } catch(e) {
     console.error("API Route (Admin Feedback): Firebase Admin SDK not initialized.");
     return NextResponse.json({ success: false, error: "Server configuration error." }, { status: 500 });
   }
@@ -86,11 +94,6 @@ export async function POST(request: NextRequest) {
     const messageToSend: admin.messaging.MulticastMessage = {
       tokens: uniqueTokens,
       data: notificationPayload,
-      // You can also add a `notification` field for system-level display on some platforms
-      // notification: {
-      //   title: notificationPayload.title,
-      //   body: notificationPayload.body
-      // }
     };
 
     const response = await admin.messaging().sendEachForMulticast(messageToSend);
