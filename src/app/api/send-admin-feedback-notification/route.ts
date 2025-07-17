@@ -1,7 +1,7 @@
 
 import { NextResponse, type NextRequest } from 'next/server';
-import * as admin from 'firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
+import { getDb, getMessaging } from '@/lib/firebase-admin';
 
 interface FeedbackNotificationPayload {
   studentName: string;
@@ -13,59 +13,20 @@ interface AdminDoc {
   fcmTokens?: string[];
 }
 
-function initializeFirebaseAdmin() {
-  if (admin.apps.length > 0) {
-    return admin.app();
-  }
-
-  const privateKey = process.env.FIREBASE_PRIVATE_KEY;
-  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
-  const projectId = process.env.FIREBASE_PROJECT_ID;
-
-  if (!privateKey || !clientEmail || !projectId) {
-    console.error("[API Route (Admin Feedback)] Missing Firebase Admin credentials in environment.");
-    throw new Error("Server configuration error: Missing Firebase Admin environment variables.");
-  }
-  
-  try {
-    return admin.initializeApp({
-      credential: admin.credential.cert({
-        projectId: projectId,
-        clientEmail: clientEmail,
-        privateKey: privateKey.replace(/\\n/g, '\n'),
-      }),
-    });
-  } catch (error: any) {
-    console.error(`[API Route (Admin Feedback)] Firebase Admin SDK initialization error: ${error.message}`);
-    throw new Error(`Could not initialize Firebase Admin SDK. Check your .env file. Internal error: ${error.message}`);
-  }
-}
-
-const getDb = () => {
-  initializeFirebaseAdmin();
-  return admin.firestore();
-};
-
 export async function POST(request: NextRequest) {
   console.log("API Route: /api/send-admin-feedback-notification POST request received.");
   try {
-    initializeFirebaseAdmin();
-  } catch(e) {
-    console.error("API Route (Admin Feedback): Firebase Admin SDK not initialized.");
-    return NextResponse.json({ success: false, error: "Server configuration error." }, { status: 500 });
-  }
+    const db = getDb();
+    const messaging = getMessaging();
+    let payload: FeedbackNotificationPayload;
 
-  const db = getDb();
-  let payload: FeedbackNotificationPayload;
+    try {
+      payload = await request.json();
+      console.log("API Route (Admin Feedback): Received payload:", JSON.stringify(payload, null, 2));
+    } catch (e) {
+      return NextResponse.json({ success: false, error: "Invalid request body." }, { status: 400 });
+    }
 
-  try {
-    payload = await request.json();
-     console.log("API Route (Admin Feedback): Received payload:", JSON.stringify(payload, null, 2));
-  } catch (e) {
-    return NextResponse.json({ success: false, error: "Invalid request body." }, { status: 400 });
-  }
-
-  try {
     let adminTokens: string[] = [];
     const adminsSnapshot = await db.collection("admins").get();
     adminsSnapshot.forEach((doc) => {
@@ -91,15 +52,14 @@ export async function POST(request: NextRequest) {
       feedbackId: payload.feedbackId,
     };
 
-    const messageToSend: admin.messaging.MulticastMessage = {
+    const messageToSend = {
       tokens: uniqueTokens,
       data: notificationPayload,
     };
 
-    const response = await admin.messaging().sendEachForMulticast(messageToSend);
+    const response = await messaging.sendEachForMulticast(messageToSend);
     console.log("API Route (Admin Feedback): FCM response: Successes:", response.successCount, "Failures:", response.failureCount);
 
-    // Handle invalid token cleanup
     const cleanupPromises = response.responses.map(async (result, index) => {
         const currentToken = uniqueTokens[index];
         if (!result.success) {

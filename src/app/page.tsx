@@ -47,7 +47,7 @@ import { ALL_SEAT_NUMBERS as serviceAllSeats } from '@/config/seats';
 
 const staticAdminActionTilesConfig = [
   { baseTitle: "Manage Students", icon: Users, description: "View, edit student details.", href: "/students/list" },
-  { baseTitle: "Register Student", icon: UserPlus, description: "Add new students to system.", href: "/students/register" },
+  { baseTitle: "Register Student", icon: UserPlus, description: "Add new students to system.", href: "/admin/students/register" },
   { baseTitle: "Attendance Overview", icon: CalendarDays, description: "Check student attendance logs.", href: "/attendance/calendar" },
   {
     baseTitle: "Payment Due List",
@@ -389,7 +389,6 @@ export default function MainPage() {
     // The AppLayout handles the redirection if they try to access protected routes without auth.
     // If AppLayout is not handling children correctly for /login route, this might be a safety net.
     // However, with the current AppLayout, this condition might lead to rendering the loader over the login page.
-    // It's better handled by AppLayout structure. For now, let the login page render.
      return null;
   }
 
