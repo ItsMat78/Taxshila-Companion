@@ -1,4 +1,6 @@
 
+require('dotenv').config({ path: './.env' }); // Explicitly load .env
+
 import { NextResponse } from 'next/server';
 import * as admin from 'firebase-admin';
 import { getFirestore, collection, getDocs } from 'firebase-admin/firestore';
@@ -60,8 +62,10 @@ export async function POST() {
     for (const student of students) {
         if (student.email && student.password) {
             try {
+                // Ensure email is a string before creating user
+                const emailString = String(student.email);
                 await auth.createUser({
-                    email: student.email,
+                    email: emailString,
                     password: student.password,
                     displayName: student.name,
                     // We can associate the Firestore doc ID with the Auth user for easy lookup
