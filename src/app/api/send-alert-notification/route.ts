@@ -3,6 +3,61 @@ import { NextResponse, type NextRequest } from 'next/server';
 import * as admin from 'firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore'; // Import FieldValue for arrayRemove
 
+// --- User Migration Logic ---
+async function handleUserMigration(db: admin.firestore.Firestore, auth: admin.auth.Auth) {
+  const studentsSnapshot = await db.collection('students').get();
+  
+  let createdCount = 0;
+  let skippedCount = 0;
+  let errorCount = 0;
+  const errors: string[] = [];
+
+  for (const studentDoc of studentsSnapshot.docs) {
+    const student = studentDoc.data();
+
+    if (!student.email || !student.password) {
+      skippedCount++;
+      continue;
+    }
+
+    try {
+      await auth.getUserByEmail(student.email);
+      skippedCount++;
+    } catch (error: any) {
+      if (error.code === 'auth/user-not-found') {
+        try {
+          await auth.createUser({
+            email: student.email,
+            password: student.password,
+            displayName: student.name,
+            disabled: false,
+          });
+          createdCount++;
+        } catch (creationError: any) {
+          console.error(`Error creating user for ${student.email}:`, creationError.message);
+          errors.push(`Failed to create ${student.email}: ${creationError.code}`);
+          errorCount++;
+        }
+      } else {
+        console.error(`Error checking user ${student.email}:`, error.message);
+        errors.push(`Error checking ${student.email}: ${error.code}`);
+        errorCount++;
+      }
+    }
+  }
+
+  return {
+    success: true,
+    message: 'Migration process completed.',
+    createdCount,
+    skippedCount,
+    errorCount,
+    errors,
+  };
+}
+// --- End User Migration Logic ---
+
+
 interface AlertPayload {
   alertId: string;
   title: string;
@@ -52,35 +107,54 @@ const getDb = () => {
   return admin.firestore();
 };
 
+const getAuth = () => {
+  if (!admin.apps.length) {
+    console.error("API Route: Firebase Admin SDK not initialized when getAuth() was called.");
+    throw new Error("Firebase Admin SDK not initialized. This is a server-side configuration issue.");
+  }
+  return admin.auth();
+};
+
 
 export async function POST(request: NextRequest) {
-  console.log("API Route: /api/send-alert-notification POST request received.");
   if (!admin.apps.length) {
     console.error("API Route: Firebase Admin SDK is not initialized. Cannot process request. Check Vercel environment variables (FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY) and ensure they are correct, especially the private key format (including \\n).");
     return NextResponse.json({ success: false, error: "Firebase Admin SDK not initialized on server. Check Vercel logs and environment variables." }, { status: 500 });
   }
 
   let db;
+  let auth;
   try {
     db = getDb();
+    auth = getAuth();
   } catch (dbError: any) {
-    console.error("API Route: Error getting Firestore instance:", dbError.message);
-    return NextResponse.json({ success: false, error: "Failed to connect to database." }, { status: 500 });
+    console.error("API Route: Error getting Firestore/Auth instance:", dbError.message);
+    return NextResponse.json({ success: false, error: "Failed to connect to database services." }, { status: 500 });
   }
 
-  let alertPayload: AlertPayload;
+  const requestBody = await request.json();
 
-  try {
-    alertPayload = (await request.json()) as AlertPayload;
-    console.log("API Route: Received alert payload:", JSON.stringify(alertPayload, null, 2));
-  } catch (parseError: any) {
-    console.error("API Route: Error parsing request JSON:", parseError.message);
-    return NextResponse.json({ success: false, error: "Invalid request body." }, { status: 400 });
+  // --- Trigger Migration Logic ---
+  if (requestBody.action === 'migrateUsers') {
+    console.log("API Route (send-alert): Received 'migrateUsers' action. Starting migration...");
+    try {
+      const migrationResult = await handleUserMigration(db, auth);
+      console.log("API Route (send-alert): Migration finished. Result:", migrationResult);
+      return NextResponse.json(migrationResult);
+    } catch (error: any) {
+      console.error('[API Route (send-alert)] A top-level error occurred during migration:', error.message);
+      return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    }
   }
+  // --- End Trigger Migration Logic ---
+
+  let alertPayload: AlertPayload = requestBody;
+  console.log("API Route: /api/send-alert-notification POST request received for alert.");
+  console.log("API Route: Received alert payload:", JSON.stringify(alertPayload, null, 2));
 
   try {
     let tokens: string[] = [];
-    const studentIdToQuery = alertPayload.studentId; // studentId from payload is the custom ID
+    const studentIdToQuery = alertPayload.studentId;
     console.log("API Route: studentIdToQuery for tokens:", studentIdToQuery);
 
 
@@ -88,7 +162,7 @@ export async function POST(request: NextRequest) {
       console.log(`API Route: Targeted alert for student ${studentIdToQuery}. Fetching token...`);
       const studentQuery = await db
         .collection("students")
-        .where("studentId", "==", studentIdToQuery) // Query by custom studentId field
+        .where("studentId", "==", studentIdToQuery)
         .limit(1)
         .get();
 
@@ -103,14 +177,11 @@ export async function POST(request: NextRequest) {
         }
       } else {
         console.log(`API Route: Student ${studentIdToQuery} not found for targeted alert.`);
-        // It's okay if a student isn't found, alert is still saved. Notification won't be sent.
         return NextResponse.json({ success: true, message: `Student ${studentIdToQuery} not found, notification not sent.` }, { status: 200 });
       }
     } else {
-      // GENERAL ALERT - Fetch tokens for all students AND all admins
       console.log("API Route: General alert. Fetching tokens for all students and admins...");
       
-      // Fetch student tokens
       const allStudentsSnapshot = await db.collection("students").get();
       allStudentsSnapshot.forEach((studentDoc) => {
         const student = studentDoc.data() as StudentDoc;
@@ -120,7 +191,6 @@ export async function POST(request: NextRequest) {
       });
       console.log("API Route: Total tokens from students:", tokens.length);
       
-      // Fetch admin tokens
       const adminsSnapshot = await db.collection("admins").get();
       adminsSnapshot.forEach((doc) => {
         const adminData = doc.data() as AdminDoc;
@@ -184,7 +254,6 @@ export async function POST(request: NextRequest) {
                 try {
                     const batch = db.batch();
                     
-                    // Check students collection
                     const studentsWithTokenQuery = db.collection('students').where('fcmTokens', 'array-contains', currentToken);
                     const studentQuerySnapshot = await studentsWithTokenQuery.get();
                     if (!studentQuerySnapshot.empty) {
@@ -194,7 +263,6 @@ export async function POST(request: NextRequest) {
                         });
                     }
 
-                    // Check admins collection
                     const adminsWithTokenQuery = db.collection('admins').where('fcmTokens', 'array-contains', currentToken);
                     const adminQuerySnapshot = await adminsWithTokenQuery.get();
                      if (!adminQuerySnapshot.empty) {

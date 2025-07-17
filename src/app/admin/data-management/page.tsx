@@ -508,11 +508,16 @@ export default function DataManagementPage() {
   const handleMigrateUsers = async () => {
     setIsMigratingUsers(true);
     try {
-      const response = await fetch('/api/migrate-users', {
+      // Use the 'send-alert-notification' endpoint with a special action payload
+      const response = await fetch('/api/send-alert-notification', {
         method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ action: 'migrateUsers' }),
       });
       const result = await response.json();
-      if (!response.ok) {
+      if (!response.ok || !result.success) {
         throw new Error(result.error || 'An unknown error occurred during migration.');
       }
       toast({
