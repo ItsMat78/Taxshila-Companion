@@ -62,6 +62,7 @@ export default function DataManagementPage() {
   const [isImporting, setIsImporting] = React.useState<ImportType | null>(null);
   const [isExporting, setIsExporting] = React.useState<string | null>(null);
   const [isDeletingDatabase, setIsDeletingDatabase] = React.useState(false);
+  const [isMigratingUsers, setIsMigratingUsers] = React.useState(false);
 
   const handleFileSelected = (event: React.ChangeEvent<HTMLInputElement>, importType: ImportType) => {
     const file = event.target.files?.[0];
@@ -504,6 +505,33 @@ export default function DataManagementPage() {
     }
   };
 
+  const handleMigrateUsers = async () => {
+    setIsMigratingUsers(true);
+    try {
+      const response = await fetch('/api/migrate-users', {
+        method: 'POST',
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result.error || 'An unknown error occurred during migration.');
+      }
+      toast({
+        title: 'User Migration Complete',
+        description: `Created: ${result.createdCount}, Skipped: ${result.skippedCount}, Errors: ${result.errorCount}. Check server logs for details.`,
+        duration: 10000,
+      });
+    } catch (error: any) {
+      toast({
+        title: 'User Migration Failed',
+        description: error.message,
+        variant: 'destructive',
+        duration: 10000,
+      });
+    } finally {
+      setIsMigratingUsers(false);
+    }
+  };
+
 
   return (
     <>
@@ -594,6 +622,49 @@ export default function DataManagementPage() {
             <p className="text-xs text-muted-foreground pt-2">
               Ensure CSV files for import are UTF-8 encoded and match the specified header formats.
             </p>
+        </CardFooter>
+      </Card>
+
+      <Card className="shadow-lg mt-6 border-amber-500">
+        <CardHeader>
+          <CardTitle className="flex items-center text-amber-700">
+            <KeyRound className="mr-2 h-5 w-5" />One-Time Operations
+          </CardTitle>
+          <CardDescription className="text-amber-600">
+            These are special actions for system setup, like user migration.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="outline" disabled={isMigratingUsers}>
+                {isMigratingUsers ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Users className="mr-2 h-4 w-4" />}
+                {isMigratingUsers ? 'Migrating...' : 'Migrate Users to Auth'}
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Confirm User Migration</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will migrate students with an email and password from the database to Firebase Authentication.
+                  This process is safe to run multiple times; it will not duplicate users.
+                  Do you want to proceed?
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel disabled={isMigratingUsers}>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleMigrateUsers} disabled={isMigratingUsers}>
+                  {isMigratingUsers ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                  Confirm Migration
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </CardContent>
+        <CardFooter>
+          <p className="text-xs text-muted-foreground">
+            It is recommended to export all data before performing any system-wide operations.
+          </p>
         </CardFooter>
       </Card>
       
