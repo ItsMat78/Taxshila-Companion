@@ -25,6 +25,14 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  // Allow cross-origin requests from the Firebase Studio preview environment
+  // for a smoother development experience.
+  experimental: {
+    allowedDevOrigins: [
+      'https://*.cloudworkstations.dev',
+      'https://*.firebase.studio',
+    ],
+  },
 };
 
 export default nextConfig;
