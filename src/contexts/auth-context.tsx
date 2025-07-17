@@ -82,63 +82,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = async (identifier: string, passwordAttempt: string): Promise<User | null> => {
     setIsLoading(true);
-    const auth = getAuth(firebaseApp);
-    const isEmail = identifier.includes('@');
 
-    // --- Primary Login Method: Firebase Authentication (for migrated email users) ---
-    if (isEmail) {
-      try {
-        const userCredential = await signInWithEmailAndPassword(auth, identifier, passwordAttempt);
-        if (userCredential.user) {
-          // Determine if admin or member based on claims or DB lookup
-          const idTokenResult = await userCredential.user.getIdTokenResult();
-          const firestoreId = idTokenResult.claims.firestoreId as string | undefined;
-
-          if (firestoreId) { // Migrated user should have this claim
-             let userDetails;
-             let role: UserRole = 'member';
-             
-             // Check if it's an admin
-             const adminCheck = await getAdminByEmail(identifier);
-             if (adminCheck && adminCheck.firestoreId === firestoreId) {
-                userDetails = adminCheck;
-                role = 'admin';
-             } else {
-                const studentCheck = await getStudentByIdentifier(identifier);
-                if (studentCheck && studentCheck.firestoreId === firestoreId) {
-                   userDetails = studentCheck;
-                   role = 'member';
-                }
-             }
-
-             if (userDetails) {
-                const userData: User = {
-                    email: userDetails.email,
-                    role: role,
-                    profilePictureUrl: (userDetails as any).profilePictureUrl,
-                    firestoreId: userDetails.firestoreId,
-                    studentId: (userDetails as any).studentId,
-                    identifierForDisplay: userDetails.email || (userDetails as any).phone,
-                    theme: userDetails.theme || 'light-default',
-                };
-                setUser(userData);
-                localStorage.setItem('taxshilaUser', JSON.stringify(userData));
-                setTheme(userData.theme);
-                setIsLoading(false);
-                return userData;
-             }
-          }
-        }
-      } catch (error: any) {
-        if (error.code !== 'auth/user-not-found' && error.code !== 'auth/invalid-credential') {
-            console.warn("Firebase Auth sign-in attempt failed:", error.code);
-        }
-        // If Firebase auth fails, we'll fall through to the legacy method.
-      }
-    }
-
-
-    // --- Fallback/Legacy Login Method ---
+    // --- Legacy Login Method ---
     const matchedHardcodedAdmin = hardcodedAdminUsers.find(
       (u) => ((u.email && u.email.toLowerCase() === identifier.toLowerCase()) || (u.phone && u.phone === identifier)) && u.password === passwordAttempt
     );
