@@ -1,5 +1,5 @@
 
-require('dotenv').config({ path: './src/.env' });
+require('dotenv').config({ path: './.env' });
 
 import type {NextConfig} from 'next';
 
