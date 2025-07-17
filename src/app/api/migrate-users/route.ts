@@ -10,6 +10,14 @@ function initializeFirebaseAdmin() {
     return admin.app();
   }
 
+  // --- DEBUGGING LOGS ---
+  console.log("[API Route (migrate-users)] Reading environment variables...");
+  console.log(`[API Route (migrate-users)] FIREBASE_PROJECT_ID: ${process.env.FIREBASE_PROJECT_ID ? 'Loaded (value hidden)' : 'NOT LOADED'}`);
+  console.log(`[API Route (migrate-users)] FIREBASE_CLIENT_EMAIL: ${process.env.FIREBASE_CLIENT_EMAIL ? 'Loaded (value hidden)' : 'NOT LOADED'}`);
+  console.log(`[API Route (migrate-users)] FIREBASE_PRIVATE_KEY: ${process.env.FIREBASE_PRIVATE_KEY ? 'Loaded (value hidden)' : 'NOT LOADED'}`);
+  // --- END DEBUGGING LOGS ---
+
+
   // Read credentials from environment variables
   const privateKey = process.env.FIREBASE_PRIVATE_KEY;
   const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
@@ -33,7 +41,7 @@ function initializeFirebaseAdmin() {
     });
   } catch (error: any) {
     console.error(`[API Route (migrate-users)] Firebase Admin SDK initialization error: ${error.message}`);
-    throw new Error(`Could not initialize Firebase Admin SDK. Check environment variables. Internal error: ${error.message}`);
+    throw new Error(`Could not initialize Firebase Admin SDK. Check your .env file. Internal error: ${error.message}`);
   }
 }
 
