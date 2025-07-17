@@ -7,7 +7,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import { getStudentByIdentifier, getAdminByEmail, removeFCMTokenForStudent, removeAdminFCMToken, updateUserTheme } from '@/services/student-service';
 import { useToast } from "@/hooks/use-toast";
 import { getMessaging, getToken, deleteToken } from 'firebase/messaging';
-import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, type User as FirebaseAuthUser } from 'firebase/auth'; // Import Firebase Auth functions
+import { getAuth, signOut } from 'firebase/auth'; // Removed signIn and onAuthStateChanged
 import { app as firebaseApp } from '@/lib/firebase';
 import { VAPID_KEY_FROM_CLIENT_LIB } from '@/lib/firebase-messaging-client';
 import { useTheme } from 'next-themes';
