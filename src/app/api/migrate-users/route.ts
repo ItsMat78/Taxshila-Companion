@@ -41,6 +41,7 @@ export async function POST() {
   try {
     initializeFirebaseAdmin();
     const db = getFirestore();
+    const auth = admin.auth();
     console.log("[API Route (migrate-users)] Firebase Admin SDK initialized successfully.");
 
     // Step 1: Fetch all students from Firestore
@@ -48,14 +49,60 @@ export async function POST() {
     const students = studentsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
     const totalStudents = students.length;
+    let createdCount = 0;
+    let skippedCount = 0;
+    let errorCount = 0;
+    const errors: string[] = [];
+    const phoneOnlyUsers: string[] = [];
+
     console.log(`[API Route (migrate-users)] Found ${totalStudents} students to process.`);
     
-    // For now, we are just fetching the students. We will add the migration logic in the next step.
-    // This confirms our Admin SDK is working correctly.
+    for (const student of students) {
+        if (student.email && student.password) {
+            try {
+                await auth.createUser({
+                    email: student.email,
+                    password: student.password,
+                    displayName: student.name,
+                    // We can associate the Firestore doc ID with the Auth user for easy lookup
+                    customClaims: { firestoreId: student.id, studentId: student.studentId }
+                });
+                createdCount++;
+            } catch (error: any) {
+                if (error.code === 'auth/email-already-exists') {
+                    // This is expected if you run the script multiple times.
+                    skippedCount++;
+                } else {
+                    console.error(`Failed to create user for ${student.email}:`, error.message);
+                    errors.push(`Student ${student.studentId} (${student.email}): ${error.message}`);
+                    errorCount++;
+                }
+            }
+        } else if (student.phone && !student.email) {
+            phoneOnlyUsers.push(`Student ${student.studentId} (${student.phone})`);
+            skippedCount++;
+        } else {
+            // Student has no email or no password
+            skippedCount++;
+        }
+    }
+
+    const summary = {
+        totalStudents,
+        createdCount,
+        skippedCount,
+        errorCount,
+        phoneOnlyUsersCount: phoneOnlyUsers.length,
+        errors,
+        phoneOnlyUsers,
+    };
+    
+    console.log("[API Route (migrate-users)] Migration summary:", summary);
 
     return NextResponse.json({
       success: true,
-      message: `Successfully connected to Firebase and fetched ${totalStudents} students. Migration logic is not yet implemented.`
+      message: `Migration process completed. Created: ${createdCount}, Skipped: ${skippedCount}, Errors: ${errorCount}.`,
+      summary: summary
     });
 
   } catch (error: any) {
