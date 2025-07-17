@@ -1,6 +1,4 @@
 
-require('dotenv').config({ path: './.env' }); // Explicitly load .env
-
 import { NextResponse } from 'next/server';
 import * as admin from 'firebase-admin';
 import { getFirestore, collection, getDocs } from 'firebase-admin/firestore';
@@ -19,7 +17,7 @@ function initializeFirebaseAdmin() {
 
   // Check that all required environment variables are present
   if (!privateKey || !clientEmail || !projectId) {
-    console.error("[API Route (migrate-users)] Missing Firebase Admin credentials in .env file.");
+    console.error("[API Route (migrate-users)] Missing Firebase Admin credentials in environment.");
     throw new Error("Server configuration error: Missing Firebase Admin environment variables.");
   }
 
@@ -35,7 +33,7 @@ function initializeFirebaseAdmin() {
     });
   } catch (error: any) {
     console.error(`[API Route (migrate-users)] Firebase Admin SDK initialization error: ${error.message}`);
-    throw new Error(`Could not initialize Firebase Admin SDK. Check your .env file. Internal error: ${error.message}`);
+    throw new Error(`Could not initialize Firebase Admin SDK. Check environment variables. Internal error: ${error.message}`);
   }
 }
 
