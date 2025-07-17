@@ -4,46 +4,55 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import * as admin from 'firebase-admin';
 
-// Helper function to initialize Firebase Admin SDK
-function initializeFirebaseAdmin() {
-  // Check if the app is already initialized to prevent errors
-  if (admin.apps.length > 0) {
-    return admin.app();
-  }
-
-  // Read credentials from environment variables
-  const privateKey = process.env.FIREBASE_PRIVATE_KEY;
-  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
-  const projectId = process.env.FIREBASE_PROJECT_ID;
-
-  // Validate that all required environment variables are present
-  if (!privateKey || !clientEmail || !projectId) {
-    console.error("[API Route (migrate-users)] Missing Firebase Admin credentials in environment.");
-    throw new Error("Server configuration error: Missing Firebase Admin environment variables.");
-  }
-  
-  try {
-    // Initialize the app with credentials
-    return admin.initializeApp({
+// Initialize Firebase Admin SDK directly at the module level
+try {
+  if (!admin.apps.length) {
+    const privateKeyRaw = process.env.FIREBASE_PRIVATE_KEY;
+    if (!privateKeyRaw) {
+      console.error("[API Route (migrate-users)] FIREBASE_PRIVATE_KEY environment variable is NOT SET. Admin SDK cannot initialize.");
+      throw new Error("FIREBASE_PRIVATE_KEY environment variable is not set.");
+    }
+    const privateKey = privateKeyRaw.replace(/\\n/g, '\n');
+    
+    console.log("[API Route (migrate-users)] Attempting to initialize Firebase Admin SDK...");
+    admin.initializeApp({
       credential: admin.credential.cert({
-        projectId: projectId,
-        clientEmail: clientEmail,
-        // IMPORTANT: Replace escaped newlines with actual newlines
-        privateKey: privateKey.replace(/\\n/g, '\n'),
+        projectId: process.env.FIREBASE_PROJECT_ID,
+        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+        privateKey: privateKey,
       }),
     });
-  } catch (error: any) {
-    console.error(`[API Route (migrate-users)] Firebase Admin SDK initialization error: ${error.message}`);
-    throw new Error(`Could not initialize Firebase Admin SDK. Check your .env file. Internal error: ${error.message}`);
+    console.log("[API Route (migrate-users)] Firebase Admin SDK initialized successfully.");
   }
+} catch (e: any) {
+  console.error('[API Route (migrate-users)] Firebase Admin SDK initialization error:', e.message, e);
 }
 
+const getDb = () => {
+  if (!admin.apps.length) {
+    console.error("[API Route (migrate-users)] Firebase Admin SDK not initialized when getDb() was called.");
+    throw new Error("Firebase Admin SDK not initialized. This is a server-side configuration issue.");
+  }
+  return admin.firestore();
+};
+
+const getAuth = () => {
+  if (!admin.apps.length) {
+    console.error("[API Route (migrate-users)] Firebase Admin SDK not initialized when getAuth() was called.");
+    throw new Error("Firebase Admin SDK not initialized. This is a server-side configuration issue.");
+  }
+  return admin.auth();
+};
 
 export async function POST(request: NextRequest) {
+  if (!admin.apps.length) {
+    console.error("[API Route (migrate-users)] Cannot process request because Firebase Admin SDK is not initialized. Check server logs for initialization errors.");
+    return NextResponse.json({ success: false, error: "Firebase Admin SDK not initialized on server. Check logs." }, { status: 500 });
+  }
+
   try {
-    initializeFirebaseAdmin();
-    const db = admin.firestore();
-    const auth = admin.auth();
+    const db = getDb();
+    const auth = getAuth();
 
     const studentsSnapshot = await db.collection('students').get();
     
@@ -54,20 +63,17 @@ export async function POST(request: NextRequest) {
 
     for (const studentDoc of studentsSnapshot.docs) {
       const student = studentDoc.data();
-      const studentId = student.studentId;
 
       if (!student.email || !student.password) {
         skippedCount++;
-        continue; // Skip students without an email or password
+        continue;
       }
 
       try {
-        // Check if a user with this email already exists in Firebase Auth
         await auth.getUserByEmail(student.email);
         skippedCount++;
       } catch (error: any) {
         if (error.code === 'auth/user-not-found') {
-          // User does not exist, so we can create them
           try {
             await auth.createUser({
               email: student.email,
@@ -82,7 +88,6 @@ export async function POST(request: NextRequest) {
             errorCount++;
           }
         } else {
-          // Some other error occurred when checking for the user
           console.error(`Error checking user ${student.email}:`, error.message);
           errors.push(`Error checking ${student.email}: ${error.code}`);
           errorCount++;
@@ -99,7 +104,7 @@ export async function POST(request: NextRequest) {
       errors,
     });
   } catch (error: any) {
-    console.error('[API Route (migrate-users)] A top-level error occurred:', error.message);
+    console.error('[API Route (migrate-users)] A top-level error occurred during POST:', error.message);
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }
