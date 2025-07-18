@@ -68,7 +68,7 @@ export const mainNav: NavItem[] = [
       },
       {
         title: 'Register Student',
-        href: '/students/register',
+        href: '/admin/students/register',
         icon: UserPlus,
         roles: ['admin'],
       },
