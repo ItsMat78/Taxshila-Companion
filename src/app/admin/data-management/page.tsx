@@ -24,11 +24,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
-<<<<<<< HEAD
 import { UserPlus, UserCheck, UserX, SkipForward, AlertTriangle, Trash2, ShieldCheck, Loader2 } from "lucide-react";
-=======
-import { UserPlus, UserCheck, UserX, SkipForward, AlertTriangle, Trash2, ShieldCheck } from "lucide-react";
->>>>>>> 0964743419ebf9843420a0830f0b94ae5233e2a7
 import { PageTitle } from "@/components/shared/page-title";
 
 interface MigrationSummary {
@@ -173,11 +169,7 @@ const DataManagementPage = () => {
                 disabled={isAddingAdmin}
               />
               <Button type="submit" disabled={isAddingAdmin || !newAdminEmail}>
-<<<<<<< HEAD
                 {isAddingAdmin ? <Loader2 className="h-4 w-4 animate-spin"/> : "Add Admin"}
-=======
-                {isAddingAdmin ? "Adding..." : "Add Admin"}
->>>>>>> 0964743419ebf9843420a0830f0b94ae5233e2a7
               </Button>
             </form>
             <div className="space-y-2">
@@ -229,11 +221,7 @@ const DataManagementPage = () => {
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <Button disabled={isMigratingUsers}>
-<<<<<<< HEAD
                   {isMigratingUsers ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Start User Migration"}
-=======
-                  {isMigratingUsers ? "Migration in Progress..." : "Start User Migration"}
->>>>>>> 0964743419ebf9843420a0830f0b94ae5233e2a7
                 </Button>
               </AlertDialogTrigger>
               <AlertDialogContent>
