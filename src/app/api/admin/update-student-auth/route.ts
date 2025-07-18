@@ -1,54 +1,58 @@
-
-import { NextResponse, type NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
+// Import the service getters directly from your firebase-admin setup file
 import { getAuth, getDb } from '@/lib/firebase-admin';
-import type { UpdateRequest } from 'firebase-admin/auth';
 
-const isValidIndianPhoneNumber = (phone: string): boolean => {
-    const regex = /^[6-9]\d{9}$/;
-    return typeof phone === 'string' && regex.test(phone);
-};
+// Initialize the services by calling the getter functions.
+// They will automatically use the initialized admin app.
+const auth = getAuth();
+const db = getDb();
 
-export async function POST(request: NextRequest) {
+export async function POST(request: Request) {
   try {
-    const { uid, email, phone, password } = await request.json();
+    const { uid, email, password, phone } = await request.json();
 
     if (!uid) {
-        return NextResponse.json({ success: false, error: "User UID is required." }, { status: 400 });
+      return NextResponse.json({ success: false, error: "User UID is required." }, { status: 400 });
     }
 
-    const auth = getAuth();
-    const updatePayload: UpdateRequest = {};
+    // --- Part 1: Update Firebase Authentication ---
+    const authUpdatePayload: { email?: string; password?: string; phoneNumber?: string } = {};
+    if (email) authUpdatePayload.email = email;
+    if (password) authUpdatePayload.password = password;
+    if (phone) authUpdatePayload.phoneNumber = phone.startsWith('+') ? phone : `+91${phone}`;
 
-    if (email) updatePayload.email = email;
-    if (password) updatePayload.password = password;
-    if (phone) {
-        if (!isValidIndianPhoneNumber(phone)) {
-            return NextResponse.json({ success: false, error: "Invalid phone number format." }, { status: 400 });
-        }
-        updatePayload.phoneNumber = `+91${phone}`;
+    if (Object.keys(authUpdatePayload).length > 0) {
+        await auth.updateUser(uid, authUpdatePayload);
     }
+
+    // --- Part 2: Find the matching document in Firestore and update it ---
+    const studentsRef = db.collection('students');
+    const snapshot = await studentsRef.where('uid', '==', uid).limit(1).get();
+
+    if (snapshot.empty) {
+        return NextResponse.json({ success: false, error: `No student document found in Firestore with uid: ${uid}` }, { status: 404 });
+    }
+
+    const studentDocRef = snapshot.docs[0].ref;
     
-    if (Object.keys(updatePayload).length === 0) {
-        return NextResponse.json({ success: true, message: "No authentication details to update." });
-    }
-
-    await auth.updateUser(uid, updatePayload);
-
-    // Also update the corresponding student document in Firestore if email/phone changes
-    const db = getDb();
-    const studentRef = db.collection('students').doc(uid);
-    const firestoreUpdate: { email?: string | null; phone?: string | null } = {};
+    const firestoreUpdate: { email?: string, phone?: string } = {};
     if (email) firestoreUpdate.email = email;
     if (phone) firestoreUpdate.phone = phone;
 
     if (Object.keys(firestoreUpdate).length > 0) {
-        await studentRef.update(firestoreUpdate);
+        await studentDocRef.update(firestoreUpdate);
     }
     
-    return NextResponse.json({ success: true, message: "User authentication details updated successfully." });
+    return NextResponse.json({ success: true, message: "User authentication and profile updated successfully." });
 
   } catch (error: any) {
-    console.error("Update Auth Error:", error);
-    return NextResponse.json({ success: false, error: error.message || "An unexpected error occurred." }, { status: 500 });
+    console.error("Update Auth API Error:", error);
+    let errorMessage = "An unexpected error occurred.";
+    if(error.code === 'auth/user-not-found') {
+        errorMessage = "The user was not found in Firebase Authentication.";
+    } else if (error.message) {
+        errorMessage = error.message;
+    }
+    return NextResponse.json({ success: false, error: errorMessage }, { status: 500 });
   }
 }

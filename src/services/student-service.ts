@@ -23,11 +23,22 @@ import {
   getDownloadURL,
   arrayRemove,
   increment,
+  auth,
+  
 } from '@/lib/firebase';
 import type { Student, Shift, FeeStatus, PaymentRecord, ActivityStatus, AttendanceRecord, FeeStructure, AttendanceImportData, PaymentImportData, CheckedInStudentInfo } from '@/types/student';
 import type { FeedbackItem, FeedbackType, FeedbackStatus, AlertItem } from '@/types/communication';
 import { format, parseISO, differenceInDays, isPast, addMonths, startOfDay, isValid, addDays, isAfter, getHours, getMinutes, isWithinInterval, startOfMonth, endOfMonth, parse, differenceInMilliseconds } from 'date-fns';
 import { ALL_SEAT_NUMBERS } from '@/config/seats';
+import { createUserWithEmailAndPassword } from 'firebase/auth'; // <-- Add this line
+
+import {
+  getAuth,
+  updateEmail,
+  updatePassword,
+  EmailAuthProvider,
+  reauthenticateWithCredential,
+} from 'firebase/auth';
 
 
 // --- Collections ---
@@ -67,6 +78,7 @@ const studentFromDoc = (docSnapshot: any): Student => {
     })),
     fcmTokens: data.fcmTokens || [], // Ensure fcmTokens is an array
     theme: data.theme || 'light-default', // Add theme with a default
+    uid: data.uid,
   } as Student;
 };
 
@@ -258,6 +270,18 @@ export interface AddStudentData {
 }
 
 export async function addStudent(studentData: AddStudentData): Promise<Student> {
+  let userCredential;
+  if (studentData.email && studentData.password) {
+    try {
+      userCredential = await createUserWithEmailAndPassword(auth, studentData.email, studentData.password);
+    } catch (error: any) {
+      if (error.code === 'auth/email-already-in-use') {
+        throw new Error(`An account with the email ${studentData.email} already exists.`);
+      }
+      throw new Error(`Firebase Auth Error: ${error.message}`);
+    }
+  }
+
   const customStudentId = await getNextCustomStudentId();
   const fees = await getFeeStructure();
 
@@ -298,6 +322,7 @@ export async function addStudent(studentData: AddStudentData): Promise<Student> 
   }
 
   const newStudentDataTypeConsistent: Omit<Student, 'firestoreId' | 'id'> = {
+    uid: userCredential?.user.uid,
     studentId: customStudentId,
     name: studentData.name,
     email: studentData.email && studentData.email.trim() !== "" ? studentData.email.toLowerCase() : undefined,
@@ -315,7 +340,7 @@ export async function addStudent(studentData: AddStudentData): Promise<Student> 
     paymentHistory: [],
     readGeneralAlertIds: [],
     fcmTokens: [],
-    theme: 'light-default', // Default theme
+    theme: 'light-default',
   };
 
   const firestoreReadyData: any = {
@@ -330,6 +355,28 @@ export async function addStudent(studentData: AddStudentData): Promise<Student> 
 
 
   const docRef = await addDoc(collection(db, STUDENTS_COLLECTION), firestoreReadyData);
+
+
+  // --- ADD THIS NEW BLOCK ---
+// After creating the student, if they have a UID and a phone number,
+// update their Firebase Auth profile via our secure API route.
+if (userCredential?.user.uid && studentData.phone) {
+  try {
+      await fetch('/api/admin/update-student-auth', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+              uid: userCredential.user.uid,
+              phone: studentData.phone,
+          }),
+      });
+  } catch (authError) {
+      // Log an error but don't fail the whole registration,
+      // as the student is already created in the database.
+      console.warn(`[addStudent] Student created, but failed to update auth profile with phone number:`, authError);
+  }
+}
+// --- END OF NEW BLOCK ---
 
   return {
     ...newStudentDataTypeConsistent,
@@ -346,7 +393,49 @@ export async function updateStudent(customStudentId: string, studentUpdateData: 
     throw new Error("Student not found.");
   }
 
+    // --- Firebase Auth Update ---
+  // If email or password needs to be changed, we call our secure API route.
+  const authUpdatePayload: { uid: string; email?: string; password?: string; phone?: string } = {
+    uid: studentToUpdate.uid!,
+};
+
+if (studentUpdateData.email && studentUpdateData.email !== studentToUpdate.email) {
+    authUpdatePayload.email = studentUpdateData.email;
+}
+if (studentUpdateData.password) {
+    authUpdatePayload.password = studentUpdateData.password;
+}
+// Add this block to check for a phone number change
+if (studentUpdateData.phone && studentUpdateData.phone !== studentToUpdate.phone) {
+  authUpdatePayload.phone = studentUpdateData.phone;
+}
+
+// Only call the API if there's something to update (email or password)
+if (authUpdatePayload.email || authUpdatePayload.password) {
+    if (!studentToUpdate.uid) {
+        throw new Error("This student does not have a registered authentication account and it cannot be updated.");
+    }
+    
+    const response = await fetch('/api/admin/update-student-auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(authUpdatePayload),
+    });
+
+    const result = await response.json();
+
+    if (!result.success) {
+        // If the API call fails, stop the entire update process.
+        throw new Error(result.error || "Failed to update user authentication details.");
+    }
+}
+// --- Firestore Data Update ---
+  // After successfully updating auth, update the Firestore document.
   const studentDocRef = doc(db, STUDENTS_COLLECTION, studentToUpdate.firestoreId);
+
+  // Create a new object for Firestore to avoid saving the password.
+  const firestoreUpdateData = { ...studentUpdateData };
+  delete firestoreUpdateData.password;
 
   const payload: any = { ...studentUpdateData };
   delete payload.firestoreId;
@@ -449,11 +538,16 @@ export async function updateStudent(customStudentId: string, studentUpdateData: 
   } else if (payload.hasOwnProperty('lastPaymentDate') && payload.lastPaymentDate === null) {
     payload.lastPaymentDate = null;
   }
-  if (payload.nextDueDate && typeof payload.nextDueDate === 'string') {
-    payload.nextDueDate = Timestamp.fromDate(parseISO(payload.nextDueDate));
-  } else if (payload.hasOwnProperty('nextDueDate') && payload.nextDueDate === null) {
-    payload.nextDueDate = null;
+  // NEW CODE
+  if (payload.hasOwnProperty('nextDueDate')) {
+  if (payload.nextDueDate && typeof payload.nextDueDate === 'string' && isValid(parseISO(payload.nextDueDate))) {
+      // If it's a valid date string, convert it to a Timestamp
+      payload.nextDueDate = Timestamp.fromDate(parseISO(payload.nextDueDate));
+  } else {
+      // Otherwise, set it to null in Firestore
+      payload.nextDueDate = null;
   }
+}
 
   const hasRelevantChanges = Object.keys(payload).some(key => key !== 'newPassword' && key !== 'confirmNewPassword' && key !== 'theme');
 
@@ -475,6 +569,7 @@ export async function updateStudent(customStudentId: string, studentUpdateData: 
   const updatedDocSnap = await getDoc(studentDocRef);
   return studentFromDoc(updatedDocSnap);
 }
+
 
 
 export async function deleteStudentCompletely(customStudentId: string): Promise<void> {
@@ -899,11 +994,8 @@ export async function sendAlertToStudent(
     console.error(`[StudentService] Failed to trigger API for push notification (student ${customStudentId}):`, apiError);
   }
 
-  return {
-    id: docRef.id,
-    studentId: newAlertDataForFirestore.studentId,
-    ...alertItemFromDoc(await getDoc(docRef)),
-  };
+  const newDocSnap = await getDoc(docRef);
+  return alertItemFromDoc(newDocSnap);
 }
 
 
