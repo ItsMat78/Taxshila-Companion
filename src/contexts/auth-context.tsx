@@ -10,9 +10,9 @@ import {
   removeFCMTokenForStudent, 
   removeAdminFCMToken, 
   updateUserTheme,
-  Student, // Assuming this is the type returned from your service
-  Admin    // Assuming this is the type returned from your service
 } from '@/services/student-service';
+import type { Student } from '@/types/student'; // Corrected Import
+import type { Admin } from '@/types/auth';      // Corrected Import
 import { useToast } from "@/hooks/use-toast";
 import { getMessaging, getToken, deleteToken } from 'firebase/messaging';
 import { getAuth, signInWithEmailAndPassword, signOut } from 'firebase/auth';
@@ -78,17 +78,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     let emailForAuth: string | undefined = undefined;
 
     if (identifier.includes('@')) {
+        // This part handles logins via a real email address
         const admin = await getAdminByEmail(identifier);
         if (admin) {
             userRecord = admin;
             userRole = 'admin';
         } else {
-            userRecord = await getStudentByIdentifier(identifier);
+            userRecord = (await getStudentByIdentifier(identifier)) ?? null;
         }
         emailForAuth = identifier;
     } else {
-        userRecord = await getStudentByIdentifier(identifier);
-        emailForAuth = userRecord?.email;
+        // This part handles login via phone number
+        userRecord = (await getStudentByIdentifier(identifier)) ?? null;
+        
+        if (userRecord) {
+            // If the user has a real email, use it.
+            // Otherwise, construct the proxy email that matches the registration API.
+            emailForAuth = userRecord.email || `${identifier}@taxshila-auth.com`;
+        }
     }
 
     if (!userRecord || !emailForAuth) {
@@ -118,6 +125,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 setIsLoading(false);
                 return null;
              }
+             if (!studentRecord.firestoreId) {
+                toast({ title: "Login Error", description: "Critical error: User profile is missing a database ID.", variant: "destructive" });
+                await signOut(auth);
+                setIsLoading(false);
+                return null;
+             }
              userData = {
                 email: studentRecord.email ?? undefined,
                 role: 'member',
@@ -136,7 +149,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     } catch (error: any) {
         console.error("Firebase login error:", error.code);
-        if (['auth/wrong-password', 'auth/user-not-found', 'auth/invalid-email'].includes(error.code)) {
+        if (['auth/wrong-password', 'auth/user-not-found', 'auth/invalid-email', 'auth/invalid-credential'].includes(error.code)) {
             toast({ title: "Login Failed", description: "Invalid credentials.", variant: "destructive" });
         } else {
             toast({ title: "Login Error", description: "An unexpected error occurred.", variant: "destructive" });

@@ -41,12 +41,17 @@ export async function POST(request: NextRequest) {
 
     // --- Create Firebase Auth User ---
     const userPayload: CreateRequest = {
-        password: password,
-        displayName: name,
-        disabled: false,
-        phoneNumber: `+91${phone}`, // Phone is now mandatory
-    };
-    if (email) userPayload.email = email;
+      password: password,
+      displayName: name,
+      disabled: false,
+      phoneNumber: `+91${phone}`,
+  };
+
+  // If a real email is provided, use it. Otherwise, create a "proxy" email.
+  // This ensures every user has an email for signInWithEmailAndPassword to work.
+  // Make sure the domain is unique to your app.
+  userPayload.email = email || `${phone}@taxshila-auth.com`;
+
     
     const userRecord = await auth.createUser(userPayload);
 

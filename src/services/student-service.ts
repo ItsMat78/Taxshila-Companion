@@ -270,121 +270,39 @@ export interface AddStudentData {
 }
 
 export async function addStudent(studentData: AddStudentData): Promise<Student> {
-  let userCredential;
-  if (studentData.email && studentData.password) {
-    try {
-      userCredential = await createUserWithEmailAndPassword(auth, studentData.email, studentData.password);
-    } catch (error: any) {
-      if (error.code === 'auth/email-already-in-use') {
-        throw new Error(`An account with the email ${studentData.email} already exists.`);
-      }
-      throw new Error(`Firebase Auth Error: ${error.message}`);
-    }
-  }
-
-  const customStudentId = await getNextCustomStudentId();
-  const fees = await getFeeStructure();
-
-  const existingStudentById = await getStudentByCustomId(customStudentId);
-  if (existingStudentById) {
-    throw new Error(`Generated Student ID ${customStudentId} already exists. Please try again.`);
-  }
-  if (studentData.email && studentData.email.trim() !== "") {
-    const existingStudentByEmail = await getStudentByEmail(studentData.email);
-    if (existingStudentByEmail) {
-      throw new Error(`Email ${studentData.email} is already registered.`);
-    }
-  }
-  const phoneQuery = query(collection(db, STUDENTS_COLLECTION), where("phone", "==", studentData.phone));
-  const phoneSnapshot = await getDocs(phoneQuery);
-  if (!phoneSnapshot.empty) {
-      throw new Error(`Phone number ${studentData.phone} is already registered.`);
-  }
-
-  const availableSeats = await getAvailableSeats(studentData.shift);
-  if (!availableSeats.includes(studentData.seatNumber)) {
-    throw new Error(`Seat ${studentData.seatNumber} is not available for the ${studentData.shift} shift.`);
-  }
-  if (!ALL_SEAT_NUMBERS.includes(studentData.seatNumber)) {
-    throw new Error("Invalid seat number selected.");
-  }
-  if (!studentData.password) {
-    throw new Error("Password is required for new student registration.");
-  }
-
-  const today = new Date();
-  let amountDueForShift: string;
-  switch (studentData.shift) {
-    case "morning": amountDueForShift = `Rs. ${fees.morningFee}`; break;
-    case "evening": amountDueForShift = `Rs. ${fees.eveningFee}`; break;
-    case "fullday": amountDueForShift = `Rs. ${fees.fullDayFee}`; break;
-    default: amountDueForShift = "Rs. 0";
-  }
-
-  const newStudentDataTypeConsistent: Omit<Student, 'firestoreId' | 'id'> = {
-    uid: userCredential?.user.uid,
-    studentId: customStudentId,
-    name: studentData.name,
-    email: studentData.email && studentData.email.trim() !== "" ? studentData.email.toLowerCase() : undefined,
-    phone: studentData.phone,
-    address: studentData.address,
-    password: studentData.password,
-    shift: studentData.shift,
-    seatNumber: studentData.seatNumber,
-    idCardFileName: studentData.idCardFileName && studentData.idCardFileName.trim() !== "" ? studentData.idCardFileName : undefined,
-    feeStatus: "Due",
-    activityStatus: "Active",
-    registrationDate: format(today, 'yyyy-MM-dd'),
-    amountDue: amountDueForShift,
-    profilePictureUrl: "https://placehold.co/200x200.png",
-    paymentHistory: [],
-    readGeneralAlertIds: [],
-    fcmTokens: [],
-    theme: 'light-default',
-  };
-
-  const firestoreReadyData: any = {
-    ...newStudentDataTypeConsistent,
-    registrationDate: Timestamp.fromDate(parseISO(newStudentDataTypeConsistent.registrationDate)),
-    nextDueDate: null,
-    lastPaymentDate: null,
-    lastAttendanceDate: null,
-    email: newStudentDataTypeConsistent.email || null,
-    idCardFileName: newStudentDataTypeConsistent.idCardFileName || null,
-  };
-
-
-  const docRef = await addDoc(collection(db, STUDENTS_COLLECTION), firestoreReadyData);
-
-
-  // --- ADD THIS NEW BLOCK ---
-// After creating the student, if they have a UID and a phone number,
-// update their Firebase Auth profile via our secure API route.
-if (userCredential?.user.uid && studentData.phone) {
+  // All registration logic is now handled by our secure backend API.
+  // This function now just sends the data to that endpoint.
   try {
-      await fetch('/api/admin/update-student-auth', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-              uid: userCredential.user.uid,
-              phone: studentData.phone,
-          }),
-      });
-  } catch (authError) {
-      // Log an error but don't fail the whole registration,
-      // as the student is already created in the database.
-      console.warn(`[addStudent] Student created, but failed to update auth profile with phone number:`, authError);
-  }
-}
-// --- END OF NEW BLOCK ---
+    const response = await fetch('/api/admin/register-student', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(studentData),
+    });
 
-  return {
-    ...newStudentDataTypeConsistent,
-    id: docRef.id,
-    firestoreId: docRef.id,
-    email: firestoreReadyData.email === null ? undefined : firestoreReadyData.email,
-    idCardFileName: firestoreReadyData.idCardFileName === null ? undefined : firestoreReadyData.idCardFileName,
-  };
+    const result = await response.json();
+
+    if (!response.ok) {
+      // If the server returns an error, we throw it to be caught by the UI
+      throw new Error(result.error || `Registration failed with status: ${response.status}`);
+    }
+
+    // Since the API now handles everything, we need to get the newly created
+    // student's full profile to return it, which is consistent with the
+    // function's return type. We can get it using the new studentId.
+    const newStudent = await getStudentByCustomId(result.studentId);
+    if (!newStudent) {
+        // This is a fallback, in case the getStudentById fails right after creation.
+        throw new Error("Student was registered, but there was an issue retrieving the new profile.");
+    }
+
+    return newStudent;
+
+  } catch (error: any) {
+    // Re-throw the error so it can be caught and displayed by the form's error handler
+    throw error;
+  }
 }
 
 export async function updateStudent(customStudentId: string, studentUpdateData: Partial<Student>): Promise<Student | undefined> {
