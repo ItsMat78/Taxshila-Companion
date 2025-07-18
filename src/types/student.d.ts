@@ -4,6 +4,7 @@ export type FeeStatus = "Paid" | "Due" | "Overdue" | "N/A";
 export type ActivityStatus = "Active" | "Left";
 
 export interface Student {
+  uid: string; // Firebase Auth UID
   studentId: string;
   name: string;
   email?: string; 
