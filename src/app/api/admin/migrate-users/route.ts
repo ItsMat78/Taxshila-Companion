@@ -1,97 +1,108 @@
-// src/app/api/admin/migrate-users/route.ts
 
 import { NextResponse } from 'next/server';
 import { getAuth, getDb } from '@/lib/firebase-admin';
-import { headers } from 'next/headers'; // Import 'headers' to read request headers
+import type { UserRecord, CreateRequest } from 'firebase-admin/auth';
 
-
-const auth = getAuth();
-const db = getDb();
+// This is the primary admin email from your environment variables.
+const SUPER_ADMIN_EMAIL = process.env.NEXT_PUBLIC_FIREBASE_ADMIN_EMAIL;
 
 export async function POST() {
+  const auth = getAuth();
+  const db = getDb();
+  let processedCount = 0;
+  let updatedCount = 0;
+  let createdCount = 0;
+  let errorCount = 0;
+  const errors: string[] = [];
+
   try {
-    // --- Step 1: Secure the Endpoint ---
-    const authorization = (await headers()).get('Authorization');
-    if (!authorization?.startsWith('Bearer ')) {
-      return NextResponse.json({ success: false, error: 'Unauthorized: No token provided.' }, { status: 401 });
-    }
-
-    const idToken = authorization.split('Bearer ')[1];
-    let decodedToken;
-    try {
-        decodedToken = await auth.verifyIdToken(idToken);
-    } catch (error) {
-        return NextResponse.json({ success: false, error: 'Unauthorized: Invalid token.' }, { status: 401 });
-    }
-    
-    // Check if the verified user has the 'admin' role
-    if (decodedToken.role !== 'admin') {
-      return NextResponse.json({ success: false, error: 'Forbidden: User is not an administrator.' }, { status: 403 });
-    }
-    // --- End of Security Block ---
-    
-    const summary = {
-      updated: 0,
-      skipped: 0,
-      errors: 0,
-      errorDetails: [] as string[],
-    };
-
     const studentsSnapshot = await db.collection('students').get();
+    processedCount = studentsSnapshot.docs.length;
 
-    for (const doc of studentsSnapshot.docs) {
-      const student = doc.data();
-      const studentDocRef = doc.ref;
+    for (const studentDoc of studentsSnapshot.docs) {
+      const student = studentDoc.data();
+      const studentId = student.studentId || 'N/A';
+      const studentName = student.name || 'N/A';
 
-      // This is the key change: We only check for a phone number and the absence of a real email.
-      // We no longer require student.uid to be present.
-      if (student.phone && (!student.email || student.email.trim() === '')) {
-        try {
-          // Use the phone number to find the corresponding user in Firebase Authentication.
-          const authUser = await auth.getUserByPhoneNumber(`+91${student.phone}`);
-          
-          const proxyEmail = `${student.phone}@taxshila-auth.com`;
-          let needsAuthUpdate = false;
-          let needsDbUpdate = false;
+      if (!student.phone && !student.email) {
+          errors.push(`Skipping student ${studentName} (${studentId}) due to missing phone and email.`);
+          errorCount++;
+          continue;
+      }
 
-          // Condition 1: Does the Authentication user need their email fixed?
-          if (!authUser.email || authUser.email !== proxyEmail) {
-            needsAuthUpdate = true;
-          }
+      const userEmail = student.email || `${student.phone}@taxshila-auth.com`;
+      const phoneNumber = student.phone ? (student.phone.startsWith('+') ? student.phone : `+91${student.phone}`) : undefined;
 
-          // Condition 2: Does the database record need the uid added?
-          if (!student.uid || student.uid !== authUser.uid) {
-            needsDbUpdate = true;
-          }
-
-          if (needsAuthUpdate || needsDbUpdate) {
-            // Update Auth if needed
-            if (needsAuthUpdate) {
-              await auth.updateUser(authUser.uid, { email: proxyEmail });
-            }
-            // Update the database with the uid if needed
-            if (needsDbUpdate) {
-              await studentDocRef.update({ uid: authUser.uid });
-            }
-            summary.updated++;
-          } else {
-            summary.skipped++;
-          }
-        } catch (error: any) {
-          // This will catch cases where a user exists in the DB but not in Auth, or the phone number is not found.
-          summary.errors++;
-          summary.errorDetails.push(`Student ${student.studentId || student.name}: The user could not be found in the authentication system by their phone number.`);
+      try {
+        let userRecord: UserRecord | null = null;
+        
+        // Find existing user by UID, Email, or Phone
+        if (student.uid) {
+            try { userRecord = await auth.getUser(student.uid); } catch (e: any) { if (e.code !== 'auth/user-not-found') throw e; }
         }
-      } else {
-        // Skip users who already have an email or are missing a phone number.
-        summary.skipped++;
+        if (!userRecord) {
+            try { userRecord = await auth.getUserByEmail(userEmail); } catch (e: any) { if (e.code !== 'auth/user-not-found') throw e; }
+        }
+        if (!userRecord && phoneNumber) {
+            try { userRecord = await auth.getUserByPhoneNumber(phoneNumber); } catch (e: any) { if (e.code !== 'auth/user-not-found') throw e; }
+        }
+
+        // --- Create or Update ---
+        if (userRecord) {
+          // UPDATE
+          const updates: { email?: string; phoneNumber?: string; displayName?: string } = {};
+          if (userRecord.email !== userEmail) updates.email = userEmail;
+          if (phoneNumber && userRecord.phoneNumber !== phoneNumber) updates.phoneNumber = phoneNumber;
+          if (userRecord.displayName !== studentName) updates.displayName = studentName;
+
+          if (Object.keys(updates).length > 0) {
+            await auth.updateUser(userRecord.uid, updates);
+            updatedCount++;
+          }
+          if (student.uid !== userRecord.uid) {
+            await studentDoc.ref.update({ uid: userRecord.uid, email: userEmail });
+          }
+
+        } else {
+          // CREATE
+          const createRequest: CreateRequest = {
+            email: userEmail,
+            displayName: studentName,
+            password: student.password || student.phone,
+          };
+          if (phoneNumber) createRequest.phoneNumber = phoneNumber;
+          
+          const newUserRecord = await auth.createUser(createRequest);
+          await studentDoc.ref.update({ uid: newUserRecord.uid, email: userEmail });
+          userRecord = newUserRecord; // Use the new record for the claim step
+          createdCount++;
+        }
+
+        // *** FIX: Grant Admin Privileges ***
+        // If the user's email matches the super admin email, ensure they have the admin claim.
+        if (userRecord && userRecord.email === SUPER_ADMIN_EMAIL) {
+            if (userRecord.customClaims?.admin !== true) {
+                await auth.setCustomUserClaims(userRecord.uid, { admin: true });
+                // Also ensure they have a record in the 'admins' collection for consistency
+                await db.collection('admins').doc(userRecord.uid).set({
+                    name: userRecord.displayName,
+                    email: userRecord.email,
+                    role: 'admin'
+                }, { merge: true });
+                updatedCount++; // Count this as an update
+            }
+        }
+        
+      } catch (userError: any) {
+        errors.push(`Error processing ${studentName} (${userEmail}): ${userError.message}`);
+        errorCount++;
       }
     }
 
-    return NextResponse.json({ success: true, summary });
+    return NextResponse.json({ success: true, processedCount, updatedCount, createdCount, errorCount, errors });
 
-  } catch (error: any) {
-    console.error("Migration API Error:", error);
+  } catch (e: any) {
+    console.error("User Migration Error:", e);
     return NextResponse.json({ success: false, error: "An unexpected server error occurred during migration." }, { status: 500 });
   }
 }

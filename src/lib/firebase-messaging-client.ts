@@ -10,7 +10,7 @@ import type { UserRole } from '@/types/auth';
 // YOUR APP WILL NOT RECEIVE PUSH NOTIFICATIONS WITHOUT THIS KEY BEING CORRECT.
 // DO NOT LEAVE THIS AS A PLACEHOLDER.
 // ==========================================================================================
-export const VAPID_KEY_FROM_CLIENT_LIB = "BLAPRl0mUm8t7H6QXbenonbltEVU51wxXfwQN8Aw0jCdPbBE8XIDS7u41wpfQAWb7NTsTjU8zp7nb6D8nO1Dt_c"; // <<< --- !!! REPLACE THIS! !!! --- >>>
+export const VAPID_KEY_FROM_CLIENT_LIB = process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY; // <<< --- !!! REPLACE THIS! !!! --- >>>
 // Note: Renamed to VAPID_KEY_FROM_CLIENT_LIB to avoid confusion if another VAPID_KEY exists elsewhere
 
 let messagingInstance = null;

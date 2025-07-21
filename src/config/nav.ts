@@ -2,49 +2,31 @@
 import {
   LayoutDashboard,
   Users,
-  Armchair,
-  Bot,
-  CalendarDays,
   ListChecks,
   UserPlus,
+  Shuffle,
+  UserX,
+  Armchair,
   Eye,
-  Database,
-  CreditCard,
-  Receipt,
+  CalendarDays,
   IndianRupee,
-  BarChart3,
+  CreditCard,
   History,
-  QrCode,
-  MessageSquare,
-  Bell,
-  ScrollText,
-  Star,
-  Inbox,
-  Send,
-  Edit,
-  ClipboardCheck,
-  Landmark,
-  type Icon as LucideIcon,
-  Home,
-  UserCircle,
   TrendingUp,
   Settings,
-  UploadCloud,
-  UserX,
-  Shuffle,
+  MessageSquare,
+  Inbox,
+  Send,
+  Database,
+  Shield,
+  Home,
+  AlertCircle,
+  BookOpenCheck,
+  BadgeIndianRupee,
+  User,
+  QrCode,
 } from 'lucide-react';
-import type { UserRole } from '@/types/auth';
-
-export type NavItem = {
-  title: string;
-  href: string;
-  icon?: LucideIcon;
-  disabled?: boolean;
-  label?: string;
-  items?: NavItem[];
-  roles?: UserRole[];
-  external?: boolean;
-};
+import { NavItem } from '@/types/nav';
 
 export const mainNav: NavItem[] = [
   // Admin Routes
@@ -84,7 +66,7 @@ export const mainNav: NavItem[] = [
         icon: UserX,
         roles: ['admin'],
       },
-    ]
+    ],
   },
   {
     title: 'Manage Seats',
@@ -98,7 +80,7 @@ export const mainNav: NavItem[] = [
         icon: Eye,
         roles: ['admin'],
       },
-    ]
+    ],
   },
   {
     title: 'Check Attendance',
@@ -136,7 +118,7 @@ export const mainNav: NavItem[] = [
         icon: Settings,
         roles: ['admin'],
       },
-    ]
+    ],
   },
   {
     title: 'Communication',
@@ -162,16 +144,30 @@ export const mainNav: NavItem[] = [
         icon: History,
         roles: ['admin'],
       },
-    ]
+    ],
   },
   {
-    title: 'Data Management',
-    href: '/admin/data-management',
-    icon: Database,
+    title: 'Settings',
+    href: '#',
+    icon: Settings,
     roles: ['admin'],
+    items: [
+        {
+            title: 'Admin Management',
+            href: '/admin/manage',
+            icon: Shield,
+            roles: ['admin'],
+        },
+        {
+            title: 'Data Management',
+            href: '/admin/data-management',
+            icon: Database,
+            roles: ['admin'],
+        },
+    ]
   },
 
-  // Member Routes
+  // Member (Student) Routes
   {
     title: 'Dashboard',
     href: '/member/dashboard',
@@ -181,25 +177,37 @@ export const mainNav: NavItem[] = [
   {
     title: 'My Profile',
     href: '/member/profile',
-    icon: UserCircle,
+    icon: User,
     roles: ['member'],
   },
   {
     title: 'My Attendance',
     href: '/member/attendance',
-    icon: BarChart3,
-    roles: ['member'],
-  },
-  {
-    title: 'My Fees',
-    href: '/member/fees',
-    icon: Receipt,
+    icon: CalendarDays,
     roles: ['member'],
   },
   {
     title: 'Pay Fees',
-    href: '/member/pay',
+    href: '/member/fees',
+    icon: BadgeIndianRupee,
+    roles: ['member'],
+  },
+  {
+    title: 'Alerts',
+    href: '/member/alerts',
+    icon: AlertCircle,
+    roles: ['member'],
+  },
+   {
+    title: 'Scan QR',
+    href: '/students/qr-code',
     icon: QrCode,
+    roles: ['member'],
+  },
+  {
+    title: 'Library Rules',
+    href: '/member/rules',
+    icon: BookOpenCheck,
     roles: ['member'],
   },
   {
@@ -207,24 +215,5 @@ export const mainNav: NavItem[] = [
     href: '/member/feedback',
     icon: MessageSquare,
     roles: ['member'],
-  },
-  {
-    title: 'Alerts',
-    href: '/member/alerts',
-    icon: Bell,
-    roles: ['member'],
-  },
-  {
-    title: 'Library Rules',
-    href: '/member/rules',
-    icon: ScrollText,
-    roles: ['member'],
-  },
-  {
-    title: 'Rate Us',
-    href: 'https://g.page/r/CS-yYFo4JxNXEBM/review', // Corrected Rate Us link
-    icon: Star,
-    roles: ['member'],
-    external: true,
   },
 ];
