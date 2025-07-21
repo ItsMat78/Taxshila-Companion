@@ -11,7 +11,7 @@ const db = getDb();
 export async function POST() {
   try {
     // --- Step 1: Secure the Endpoint ---
-    const authorization = headers().get('Authorization');
+    const authorization = (await headers()).get('Authorization');
     if (!authorization?.startsWith('Bearer ')) {
       return NextResponse.json({ success: false, error: 'Unauthorized: No token provided.' }, { status: 401 });
     }

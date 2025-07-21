@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
     const userRecord = await auth.createUser(userPayload);
 
     // --- Create Firestore Student Document ---
-    const studentId = `TSL-${String(Date.now()).slice(-6)}`;
+    const studentId = `TSMEM${String(Date.now()).slice(-6)}`;
     await db.collection('students').doc(userRecord.uid).set({
       uid: userRecord.uid,
       studentId,
@@ -69,6 +69,8 @@ export async function POST(request: NextRequest) {
       seatNumber,
       activityStatus: 'Active',
       profileSetupComplete: true,
+      registrationDate: new Date().toISOString(),
+      feeStatus: 'Due',
       createdAt: FieldValue.serverTimestamp(),
     });
 

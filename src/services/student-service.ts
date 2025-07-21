@@ -329,7 +329,7 @@ if (studentUpdateData.phone && studentUpdateData.phone !== studentToUpdate.phone
 }
 
 // Only call the API if there's something to update (email or password)
-if (authUpdatePayload.email || authUpdatePayload.password) {
+if (authUpdatePayload.email || authUpdatePayload.password || authUpdatePayload.phone) {
     if (!studentToUpdate.uid) {
         throw new Error("This student does not have a registered authentication account and it cannot be updated.");
     }
