@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { ArrowLeft, CreditCard, CalendarDays, Receipt, Loader2, UserCircle, Briefcase, History as HistoryIcon, LogIn, LogOut, Clock, FileText, Download, Mail, Phone, Edit, TrendingUp, ChevronLeft, ChevronRight, View, MapPin, BadgeIndianRupee } from 'lucide-react';
+import { ArrowLeft, CreditCard, CalendarDays, Receipt, Loader2, UserCircle, Briefcase, History as HistoryIcon, LogIn, LogOut, Clock, FileText, Download, Mail, Phone, Edit, TrendingUp, ChevronLeft, ChevronRight, View, MapPin, BadgeIndianRupee, Armchair } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/table";
 import { Calendar } from "@/components/ui/calendar";
 import { getStudentById, getAttendanceForDate } from '@/services/student-service';
-import type { Student, PaymentRecord, AttendanceRecord } from '@/types/student';
+import type { Student, PaymentRecord, AttendanceRecord, Shift } from '@/types/student';
 import { format, parseISO, isValid, differenceInMilliseconds, startOfMonth, endOfMonth, eachDayOfInterval, addMonths, subMonths } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -196,6 +196,17 @@ export default function StudentDetailPage() {
     if (!name) return 'S';
     return name.split(' ').map(n => n[0]).join('').substring(0,2).toUpperCase();
   }
+  
+  const getShiftColorClass = (shift: Shift | undefined) => {
+    if (!shift) return 'bg-gray-100 text-gray-800 border-gray-300';
+    switch (shift) {
+      case 'morning': return 'bg-seat-morning text-seat-morning-foreground border-orange-300 dark:border-orange-700';
+      case 'evening': return 'bg-seat-evening text-seat-evening-foreground border-purple-300 dark:border-purple-700';
+      case 'fullday': return 'bg-seat-fullday text-seat-fullday-foreground border-yellow-300 dark:border-yellow-700';
+      default: return 'bg-gray-100 text-gray-800 border-gray-300';
+    }
+  };
+
 
   if (isLoading && !student) {
     return (
@@ -255,7 +266,7 @@ export default function StudentDetailPage() {
                     <DialogTrigger asChild>
                         <div className="cursor-pointer relative group flex-shrink-0">
                             <Avatar className="h-20 w-20 border-2 border-primary shadow-md">
-                                <AvatarImage src={student.profilePictureUrl || DEFAULT_PROFILE_PLACEHOLDER} alt={student.name} data-ai-hint="profile person"/>
+                                <AvatarImage src={student.profilePictureUrl || undefined} alt={student.name} data-ai-hint="profile person"/>
                                 <AvatarFallback className="text-3xl">{getInitials(student.name)}</AvatarFallback>
                             </Avatar>
                             <div className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
@@ -293,11 +304,13 @@ export default function StudentDetailPage() {
                     <p className="font-medium break-words">{student.phone}</p>
                   </div>
                 </div>
-                <div className="flex items-start">
-                  <Briefcase className="mr-3 h-4 w-4 text-muted-foreground flex-shrink-0 mt-0.5" />
-                  <div className="min-w-0">
-                    <p className="text-xs text-muted-foreground">Shift & Seat</p>
-                    <p className="font-medium capitalize">{student.shift} / Seat {student.seatNumber || "N/A"}</p>
+                <div className="flex items-center">
+                  <Briefcase className="mr-3 h-4 w-4 text-muted-foreground flex-shrink-0" />
+                  <div className="min-w-0 flex items-center gap-2">
+                    <p className="font-medium capitalize">{student.shift}</p>
+                    <div className={cn("flex items-center justify-center h-8 w-8 text-sm rounded-md border-2 font-bold", getShiftColorClass(student.shift))}>
+                        {student.seatNumber || 'N/A'}
+                    </div>
                   </div>
                 </div>
                  <div className="flex items-start">

@@ -28,10 +28,18 @@ import type { Student } from '@/types/student';
 import { useToast } from '@/hooks/use-toast';
 import { format, parseISO, isValid } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+
 
 interface StudentWithLastAttended extends Student {
   lastAttended?: string; // ISO string
 }
+
+const getInitials = (name?: string) => {
+    if (!name) return 'S';
+    return name.split(' ').map(n => n[0]).join('').substring(0,2).toUpperCase();
+}
+
 
 const getFeeStatusBadge = (student: Student) => {
     const baseClasses = "text-xs px-1.5 py-0.5 border-transparent";
@@ -50,10 +58,18 @@ const FeeDueCardItem = ({ student }: { student: StudentWithLastAttended }) => {
     <Card className={cn("w-full shadow-md", student.feeStatus === "Overdue" ? "bg-destructive/5 border-destructive/30" : "")}>
       <CardHeader className="pb-2">
         <div className="flex justify-between items-start gap-2">
-          <CardTitle className="text-md break-words">{student.name}</CardTitle>
+            <div className="flex items-center gap-3">
+              <Avatar className="h-10 w-10 border">
+                  <AvatarImage src={student.profilePictureUrl || undefined} alt={student.name} data-ai-hint="profile person"/>
+                  <AvatarFallback>{getInitials(student.name)}</AvatarFallback>
+              </Avatar>
+              <div className="min-w-0">
+                <CardTitle className="text-md break-words">{student.name}</CardTitle>
+                <CardDescription className="text-xs break-words">ID: {student.studentId}</CardDescription>
+              </div>
+            </div>
           {getFeeStatusBadge(student)}
         </div>
-        <CardDescription className="text-xs break-words">ID: {student.studentId}</CardDescription>
       </CardHeader>
       <CardContent className="text-xs space-y-1 pb-3">
         <p><span className="font-medium">Amount Due:</span> {student.amountDue || 'N/A'}</p>
@@ -211,7 +227,6 @@ export default function FeesDuePage() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Student ID</TableHead>
                       <TableHead>Name</TableHead>
                       <TableHead>Last Payment</TableHead>
                       <TableHead>Next Due Date</TableHead>
@@ -223,8 +238,18 @@ export default function FeesDuePage() {
                   <TableBody>
                     {feesDueStudents.map((student) => (
                       <TableRow key={student.studentId} className={student.feeStatus === "Overdue" ? "bg-destructive/10 hover:bg-destructive/15" : "hover:bg-muted/30"}>
-                        <TableCell>{student.studentId}</TableCell>
-                        <TableCell className="font-medium">{student.name}</TableCell>
+                        <TableCell className="font-medium">
+                            <div className="flex items-center gap-3">
+                                <Avatar className="h-9 w-9 border">
+                                    <AvatarImage src={student.profilePictureUrl || undefined} alt={student.name} data-ai-hint="profile person"/>
+                                    <AvatarFallback>{getInitials(student.name)}</AvatarFallback>
+                                </Avatar>
+                                <div>
+                                    {student.name}
+                                    <span className="block text-xs text-muted-foreground">{student.studentId}</span>
+                                </div>
+                            </div>
+                        </TableCell>
                         <TableCell className="whitespace-nowrap">
                           {student.lastPaymentDate && isValid(parseISO(student.lastPaymentDate))
                             ? format(parseISO(student.lastPaymentDate), 'MMM d, yyyy')

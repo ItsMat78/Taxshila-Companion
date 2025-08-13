@@ -35,11 +35,18 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 
 type StudentWithAttendance = StudentData & {
     lastAttendanceDate?: string;
 };
+
+const getInitials = (name?: string) => {
+    if (!name) return 'S';
+    return name.split(' ').map(n => n[0]).join('').substring(0,2).toUpperCase();
+}
+
 
 // Helper function to get color class based on shift
 const getShiftColorClass = (shift: StudentData['shift']) => {
@@ -60,9 +67,15 @@ const StudentCardItem = ({ student, isLeftTable, getStatusBadge }: { student: St
         <AccordionItem value={student.studentId} className="border-b-0">
           <AccordionTrigger className="p-4 hover:no-underline">
             <div className="flex items-start justify-between gap-2 w-full">
-              <div className="flex-grow min-w-0 text-left">
-                <h4 className="text-md font-semibold break-words">{student.name}</h4>
-                <p className="text-xs text-muted-foreground break-words">ID: {student.studentId}</p>
+              <div className="flex items-center gap-3 min-w-0">
+                  <Avatar className="h-10 w-10 border flex-shrink-0">
+                      <AvatarImage src={student.profilePictureUrl || undefined} alt={student.name} data-ai-hint="profile person"/>
+                      <AvatarFallback>{getInitials(student.name)}</AvatarFallback>
+                  </Avatar>
+                  <div className="flex-grow min-w-0 text-left">
+                    <h4 className="text-md font-semibold break-words">{student.name}</h4>
+                    <p className="text-xs text-muted-foreground break-words">ID: {student.studentId}</p>
+                  </div>
               </div>
               <div className="flex-shrink-0 flex items-center gap-2">
                 {student.seatNumber && student.activityStatus === 'Active' && (
@@ -238,8 +251,15 @@ export default function StudentListPage() {
                     {studentsToRender.map((student) => (
                       <TableRow key={student.studentId}>
                         <TableCell className="font-medium">
-                          <Link href={`/students/profiles/${student.studentId}`} className="hover:underline text-primary">
-                            {student.name}
+                          <Link href={`/students/profiles/${student.studentId}`} className="hover:underline text-primary flex items-center gap-3">
+                             <Avatar className="h-9 w-9 border">
+                                <AvatarImage src={student.profilePictureUrl || undefined} alt={student.name} data-ai-hint="profile person"/>
+                                <AvatarFallback>{getInitials(student.name)}</AvatarFallback>
+                            </Avatar>
+                            <div>
+                              {student.name}
+                              <span className="block text-xs text-muted-foreground">{student.studentId}</span>
+                            </div>
                           </Link>
                         </TableCell>
                         <TableCell>{student.phone}</TableCell>
