@@ -1,14 +1,18 @@
+
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { saveProfilePictureUrl } from "@/services/profile-picture-service"; // Updated service
-import { Loader2 } from "lucide-react";
+import { saveProfilePictureUrl } from "@/services/profile-picture-service";
+import { Loader2, Camera, Video, VideoOff, View } from "lucide-react";
 import Image from "next/image";
-import { useState } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+
 
 interface ProfilePictureUploaderProps {
   studentFirestoreId: string;
@@ -16,7 +20,6 @@ interface ProfilePictureUploaderProps {
   onUploadSuccess: (newUrl: string) => void;
 }
 
-// Helper to convert file to Base64
 const toBase64 = (file: File): Promise<string> => new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.readAsDataURL(file);
@@ -37,10 +40,70 @@ export function ProfilePictureUploader({
   const [isUploading, setIsUploading] = useState(false);
   const { toast } = useToast();
 
+  const [isCameraDialogOpen, setIsCameraDialogOpen] = useState(false);
+  const [hasCameraPermission, setHasCameraPermission] = useState(true);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  const startVideoStream = useCallback(async () => {
+    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia && videoRef.current) {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+        videoRef.current.srcObject = stream;
+        videoRef.current.play();
+        setHasCameraPermission(true);
+      } catch (err) {
+        console.error("Error accessing camera:", err);
+        setHasCameraPermission(false);
+        toast({
+            variant: "destructive",
+            title: "Camera Access Denied",
+            description: "Please enable camera permissions in your browser settings to use this feature."
+        });
+      }
+    }
+  }, [toast]);
+
+  const stopVideoStream = useCallback(() => {
+    if (videoRef.current && videoRef.current.srcObject) {
+      const stream = videoRef.current.srcObject as MediaStream;
+      stream.getTracks().forEach(track => track.stop());
+      videoRef.current.srcObject = null;
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isCameraDialogOpen) {
+      startVideoStream();
+    } else {
+      stopVideoStream();
+    }
+    return () => stopVideoStream();
+  }, [isCameraDialogOpen, startVideoStream, stopVideoStream]);
+
+  const handleCapture = () => {
+    if (videoRef.current && canvasRef.current) {
+        const video = videoRef.current;
+        const canvas = canvasRef.current;
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        const context = canvas.getContext('2d');
+        if (context) {
+            context.drawImage(video, 0, 0, video.videoWidth, video.videoHeight);
+            const dataUrl = canvas.toDataURL('image/jpeg');
+            setPreviewUrl(dataUrl);
+            setSelectedFile(null); // Clear file selection if capturing from camera
+        }
+        stopVideoStream();
+        setIsCameraDialogOpen(false);
+    }
+  };
+
+
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      if (file.size > 1024 * 1024) { // 1MB limit for Base64 to avoid large documents
+      if (file.size > 1024 * 1024) { // 1MB limit
         toast({
           title: "File Too Large",
           description: "Please select an image smaller than 1MB.",
@@ -54,23 +117,33 @@ export function ProfilePictureUploader({
   };
 
   const handleUpload = async () => {
-    if (!selectedFile) {
-      toast({
-        title: "No file selected",
-        description: "Please select a file to upload.",
+    let base64UrlToUpload: string | null = null;
+    
+    if (selectedFile) {
+      base64UrlToUpload = await toBase64(selectedFile);
+    } else if (previewUrl && previewUrl.startsWith('data:image')) {
+      base64UrlToUpload = previewUrl;
+    } else {
+       toast({
+        title: "No new image selected",
+        description: "Please select a file or capture a new photo to upload.",
         variant: "destructive",
       });
       return;
     }
+    
+    if (!base64UrlToUpload) {
+        toast({ title: "Upload Error", description: "Could not process the image.", variant: "destructive" });
+        return;
+    }
 
     setIsUploading(true);
     try {
-      const base64Url = await toBase64(selectedFile);
-      await saveProfilePictureUrl(studentFirestoreId, base64Url);
+      await saveProfilePictureUrl(studentFirestoreId, base64UrlToUpload);
 
-      setPreviewUrl(base64Url);
+      setPreviewUrl(base64UrlToUpload);
       setSelectedFile(null);
-      onUploadSuccess(base64Url);
+      onUploadSuccess(base64UrlToUpload);
       toast({
         title: "Upload successful",
         description: "Profile picture has been updated.",
@@ -91,24 +164,38 @@ export function ProfilePictureUploader({
     <Card>
       <CardHeader>
         <CardTitle>Profile Picture</CardTitle>
+        <CardDescription>Click the image to view it. Use the buttons to change it.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex flex-col items-center space-y-4">
-          {previewUrl ? (
-            <Image
-              src={previewUrl}
-              alt="Profile Picture Preview"
-              width={150}
-              height={150}
-              className="rounded-full object-cover w-[150px] h-[150px]"
-            />
-          ) : (
-             <div className="w-[150px] h-[150px] rounded-full bg-muted flex items-center justify-center">
-                <span className="text-sm text-muted-foreground">No Image</span>
-            </div>
-          )}
+          <Dialog>
+            <DialogTrigger asChild>
+                <div className="cursor-pointer relative group">
+                    <Image
+                        src={previewUrl || "/path/to/placeholder.png"}
+                        alt="Profile Picture Preview"
+                        width={150}
+                        height={150}
+                        className="rounded-full object-cover w-[150px] h-[150px] border-2 border-muted"
+                    />
+                    <div className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                        <View className="text-white h-8 w-8"/>
+                    </div>
+                </div>
+            </DialogTrigger>
+            <DialogContent className="max-w-md w-auto p-2">
+                <Image
+                    src={previewUrl || "/path/to/placeholder.png"}
+                    alt="Profile Picture Full View"
+                    width={500}
+                    height={500}
+                    className="rounded-md object-contain max-h-[80vh] w-full h-auto"
+                />
+            </DialogContent>
+          </Dialog>
+
           <div className="grid w-full max-w-sm items-center gap-1.5">
-            <Label htmlFor="picture">Select Picture</Label>
+            <Label htmlFor="picture">Select File</Label>
             <Input
               id="picture"
               type="file"
@@ -117,8 +204,41 @@ export function ProfilePictureUploader({
               disabled={isUploading}
             />
           </div>
+
+           <Dialog open={isCameraDialogOpen} onOpenChange={setIsCameraDialogOpen}>
+            <DialogTrigger asChild>
+                <Button variant="outline" className="w-full max-w-sm" disabled={isUploading}>
+                    <Camera className="mr-2 h-4 w-4" /> Open Camera
+                </Button>
+            </DialogTrigger>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Capture Photo</DialogTitle>
+                </DialogHeader>
+                <div className="py-4">
+                    {hasCameraPermission ? (
+                        <video ref={videoRef} className="w-full aspect-video rounded-md bg-muted" playsInline autoPlay muted />
+                    ) : (
+                         <Alert variant="destructive">
+                            <VideoOff className="h-4 w-4" />
+                            <AlertTitle>Camera Permission Denied</AlertTitle>
+                            <AlertDescription>
+                                To use this feature, please allow camera access in your browser settings.
+                            </AlertDescription>
+                        </Alert>
+                    )}
+                    <canvas ref={canvasRef} className="hidden" />
+                </div>
+                <DialogFooter>
+                    <Button onClick={handleCapture} disabled={!hasCameraPermission}>
+                        <Camera className="mr-2 h-4 w-4" /> Capture and Use
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+
         </div>
-        <Button onClick={handleUpload} disabled={isUploading || !selectedFile}>
+        <Button onClick={handleUpload} disabled={isUploading || (!selectedFile && !previewUrl?.startsWith('data:image'))}>
           {isUploading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/> Uploading...</> : "Save Picture"}
         </Button>
       </CardContent>
