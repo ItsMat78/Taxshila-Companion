@@ -392,8 +392,6 @@ if (authUpdatePayload.email || authUpdatePayload.password || authUpdatePayload.p
     payload.seatNumber = null;
     payload.feeStatus = 'N/A';
     payload.amountDue = 'N/A';
-    payload.lastPaymentDate = null;
-    payload.nextDueDate = null;
   } else if (studentUpdateData.activityStatus === 'Active' && studentToUpdate.activityStatus === 'Left') {
     if (!payload.seatNumber || !ALL_SEAT_NUMBERS.includes(payload.seatNumber)) {
         throw new Error("A valid seat must be selected to re-activate a student.");
@@ -1387,5 +1385,3 @@ declare module '@/types/communication' {
     firestoreId?: string;
   }
 }
-
-    
