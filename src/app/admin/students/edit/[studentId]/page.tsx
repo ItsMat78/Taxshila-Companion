@@ -45,7 +45,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Save, ClipboardCheck, Loader2, UserX, UserCheck, KeyRound, Trash2, CalendarDays, User, Settings, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Save, ClipboardCheck, Loader2, UserX, UserCheck, KeyRound, Trash2, CalendarDays, User, Settings, AlertTriangle, Armchair } from 'lucide-react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { getStudentById, updateStudent, getAvailableSeats, recordStudentPayment, getFeeStructure } from '@/services/student-service';
@@ -101,6 +101,17 @@ const shiftOptions = [
   { value: "evening" as Shift, label: "Evening Shift (2 PM - 9:30 PM)" },
   { value: "fullday" as Shift, label: "Full Day (7 AM - 9:30 PM)" },
 ];
+
+const getShiftColorClass = (shift: Shift | undefined) => {
+  if (!shift) return 'bg-gray-100 text-gray-800 border-gray-300';
+  switch (shift) {
+    case 'morning': return 'bg-seat-morning text-seat-morning-foreground border-orange-300 dark:border-orange-700';
+    case 'evening': return 'bg-seat-evening text-seat-evening-foreground border-purple-300 dark:border-purple-700';
+    case 'fullday': return 'bg-seat-fullday text-seat-fullday-foreground border-yellow-300 dark:border-yellow-700';
+    default: return 'bg-gray-100 text-gray-800 border-gray-300';
+  }
+};
+
 
 export default function EditStudentPage() {
   const { toast } = useToast();
@@ -577,9 +588,17 @@ export default function EditStudentPage() {
                         </FormControl>
                         <FormMessage /></FormItem>
                     )} />
+                    
                     <FormField control={form.control} name="seatNumber" render={({ field }) => (
                         <FormItem>
+                          <div className="flex items-center justify-between">
                             <FormLabel>Seat Number</FormLabel>
+                            {!isStudentLeft && field.value && (
+                              <div className={cn("flex items-center justify-center h-8 w-8 text-sm rounded-md border-2 font-bold", getShiftColorClass(form.getValues("shift")))}>
+                                {field.value}
+                              </div>
+                            )}
+                          </div>
                             <Select
                                 onValueChange={(value) => { field.onChange(value); setIsDirtyOverride(true); }}
                                 value={field.value || ""}
@@ -783,7 +802,3 @@ export default function EditStudentPage() {
     </>
   );
 }
-
-    
-
-    
