@@ -17,8 +17,9 @@ import {
   CreditCard,
   History,
   UserX,
+  Clock,
 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle as ShadcnCardTitle, CardDescription as ShadcnCardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle as ShadcnCardTitle, CardDescription as ShadcnCardDescription, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import {
   Dialog,
@@ -34,6 +35,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAuth } from '@/contexts/auth-context';
 import { useRouter, usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
@@ -67,6 +69,59 @@ const staticAdminActionTilesConfig = [
   },
   { baseTitle: "Seat Dashboard", icon: Eye, description: "View current seat status.", href: "/seats/availability" },
 ];
+
+const getInitials = (name?: string) => {
+    if (!name) return 'S';
+    return name.split(' ').map(n => n[0]).join('').substring(0,2).toUpperCase();
+}
+
+const getShiftColorClass = (shift: Shift | undefined) => {
+  if (!shift) return 'bg-gray-100 text-gray-800 border-gray-300';
+  switch (shift) {
+    case 'morning': return 'bg-seat-morning text-seat-morning-foreground border-orange-300 dark:border-orange-700';
+    case 'evening': return 'bg-seat-evening text-seat-evening-foreground border-purple-300 dark:border-purple-700';
+    case 'fullday': return 'bg-seat-fullday text-seat-fullday-foreground border-yellow-300 dark:border-yellow-700';
+    default: return 'bg-gray-100 text-gray-800 border-gray-300';
+  }
+};
+
+const CheckedInStudentCard = ({ student }: { student: CheckedInStudentInfo }) => {
+  return (
+    <Card className="w-full">
+      <CardContent className="p-3 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <Avatar className="h-10 w-10 border flex-shrink-0">
+            <AvatarImage src={student.profilePictureUrl || undefined} alt={student.name} data-ai-hint="profile person" />
+            <AvatarFallback>{getInitials(student.name)}</AvatarFallback>
+          </Avatar>
+          <div className="flex-grow min-w-0">
+            <p className="text-sm font-semibold truncate">{student.name}</p>
+            <div className="flex items-center gap-2 mt-1">
+              <div
+                className={cn(
+                  'h-6 w-6 flex items-center justify-center rounded-md border text-xs font-bold',
+                  getShiftColorClass(student.shift)
+                )}
+                title={`Seat ${student.seatNumber}`}
+              >
+                {student.seatNumber || '?'}
+              </div>
+              <div className="text-xs text-muted-foreground flex items-center">
+                  <Clock className="h-3 w-3 mr-1" />
+                  {format(parseISO(student.checkInTime), 'p')}
+              </div>
+            </div>
+          </div>
+        </div>
+        {student.isOutsideShift && (
+          <Badge variant="outline" className="border-yellow-500 text-yellow-600 text-xs flex-shrink-0">
+            Outside Shift
+          </Badge>
+        )}
+      </CardContent>
+    </Card>
+  );
+};
 
 
 function AdminDashboardContent() {
@@ -188,7 +243,7 @@ function AdminDashboardContent() {
       <PageTitle title="Admin Dashboard" description="Overview of Taxshila Companion activities." />
 
       <Dialog open={showCheckedInDialog} onOpenChange={setShowCheckedInDialog}>
-        <DialogContent className="sm:max-w-[725px]">
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <ShadcnDialogTitle className="flex items-center"><LogIn className="mr-2 h-5 w-5" />Students Currently In Library</ShadcnDialogTitle>
           </DialogHeader>
@@ -197,41 +252,16 @@ function AdminDashboardContent() {
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
           ) : (
-            <div className="max-h-[60vh] overflow-y-auto mt-4">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Shift</TableHead>
-                    <TableHead>Seat</TableHead>
-                    <TableHead>Check-in Time</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {studentsToDisplayInDialog.map((student) => (
-                    <TableRow key={student.studentId}>
-                      <TableCell className="font-medium flex items-center">
-                        {student.name}
-                        {student.isOutsideShift && (
-                          <Badge variant="outline" className="ml-2 border-yellow-500 text-yellow-600 text-xs">
-                            Outside Shift
-                          </Badge>
-                        )}
-                      </TableCell>
-                      <TableCell className="capitalize">{student.shift}</TableCell>
-                      <TableCell>{student.seatNumber || 'N/A'}</TableCell>
-                      <TableCell>{format(parseISO(student.checkInTime), 'p' )}</TableCell>
-                    </TableRow>
-                  ))}
-                  {studentsToDisplayInDialog.length === 0 && (
-                    <TableRow>
-                      <TableCell colSpan={4} className="text-center text-muted-foreground py-4">
-                        No students are currently checked in.
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
+            <div className="max-h-[60vh] overflow-y-auto mt-4 space-y-2">
+              {studentsToDisplayInDialog.length > 0 ? (
+                studentsToDisplayInDialog.map((student) => (
+                  <CheckedInStudentCard key={student.studentId} student={student} />
+                ))
+              ) : (
+                 <div className="text-center text-muted-foreground py-6">
+                    No students are currently checked in.
+                  </div>
+              )}
             </div>
           )}
         </DialogContent>
