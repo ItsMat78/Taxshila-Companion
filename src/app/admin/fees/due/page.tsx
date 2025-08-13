@@ -22,7 +22,8 @@ import {
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
-import { AlertTriangle, CalendarClock, CheckCircle2, Loader2, User, IndianRupee, Edit, UserCheck, Eye, UserX, RefreshCw } from 'lucide-react';
+import { AlertTriangle, CalendarClock, CheckCircle2, Loader2, User, IndianRupee, Edit, UserCheck, Eye, UserX, RefreshCw, Info } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { getAllStudents, getAllAttendanceRecords, refreshAllStudentFeeStatuses } from '@/services/student-service';
 import type { Student } from '@/types/student';
 import { useToast } from '@/hooks/use-toast';
@@ -99,6 +100,32 @@ export default function FeesDuePage() {
   const [isLoading, setIsLoading] = React.useState(true);
   const [isRefreshing, setIsRefreshing] = React.useState(false);
 
+  const handleRefreshStatuses = React.useCallback(async (isAutoRefresh = false) => {
+    if (!isAutoRefresh) {
+        setIsRefreshing(true);
+    }
+    try {
+      const result = await refreshAllStudentFeeStatuses();
+      if (!isAutoRefresh) {
+        toast({
+          title: "Fee Statuses Refreshed",
+          description: `${result.updatedCount} student(s) had their fee status updated.`,
+        });
+      }
+      return true; // Indicate success
+    } catch (error: any) {
+      if (!isAutoRefresh) {
+        console.error("Failed to refresh fee statuses:", error);
+        toast({ title: "Error", description: error.message || "Could not refresh fee statuses.", variant: "destructive" });
+      }
+      return false; // Indicate failure
+    } finally {
+      if (!isAutoRefresh) {
+        setIsRefreshing(false);
+      }
+    }
+  }, [toast]);
+
   const fetchFeesDue = React.useCallback(async () => {
     setIsLoading(true);
     try {
@@ -149,46 +176,48 @@ export default function FeesDuePage() {
   }, [toast]);
 
   React.useEffect(() => {
-    fetchFeesDue();
-  }, [fetchFeesDue]);
-
-  const handleRefreshStatuses = async () => {
-    setIsRefreshing(true);
-    try {
-      const result = await refreshAllStudentFeeStatuses();
-      toast({
-        title: "Fee Statuses Refreshed",
-        description: `${result.updatedCount} student(s) had their fee status updated.`,
-      });
-      await fetchFeesDue(); // Re-fetch the list to show updated results
-    } catch (error: any) {
-      console.error("Failed to refresh fee statuses:", error);
-      toast({ title: "Error", description: error.message || "Could not refresh fee statuses.", variant: "destructive" });
-    } finally {
-      setIsRefreshing(false);
-    }
-  };
+    const initialLoadAndRefresh = async () => {
+        await handleRefreshStatuses(true); // Auto-refresh on mount
+        await fetchFeesDue(); // Fetch the list after refreshing
+    };
+    initialLoadAndRefresh();
+  }, [handleRefreshStatuses, fetchFeesDue]);
 
   return (
     <>
       <PageTitle title="Student Fees Due" description="Manage and track students with outstanding fee payments.">
-         <Button onClick={handleRefreshStatuses} variant="outline" disabled={isRefreshing || isLoading}>
+         <Button onClick={() => handleRefreshStatuses(false)} variant="outline" disabled={isRefreshing || isLoading}>
           {isRefreshing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
           Refresh Statuses
         </Button>
       </PageTitle>
 
-      <Link href="/admin/students/potential-left" className="block no-underline">
-        <Card className="mb-6 shadow-md border-orange-500/20 bg-orange-500/5 hover:shadow-lg hover:border-orange-500/40 transition-shadow cursor-pointer">
-          <CardHeader>
-            <CardTitle className="flex items-center text-orange-700">
-              <UserX className="mr-2 h-5 w-5" />
-              Potentially Left Students
-            </CardTitle>
-            <CardDescription className="text-orange-600">
-              Click here to view active students who have not attended in the last 5 days and manage them.
-            </CardDescription>
-          </CardHeader>
+       <Alert className="mb-6">
+        <Info className="h-4 w-4" />
+        <AlertTitle>Fee Status Guide</AlertTitle>
+        <AlertDescription>
+          <ul className="list-disc list-inside text-xs space-y-1">
+            <li><span className="font-semibold">Paid:</span> Fees are up to date.</li>
+            <li><span className="font-semibold">Due:</span> The fee due date is within the next 5 days or has recently passed.</li>
+            <li><span className="font-semibold">Overdue:</span> The fee has not been paid for more than 5 days past the due date.</li>
+          </ul>
+        </AlertDescription>
+      </Alert>
+
+      <Link href="/admin/students/potential-left" className="block no-underline mb-6">
+        <Card className="shadow-md border-border bg-card hover:shadow-lg hover:border-primary/30 transition-shadow cursor-pointer">
+            <CardHeader className="flex flex-row items-center justify-between p-4">
+                <div className="min-w-0">
+                    <CardTitle className="text-base flex items-center">
+                        <UserX className="mr-2 h-5 w-5" />
+                        Potentially Left Students
+                    </CardTitle>
+                    <CardDescription className="text-xs mt-1">
+                        View active students who have been absent for over 5 days.
+                    </CardDescription>
+                </div>
+                <Button variant="outline" size="sm">View List</Button>
+            </CardHeader>
         </Card>
       </Link>
 
