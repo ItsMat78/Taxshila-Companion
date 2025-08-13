@@ -211,7 +211,7 @@ export default function FeesDuePage() {
                 <div className="min-w-0">
                     <CardTitle className="text-base flex items-center">
                         <UserX className="mr-2 h-5 w-5" />
-                        Potentially Left Students
+                        Absent Students
                     </CardTitle>
                     <CardDescription className="text-xs mt-1">
                         View active students who have been absent for over 5 days.

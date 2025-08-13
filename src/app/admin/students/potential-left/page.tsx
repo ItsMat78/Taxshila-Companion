@@ -65,7 +65,7 @@ const PotentialLeftCardItem = ({ student }: { student: PotentialLeftStudent }) =
   );
 };
 
-export default function PotentialLeftPage() {
+export default function AbsentStudentsPage() {
   const { toast } = useToast();
   const [potentialLeftStudents, setPotentialLeftStudents] = React.useState<PotentialLeftStudent[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
@@ -132,13 +132,13 @@ export default function PotentialLeftPage() {
 
   return (
     <>
-      <PageTitle title="Potentially Left Students" description="Active students who have not attended in more than 5 days." />
+      <PageTitle title="Absent Students" description="Active students who have not attended in more than 5 days." />
 
       <Card className="shadow-lg w-full">
         <CardHeader>
           <CardTitle className="flex items-center">
             <UserX className="mr-2 h-5 w-5 text-orange-500" />
-            Inactive Student List ({potentialLeftStudents.length})
+            Long-term Absentee List ({potentialLeftStudents.length})
           </CardTitle>
           <CardDescription>Review this list to mark students as 'Left' and free up their seats if necessary.</CardDescription>
         </CardHeader>
