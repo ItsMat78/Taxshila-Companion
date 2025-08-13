@@ -176,7 +176,7 @@ export default function FeesDuePage() {
 
   return (
     <>
-      <PageTitle title="Student Fees Due" description="Manage and track students with outstanding fee payments. Statuses are auto-refreshed on dashboard load.">
+      <PageTitle title="Student Fees Due">
          <Button onClick={handleManualRefresh} variant="outline" disabled={isRefreshing || isLoading}>
           {isRefreshing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
           Refresh Manually
@@ -194,11 +194,11 @@ export default function FeesDuePage() {
             </li>
             <li className="flex items-center gap-2">
               <Badge style={{ backgroundColor: 'hsl(var(--status-due-bg))', color: 'hsl(var(--status-due-text))' }} className="border-transparent">Due</Badge>
-              - Due date is within 5 days or has recently passed.
+              - Fee payment is due within the next 5 days or has recently passed.
             </li>
             <li className="flex items-center gap-2">
               <Badge variant="destructive">Overdue</Badge>
-              - Fee has not been paid for more than 5 days past the due date.
+              - Fee has not been paid for more than 5 days past the due date. Attendance is revoked.
             </li>
           </ul>
         </AlertDescription>
