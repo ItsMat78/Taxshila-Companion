@@ -798,7 +798,7 @@ export default function EditStudentPage() {
         {/* Right Column: Profile Picture */}
         <div className="md:col-span-1">
           <ProfilePictureUploader
-            studentFirestoreId={studentData.firestoreId}
+            studentFirestoreId={studentData.firestoreId!}
             currentProfilePictureUrl={studentData.profilePictureUrl}
             onUploadSuccess={onPictureUploadSuccess}
           />

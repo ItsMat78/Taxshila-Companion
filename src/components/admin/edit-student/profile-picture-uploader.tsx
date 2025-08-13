@@ -5,7 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { uploadProfilePicture } from "@/services/profile-picture-service";
+import { saveProfilePictureUrl } from "@/services/profile-picture-service"; // Updated service
+import { Loader2 } from "lucide-react";
 import Image from "next/image";
 import { useState } from "react";
 
@@ -14,6 +15,15 @@ interface ProfilePictureUploaderProps {
   currentProfilePictureUrl?: string;
   onUploadSuccess: (newUrl: string) => void;
 }
+
+// Helper to convert file to Base64
+const toBase64 = (file: File): Promise<string> => new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = error => reject(error);
+});
+
 
 export function ProfilePictureUploader({
   studentFirestoreId,
@@ -30,6 +40,14 @@ export function ProfilePictureUploader({
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
+      if (file.size > 1024 * 1024) { // 1MB limit for Base64 to avoid large documents
+        toast({
+          title: "File Too Large",
+          description: "Please select an image smaller than 1MB.",
+          variant: "destructive",
+        });
+        return;
+      }
       setSelectedFile(file);
       setPreviewUrl(URL.createObjectURL(file));
     }
@@ -47,22 +65,21 @@ export function ProfilePictureUploader({
 
     setIsUploading(true);
     try {
-      const downloadURL = await uploadProfilePicture(
-        studentFirestoreId,
-        selectedFile
-      );
-      setPreviewUrl(downloadURL);
+      const base64Url = await toBase64(selectedFile);
+      await saveProfilePictureUrl(studentFirestoreId, base64Url);
+
+      setPreviewUrl(base64Url);
       setSelectedFile(null);
-      onUploadSuccess(downloadURL); // Callback on success
+      onUploadSuccess(base64Url);
       toast({
         title: "Upload successful",
         description: "Profile picture has been updated.",
       });
     } catch (error) {
-      console.error("Error uploading profile picture:", error);
+      console.error("Error saving profile picture:", error);
       toast({
         title: "Upload failed",
-        description: "Could not upload the profile picture. Please try again.",
+        description: "Could not save the profile picture. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -95,14 +112,14 @@ export function ProfilePictureUploader({
             <Input
               id="picture"
               type="file"
-              accept="image/*"
+              accept="image/jpeg,image/png,image/webp"
               onChange={handleFileChange}
               disabled={isUploading}
             />
           </div>
         </div>
         <Button onClick={handleUpload} disabled={isUploading || !selectedFile}>
-          {isUploading ? "Uploading..." : "Save Picture"}
+          {isUploading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/> Uploading...</> : "Save Picture"}
         </Button>
       </CardContent>
     </Card>

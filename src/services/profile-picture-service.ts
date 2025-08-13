@@ -1,34 +1,29 @@
 
+"use server";
+
 import { doc, updateDoc } from 'firebase/firestore';
-import { getDownloadURL, ref as storageRef, uploadBytesResumable } from 'firebase/storage';
-import { db, storage } from '@/lib/firebase';
+import { db } from '@/lib/firebase';
 
 /**
- * Uploads a profile picture for a student to Firebase Storage and updates the student's profile picture URL.
+ * Saves a Base64 data URI as the profile picture URL in a student's Firestore document.
  *
  * @param studentFirestoreId The Firestore ID of the student.
- * @param file The image file to upload.
- * @returns A promise that resolves with the download URL of the uploaded picture.
+ * @param base64Url The Base64 data URI of the image to save.
+ * @returns A promise that resolves when the update is complete.
  */
-export async function uploadProfilePicture(studentFirestoreId: string, file: File): Promise<string> {
+export async function saveProfilePictureUrl(studentFirestoreId: string, base64Url: string): Promise<void> {
   if (!studentFirestoreId) {
     throw new Error("Student Firestore ID is required.");
   }
-  if (!file) {
-    throw new Error("File is required.");
+  if (!base64Url) {
+    throw new Error("Base64 URL is required.");
   }
-
-  const fileExtension = file.name.split('.').pop();
-  const fileName = `profilePicture.${fileExtension}`;
-  const imageRef = storageRef(storage, `profilePictures/${studentFirestoreId}/${fileName}`);
-
-  const uploadTask = await uploadBytesResumable(imageRef, file);
-  const downloadURL = await getDownloadURL(uploadTask.ref);
+  if (!base64Url.startsWith('data:image/')) {
+    throw new Error("Invalid Base64 data URI format.");
+  }
 
   const studentDocRef = doc(db, 'students', studentFirestoreId);
   await updateDoc(studentDocRef, {
-    profilePictureUrl: downloadURL,
+    profilePictureUrl: base64Url,
   });
-
-  return downloadURL;
 }
