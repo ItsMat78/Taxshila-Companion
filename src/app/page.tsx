@@ -37,7 +37,7 @@ import {
 import { useAuth } from '@/contexts/auth-context';
 import { useRouter, usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
-import { getAllStudents, getAvailableSeats, getAllAttendanceRecords, calculateMonthlyRevenue, getTodaysActiveAttendanceRecords, processCheckedInStudentsFromSnapshot } from '@/services/student-service';
+import { getAllStudents, getAvailableSeats, getAllAttendanceRecords, calculateMonthlyRevenue, getTodaysActiveAttendanceRecords, processCheckedInStudentsFromSnapshot, refreshAllStudentFeeStatuses } from '@/services/student-service';
 import type { Student, Shift, AttendanceRecord, CheckedInStudentInfo } from '@/types/student';
 import type { FeedbackItem } from '@/types/communication';
 import { format, parseISO, isToday, getHours, getMinutes } from 'date-fns';
@@ -94,6 +94,9 @@ function AdminDashboardContent() {
       setIsLoadingRevenue(true);
 
       try {
+        // Run fee status refresh silently in the background
+        await refreshAllStudentFeeStatuses();
+
         const [
           allStudentsData,
           attendanceSnapshot,

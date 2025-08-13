@@ -48,7 +48,9 @@ const getFeeStatusBadge = (student: Student) => {
       case 'Overdue':
         return <Badge variant="destructive" className={cn(baseClasses, "capitalize")}><CalendarClock className="mr-1 h-3 w-3" />{student.feeStatus}</Badge>;
       case 'Due':
-        return <Badge style={{ backgroundColor: 'hsl(var(--status-due-bg))', color: 'hsl(var(--status-due-text))' }} className={cn(baseClasses, "capitalize")}>{student.feeStatus}</Badge>;
+        return <Badge style={{ backgroundColor: 'hsl(var(--status-due-bg))', color: 'hsl(var(--status-due-text))' }} className={cn(baseClasses, "capitalize")}>Due</Badge>;
+       case 'Paid':
+        return <Badge style={{ backgroundColor: 'hsl(var(--status-paid-bg))', color: 'hsl(var(--status-paid-text))' }} className={cn(baseClasses, "capitalize")}>Paid</Badge>;
       default:
         return <Badge variant="outline" className={cn("text-xs px-1.5 py-0.5")}>{student.feeStatus}</Badge>;
     }
@@ -100,31 +102,23 @@ export default function FeesDuePage() {
   const [isLoading, setIsLoading] = React.useState(true);
   const [isRefreshing, setIsRefreshing] = React.useState(false);
 
-  const handleRefreshStatuses = React.useCallback(async (isAutoRefresh = false) => {
-    if (!isAutoRefresh) {
-        setIsRefreshing(true);
-    }
-    try {
-      const result = await refreshAllStudentFeeStatuses();
-      if (!isAutoRefresh) {
+  // Manual refresh handler
+  const handleManualRefresh = async () => {
+      setIsRefreshing(true);
+      try {
+        const result = await refreshAllStudentFeeStatuses();
         toast({
           title: "Fee Statuses Refreshed",
           description: `${result.updatedCount} student(s) had their fee status updated.`,
         });
-      }
-      return true; // Indicate success
-    } catch (error: any) {
-      if (!isAutoRefresh) {
+        await fetchFeesDue(); // Re-fetch the list after manual refresh
+      } catch (error: any) {
         console.error("Failed to refresh fee statuses:", error);
         toast({ title: "Error", description: error.message || "Could not refresh fee statuses.", variant: "destructive" });
-      }
-      return false; // Indicate failure
-    } finally {
-      if (!isAutoRefresh) {
+      } finally {
         setIsRefreshing(false);
       }
-    }
-  }, [toast]);
+  };
 
   const fetchFeesDue = React.useCallback(async () => {
     setIsLoading(true);
@@ -175,37 +169,44 @@ export default function FeesDuePage() {
     }
   }, [toast]);
 
+  // Fetch data on initial load
   React.useEffect(() => {
-    const initialLoadAndRefresh = async () => {
-        await handleRefreshStatuses(true); // Auto-refresh on mount
-        await fetchFeesDue(); // Fetch the list after refreshing
-    };
-    initialLoadAndRefresh();
-  }, [handleRefreshStatuses, fetchFeesDue]);
+    fetchFeesDue();
+  }, [fetchFeesDue]);
 
   return (
     <>
-      <PageTitle title="Student Fees Due" description="Manage and track students with outstanding fee payments.">
-         <Button onClick={() => handleRefreshStatuses(false)} variant="outline" disabled={isRefreshing || isLoading}>
+      <PageTitle title="Student Fees Due" description="Manage and track students with outstanding fee payments. Statuses are auto-refreshed on dashboard load.">
+         <Button onClick={handleManualRefresh} variant="outline" disabled={isRefreshing || isLoading}>
           {isRefreshing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
-          Refresh Statuses
+          Refresh Manually
         </Button>
       </PageTitle>
 
-       <Alert className="mb-6">
+      <Alert className="mb-6">
         <Info className="h-4 w-4" />
         <AlertTitle>Fee Status Guide</AlertTitle>
         <AlertDescription>
-          <ul className="list-disc list-inside text-xs space-y-1">
-            <li><span className="font-semibold">Paid:</span> Fees are up to date.</li>
-            <li><span className="font-semibold">Due:</span> The fee due date is within the next 5 days or has recently passed.</li>
-            <li><span className="font-semibold">Overdue:</span> The fee has not been paid for more than 5 days past the due date.</li>
+          <ul className="list-disc list-inside text-xs space-y-2 pt-1">
+            <li className="flex items-center gap-2">
+              <Badge style={{ backgroundColor: 'hsl(var(--status-paid-bg))', color: 'hsl(var(--status-paid-text))' }} className="border-transparent">Paid</Badge>
+              - Fees are up to date.
+            </li>
+            <li className="flex items-center gap-2">
+              <Badge style={{ backgroundColor: 'hsl(var(--status-due-bg))', color: 'hsl(var(--status-due-text))' }} className="border-transparent">Due</Badge>
+              - Due date is within 5 days or has recently passed.
+            </li>
+            <li className="flex items-center gap-2">
+              <Badge variant="destructive">Overdue</Badge>
+              - Fee has not been paid for more than 5 days past the due date.
+            </li>
           </ul>
         </AlertDescription>
       </Alert>
 
-      <Link href="/admin/students/potential-left" className="block no-underline mb-6">
-        <Card className="shadow-md border-border bg-card hover:shadow-lg hover:border-primary/30 transition-shadow cursor-pointer">
+
+      <Card className="mb-6 shadow-md border-border bg-card hover:shadow-lg hover:border-primary/30 transition-shadow">
+        <Link href="/admin/students/potential-left" className="block no-underline">
             <CardHeader className="flex flex-row items-center justify-between p-4">
                 <div className="min-w-0">
                     <CardTitle className="text-base flex items-center">
@@ -218,8 +219,9 @@ export default function FeesDuePage() {
                 </div>
                 <Button variant="outline" size="sm">View List</Button>
             </CardHeader>
-        </Card>
-      </Link>
+        </Link>
+      </Card>
+
 
       <Card className="shadow-lg w-full">
         <CardHeader>
