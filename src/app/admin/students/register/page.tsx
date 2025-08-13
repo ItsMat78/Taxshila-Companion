@@ -31,6 +31,7 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  FormDescription,
 } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { UserPlus, Loader2, Camera, Upload } from 'lucide-react';
@@ -302,5 +303,3 @@ export default function StudentRegisterPage() {
     </>
   );
 }
-
-    
