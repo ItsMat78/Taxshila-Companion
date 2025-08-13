@@ -19,6 +19,8 @@ import {
   UserX,
   Clock,
   AlertTriangle,
+  Database,
+  Shield,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle as ShadcnCardTitle, CardDescription as ShadcnCardDescription, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -76,6 +78,18 @@ const staticAdminActionTilesConfig = [
         baseTitle: "Payment Due",
         description: "View students with fees due.",
         isFinancialTile: true,
+    },
+    {
+        href: "/admin/data-management",
+        icon: Database,
+        baseTitle: "Data Management",
+        description: "Import, export, or delete data.",
+    },
+    {
+        href: "/admin/manage",
+        icon: Shield,
+        baseTitle: "Manage Admins",
+        description: "Add or remove administrators.",
     }
 ];
 
