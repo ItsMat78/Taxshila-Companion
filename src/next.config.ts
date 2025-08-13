@@ -1,3 +1,4 @@
+require('dotenv').config({ path: './.env' });
 
 import type {NextConfig} from 'next';
 
@@ -8,6 +9,11 @@ const nextConfig: NextConfig = {
   },
   eslint: {
     ignoreDuringBuilds: true,
+  },
+  env: {
+    FIREBASE_PROJECT_ID: process.env.FIREBASE_PROJECT_ID,
+    FIREBASE_CLIENT_EMAIL: process.env.FIREBASE_CLIENT_EMAIL,
+    FIREBASE_PRIVATE_KEY: process.env.FIREBASE_PRIVATE_KEY,
   },
   images: {
     remotePatterns: [
@@ -31,7 +37,6 @@ const nextConfig: NextConfig = {
     allowedDevOrigins: [
       'https://*.cloudworkstations.dev',
       'https://*.firebase.studio',
-      'https://9000-firebase-studio-1749053355191.cluster-iktsryn7xnhpexlu6255bftka4.cloudworkstations.dev',
     ],
   },
 };

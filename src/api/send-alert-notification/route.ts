@@ -22,40 +22,45 @@ interface AdminDoc {
   fcmTokens?: string[];
 }
 
-try {
-  if (!admin.apps.length) {
-    const privateKeyRaw = process.env.FIREBASE_PRIVATE_KEY;
-    if (!privateKeyRaw) {
-      console.error("API Route: FIREBASE_PRIVATE_KEY environment variable is NOT SET. Admin SDK cannot initialize.");
-      throw new Error("FIREBASE_PRIVATE_KEY environment variable is not set.");
-    }
-    const privateKey = privateKeyRaw.replace(/\\n/g, '\n');
-    console.log("API Route: Attempting to initialize Firebase Admin SDK...");
-    admin.initializeApp({
+function initializeFirebaseAdmin() {
+  if (admin.apps.length > 0) {
+    return admin.app();
+  }
+
+  const privateKey = process.env.FIREBASE_PRIVATE_KEY;
+  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
+  const projectId = process.env.FIREBASE_PROJECT_ID;
+
+  if (!privateKey || !clientEmail || !projectId) {
+    console.error("[API Route (send-alert-notification)] Missing Firebase Admin credentials in environment.");
+    throw new Error("Server configuration error: Missing Firebase Admin environment variables.");
+  }
+  
+  try {
+    return admin.initializeApp({
       credential: admin.credential.cert({
-        projectId: process.env.FIREBASE_PROJECT_ID,
-        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-        privateKey: privateKey,
+        projectId: projectId,
+        clientEmail: clientEmail,
+        privateKey: privateKey.replace(/\\n/g, '\n'),
       }),
     });
-    console.log("API Route: Firebase Admin SDK initialized successfully.");
+  } catch (error: any) {
+    console.error(`[API Route (send-alert-notification)] Firebase Admin SDK initialization error: ${error.message}`);
+    throw new Error(`Could not initialize Firebase Admin SDK. Check your .env file. Internal error: ${error.message}`);
   }
-} catch (e: any) {
-  console.error('API Route: Firebase Admin SDK initialization error:', e.message, e);
 }
 
 const getDb = () => {
-  if (!admin.apps.length) {
-    console.error("API Route: Firebase Admin SDK not initialized when getDb() was called.");
-    throw new Error("Firebase Admin SDK not initialized. This is a server-side configuration issue.");
-  }
+  initializeFirebaseAdmin();
   return admin.firestore();
 };
 
 
 export async function POST(request: NextRequest) {
   console.log("API Route: /api/send-alert-notification POST request received.");
-  if (!admin.apps.length) {
+  try {
+    initializeFirebaseAdmin();
+  } catch (initError: any) {
     console.error("API Route: Firebase Admin SDK is not initialized. Cannot process request. Check Vercel environment variables (FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY) and ensure they are correct, especially the private key format (including \\n).");
     return NextResponse.json({ success: false, error: "Firebase Admin SDK not initialized on server. Check Vercel logs and environment variables." }, { status: 500 });
   }

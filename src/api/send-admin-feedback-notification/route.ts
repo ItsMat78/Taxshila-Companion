@@ -1,7 +1,8 @@
 
 import { NextResponse, type NextRequest } from 'next/server';
-import { FieldValue } from 'firebase-admin/firestore';
 import { getDb, getMessaging } from '@/lib/firebase-admin';
+import { FieldValue } from 'firebase-admin/firestore';
+import type { MulticastMessage } from 'firebase-admin/messaging';
 
 interface FeedbackNotificationPayload {
   studentName: string;
@@ -15,9 +16,12 @@ interface AdminDoc {
 
 export async function POST(request: NextRequest) {
   console.log("API Route: /api/send-admin-feedback-notification POST request received.");
+  
   try {
+    // Initialize services using the centralized functions
     const db = getDb();
     const messaging = getMessaging();
+    
     let payload: FeedbackNotificationPayload;
 
     try {
@@ -38,7 +42,7 @@ export async function POST(request: NextRequest) {
 
     if (adminTokens.length === 0) {
       console.log("API Route (Admin Feedback): No admin tokens found to send notification to.");
-      return NextResponse.json({ success: true, message: "No admin tokens found to send notification to." }, { status: 200 });
+      return NextResponse.json({ success: true, message: "No admin tokens found to send notification to." });
     }
 
     const uniqueTokens = [...new Set(adminTokens)];
@@ -52,7 +56,7 @@ export async function POST(request: NextRequest) {
       feedbackId: payload.feedbackId,
     };
 
-    const messageToSend = {
+    const messageToSend: MulticastMessage = {
       tokens: uniqueTokens,
       data: notificationPayload,
     };

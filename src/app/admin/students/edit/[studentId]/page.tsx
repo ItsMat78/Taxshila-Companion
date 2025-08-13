@@ -259,7 +259,7 @@ export default function EditStudentPage() {
         registrationDate: studentData.registrationDate, 
         idCardFileName: data.idCardFileName,
         nextDueDate: data.nextDueDate ? format(data.nextDueDate, 'yyyy-MM-dd') : undefined,
-        leftDate: null, // Clear left date on reactivation
+        leftDate: undefined, // Clear left date on reactivation
       };
       successMessage = `${data.name} has been re-activated.`;
       wasReactivated = true;
@@ -274,6 +274,7 @@ export default function EditStudentPage() {
         seatNumber: data.seatNumber,
         idCardFileName: data.idCardFileName,
         nextDueDate: data.nextDueDate ? format(data.nextDueDate, 'yyyy-MM-dd') : undefined,
+        ...(data.newPassword && { password: data.newPassword }),
       };
       successMessage = `${data.name}'s details have been updated.`;
     }
@@ -414,7 +415,23 @@ export default function EditStudentPage() {
     if (!studentId || !studentData) return;
     setIsDeleting(true);
     try {
-      await deleteStudentCompletely(studentId);
+      // Call the backend API to delete from both Auth and Firestore
+      const response = await fetch('/api/admin/delete-student', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          uid: studentData.uid,           // Pass the Auth UID
+          studentId: studentData.studentId // Pass the custom Student ID
+        }),
+      });
+
+      if (!response.ok) {
+        const result = await response.json();
+        throw new Error(result.error || 'Deletion failed.');
+      }
+
       toast({
         title: "Student Deleted",
         description: `${studentData.name} (ID: ${studentId}) has been permanently deleted from the system.`,
@@ -429,6 +446,7 @@ export default function EditStudentPage() {
       setIsDeleting(false);
     }
   };
+
 
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
