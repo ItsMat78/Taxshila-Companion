@@ -144,7 +144,7 @@ const CheckedInStudentCard = ({ student, onWarn, isWarning }: { student: Checked
                 {student.seatNumber || '?'}
               </div>
               <div className="text-xs text-muted-foreground flex items-center">
-                  <Clock className="h-3 w-3 mr-1" />
+                  <LogIn className="h-3 w-3 mr-1 text-green-500" />
                   {format(parseISO(student.checkInTime), 'p')}
               </div>
             </div>
