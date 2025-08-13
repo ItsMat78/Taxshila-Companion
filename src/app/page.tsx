@@ -21,6 +21,7 @@ import {
   AlertTriangle,
   Database,
   Shield,
+  ListChecks,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle as ShadcnCardTitle, CardDescription as ShadcnCardDescription, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -54,10 +55,35 @@ import { useToast } from '@/hooks/use-toast';
 
 const staticAdminActionTilesConfig = [
     {
+        href: "/students/list",
+        icon: ListChecks,
+        baseTitle: "Manage Students",
+        description: "View and edit students.",
+    },
+    {
         href: "/admin/students/register",
         icon: UserPlus,
         baseTitle: "Register Student",
         description: "Add a new member.",
+    },
+    {
+        href: "/attendance/calendar",
+        icon: CalendarDays,
+        baseTitle: "Attendance Overview",
+        description: "View daily check-ins.",
+    },
+    {
+        href: "/admin/fees/due",
+        icon: CreditCard,
+        baseTitle: "Payment Due",
+        description: "View students with fees due.",
+        isFinancialTile: true,
+    },
+    {
+        href: "/admin/fees/payments-history",
+        icon: History,
+        baseTitle: "Payment History",
+        description: "Browse all transactions.",
     },
     {
         href: "/admin/alerts/send",
@@ -73,24 +99,11 @@ const staticAdminActionTilesConfig = [
         isFeedbackTile: true,
     },
     {
-        href: "/admin/fees/due",
-        icon: CreditCard,
-        baseTitle: "Payment Due",
-        description: "View students with fees due.",
-        isFinancialTile: true,
+        href: "/seats/availability",
+        icon: Armchair,
+        baseTitle: "Seat Availability",
+        description: "Check hall occupancy.",
     },
-    {
-        href: "/admin/data-management",
-        icon: Database,
-        baseTitle: "Data Management",
-        description: "Import, export, or delete data.",
-    },
-    {
-        href: "/admin/manage",
-        icon: Shield,
-        baseTitle: "Manage Admins",
-        description: "Add or remove administrators.",
-    }
 ];
 
 
