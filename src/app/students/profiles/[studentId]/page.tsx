@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from 'react';
@@ -7,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { ArrowLeft, CreditCard, CalendarDays, Receipt, Loader2, UserCircle, Briefcase, History as HistoryIcon, LogIn, LogOut, Clock, FileText, Download, Mail, Phone, Edit, TrendingUp, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ArrowLeft, CreditCard, CalendarDays, Receipt, Loader2, UserCircle, Briefcase, History as HistoryIcon, LogIn, LogOut, Clock, FileText, Download, Mail, Phone, Edit, TrendingUp, ChevronLeft, ChevronRight, View } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -25,6 +26,7 @@ import { format, parseISO, isValid, differenceInMilliseconds, startOfMonth, endO
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { BarChart, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Bar } from 'recharts';
+import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
 
 const DEFAULT_PROFILE_PLACEHOLDER = "https://placehold.co/100x100.png";
 const ID_CARD_PLACEHOLDER = "https://placehold.co/300x200.png?text=ID+Card";
@@ -248,10 +250,28 @@ export default function StudentDetailPage() {
       <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3">
         <Card className="shadow-md xl:col-span-1">
           <CardHeader className="flex flex-col items-center gap-4 text-center">
-            <Avatar className="h-24 w-24 border-2 border-primary shadow-md">
-              <AvatarImage src={student.profilePictureUrl || DEFAULT_PROFILE_PLACEHOLDER} alt={student.name} data-ai-hint="profile person"/>
-              <AvatarFallback className="text-3xl">{getInitials(student.name)}</AvatarFallback>
-            </Avatar>
+             <Dialog>
+                <DialogTrigger asChild>
+                    <div className="cursor-pointer relative group">
+                        <Avatar className="h-24 w-24 border-2 border-primary shadow-md">
+                            <AvatarImage src={student.profilePictureUrl || DEFAULT_PROFILE_PLACEHOLDER} alt={student.name} data-ai-hint="profile person"/>
+                            <AvatarFallback className="text-3xl">{getInitials(student.name)}</AvatarFallback>
+                        </Avatar>
+                        <div className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                            <View className="text-white h-8 w-8"/>
+                        </div>
+                    </div>
+                </DialogTrigger>
+                <DialogContent className="max-w-md w-auto p-2">
+                    <Image
+                        src={student.profilePictureUrl || DEFAULT_PROFILE_PLACEHOLDER}
+                        alt="Profile Picture Full View"
+                        width={500}
+                        height={500}
+                        className="rounded-md object-contain max-h-[80vh] w-full h-auto"
+                    />
+                </DialogContent>
+            </Dialog>
             <div className="flex-1">
               <CardTitle className="text-xl">{student.name}</CardTitle>
               <CardDescription>Student ID: {student.studentId}</CardDescription>
