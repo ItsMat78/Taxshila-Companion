@@ -33,9 +33,11 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
-import { UserPlus, Loader2 } from 'lucide-react';
+import { UserPlus, Loader2, Camera, Upload } from 'lucide-react';
 import { addStudent, getAvailableSeats, type AddStudentData } from '@/services/student-service';
 import type { Shift } from '@/types/student';
+import { ProfilePictureUploader } from '@/components/admin/edit-student/profile-picture-uploader'; // Reusing for consistency
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 const studentFormSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
@@ -49,6 +51,7 @@ const studentFormSchema = z.object({
   shift: z.enum(["morning", "evening", "fullday"], { required_error: "Shift selection is required." }),
   seatNumber: z.string().min(1, "Seat selection is required."),
   idCardFileName: z.string().optional(),
+  profilePictureUrl: z.string().optional(), // Added for the profile picture
 }).refine(data => data.password === data.confirmPassword, {
   message: "Passwords don't match",
   path: ["confirmPassword"],
@@ -62,12 +65,22 @@ const shiftOptions = [
   { value: "fullday" as Shift, label: "Full Day (7 AM - 9:30 PM)" },
 ];
 
+const toBase64 = (file: File): Promise<string> => new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = error => reject(error);
+});
+
+
 export default function StudentRegisterPage() {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [availableSeatOptions, setAvailableSeatOptions] = React.useState<string[]>([]);
   const [isLoadingSeats, setIsLoadingSeats] = React.useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+  
+  const [previewUrl, setPreviewUrl] = React.useState<string | null>(null);
 
   const form = useForm<StudentFormValues>({
     resolver: zodResolver(studentFormSchema),
@@ -81,6 +94,7 @@ export default function StudentRegisterPage() {
       shift: undefined,
       seatNumber: "",
       idCardFileName: "",
+      profilePictureUrl: "",
     },
   });
 
@@ -112,6 +126,19 @@ export default function StudentRegisterPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedShift, toast, form.setValue]);
 
+  const handleProfilePictureChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      if (file.size > 1024 * 1024) { // 1MB limit
+        toast({ title: "File Too Large", description: "Please select an image smaller than 1MB.", variant: "destructive" });
+        return;
+      }
+      const base64 = await toBase64(file);
+      setPreviewUrl(base64);
+      form.setValue('profilePictureUrl', base64, { shouldDirty: true });
+    }
+  };
+
 
   async function onSubmit(data: StudentFormValues) {
     setIsSubmitting(true);
@@ -125,6 +152,7 @@ export default function StudentRegisterPage() {
         shift: data.shift,
         seatNumber: data.seatNumber,
         idCardFileName: data.idCardFileName,
+        profilePictureUrl: data.profilePictureUrl, // Pass the base64 url
       };
       const newStudent = await addStudent(studentPayload);
       toast({
@@ -132,6 +160,7 @@ export default function StudentRegisterPage() {
         description: `${newStudent.name} (ID: ${newStudent.studentId}) has been registered with seat ${newStudent.seatNumber} for ${newStudent.shift} shift.`,
       });
       form.reset();
+      setPreviewUrl(null); // Clear preview after successful submission
       if (fileInputRef.current) {
         fileInputRef.current.value = ""; 
       }
@@ -167,6 +196,31 @@ export default function StudentRegisterPage() {
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)}>
             <CardContent className="space-y-6">
+              
+              <FormItem>
+                <FormLabel>Profile Picture (Optional)</FormLabel>
+                <div className="flex items-center gap-4">
+                    <Avatar className="h-20 w-20">
+                        <AvatarImage src={previewUrl || undefined} alt="Profile preview" data-ai-hint="profile person"/>
+                        <AvatarFallback><UserPlus /></AvatarFallback>
+                    </Avatar>
+                    <div className="flex-grow">
+                      <FormControl>
+                        <Input
+                            type="file"
+                            accept="image/jpeg,image/png,image/webp"
+                            onChange={handleProfilePictureChange}
+                            disabled={isSubmitting}
+                            ref={fileInputRef}
+                        />
+                      </FormControl>
+                      <FormDescription className="text-xs mt-1">
+                          Select a file (JPG, PNG, WEBP). Max 1MB. Camera capture coming soon.
+                      </FormDescription>
+                    </div>
+                </div>
+              </FormItem>
+
               <FormField control={form.control} name="name" render={({ field }) => (
                 <FormItem><FormLabel>Full Name</FormLabel><FormControl><Input placeholder="Enter student's full name" {...field} disabled={isSubmitting} /></FormControl><FormMessage /></FormItem>
               )} />
@@ -248,3 +302,5 @@ export default function StudentRegisterPage() {
     </>
   );
 }
+
+    

@@ -267,6 +267,7 @@ export interface AddStudentData {
   shift: Shift;
   seatNumber: string;
   idCardFileName?: string;
+  profilePictureUrl?: string; // Added this line
 }
 
 export async function addStudent(studentData: AddStudentData): Promise<Student> {
@@ -1386,3 +1387,5 @@ declare module '@/types/communication' {
     firestoreId?: string;
   }
 }
+
+    
