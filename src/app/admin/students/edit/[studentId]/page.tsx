@@ -61,6 +61,7 @@ import { cn } from "@/lib/utils"
 import { Skeleton } from '@/components/ui/skeleton';
 import { useNotificationContext } from '@/contexts/notification-context';
 import { ProfilePictureUploader } from '@/components/admin/edit-student/profile-picture-uploader';
+import { Separator } from '@/components/ui/separator';
 
 const studentEditFormSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
@@ -505,188 +506,64 @@ export default function EditStudentPage() {
   return (
     <>
       <PageTitle title={`Edit Student: ${studentData.name}`} description={`Modifying details for Student ID: ${studentId}`}>
-        <div className="flex flex-col sm:flex-row gap-2">
-            <Link href="/students/list" passHref legacyBehavior>
-            <Button variant="outline" disabled={isSaving || isDeleting}>
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                Back to List
-            </Button>
-            </Link>
-             <Button onClick={form.handleSubmit(onSaveChanges)} disabled={isSaveDisabled}>
-                {isSaving && !isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : (isStudentLeft ? <UserCheck className="mr-2 h-4 w-4" /> : <Save className="mr-2 h-4 w-4" />)}
-                {isStudentLeft ? "Save and Re-activate" : "Save Changes"}
-            </Button>
-        </div>
+        <Link href="/students/list" passHref legacyBehavior>
+          <Button variant="outline" disabled={isSaving || isDeleting}>
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Back to List
+          </Button>
+        </Link>
       </PageTitle>
 
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSaveChanges)} className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          
-          {/* Left Column */}
-          <div className="md:col-span-1 space-y-6">
-            <ProfilePictureUploader
-              studentFirestoreId={studentData.firestoreId!}
-              currentProfilePictureUrl={studentData.profilePictureUrl}
-              onUploadSuccess={onPictureUploadSuccess}
-            />
+        <form onSubmit={form.handleSubmit(onSaveChanges)}>
+          <Card className="shadow-lg">
+            <CardContent className="p-6 grid grid-cols-1 md:grid-cols-3 gap-8">
+              {/* Left Column for Picture */}
+              <div className="md:col-span-1">
+                 <ProfilePictureUploader
+                    studentFirestoreId={studentData.firestoreId!}
+                    currentProfilePictureUrl={studentData.profilePictureUrl}
+                    onUploadSuccess={onPictureUploadSuccess}
+                  />
+              </div>
 
-            <Card>
-                 <CardHeader>
-                    <CardTitle className="flex items-center text-base"><ClipboardCheck className="mr-2 h-4 w-4"/>Mark Payment</CardTitle>
-                 </CardHeader>
-                 <CardContent>
-                    <AlertDialog open={isConfirmPaymentOpen} onOpenChange={setIsConfirmPaymentOpen}>
-                        <AlertDialogTrigger asChild>
-                            <Button
-                                type="button"
-                                variant="outline"
-                                className="w-full"
-                                disabled={isSaving || isDeleting || studentData.feeStatus === "Paid" || isStudentLeft}
-                                onClick={() => {
-                                setPaymentMethod('Desk Payment');
-                                setIsConfirmPaymentOpen(true)
-                                }}
-                            >
-                                Mark as Paid
-                            </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                            <AlertDialogHeader>
-                                <AlertDialogTitle>Confirm Payment for {studentData.name}?</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                    This will mark the current due amount of <strong>{amountDueDisplay}</strong> as paid and advance the due date by one month. Please select the payment method used.
-                                </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <div className="py-4">
-                            <RadioGroup defaultValue="Cash" onValueChange={(value) => setPaymentMethod(value as PaymentRecord['method'])}>
-                                <div className="flex items-center space-x-2">
-                                    <RadioGroupItem value="Cash" id="payment-cash" />
-                                    <FormLabel htmlFor="payment-cash">Cash</FormLabel>
-                                </div>
-                                <div className="flex items-center space-x-2">
-                                    <RadioGroupItem value="Online" id="payment-online" />
-                                    <FormLabel htmlFor="payment-online">Online (UPI/Card)</FormLabel>
-                                </div>
-                                </RadioGroup>
-                            </div>
-                            <AlertDialogFooter>
-                                <AlertDialogCancel onClick={() => setIsConfirmPaymentOpen(false)} disabled={isSaving}>Cancel</AlertDialogCancel>
-                                <AlertDialogAction onClick={() => handleMarkPaymentPaid(paymentMethod)} disabled={isSaving}>
-                                    {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                                    Confirm Payment
-                                </AlertDialogAction>
-                            </AlertDialogFooter>
-                        </AlertDialogContent>
-                    </AlertDialog>
-                 </CardContent>
-            </Card>
+              {/* Right Column for Form */}
+              <div className="md:col-span-2 space-y-6">
+                 <div>
+                    <h3 className="text-lg font-medium flex items-center mb-2"><User className="mr-2 h-5 w-5" />Personal Information</h3>
+                    <div className="space-y-4">
+                      <FormItem>
+                          <FormLabel>Student ID</FormLabel>
+                          <FormControl>
+                          <Input value={studentId} disabled />
+                          </FormControl>
+                      </FormItem>
+                      <FormField control={form.control} name="name" render={({ field }) => (
+                          <FormItem><FormLabel>Full Name</FormLabel><FormControl><Input placeholder="Enter student's full name" {...field} disabled={isSaving || isDeleting} /></FormControl><FormMessage /></FormItem>
+                      )} />
+                      <FormField control={form.control} name="email" render={({ field }) => (
+                          <FormItem><FormLabel>Email Address (Optional)</FormLabel><FormControl><Input type="email" placeholder="student@example.com" {...field} disabled={isSaving || isDeleting} /></FormControl><FormMessage /></FormItem>
+                      )} />
+                      <FormField control={form.control} name="phone" render={({ field }) => (
+                          <FormItem><FormLabel>Phone Number</FormLabel><FormControl><Input type="tel" placeholder="Enter 10-digit phone number" {...field} disabled={isSaving || isDeleting} /></FormControl><FormMessage /></FormItem>
+                      )} />
+                      <FormField control={form.control} name="address" render={({ field }) => (
+                          <FormItem><FormLabel>Address</FormLabel><FormControl><Input placeholder="Enter address" {...field} disabled={isSaving || isDeleting} /></FormControl><FormMessage /></FormItem>
+                      )} />
+                    </div>
+                </div>
 
-            <Card className="border-destructive/50">
-                <CardHeader>
-                    <CardTitle className="flex items-center text-base text-destructive"><AlertTriangle className="mr-2 h-4 w-4"/>Danger Zone</CardTitle>
-                </CardHeader>
-                <CardContent className="flex flex-col gap-2">
-                    <AlertDialog open={isConfirmMarkLeftOpen} onOpenChange={setIsConfirmMarkLeftOpen}>
-                        <AlertDialogTrigger asChild>
-                        <Button
-                            type="button"
-                            variant="outline"
-                             className="w-full"
-                            disabled={isSaving || isDeleting || isStudentLeft}
-                            onClick={() => setIsConfirmMarkLeftOpen(true)}
-                        >
-                            <UserX className="mr-2 h-4 w-4" /> Mark as Left
-                        </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                        <AlertDialogHeader>
-                            <AlertDialogTitle>Mark {studentData.name} as Left?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                            This will mark the student as inactive and their seat will become available. Are you sure?
-                            </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                            <AlertDialogCancel onClick={() => setIsConfirmMarkLeftOpen(false)} disabled={isSaving}>Cancel</AlertDialogCancel>
-                            <AlertDialogAction onClick={handleMarkAsLeft} disabled={isSaving}>
-                            {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                            Confirm
-                            </AlertDialogAction>
-                        </AlertDialogFooter>
-                        </AlertDialogContent>
-                    </AlertDialog>
-
-                    <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                        <Button
-                            type="button"
-                            variant="destructive"
-                             className="w-full"
-                            disabled={isSaving || isDeleting}
-                        >
-                            <Trash2 className="mr-2 h-4 w-4" /> Delete Student
-                        </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                        <AlertDialogHeader>
-                            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                            This action cannot be undone. This will permanently delete the student
-                            ({studentData.name} - {studentId}) and all their associated data.
-                            </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
-                            <AlertDialogAction onClick={handleDeleteStudent} disabled={isDeleting} className="bg-destructive hover:bg-destructive/90">
-                            {isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                            Confirm Delete
-                            </AlertDialogAction>
-                        </AlertDialogFooter>
-                        </AlertDialogContent>
-                    </AlertDialog>
-                </CardContent>
-            </Card>
-
-          </div>
-
-          {/* Right Column */}
-          <div className="md:col-span-2 space-y-6">
-            <Card>
-                <CardHeader>
-                    <CardTitle className="flex items-center text-base"><User className="mr-2 h-4 w-4" />Personal Information</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                    <FormItem>
-                        <FormLabel>Student ID</FormLabel>
-                        <FormControl>
-                        <Input value={studentId} disabled />
-                        </FormControl>
-                    </FormItem>
-                    <FormField control={form.control} name="name" render={({ field }) => (
-                        <FormItem><FormLabel>Full Name</FormLabel><FormControl><Input placeholder="Enter student's full name" {...field} disabled={isSaving || isDeleting} /></FormControl><FormMessage /></FormItem>
-                    )} />
-                    <FormField control={form.control} name="email" render={({ field }) => (
-                        <FormItem><FormLabel>Email Address (Optional)</FormLabel><FormControl><Input type="email" placeholder="student@example.com" {...field} disabled={isSaving || isDeleting} /></FormControl><FormMessage /></FormItem>
-                    )} />
-                    <FormField control={form.control} name="phone" render={({ field }) => (
-                        <FormItem><FormLabel>Phone Number</FormLabel><FormControl><Input type="tel" placeholder="Enter 10-digit phone number" {...field} disabled={isSaving || isDeleting} /></FormControl><FormMessage /></FormItem>
-                    )} />
-                    <FormField control={form.control} name="address" render={({ field }) => (
-                        <FormItem><FormLabel>Address</FormLabel><FormControl><Input placeholder="Enter address" {...field} disabled={isSaving || isDeleting} /></FormControl><FormMessage /></FormItem>
-                    )} />
-                </CardContent>
-            </Card>
-
-            <Card>
-                 <CardHeader>
-                    <CardTitle className="flex items-center text-base"><Settings className="mr-2 h-4 w-4" />Shift &amp; Seat Configuration</CardTitle>
-                    <CardDescription>
-                         Fee Status: <span className="font-semibold">{studentData.feeStatus}</span>.
-                         Activity Status: <span className={`font-semibold ${isStudentLeft ? 'text-destructive' : 'text-green-600'}`}>{studentData.activityStatus}</span>.
-                         {isStudentLeft && " Update details and select a shift & seat to re-activate."}
-                    </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                    <FormField control={form.control} name="shift" render={({ field }) => (
+                <Separator />
+                
+                <div>
+                  <h3 className="text-lg font-medium flex items-center mb-2"><Settings className="mr-2 h-5 w-5" />Configuration</h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                      Fee Status: <span className="font-semibold">{studentData.feeStatus}</span>.
+                      Activity Status: <span className={`font-semibold ${isStudentLeft ? 'text-destructive' : 'text-green-600'}`}>{studentData.activityStatus}</span>.
+                      {isStudentLeft && " Update details and select a shift & seat to re-activate."}
+                  </p>
+                  <div className="space-y-4">
+                     <FormField control={form.control} name="shift" render={({ field }) => (
                         <FormItem className="space-y-3"><FormLabel>Shift Selection</FormLabel>
                         <FormControl>
                             <RadioGroup onValueChange={(value) => { field.onChange(value); setIsDirtyOverride(true); }} value={field.value} className="flex flex-col space-y-2" disabled={isSaving || isDeleting}>
@@ -784,13 +661,129 @@ export default function EditStudentPage() {
                         </FormItem>
                         )} />
                     </div>
-                </CardContent>
-            </Card>
-          </div>
+                  </div>
+                </div>
+
+              </div>
+            </CardContent>
+            <CardFooter className="flex flex-col sm:flex-row items-center gap-2 p-6 bg-muted/30 border-t">
+               <Button type="submit" className="w-full sm:w-auto" disabled={isSaveDisabled}>
+                  {isSaving && !isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : (isStudentLeft ? <UserCheck className="mr-2 h-4 w-4" /> : <Save className="mr-2 h-4 w-4" />)}
+                  {isStudentLeft ? "Save and Re-activate" : "Save Changes"}
+              </Button>
+
+              <div className="w-full sm:w-auto sm:ml-auto flex flex-col sm:flex-row gap-2">
+                 <AlertDialog open={isConfirmPaymentOpen} onOpenChange={setIsConfirmPaymentOpen}>
+                    <AlertDialogTrigger asChild>
+                        <Button
+                            type="button"
+                            variant="outline"
+                            className="w-full"
+                            disabled={isSaving || isDeleting || studentData.feeStatus === "Paid" || isStudentLeft}
+                            onClick={() => {
+                            setPaymentMethod('Desk Payment');
+                            setIsConfirmPaymentOpen(true)
+                            }}
+                        >
+                           <ClipboardCheck className="mr-2 h-4 w-4"/> Mark as Paid
+                        </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>Confirm Payment for {studentData.name}?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                                This will mark the current due amount of <strong>{amountDueDisplay}</strong> as paid and advance the due date by one month. Please select the payment method used.
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <div className="py-4">
+                        <RadioGroup defaultValue="Cash" onValueChange={(value) => setPaymentMethod(value as PaymentRecord['method'])}>
+                            <div className="flex items-center space-x-2">
+                                <RadioGroupItem value="Cash" id="payment-cash" />
+                                <FormLabel htmlFor="payment-cash">Cash</FormLabel>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                                <RadioGroupItem value="Online" id="payment-online" />
+                                <FormLabel htmlFor="payment-online">Online (UPI/Card)</FormLabel>
+                            </div>
+                            </RadioGroup>
+                        </div>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel onClick={() => setIsConfirmPaymentOpen(false)} disabled={isSaving}>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => handleMarkPaymentPaid(paymentMethod)} disabled={isSaving}>
+                                {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                                Confirm Payment
+                            </AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
+
+                <AlertDialog open={isConfirmMarkLeftOpen} onOpenChange={setIsConfirmMarkLeftOpen}>
+                  <AlertDialogTrigger asChild>
+                  <Button
+                      type="button"
+                      variant="outline"
+                        className="w-full"
+                      disabled={isSaving || isDeleting || isStudentLeft}
+                      onClick={() => setIsConfirmMarkLeftOpen(true)}
+                  >
+                      <UserX className="mr-2 h-4 w-4" /> Mark as Left
+                  </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                  <AlertDialogHeader>
+                      <AlertDialogTitle>Mark {studentData.name} as Left?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                      This will mark the student as inactive and their seat will become available. Are you sure?
+                      </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                      <AlertDialogCancel onClick={() => setIsConfirmMarkLeftOpen(false)} disabled={isSaving}>Cancel</AlertDialogCancel>
+                      <AlertDialogAction onClick={handleMarkAsLeft} disabled={isSaving}>
+                      {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                      Confirm
+                      </AlertDialogAction>
+                  </AlertDialogFooter>
+                  </AlertDialogContent>
+              </AlertDialog>
+
+              <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                  <Button
+                      type="button"
+                      variant="destructive"
+                        className="w-full"
+                      disabled={isSaving || isDeleting}
+                  >
+                      <Trash2 className="mr-2 h-4 w-4" /> Delete Student
+                  </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                  <AlertDialogHeader>
+                      <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                      This action cannot be undone. This will permanently delete the student
+                      ({studentData.name} - {studentId}) and all their associated data.
+                      </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                      <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+                      <AlertDialogAction onClick={handleDeleteStudent} disabled={isDeleting} className="bg-destructive hover:bg-destructive/90">
+                      {isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                      Confirm Delete
+                      </AlertDialogAction>
+                  </AlertDialogFooter>
+                  </AlertDialogContent>
+              </AlertDialog>
+              </div>
+
+            </CardFooter>
+          </Card>
         </form>
       </Form>
     </>
   );
 }
+
+    
 
     
