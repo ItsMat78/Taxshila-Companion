@@ -34,11 +34,15 @@ import {
   FormDescription,
 } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
-import { UserPlus, Loader2, Camera, Upload } from 'lucide-react';
+import { UserPlus, Loader2, Camera, Upload, Video, VideoOff } from 'lucide-react';
 import { addStudent, getAvailableSeats, type AddStudentData } from '@/services/student-service';
 import type { Shift } from '@/types/student';
-import { ProfilePictureUploader } from '@/components/admin/edit-student/profile-picture-uploader'; // Reusing for consistency
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import { useCallback } from 'react';
+import { Label } from '@/components/ui/label';
+
 
 const studentFormSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
@@ -79,9 +83,14 @@ export default function StudentRegisterPage() {
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [availableSeatOptions, setAvailableSeatOptions] = React.useState<string[]>([]);
   const [isLoadingSeats, setIsLoadingSeats] = React.useState(false);
-  const fileInputRef = React.useRef<HTMLInputElement>(null);
   
   const [previewUrl, setPreviewUrl] = React.useState<string | null>(null);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  const [isCameraDialogOpen, setIsCameraDialogOpen] = React.useState(false);
+  const [hasCameraPermission, setHasCameraPermission] = React.useState(true);
+  const videoRef = React.useRef<HTMLVideoElement>(null);
+  const canvasRef = React.useRef<HTMLCanvasElement>(null);
 
   const form = useForm<StudentFormValues>({
     resolver: zodResolver(studentFormSchema),
@@ -127,11 +136,61 @@ export default function StudentRegisterPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedShift, toast, form.setValue]);
 
+  const startVideoStream = useCallback(async () => {
+    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia && videoRef.current) {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+        videoRef.current.srcObject = stream;
+        videoRef.current.play();
+        setHasCameraPermission(true);
+      } catch (err) {
+        setHasCameraPermission(false);
+        toast({ variant: "destructive", title: "Camera Access Denied", description: "Please enable camera permissions." });
+      }
+    }
+  }, [toast]);
+
+  const stopVideoStream = useCallback(() => {
+    if (videoRef.current && videoRef.current.srcObject) {
+      const stream = videoRef.current.srcObject as MediaStream;
+      stream.getTracks().forEach(track => track.stop());
+      videoRef.current.srcObject = null;
+    }
+  }, []);
+
+  React.useEffect(() => {
+    if (isCameraDialogOpen) {
+      startVideoStream();
+    } else {
+      stopVideoStream();
+    }
+    return () => stopVideoStream();
+  }, [isCameraDialogOpen, startVideoStream, stopVideoStream]);
+
+  const handleCapture = () => {
+    if (videoRef.current && canvasRef.current) {
+        const video = videoRef.current;
+        const canvas = canvasRef.current;
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        const context = canvas.getContext('2d');
+        if (context) {
+            context.drawImage(video, 0, 0, video.videoWidth, video.videoHeight);
+            const dataUrl = canvas.toDataURL('image/jpeg');
+            setPreviewUrl(dataUrl);
+            form.setValue('profilePictureUrl', dataUrl, { shouldDirty: true });
+        }
+        stopVideoStream();
+        setIsCameraDialogOpen(false);
+    }
+  };
+
+
   const handleProfilePictureChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      if (file.size > 1024 * 1024) { // 1MB limit
-        toast({ title: "File Too Large", description: "Please select an image smaller than 1MB.", variant: "destructive" });
+      if (file.size > 3 * 1024 * 1024) { // 3MB limit
+        toast({ title: "File Too Large", description: "Please select an image smaller than 3MB.", variant: "destructive" });
         return;
       }
       const base64 = await toBase64(file);
@@ -201,11 +260,11 @@ export default function StudentRegisterPage() {
               <FormItem>
                 <FormLabel>Profile Picture (Optional)</FormLabel>
                 <div className="flex items-center gap-4">
-                    <Avatar className="h-20 w-20">
+                    <Avatar className="h-20 w-20 border">
                         <AvatarImage src={previewUrl || undefined} alt="Profile preview" data-ai-hint="profile person"/>
                         <AvatarFallback><UserPlus /></AvatarFallback>
                     </Avatar>
-                    <div className="flex-grow">
+                    <div className="flex-grow space-y-2">
                       <FormControl>
                         <Input
                             type="file"
@@ -215,8 +274,39 @@ export default function StudentRegisterPage() {
                             ref={fileInputRef}
                         />
                       </FormControl>
-                      <FormDescription className="text-xs mt-1">
-                          Select a file (JPG, PNG, WEBP). Max 1MB. Camera capture coming soon.
+                       <Dialog open={isCameraDialogOpen} onOpenChange={setIsCameraDialogOpen}>
+                          <DialogTrigger asChild>
+                              <Button variant="outline" className="w-full" disabled={isSubmitting}>
+                                  <Camera className="mr-2 h-4 w-4" /> Open Camera
+                              </Button>
+                          </DialogTrigger>
+                          <DialogContent>
+                              <DialogHeader>
+                                  <DialogTitle>Capture Photo</DialogTitle>
+                              </DialogHeader>
+                              <div className="py-4">
+                                  {hasCameraPermission ? (
+                                      <video ref={videoRef} className="w-full aspect-video rounded-md bg-muted" playsInline autoPlay muted />
+                                  ) : (
+                                      <Alert variant="destructive">
+                                          <VideoOff className="h-4 w-4" />
+                                          <AlertTitle>Camera Permission Denied</AlertTitle>
+                                          <AlertDescription>
+                                              To use this feature, please allow camera access in your browser settings.
+                                          </AlertDescription>
+                                      </Alert>
+                                  )}
+                                  <canvas ref={canvasRef} className="hidden" />
+                              </div>
+                              <DialogFooter>
+                                  <Button onClick={handleCapture} disabled={!hasCameraPermission}>
+                                      <Camera className="mr-2 h-4 w-4" /> Capture and Use
+                                  </Button>
+                              </DialogFooter>
+                          </DialogContent>
+                      </Dialog>
+                      <FormDescription className="text-xs">
+                          Select a file (max 3MB) or capture from camera.
                       </FormDescription>
                     </div>
                 </div>
@@ -288,8 +378,6 @@ export default function StudentRegisterPage() {
                   </FormItem>
                 )}
               />
-              
-
             </CardContent>
             <CardFooter>
               <Button type="submit" className="w-full sm:w-auto" disabled={isSubmitting || isLoadingSeats || !selectedShift}>
@@ -303,3 +391,4 @@ export default function StudentRegisterPage() {
     </>
   );
 }
+

@@ -103,10 +103,10 @@ export function ProfilePictureUploader({
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      if (file.size > 1024 * 1024) { // 1MB limit
+      if (file.size > 3 * 1024 * 1024) { // 3MB limit
         toast({
           title: "File Too Large",
-          description: "Please select an image smaller than 1MB.",
+          description: "Please select an image smaller than 3MB.",
           variant: "destructive",
         });
         return;
