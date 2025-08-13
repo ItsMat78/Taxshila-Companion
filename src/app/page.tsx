@@ -50,6 +50,35 @@ import { ALL_SEAT_NUMBERS as serviceAllSeats } from '@/config/seats';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 
+const staticAdminActionTilesConfig = [
+    {
+        href: "/admin/students/register",
+        icon: UserPlus,
+        baseTitle: "Register Student",
+        description: "Add a new member.",
+    },
+    {
+        href: "/admin/alerts/send",
+        icon: SendIcon,
+        baseTitle: "Send Alert",
+        description: "Broadcast a message.",
+    },
+    {
+        href: "/admin/feedback",
+        icon: Inbox,
+        baseTitle: "View Feedback",
+        description: "Check new messages.",
+        isFeedbackTile: true,
+    },
+    {
+        href: "/admin/fees/due",
+        icon: CreditCard,
+        baseTitle: "Payment Due",
+        description: "View students with fees due.",
+        isFinancialTile: true,
+    }
+];
+
 
 const getInitials = (name?: string) => {
     if (!name) return 'S';
