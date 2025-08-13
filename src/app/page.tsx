@@ -18,6 +18,7 @@ import {
   History,
   UserX,
   Clock,
+  AlertTriangle,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle as ShadcnCardTitle, CardDescription as ShadcnCardDescription, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -39,36 +40,16 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAuth } from '@/contexts/auth-context';
 import { useRouter, usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
-import { getAllStudents, getAvailableSeats, getAllAttendanceRecords, calculateMonthlyRevenue, getTodaysActiveAttendanceRecords, processCheckedInStudentsFromSnapshot, refreshAllStudentFeeStatuses } from '@/services/student-service';
+import { getAllStudents, getAvailableSeats, getAllAttendanceRecords, calculateMonthlyRevenue, getTodaysActiveAttendanceRecords, processCheckedInStudentsFromSnapshot, refreshAllStudentFeeStatuses, sendShiftWarningAlert } from '@/services/student-service';
 import type { Student, Shift, AttendanceRecord, CheckedInStudentInfo } from '@/types/student';
 import type { FeedbackItem } from '@/types/communication';
 import { format, parseISO, isToday, getHours, getMinutes } from 'date-fns';
 import { useNotificationCounts } from '@/hooks/use-notification-counts';
 import { useFinancialCounts } from '@/hooks/use-financial-counts';
 import { ALL_SEAT_NUMBERS as serviceAllSeats } from '@/config/seats';
+import { Button } from '@/components/ui/button';
+import { useToast } from '@/hooks/use-toast';
 
-const staticAdminActionTilesConfig = [
-  { baseTitle: "Manage Students", icon: Users, description: "View, edit student details.", href: "/students/list" },
-  { baseTitle: "Register Student", icon: UserPlus, description: "Add new students to system.", href: "/admin/students/register" },
-  { baseTitle: "Attendance Overview", icon: CalendarDays, description: "Check student attendance logs.", href: "/attendance/calendar" },
-  {
-    baseTitle: "Payment Due List",
-    icon: CreditCard,
-    description: "View students with due fees.",
-    href: "/admin/fees/due",
-    isFinancialTile: true,
-  },
-  { baseTitle: "Payment History", icon: History, description: "See all past transactions.", href: "/admin/fees/payments-history" },
-  { baseTitle: "Send Alert", icon: SendIcon, description: "Broadcast to all members.", href: "/admin/alerts/send" },
-  {
-    baseTitle: "View Feedback",
-    icon: Inbox,
-    description: "Review member suggestions.",
-    href: "/admin/feedback",
-    isFeedbackTile: true,
-  },
-  { baseTitle: "Seat Dashboard", icon: Eye, description: "View current seat status.", href: "/seats/availability" },
-];
 
 const getInitials = (name?: string) => {
     if (!name) return 'S';
@@ -85,7 +66,7 @@ const getShiftColorClass = (shift: Shift | undefined) => {
   }
 };
 
-const CheckedInStudentCard = ({ student }: { student: CheckedInStudentInfo }) => {
+const CheckedInStudentCard = ({ student, onWarn, isWarning }: { student: CheckedInStudentInfo, onWarn: (studentId: string) => void, isWarning: boolean }) => {
   return (
     <Card className="w-full">
       <CardContent className="p-3 flex items-center justify-between gap-3">
@@ -114,9 +95,20 @@ const CheckedInStudentCard = ({ student }: { student: CheckedInStudentInfo }) =>
           </div>
         </div>
         {student.isOutsideShift && (
-          <Badge variant="outline" className="border-yellow-500 text-yellow-600 text-xs flex-shrink-0">
-            Outside Shift
-          </Badge>
+          <Button
+            size="sm"
+            variant="outline"
+            className="border-yellow-500 text-yellow-600 hover:bg-yellow-500/10 flex-shrink-0"
+            onClick={() => onWarn(student.studentId)}
+            disabled={isWarning}
+          >
+            {isWarning ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <AlertTriangle className="h-4 w-4" />
+            )}
+            <span className="ml-2 hidden sm:inline">Warn</span>
+          </Button>
         )}
       </CardContent>
     </Card>
@@ -136,6 +128,9 @@ function AdminDashboardContent() {
   const [showCheckedInDialog, setShowCheckedInDialog] = React.useState(false);
   const [monthlyRevenue, setMonthlyRevenue] = React.useState<string | null>(null);
   const [currentMonthName, setCurrentMonthName] = React.useState<string>(format(new Date(), 'MMMM'));
+
+  const [isWarningStudentId, setIsWarningStudentId] = React.useState<string | null>(null);
+  const { toast } = useToast();
 
   const { count: openFeedbackCount, isLoadingCount: isLoadingFeedbackCount } = useNotificationCounts();
   const { count: financialCount, isLoadingCount: isLoadingFinancialCount } = useFinancialCounts();
@@ -223,6 +218,25 @@ function AdminDashboardContent() {
     };
   }, [showCheckedInDialog, baseCheckedInStudents]);
 
+  const handleWarnStudent = async (studentId: string) => {
+    setIsWarningStudentId(studentId);
+    try {
+      await sendShiftWarningAlert(studentId);
+      toast({
+        title: "Warning Sent",
+        description: `An alert has been sent to the student regarding their shift timing.`
+      });
+    } catch (error) {
+      toast({
+        title: "Error Sending Alert",
+        description: "Could not send the warning alert. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsWarningStudentId(null);
+    }
+  };
+
   const activeStudents = allStudents.filter(s => s.activityStatus === "Active");
   const morningShiftStudentCount = activeStudents.filter(s => s.shift === 'morning').length;
   const eveningShiftStudentCount = activeStudents.filter(s => s.shift === 'evening').length;
@@ -255,7 +269,12 @@ function AdminDashboardContent() {
             <div className="max-h-[60vh] overflow-y-auto mt-4 space-y-2">
               {studentsToDisplayInDialog.length > 0 ? (
                 studentsToDisplayInDialog.map((student) => (
-                  <CheckedInStudentCard key={student.studentId} student={student} />
+                  <CheckedInStudentCard 
+                    key={student.studentId} 
+                    student={student} 
+                    onWarn={handleWarnStudent}
+                    isWarning={isWarningStudentId === student.studentId}
+                  />
                 ))
               ) : (
                  <div className="text-center text-muted-foreground py-6">

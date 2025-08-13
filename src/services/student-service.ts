@@ -392,6 +392,9 @@ if (authUpdatePayload.email || authUpdatePayload.password || authUpdatePayload.p
     payload.seatNumber = null;
     payload.feeStatus = 'N/A';
     payload.amountDue = 'N/A';
+    // Preserve lastPaymentDate and nextDueDate
+    delete payload.lastPaymentDate;
+    delete payload.nextDueDate;
   } else if (studentUpdateData.activityStatus === 'Active' && studentToUpdate.activityStatus === 'Left') {
     if (!payload.seatNumber || !ALL_SEAT_NUMBERS.includes(payload.seatNumber)) {
         throw new Error("A valid seat must be selected to re-activate a student.");
@@ -1013,6 +1016,20 @@ export async function markAllAlertsAsRead(customStudentId: string): Promise<void
     }
 
     await batch.commit();
+}
+
+export async function sendShiftWarningAlert(customStudentId: string): Promise<void> {
+  const student = await getStudentByCustomId(customStudentId);
+  if (!student) {
+    throw new Error("Student not found to send warning.");
+  }
+
+  await sendAlertToStudent(
+    customStudentId,
+    "Outside Shift Warning",
+    `Hi ${student.name}, this is a friendly reminder that you are currently using the library facilities outside of your scheduled ${student.shift} shift hours. Please ensure you adhere to your shift timings.`,
+    "warning"
+  );
 }
 
 
