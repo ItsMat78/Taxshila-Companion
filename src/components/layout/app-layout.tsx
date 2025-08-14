@@ -1,7 +1,7 @@
 
 "use client";
 import * as React from 'react';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar';
 import { AppSidebarContent } from './app-sidebar-content';
@@ -14,7 +14,6 @@ import { NotificationBadge } from '@/components/shared/notification-badge';
 import { cn } from '@/lib/utils';
 import { TopProgressBar } from '@/components/shared/top-progress-bar';
 import { initPushNotifications, VAPID_KEY_FROM_CLIENT_LIB } from '@/lib/firebase-messaging-client';
-// Removed getStudentByEmail as it's no longer directly needed here for admin token check
 import { useToast } from '@/hooks/use-toast';
 import { useNotificationContext } from '@/contexts/notification-context';
 import { useTheme } from "next-themes";
@@ -56,22 +55,14 @@ function NotificationIconArea() {
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, isLoading: isAuthLoading } = useAuth();
   const pathname = usePathname();
-  const router = useRouter();
   const [isRouteLoading, setIsRouteLoading] = React.useState(false);
   const prevPathnameRef = React.useRef(pathname);
   const { toast } = useToast();
   const { refreshNotifications } = useNotificationContext();
   const { theme, setTheme } = useTheme();
 
-  React.useEffect(() => {
-    // This is the critical fix. The service worker file must be accessible
-    // even when the user is not logged in.
-    const isPublicPath = pathname.startsWith('/login') || pathname === '/sw.js';
-
-    if (!isAuthLoading && !user && !isPublicPath) {
-      router.replace('/login');
-    }
-  }, [user, isAuthLoading, pathname, router]);
+  // The main authentication redirect logic is now handled in AuthProvider/AuthContext.
+  // This simplifies AppLayout significantly.
 
   React.useEffect(() => {
     if (prevPathnameRef.current !== pathname) {
@@ -168,12 +159,13 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // If the user is not authenticated and is not on the login page, the effect above will redirect.
+  // If the user is not authenticated and is not on the login page, the effect in AuthContext will redirect.
   // Return null or a loader to prevent rendering the main layout.
   if (!user && !pathname.startsWith('/login')) {
     return null;
   }
 
+  // If we are on a public path (like login), just render the children.
   if (pathname.startsWith('/login')) {
     return (
       <>
@@ -182,7 +174,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       </>
     );
   }
-
+  
+  // If we have a user, render the full application layout.
   return (
     <SidebarProvider defaultOpen>
       <TopProgressBar isLoading={isRouteLoading} />
