@@ -64,7 +64,10 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const { theme, setTheme } = useTheme();
 
   React.useEffect(() => {
-    if (!isAuthLoading && !user && !pathname.startsWith('/login')) {
+    // FIX: Only redirect if not already on a public path (like /login)
+    // This prevents the redirect loop that was causing the service worker issue.
+    const isPublicPath = pathname.startsWith('/login');
+    if (!isAuthLoading && !user && !isPublicPath) {
       router.replace('/login');
     }
   }, [user, isAuthLoading, pathname, router]);
@@ -154,7 +157,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   }, [user, toast, refreshNotifications]);
 
 
-  if (isAuthLoading) {
+  if (isAuthLoading && !pathname.startsWith('/login')) {
     return (
       <div className="flex min-h-screen w-full flex-col items-center justify-center bg-background">
         <Skeleton className="h-12 w-12 rounded-full" />
@@ -164,6 +167,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     );
   }
 
+  // If the user is not authenticated and is not on the login page, the effect above will redirect.
+  // Return null or a loader to prevent rendering the main layout.
   if (!user && !pathname.startsWith('/login')) {
     return null;
   }

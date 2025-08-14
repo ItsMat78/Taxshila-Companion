@@ -1,61 +1,27 @@
 
-// This file must be in the public directory.
+// This service worker file is intentionally left with minimal content.
+// It is required for the browser to register a service worker for push notifications.
+// The actual Firebase messaging logic is handled by the Firebase SDK,
+// which will use this file as its entry point.
 
-import { initializeApp } from 'firebase/app';
-import { getMessaging, onBackgroundMessage } from 'firebase/messaging/sw';
+// IMPORTANT: Do NOT add any custom logic here unless you are familiar with
+// service worker lifecycles, as it can easily break push notifications.
 
-// Your web app's Firebase configuration
-const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
-};
+// If you need to debug, you can add simple console logs:
+// console.log("Service Worker loading...");
 
-// Initialize the Firebase app in the service worker
-try {
-    const app = initializeApp(firebaseConfig);
-    const messaging = getMessaging(app);
+self.addEventListener('install', (event) => {
+  // console.log('Service Worker installing.');
+  // Optionally, use skipWaiting to activate the new service worker immediately.
+  // self.skipWaiting();
+});
 
-    onBackgroundMessage(messaging, (payload) => {
-        console.log('[sw.js] Received background message ', payload);
+self.addEventListener('activate', (event) => {
+  // console.log('Service Worker activating.');
+});
 
-        const notificationTitle = payload.notification?.title || payload.data?.title || 'New Message';
-        const notificationOptions = {
-            body: payload.notification?.body || payload.data?.body || 'You have a new notification.',
-            icon: payload.notification?.icon || payload.data?.icon || '/logo.png',
-            data: {
-                url: payload.data?.url || '/' // Default URL if not provided
-            }
-        };
-
-        self.registration.showNotification(notificationTitle, notificationOptions);
-    });
-
-    self.addEventListener('notificationclick', (event) => {
-        event.notification.close();
-        const urlToOpen = event.notification.data.url;
-        
-        event.waitUntil(
-            clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
-                // Check if there is already a window/tab open with the target URL
-                for (let i = 0; i < windowClients.length; i++) {
-                    const client = windowClients[i];
-                    if (client.url === urlToOpen && 'focus' in client) {
-                        return client.focus();
-                    }
-                }
-                // If not, open a new window/tab
-                if (clients.openWindow) {
-                    return clients.openWindow(urlToOpen);
-                }
-            })
-        );
-    });
-
-} catch (error) {
-    console.error('[sw.js] Error during Firebase initialization or background messaging setup:', error);
-}
-
+self.addEventListener('push', (event) => {
+  // console.log('Push event received:', event);
+  // Firebase SDK handles the notification display.
+  // You would only add custom logic here for very advanced use cases.
+});
