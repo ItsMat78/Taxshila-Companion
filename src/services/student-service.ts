@@ -1,5 +1,4 @@
 
-
 import {
   db,
   collection,
@@ -272,7 +271,7 @@ export async function addStudent(studentData: AddStudentData): Promise<Student> 
     const newStudentDocRef = doc(collection(db, STUDENTS_COLLECTION)); // Firestore auto-generates an ID
 
     const firestorePayload: Omit<Student, 'id' | 'firestoreId' | 'paymentHistory'> = {
-      uid: undefined, // Will be set after auth sync
+      uid: null, // Will be set after auth sync
       studentId: studentId,
       name: studentData.name,
       email: studentData.email || undefined,
@@ -387,6 +386,7 @@ if (authUpdatePayload.email || authUpdatePayload.password || authUpdatePayload.p
     payload.seatNumber = null;
     payload.feeStatus = 'N/A';
     payload.amountDue = 'N/A';
+    payload.leftDate = new Date();
     // Preserve lastPaymentDate and nextDueDate
     delete payload.lastPaymentDate;
     delete payload.nextDueDate;
@@ -407,8 +407,9 @@ if (authUpdatePayload.email || authUpdatePayload.password || authUpdatePayload.p
     payload.feeStatus = 'Due';
     payload.amountDue = amountDueForShift;
     payload.lastPaymentDate = null;
-    payload.leftDate = null;
     payload.nextDueDate = new Date();
+    payload.paymentHistory = [];
+    payload.leftDate = null;
   }
 
   const finalNextDueDateString = payload.nextDueDate !== undefined ? payload.nextDueDate : studentToUpdate.nextDueDate;
@@ -1392,3 +1393,5 @@ declare module '@/types/communication' {
     firestoreId?: string;
   }
 }
+
+    
