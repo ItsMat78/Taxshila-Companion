@@ -412,7 +412,7 @@ if (authUpdatePayload.email || authUpdatePayload.password || authUpdatePayload.p
     payload.amountDue = amountDueForShift;
     payload.lastPaymentDate = null;
     payload.nextDueDate = format(new Date(), 'yyyy-MM-dd'); // Due today
-    payload.paymentHistory = [];
+    payload.paymentHistory = []; // Clear payment history on reactivation
   }
 
   const finalNextDueDateString = payload.nextDueDate !== undefined ? payload.nextDueDate : studentToUpdate.nextDueDate;
@@ -956,13 +956,6 @@ export async function getAlertsForStudent(customStudentId: string): Promise<Aler
   ];
 
   return contextualizedAlerts.sort((a, b) => parseISO(b.dateSent).getTime() - parseISO(a.dateSent).getTime());
-}
-
-
-export async function getAllAdminSentAlerts(): Promise<AlertItem[]> {
-  const q = query(collection(db, ALERTS_COLLECTION), orderBy("dateSent", "desc"));
-  const querySnapshot = await getDocs(q);
-  return querySnapshot.docs.map(doc => alertItemFromDoc(doc));
 }
 
 
