@@ -39,22 +39,19 @@ export async function POST(request: NextRequest) {
     const existingStudentByPhone = await db.collection('students').where('phone', '==', phone).limit(1).get();
     if (!existingStudentByPhone.empty) return NextResponse.json({ success: false, error: 'A student with this phone number already exists.' }, { status: 409 });
 
-    // --- Create Firebase Auth User ---
+    // --- 1. Create Firebase Auth User ---
     const userPayload: CreateRequest = {
       password: password,
       displayName: name,
       disabled: false,
       phoneNumber: `+91${phone}`,
-      photoURL: profilePictureUrl || undefined, // Use the provided URL
+      photoURL: profilePictureUrl || undefined,
     };
-
-    // If a real email is provided, use it. Otherwise, create a "proxy" email.
     userPayload.email = email || `${phone}@taxshila-auth.com`;
-
     
     const userRecord = await auth.createUser(userPayload);
 
-    // --- Create Firestore Student Document ---
+    // --- 2. Create Firestore Student Document ---
     const studentId = `TSMEM${String(Date.now()).slice(-6)}`;
     const studentDocRef = db.collection('students').doc(); // Auto-generate Firestore document ID
 
@@ -69,7 +66,7 @@ export async function POST(request: NextRequest) {
       seatNumber,
       activityStatus: 'Active',
       profileSetupComplete: true,
-      registrationDate: new Date().toISOString(),
+      registrationDate: FieldValue.serverTimestamp(),
       feeStatus: 'Due',
       profilePictureUrl: profilePictureUrl || null,
       createdAt: FieldValue.serverTimestamp(),
@@ -85,5 +82,3 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: false, error: "An unexpected server error occurred." }, { status: 500 });
   }
 }
-
-    

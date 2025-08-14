@@ -407,6 +407,7 @@ if (authUpdatePayload.email || authUpdatePayload.password || authUpdatePayload.p
     payload.lastPaymentDate = null;
     payload.leftDate = null;
     payload.nextDueDate = new Date(); 
+    payload.paymentHistory = [];
   }
 
   const finalNextDueDateString = payload.nextDueDate !== undefined ? payload.nextDueDate : studentToUpdate.nextDueDate;
