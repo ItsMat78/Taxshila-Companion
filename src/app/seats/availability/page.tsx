@@ -33,6 +33,8 @@ import { ALL_SEAT_NUMBERS as serviceAllSeats } from '@/config/seats';
 import type { Student, Shift } from '@/types/student';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+
 
 type ShiftView = Shift | 'fullday_occupied';
 type SeatStatusKey = "available" | "morning" | "evening" | "fullday" | "split";
@@ -69,6 +71,12 @@ const SEAT_STYLES: Record<SeatStatusKey, { bgClass: string; textClass: string; b
     icon: Users
   },
 };
+
+const getInitials = (name?: string) => {
+    if (!name) return 'S';
+    return name.split(' ').map(n => n[0]).join('').substring(0,2).toUpperCase();
+}
+
 
 export default function SeatAvailabilityPage() {
   const { toast } = useToast();
@@ -218,7 +226,12 @@ export default function SeatAvailabilityPage() {
             </div>
             <div className="p-2 rounded-lg bg-muted/50">
                 <p className="text-xs text-muted-foreground">Occupied Students</p>
-                {isLoading ? <Loader2 className="h-5 w-5 animate-spin mx-auto mt-1" /> : <p className="text-xl font-bold">{activeStudents.length}</p>}
+                {isLoading ? <Loader2 className="h-5 w-5 animate-spin mx-auto mt-1" /> : (
+                  <>
+                    <p className="text-xl font-bold">{activeStudents.length}</p>
+                    <p className="text-xs text-muted-foreground">M: {occupiedMorningStudentsCount}, E: {occupiedEveningStudentsCount}, FD: {occupiedFullDayStudentsCount}</p>
+                  </>
+                )}
             </div>
             <div className="p-2 rounded-lg bg-muted/50 col-span-2 sm:col-span-1">
                 <p className="text-xs text-muted-foreground">Available Slots (M/E/FD)</p>
@@ -240,7 +253,7 @@ export default function SeatAvailabilityPage() {
         <>
           <Card className="mt-6 shadow-lg">
             <CardHeader>
-              <CardTitle>Seat Layout (Full Day Occupancy)</CardTitle>
+              <CardTitle>Seat Layout</CardTitle>
               <CardDescription>Visual representation of seat occupancy. Click a seat for more details.</CardDescription>
             </CardHeader>
             <CardContent>
@@ -296,12 +309,21 @@ export default function SeatAvailabilityPage() {
                           {studentsOnThisSeat.length > 0 ? (
                             studentsOnThisSeat.map(student => (
                               <div key={student.studentId} className="border-b pb-2 last:border-b-0 last:pb-0">
-                                <p className="text-sm font-medium">{student.name}</p>
-                                <p className="text-xs text-muted-foreground capitalize">
-                                  Shift: {student.shift}
-                                </p>
-                                <p className="text-xs text-muted-foreground">
-                                  Phone: {student.phone}
+                                <div className="flex items-center gap-3 mb-2">
+                                  <Avatar className="h-10 w-10 border">
+                                    <AvatarImage src={student.profilePictureUrl || undefined} alt={student.name} data-ai-hint="profile person" />
+                                    <AvatarFallback>{getInitials(student.name)}</AvatarFallback>
+                                  </Avatar>
+                                  <div>
+                                    <p className="text-sm font-medium">{student.name}</p>
+                                    <p className="text-xs text-muted-foreground capitalize">
+                                      Shift: {student.shift}
+                                    </p>
+                                  </div>
+                                </div>
+                                
+                                <p className="text-xs text-muted-foreground flex items-center">
+                                  <PhoneIcon className="mr-1.5 h-3 w-3" /> {student.phone}
                                 </p>
                                 <div className="mt-2 flex space-x-2">
                                   <Link href={`/students/profiles/${student.studentId}`} passHref legacyBehavior>
