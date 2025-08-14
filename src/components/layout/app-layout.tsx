@@ -64,9 +64,10 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const { theme, setTheme } = useTheme();
 
   React.useEffect(() => {
-    // FIX: Only redirect if not already on a public path (like /login)
-    // This prevents the redirect loop that was causing the service worker issue.
-    const isPublicPath = pathname.startsWith('/login');
+    // This is the critical fix. The service worker file must be accessible
+    // even when the user is not logged in.
+    const isPublicPath = pathname.startsWith('/login') || pathname === '/sw.js';
+
     if (!isAuthLoading && !user && !isPublicPath) {
       router.replace('/login');
     }
