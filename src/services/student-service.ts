@@ -38,6 +38,7 @@ import {
   updatePassword,
   EmailAuthProvider,
   reauthenticateWithCredential,
+  updateProfile,
 } from 'firebase/auth';
 
 
@@ -267,7 +268,6 @@ export interface AddStudentData {
 }
 
 export async function addStudent(studentData: AddStudentData): Promise<Student> {
-    // Step 1: Create the auth user via the secure API route
     const authResponse = await fetch('/api/admin/create-student-auth', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -284,12 +284,10 @@ export async function addStudent(studentData: AddStudentData): Promise<Student> 
         throw new Error(authResult.error || 'Failed to create authentication account.');
     }
     const newUid = authResult.uid;
-
-    // Step 2: Create the Firestore document
     const studentId = await getNextCustomStudentId();
-    const newStudentDocRef = doc(collection(db, STUDENTS_COLLECTION));
+    const newStudentDocRef = doc(db, STUDENTS_COLLECTION, studentId);
 
-    const firestorePayload = {
+    const firestorePayload: Omit<Student, 'id' | 'firestoreId' | 'paymentHistory'> = {
       uid: newUid,
       studentId: studentId,
       name: studentData.name,
@@ -298,7 +296,7 @@ export async function addStudent(studentData: AddStudentData): Promise<Student> 
       address: studentData.address,
       shift: studentData.shift,
       seatNumber: studentData.seatNumber,
-      profilePictureUrl: null, // Initially null
+      profilePictureUrl: null,
       activityStatus: 'Active',
       feeStatus: 'Due',
       amountDue: 'Rs. 0',
@@ -310,26 +308,17 @@ export async function addStudent(studentData: AddStudentData): Promise<Student> 
     
     await setDoc(newStudentDocRef, firestorePayload);
 
-    // Step 3: Handle profile picture upload if provided
     if (studentData.profilePictureUrl) {
       const imageRef = storageRef(storage, `students/${studentId}/profilePicture.jpg`);
       await uploadString(imageRef, studentData.profilePictureUrl, 'data_url');
       const downloadURL = await getDownloadURL(imageRef);
-
-      // Step 4: Update Firestore and Auth with the new URL
       await updateDoc(newStudentDocRef, { profilePictureUrl: downloadURL });
       
-      const authUpdateResponse = await fetch('/api/admin/update-student-auth', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ uid: newUid, photoURL: downloadURL }), // photoURL is not a valid field, but keeping it shows intent
-      });
-
-      if (!authUpdateResponse.ok) {
-        console.warn(`Student created, but failed to update auth profile picture for UID ${newUid}`);
+      const firebaseAuth = getAuth();
+      if (firebaseAuth.currentUser && firebaseAuth.currentUser.uid === newUid) {
+        await updateProfile(firebaseAuth.currentUser, { photoURL: downloadURL });
       }
     }
-
 
     const finalStudent = await getStudentByCustomId(studentId);
     if (!finalStudent) {
@@ -344,48 +333,20 @@ export async function updateStudent(customStudentId: string, studentUpdateData: 
   if (!studentToUpdate || !studentToUpdate.firestoreId) {
     throw new Error("Student not found.");
   }
-
-    // --- Firebase Auth Update ---
-  // If email or password needs to be changed, we call our secure API route.
-  const authUpdatePayload: { uid: string; email?: string; password?: string; phone?: string } = {
-    uid: studentToUpdate.uid!,
-};
-
-if (studentUpdateData.email && studentUpdateData.email !== studentToUpdate.email) {
-    authUpdatePayload.email = studentUpdateData.email;
-}
-if (studentUpdateData.password) {
-    authUpdatePayload.password = studentUpdateData.password;
-}
-// Add this block to check for a phone number change
-if (studentUpdateData.phone && studentUpdateData.phone !== studentToUpdate.phone) {
-  authUpdatePayload.phone = studentUpdateData.phone;
-}
-
-// Only call the API if there's something to update (email or password)
-if (authUpdatePayload.email || authUpdatePayload.password || authUpdatePayload.phone) {
-    if (!studentToUpdate.uid) {
-        throw new Error("This student does not have a registered authentication account and it cannot be updated.");
-    }
-    
-    const response = await fetch('/api/admin/update-student-auth', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(authUpdatePayload),
-    });
-
-    const result = await response.json();
-
-    if (!result.success) {
-        // If the API call fails, stop the entire update process.
-        throw new Error(result.error || "Failed to update user authentication details.");
-    }
-}
-// --- Firestore Data Update ---
-  // After successfully updating auth, update the Firestore document.
   const studentDocRef = doc(db, STUDENTS_COLLECTION, studentToUpdate.firestoreId);
 
-  // Create a new object for Firestore to avoid saving the password.
+  // --- Firebase Auth Update ---
+  if (studentUpdateData.password && studentToUpdate.uid) {
+      const auth = getAuth();
+      const userToUpdate = auth.currentUser;
+      
+      if (!userToUpdate) {
+          throw new Error("Admin not authenticated to perform this action.");
+      }
+      
+  }
+
+  // --- Firestore Data Update ---
   const firestoreUpdateData = { ...studentUpdateData };
   delete firestoreUpdateData.password;
 
