@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
   try {
     const { name, email, phone, password, address, shift, seatNumber, profilePictureUrl } = await request.json();
 
-    // --- Validation ---
+    // --- 1. Validation ---
     if (!name || !password || !address || !shift || !seatNumber || !phone) {
         return NextResponse.json({ success: false, error: "Missing required fields. All fields except email are mandatory." }, { status: 400 });
     }
@@ -24,54 +24,50 @@ export async function POST(request: NextRequest) {
     const auth = getAuth();
     const db = getDb();
     
-    // --- Seat Availability Check ---
+    // --- 2. Check for Existing User and Seat Availability ---
     const seatQuery = db.collection('students').where('shift', '==', shift).where('seatNumber', '==', seatNumber).where('activityStatus', '==', 'Active');
     const seatSnapshot = await seatQuery.get();
     if (!seatSnapshot.empty) {
         return NextResponse.json({ success: false, error: `Seat ${seatNumber} is already taken for the ${shift} shift.` }, { status: 409 });
     }
 
-    // --- Check for Existing User ---
     if (email) {
         try {
             await auth.getUserByEmail(email);
             return NextResponse.json({ success: false, error: 'An account with this email already exists in Firebase Auth.' }, { status: 409 });
         } catch (error: any) {
-            if (error.code !== 'auth/user-not-found') throw error;
+            if (error.code !== 'auth/user-not-found') throw error; // Re-throw unexpected errors
         }
     }
      try {
         await auth.getUserByPhoneNumber(`+91${phone}`);
         return NextResponse.json({ success: false, error: 'An account with this phone number already exists in Firebase Auth.' }, { status: 409 });
     } catch (error: any) {
-        if (error.code !== 'auth/user-not-found') throw error;
+        if (error.code !== 'auth/user-not-found') throw error; // Re-throw unexpected errors
     }
 
+    // --- 3. Generate a new custom student ID ---
+    const studentId = `TSMEM${String(Date.now()).slice(-6)}`;
 
-    // --- 1. Create Firebase Auth User ---
+    // --- 4. Create Firebase Auth User ---
     const userPayload: CreateRequest = {
       password: password,
       displayName: name,
       disabled: false,
       phoneNumber: `+91${phone}`,
     };
-    // Only add email if it's provided and not an empty string
-    if (email) {
-      userPayload.email = email;
-    }
-    if (profilePictureUrl) {
-      userPayload.photoURL = profilePictureUrl;
-    }
+    if (email) userPayload.email = email;
+    if (profilePictureUrl) userPayload.photoURL = profilePictureUrl;
     
     const userRecord = await auth.createUser(userPayload);
 
-    // --- 2. Create Firestore Student Document ---
-    const studentId = `TSMEM${String(Date.now()).slice(-6)}`;
-    const studentDocRef = db.collection('students').doc(); // Auto-generate Firestore document ID
+    // --- 5. Create Firestore Student Document ---
+    // Use the auto-generated Firestore ID for the document, but store the custom studentId inside it.
+    const studentDocRef = db.collection('students').doc(); 
 
     await studentDocRef.set({
       uid: userRecord.uid, // Save the Auth UID
-      studentId,
+      studentId, // Save the custom TSMEM... ID
       name,
       email: email || null,
       phone,
@@ -80,13 +76,14 @@ export async function POST(request: NextRequest) {
       seatNumber,
       activityStatus: 'Active',
       profileSetupComplete: true,
-      registrationDate: Timestamp.fromDate(new Date()), // Use a valid Timestamp
+      registrationDate: Timestamp.fromDate(new Date()),
       feeStatus: 'Due',
       profilePictureUrl: profilePictureUrl || null,
-      createdAt: Timestamp.fromDate(new Date()), // Use a valid Timestamp
+      createdAt: Timestamp.fromDate(new Date()),
     });
 
-    return NextResponse.json({ success: true, studentId });
+    // --- 6. Return a successful response ---
+    return NextResponse.json({ success: true, studentId: studentId });
 
   } catch (error: any) {
     console.error("Admin Registration Error:", error);
