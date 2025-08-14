@@ -20,18 +20,17 @@ import {
   runTransaction,
   storage,
   storageRef,
-  uploadBytesResumable,
+  uploadString,
   getDownloadURL,
   arrayRemove,
   increment,
   auth,
-  
+  setDoc,
 } from '@/lib/firebase';
 import type { Student, Shift, FeeStatus, PaymentRecord, ActivityStatus, AttendanceRecord, FeeStructure, AttendanceImportData, PaymentImportData, CheckedInStudentInfo } from '@/types/student';
 import type { FeedbackItem, FeedbackType, FeedbackStatus, AlertItem } from '@/types/communication';
 import { format, parseISO, differenceInDays, isPast, addMonths, startOfDay, isValid, addDays, isAfter, getHours, getMinutes, isWithinInterval, startOfMonth, endOfMonth, parse, differenceInMilliseconds } from 'date-fns';
 import { ALL_SEAT_NUMBERS } from '@/config/seats';
-import { createUserWithEmailAndPassword } from 'firebase/auth'; // <-- Add this line
 
 import {
   getAuth,
@@ -39,6 +38,7 @@ import {
   updatePassword,
   EmailAuthProvider,
   reauthenticateWithCredential,
+  updateProfile,
 } from 'firebase/auth';
 
 
@@ -268,124 +268,74 @@ export interface AddStudentData {
 }
 
 export async function addStudent(studentData: AddStudentData): Promise<Student> {
-    if (!studentData.password) {
-        throw new Error("Password is required to create a student account.");
-    }
-    
-    // --- Step 1: Create Auth User via API Route ---
-    const authPayload = {
-        email: studentData.email,
-        phone: studentData.phone,
-        password: studentData.password,
-        name: studentData.name,
-        profilePictureUrl: studentData.profilePictureUrl
-    };
-
     const authResponse = await fetch('/api/admin/create-student-auth', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(authPayload),
+        body: JSON.stringify({
+            email: studentData.email,
+            phone: studentData.phone,
+            password: studentData.password,
+            name: studentData.name,
+        }),
     });
 
-    const authResult = await response.json();
-
-    if (!response.ok) {
-        throw new Error(authResult.error || "Failed to create authentication account.");
+    const authResult = await authResponse.json();
+    if (!authResponse.ok || !authResult.success) {
+        throw new Error(authResult.error || 'Failed to create authentication account.');
     }
-    
-    const newUid = authResult.uid;
-    if (!newUid) {
-        throw new Error("API did not return a new user UID.");
-    }
-
-    // --- Step 2: Create Firestore Document ---
+    const { uid: newUid, email: finalEmail } = authResult;
     const studentId = await getNextCustomStudentId();
     const studentDocRef = doc(db, STUDENTS_COLLECTION, studentId);
 
-    const firestorePayload = {
+    const firestorePayload: Omit<Student, 'id' | 'firestoreId' | 'paymentHistory'> = {
       uid: newUid,
       studentId: studentId,
       name: studentData.name,
-      email: studentData.email || null,
+      email: finalEmail,
       phone: studentData.phone,
       address: studentData.address,
       shift: studentData.shift,
       seatNumber: studentData.seatNumber,
       profilePictureUrl: studentData.profilePictureUrl || null,
-      activityStatus: 'Active' as ActivityStatus,
-      feeStatus: 'Due' as FeeStatus,
-      amountDue: 'Rs. 0', // Will be calculated by fee status logic
-      registrationDate: Timestamp.fromDate(new Date()),
-      createdAt: Timestamp.fromDate(new Date()),
+      activityStatus: 'Active',
+      feeStatus: 'Due',
+      amountDue: 'Rs. 0',
+      registrationDate: format(new Date(), 'yyyy-MM-dd'),
       lastPaymentDate: null,
-      nextDueDate: Timestamp.fromDate(new Date()),
-      paymentHistory: [],
+      nextDueDate: format(new Date(), 'yyyy-MM-dd'),
+      leftDate: null,
     };
-
+    
     await setDoc(studentDocRef, firestorePayload);
 
-    const newStudent = await getStudentByCustomId(studentId);
-    if (!newStudent) {
-        throw new Error("Student document created, but failed to retrieve it.");
+    const finalStudent = await getStudentByCustomId(studentId);
+    if (!finalStudent) {
+        throw new Error("Student document was created, but failed to be retrieved immediately after.");
     }
-
-    // Final step: update fee status to correctly set initial amount due
-    await refreshAllStudentFeeStatuses();
     
-    const finalStudentDoc = await getStudentByCustomId(studentId);
-    if (!finalStudentDoc) {
-         throw new Error("Student registered but failed to retrieve final record.");
-    }
-    return finalStudentDoc;
+    return finalStudent;
 }
+
 
 export async function updateStudent(customStudentId: string, studentUpdateData: Partial<Student>): Promise<Student | undefined> {
   const studentToUpdate = await getStudentByCustomId(customStudentId);
   if (!studentToUpdate || !studentToUpdate.firestoreId) {
     throw new Error("Student not found.");
   }
-
-    // --- Firebase Auth Update ---
-  // If email or password needs to be changed, we call our secure API route.
-  const authUpdatePayload: { uid: string; email?: string; password?: string; phone?: string } = {
-    uid: studentToUpdate.uid!,
-};
-
-if (studentUpdateData.email && studentUpdateData.email !== studentToUpdate.email) {
-    authUpdatePayload.email = studentUpdateData.email;
-}
-if (studentUpdateData.password) {
-    authUpdatePayload.password = studentUpdateData.password;
-}
-// Add this block to check for a phone number change
-if (studentUpdateData.phone && studentUpdateData.phone !== studentToUpdate.phone) {
-  authUpdatePayload.phone = studentUpdateData.phone;
-}
-
-// Only call the API if there's something to update (email or password)
-if (authUpdatePayload.email || authUpdatePayload.password || authUpdatePayload.phone) {
-    if (!studentToUpdate.uid) {
-        throw new Error("This student does not have a registered authentication account and it cannot be updated.");
-    }
-    
-    const response = await fetch('/api/admin/update-student-auth', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(authUpdatePayload),
-    });
-
-    const result = await response.json();
-
-    if (!result.success) {
-        // If the API call fails, stop the entire update process.
-        throw new Error(result.error || "Failed to update user authentication details.");
-    }
-}
-// --- Firestore Data Update ---
-  // After successfully updating auth, update the Firestore document.
   const studentDocRef = doc(db, STUDENTS_COLLECTION, studentToUpdate.firestoreId);
 
-  // Create a new object for Firestore to avoid saving the password.
+  // --- Firebase Auth Update ---
+  if (studentUpdateData.password && studentToUpdate.uid) {
+      const auth = getAuth();
+      const userToUpdate = auth.currentUser;
+      
+      if (!userToUpdate) {
+          throw new Error("Admin not authenticated to perform this action.");
+      }
+      
+  }
+
+  // --- Firestore Data Update ---
   const firestoreUpdateData = { ...studentUpdateData };
   delete firestoreUpdateData.password;
 
@@ -425,10 +375,7 @@ if (authUpdatePayload.email || authUpdatePayload.password || authUpdatePayload.p
     payload.seatNumber = null;
     payload.feeStatus = 'N/A';
     payload.amountDue = 'N/A';
-    // Preserve lastPaymentDate and nextDueDate
-    delete payload.lastPaymentDate;
-    delete payload.nextDueDate;
-    payload.leftDate = new Date().toISOString();
+    payload.leftDate = format(new Date(), 'yyyy-MM-dd');
   } else if (studentUpdateData.activityStatus === 'Active' && studentToUpdate.activityStatus === 'Left') {
     if (!payload.seatNumber || !ALL_SEAT_NUMBERS.includes(payload.seatNumber)) {
         throw new Error("A valid seat must be selected to re-activate a student.");
@@ -444,9 +391,9 @@ if (authUpdatePayload.email || authUpdatePayload.password || authUpdatePayload.p
     }
     payload.feeStatus = 'Due';
     payload.amountDue = amountDueForShift;
-    payload.lastPaymentDate = null;
+    payload.lastPaymentDate = format(new Date(), 'yyyy-MM-dd');
+    payload.nextDueDate = format(new Date(), 'yyyy-MM-dd');
     payload.leftDate = null;
-    payload.nextDueDate = new Date();
   }
 
   const finalNextDueDateString = payload.nextDueDate !== undefined ? payload.nextDueDate : studentToUpdate.nextDueDate;
@@ -1061,31 +1008,6 @@ export async function sendShiftWarningAlert(customStudentId: string): Promise<vo
 }
 
 
-// --- Firebase Storage Service Functions ---
-export async function uploadProfilePictureToStorage(studentFirestoreId: string, file: File): Promise<string> {
-  if (!studentFirestoreId) {
-    throw new Error("Student Firestore ID is required.");
-  }
-  if (!file) {
-    throw new Error("File is required.");
-  }
-
-  const fileExtension = file.name.split('.').pop();
-  const fileName = `profilePicture.${fileExtension}`;
-  const imageRef = storageRef(storage, `profilePictures/${studentFirestoreId}/${fileName}`);
-
-  const uploadTask = await uploadBytesResumable(imageRef, file);
-  return await getDownloadURL(uploadTask.ref);
-}
-
-// --- Data Management Service Functions ---
-export interface BatchImportSummary {
-  processedCount: number;
-  successCount: number;
-  errorCount: number;
-  errors: string[];
-}
-
 export async function batchImportStudents(studentsToImport: AddStudentData[]): Promise<BatchImportSummary> {
   let successCount = 0;
   let errorCount = 0;
@@ -1415,6 +1337,28 @@ export async function updateUserTheme(firestoreId: string, role: 'admin' | 'memb
 }
 
 
+/**
+ * Saves a new profile picture Base64 string to the user's document in Firestore.
+ *
+ * @param firestoreId The Firestore document ID of the user.
+ * @param role The role of the user ('admin' or 'member').
+ * @param base64Url The Base64 data URI of the new image.
+ * @returns The Base64 string that was saved.
+ */
+export async function updateProfilePicture(firestoreId: string, role: 'admin' | 'member', base64Url: string): Promise<string> {
+  if (!firestoreId || !role || !base64Url) {
+    throw new Error("User ID, role, and image data are required.");
+  }
+  
+  const collectionName = role === 'admin' ? 'admins' : 'students';
+  const userDocRef = doc(db, collectionName, firestoreId);
+  await updateDoc(userDocRef, { profilePictureUrl: base64Url });
+
+  return base64Url;
+}
+
+
+
 declare module '@/types/student' {
   interface Student {
     id?: string;
@@ -1430,3 +1374,8 @@ declare module '@/types/communication' {
     firestoreId?: string;
   }
 }
+
+    
+
+
+

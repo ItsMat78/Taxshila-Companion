@@ -31,6 +31,7 @@ interface User {
 
 interface AuthContextType {
   user: User | null;
+  updateUser: (updatedData: Partial<User>) => void; // New function
   login: (identifier: string, passwordAttempt: string) => Promise<User | null>;
   logout: () => void;
   isLoading: boolean;
@@ -64,6 +65,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setIsLoading(false);
     }
   }, [setTheme]);
+
+  const updateUser = (updatedData: Partial<User>) => {
+    setUser(prevUser => {
+      if (!prevUser) return null;
+      const newUser = { ...prevUser, ...updatedData };
+      localStorage.setItem('taxshilaUser', JSON.stringify(newUser));
+      return newUser;
+    });
+  };
 
   const login = async (identifier: string, passwordAttempt: string): Promise<User | null> => {
     setIsLoading(true);
@@ -195,7 +205,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [user, toast]);
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, isLoading, saveThemePreference }}>
+    <AuthContext.Provider value={{ user, updateUser, login, logout, isLoading, saveThemePreference }}>
       {children}
     </AuthContext.Provider>
   );

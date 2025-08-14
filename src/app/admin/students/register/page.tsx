@@ -50,16 +50,12 @@ const studentFormSchema = z.object({
   phone: z.string()
     .length(10, { message: "Phone number must be exactly 10 digits." })
     .regex(/^\d+$/, { message: "Phone number must contain only digits." }),
-  address: z.string(),
   password: z.string().min(6, { message: "Password must be at least 6 characters." }),
-  confirmPassword: z.string(),
+  address: z.string(),
   shift: z.enum(["morning", "evening", "fullday"], { required_error: "Shift selection is required." }),
   seatNumber: z.string().min(1, "Seat selection is required."),
   idCardFileName: z.string().optional(),
-  profilePictureUrl: z.string().optional(), // Added for the profile picture
-}).refine(data => data.password === data.confirmPassword, {
-  message: "Passwords don't match",
-  path: ["confirmPassword"],
+  profilePictureUrl: z.string().optional(),
 });
 
 type StudentFormValues = z.infer<typeof studentFormSchema>;
@@ -98,9 +94,8 @@ export default function StudentRegisterPage() {
       name: "",
       email: "",
       phone: "",
-      address: "",
       password: "",
-      confirmPassword: "",
+      address: "",
       shift: undefined,
       seatNumber: "",
       idCardFileName: "",
@@ -213,20 +208,20 @@ export default function StudentRegisterPage() {
         name: data.name,
         email: data.email || undefined,
         phone: data.phone,
-        address: data.address,
         password: data.password,
+        address: data.address,
         shift: data.shift,
         seatNumber: data.seatNumber,
         idCardFileName: data.idCardFileName,
-        profilePictureUrl: data.profilePictureUrl, // Pass the base64 url
+        profilePictureUrl: data.profilePictureUrl,
       };
       const newStudent = await addStudent(studentPayload);
       toast({
         title: "Student Registered Successfully",
-        description: `${newStudent.name} (ID: ${newStudent.studentId}) has been registered with seat ${newStudent.seatNumber} for ${newStudent.shift} shift.`,
+        description: `${newStudent.name} (ID: ${newStudent.studentId}) has been registered and their auth account is active.`,
       });
       form.reset();
-      setPreviewUrl(null); // Clear preview after successful submission
+      setPreviewUrl(null); 
       if (fileInputRef.current) {
         fileInputRef.current.value = ""; 
       }
@@ -253,11 +248,11 @@ export default function StudentRegisterPage() {
 
   return (
     <>
-      <PageTitle title="Register New Student" description="Add a new student to the system." />
+      <PageTitle title="Register New Student" description="Add a new student to the system and create their login account." />
       <Card className="w-full md:max-w-2xl mx-auto shadow-lg">
         <CardHeader>
           <CardTitle>Student Registration Form</CardTitle>
-          <CardDescription>Fill in the details below. Student ID will be auto-generated.</CardDescription>
+          <CardDescription>Fill in the details below. A student ID will be auto-generated and their login account will be created.</CardDescription>
         </CardHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)}>
@@ -325,14 +320,11 @@ export default function StudentRegisterPage() {
               <FormField control={form.control} name="phone" render={({ field }) => (
                 <FormItem><FormLabel>Phone Number</FormLabel><FormControl><Input type="tel" placeholder="Enter 10-digit phone number" {...field} disabled={isSubmitting} /></FormControl><FormMessage /></FormItem>
               )} />
+              <FormField control={form.control} name="password" render={({ field }) => (
+                <FormItem><FormLabel>Password</FormLabel><FormControl><Input type="password" placeholder="Enter initial password (min. 6 characters)" {...field} disabled={isSubmitting} /></FormControl><FormMessage /></FormItem>
+              )} />
               <FormField control={form.control} name="address" render={({ field }) => (
                 <FormItem><FormLabel>Address</FormLabel><FormControl><Input placeholder="Enter address" {...field} disabled={isSubmitting} /></FormControl><FormMessage /></FormItem>
-              )} />
-              <FormField control={form.control} name="password" render={({ field }) => (
-                <FormItem><FormLabel>Password</FormLabel><FormControl><Input type="password" placeholder="Enter password (min 6 characters)" {...field} disabled={isSubmitting} /></FormControl><FormMessage /></FormItem>
-              )} />
-              <FormField control={form.control} name="confirmPassword" render={({ field }) => (
-                <FormItem><FormLabel>Confirm Password</FormLabel><FormControl><Input type="password" placeholder="Re-enter password" {...field} disabled={isSubmitting} /></FormControl><FormMessage /></FormItem>
               )} />
               <FormField control={form.control} name="shift" render={({ field }) => (
                 <FormItem className="space-y-3"><FormLabel>Shift Selection</FormLabel>
@@ -395,5 +387,3 @@ export default function StudentRegisterPage() {
     </>
   );
 }
-
-    

@@ -1,3 +1,5 @@
+
+
 "use client";
 
 import * as React from 'react';
@@ -17,25 +19,30 @@ import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from '@/contexts/auth-context';
-import { getStudentByEmail, getStudentByCustomId } from '@/services/student-service'; 
+import { getStudentByEmail, getStudentByCustomId, updateProfilePicture } from '@/services/student-service'; 
 import type { Student } from '@/types/student'; 
-import { UserCircle, UploadCloud, Save, Mail, Phone, BookOpen, MapPin, Receipt, Loader2, Edit, SquareUser, IndianRupee } from 'lucide-react';
+import { UserCircle, UploadCloud, Save, Mail, Phone, BookOpen, MapPin, Receipt, Loader2, Edit, SquareUser, IndianRupee, Camera, View, Video, VideoOff } from 'lucide-react';
+import { Label } from '@/components/ui/label';
+import { Dialog, DialogContent, DialogTrigger, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 
 const DEFAULT_PROFILE_PLACEHOLDER = "https://placehold.co/200x200.png";
-const ID_CARD_PLACEHOLDER = "https://placehold.co/300x200.png?text=ID+Card";
 
 export default function MemberProfilePage() {
-  const { user } = useAuth();
+  const { user, updateUser } = useAuth(); // Get updateUser from context
   const { toast } = useToast();
 
   const [memberDetails, setMemberDetails] = React.useState<Student | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
   const [isSavingPicture, setIsSavingPicture] = React.useState(false);
 
-  const [currentProfilePicture, setCurrentProfilePicture] = React.useState(DEFAULT_PROFILE_PLACEHOLDER);
-  const [profilePicturePreview, setProfilePicturePreview] = React.useState<string | null>(null);
-  const [selectedFile, setSelectedFile] = React.useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = React.useState<string | null>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+  
+  const [isCameraDialogOpen, setIsCameraDialogOpen] = React.useState(false);
+  const [hasCameraPermission, setHasCameraPermission] = React.useState(true);
+  const videoRef = React.useRef<HTMLVideoElement>(null);
+  const canvasRef = React.useRef<HTMLCanvasElement>(null);
 
   React.useEffect(() => {
     setIsLoading(true);
@@ -50,7 +57,7 @@ export default function MemberProfilePage() {
 
         if (student) {
           setMemberDetails(student);
-          setCurrentProfilePicture(student.profilePictureUrl || DEFAULT_PROFILE_PLACEHOLDER);
+          setPreviewUrl(student.profilePictureUrl || null);
         } else {
           toast({ title: "Error", description: "Could not load your profile data.", variant: "destructive" });
         }
@@ -62,62 +69,101 @@ export default function MemberProfilePage() {
       }
     };
 
-    fetchStudent();
+    if (user) {
+      fetchStudent();
+    }
   }, [user, toast]);
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  React.useEffect(() => {
+    let stream: MediaStream | null = null;
+    const videoElem = videoRef.current;
+
+    if (isCameraDialogOpen) {
+      const getCameraPermission = async () => {
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({ video: true });
+          setHasCameraPermission(true);
+          if (videoRef.current) {
+            videoRef.current.srcObject = stream;
+          }
+        } catch (error) {
+          console.error("Error accessing camera:", error);
+          setHasCameraPermission(false);
+          toast({
+            variant: "destructive",
+            title: "Camera Access Denied",
+            description: "Please enable camera permissions in your browser settings.",
+          });
+          setIsCameraDialogOpen(false);
+        }
+      };
+      getCameraPermission();
+    }
+
+    return () => {
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+      }
+      if (videoElem) {
+        videoElem.srcObject = null;
+      }
+    };
+  }, [isCameraDialogOpen, toast]);
+
+  const handleCapture = () => {
+    if (videoRef.current && canvasRef.current) {
+        const video = videoRef.current;
+        const canvas = canvasRef.current;
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        const context = canvas.getContext('2d');
+        if (context) {
+            context.drawImage(video, 0, 0, video.videoWidth, video.videoHeight);
+            const dataUrl = canvas.toDataURL('image/jpeg');
+            setPreviewUrl(dataUrl);
+        }
+        setIsCameraDialogOpen(false); // This will trigger the useEffect cleanup
+    }
+  };
+
+
+  const toBase64 = (file: File): Promise<string> => new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = error => reject(error);
+  });
+
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      if (file.size > 2 * 1024 * 1024) { // Limit file size to 2MB
-        toast({
-          title: "File Too Large",
-          description: "Please select an image smaller than 2MB.",
-          variant: "destructive",
-        });
-        if(fileInputRef.current) fileInputRef.current.value = "";
-        setSelectedFile(null);
-        setProfilePicturePreview(null);
+      if (file.size > 2 * 1024 * 1024) {
+        toast({ title: "File Too Large", description: "Please select an image smaller than 2MB.", variant: "destructive" });
         return;
       }
-      setSelectedFile(file);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setProfilePicturePreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+      const base64 = await toBase64(file);
+      setPreviewUrl(base64);
     }
   };
 
   const handleSaveProfilePicture = async () => {
-    if (!profilePicturePreview || !memberDetails) {
-      toast({
-        title: "No Picture Selected",
-        description: "Please select a picture to update.",
-        variant: "destructive",
-      });
+    if (!previewUrl || !previewUrl.startsWith('data:image') || !memberDetails || !memberDetails.firestoreId) {
+      toast({ title: "No New Picture", description: "Please select a new picture to save.", variant: "destructive" });
       return;
     }
   
     setIsSavingPicture(true);
-    // Simulate client-side update for now
-    await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate network delay
-    
-    setCurrentProfilePicture(profilePicturePreview); // Update displayed picture
-    
-    // Update local studentDetails state if you want to reflect it in other parts that might use memberDetails.profilePictureUrl
-    // This part is optional as currentProfilePicture is directly used for Avatar src
-    // setMemberDetails(prev => prev ? ({ ...prev, profilePictureUrl: profilePicturePreview }) : null);
-
-    toast({
-      title: "Profile Picture Preview Updated",
-      description: "Your new profile picture is previewed. (Note: Not saved to server in this version).",
-    });
-  
-    setIsSavingPicture(false);
-    setProfilePicturePreview(null); // Clear preview
-    setSelectedFile(null); // Clear selected file
-    if (fileInputRef.current) {
-      fileInputRef.current.value = ""; // Reset file input
+    try {
+      const newUrl = await updateProfilePicture(memberDetails.firestoreId, 'member', previewUrl);
+      setMemberDetails(prev => prev ? { ...prev, profilePictureUrl: newUrl } : null);
+      setPreviewUrl(newUrl);
+      updateUser({ profilePictureUrl: newUrl }); // Update the context
+      toast({ title: "Success", description: "Your profile picture has been updated." });
+    } catch (error: any) {
+      toast({ title: "Upload Failed", description: error.message || "Could not save your new picture.", variant: "destructive" });
+    } finally {
+      setIsSavingPicture(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
 
@@ -146,19 +192,91 @@ export default function MemberProfilePage() {
   }
 
   const displayName = memberDetails.name || user?.email?.split('@')[0] || "Member";
+  const hasUnsavedChanges = previewUrl && previewUrl !== memberDetails.profilePictureUrl;
 
   return (
     <>
-      <PageTitle title="My Profile" description="View your details." />
+      <PageTitle title="My Profile" description="View and manage your details." />
       
       <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-3">  
+        <div className="lg:col-span-1 space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Profile Picture</CardTitle>
+              <CardDescription>Update your avatar.</CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-col items-center gap-4">
+              <Dialog>
+                  <DialogTrigger asChild>
+                      <div className="cursor-pointer relative group">
+                          <Avatar className="h-32 w-32 border-2 border-primary shadow-md">
+                              <AvatarImage src={previewUrl || DEFAULT_PROFILE_PLACEHOLDER} alt={displayName} data-ai-hint="profile person"/>
+                              <AvatarFallback className="text-4xl">{displayName.charAt(0)}</AvatarFallback>
+                          </Avatar>
+                           <div className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                              <View className="text-white h-10 w-10"/>
+                          </div>
+                      </div>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-md w-auto p-2">
+                      <Image
+                          src={previewUrl || DEFAULT_PROFILE_PLACEHOLDER}
+                          alt="Profile Picture Full View"
+                          width={500}
+                          height={500}
+                          className="rounded-md object-contain max-h-[80vh] w-full h-auto"
+                      />
+                  </DialogContent>
+              </Dialog>
+              
+              <div className="w-full space-y-2">
+                <Label htmlFor="picture-upload">Change Picture (Max 2MB)</Label>
+                <Input id="picture-upload" type="file" accept="image/*" onChange={handleFileChange} ref={fileInputRef} disabled={isSavingPicture} />
+                <Dialog open={isCameraDialogOpen} onOpenChange={setIsCameraDialogOpen}>
+                    <DialogTrigger asChild>
+                        <Button type="button" variant="outline" className="w-full" disabled={isSavingPicture}>
+                            <Camera className="mr-2 h-4 w-4" /> Use Camera
+                        </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                        <DialogHeader>
+                            <DialogTitle>Capture Photo</DialogTitle>
+                        </DialogHeader>
+                        <div className="py-4">
+                            <video ref={videoRef} className="w-full aspect-video rounded-md bg-muted" autoPlay playsInline muted />
+                            { !hasCameraPermission && (
+                                <Alert variant="destructive" className="mt-2">
+                                    <AlertTitle>Camera Access Required</AlertTitle>
+                                    <AlertDescription>Please allow camera access to use this feature.</AlertDescription>
+                                </Alert>
+                            )}
+                            <canvas ref={canvasRef} className="hidden" />
+                        </div>
+                        <DialogFooter>
+                            <Button type="button" onClick={handleCapture} disabled={!hasCameraPermission}>
+                                <Camera className="mr-2 h-4 w-4" /> Capture and Use
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
+              </div>
+            </CardContent>
+            <CardFooter>
+              <Button onClick={handleSaveProfilePicture} disabled={isSavingPicture || !hasUnsavedChanges} className="w-full">
+                {isSavingPicture ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Save className="mr-2 h-4 w-4"/>}
+                {isSavingPicture ? 'Saving...' : 'Save Picture'}
+              </Button>
+            </CardFooter>
+          </Card>
+        </div>
+        
         <Card className="lg:col-span-2 shadow-lg">
           <CardHeader>
-          <div className="flex items-center">
-          <SquareUser className="mr-3 h-5 w-5 text-muted-foreground " />
-          <CardTitle>My Details</CardTitle>
-          </div>  
-          <CardDescription>Your current information on record. Contact admin to change these details.</CardDescription>
+            <div className="flex items-center">
+              <SquareUser className="mr-3 h-5 w-5 text-muted-foreground " />
+              <CardTitle>My Details</CardTitle>
+            </div>  
+            <CardDescription>Your current information on record. Contact admin to change these details.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center">
@@ -172,7 +290,7 @@ export default function MemberProfilePage() {
               <Mail className="mr-3 h-5 w-5 text-muted-foreground flex-shrink-0" />
               <div className="min-w-0">
                 <p className="text-sm text-muted-foreground">Email Address</p>
-                <p className="font-medium break-words">{memberDetails.email || user?.email}</p>
+                <p className="font-medium break-words">{memberDetails.email || 'N/A'}</p>
               </div>
             </div>
             <div className="flex items-center">
@@ -196,15 +314,6 @@ export default function MemberProfilePage() {
                 <p className="font-medium">{memberDetails.seatNumber || "N/A (Not Assigned / Left)"}</p>
               </div>
             </div>
-             {memberDetails.idCardFileName && (
-                <div className="pt-2">
-                    <p className="text-sm font-medium">ID Card:</p>
-                    <div className="mt-1 p-2 border rounded-md bg-muted/50 inline-block">
-                        <Image src={ID_CARD_PLACEHOLDER} alt="ID Card Preview" width={150} height={100} className="rounded-md max-w-full object-contain" data-ai-hint="document id card" />
-                        <p className="text-xs text-muted-foreground pt-1 truncate max-w-[150px]">{memberDetails.idCardFileName} (Preview)</p>
-                    </div>
-                </div>
-            )}
           </CardContent>
            <CardFooter>
              <Link href="/member/fees" passHref legacyBehavior>
