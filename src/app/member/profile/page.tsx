@@ -29,7 +29,7 @@ import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 const DEFAULT_PROFILE_PLACEHOLDER = "https://placehold.co/200x200.png";
 
 export default function MemberProfilePage() {
-  const { user } = useAuth();
+  const { user, updateUser } = useAuth(); // Get updateUser from context
   const { toast } = useToast();
 
   const [memberDetails, setMemberDetails] = React.useState<Student | null>(null);
@@ -157,6 +157,7 @@ export default function MemberProfilePage() {
       const newUrl = await updateProfilePicture(memberDetails.firestoreId, 'member', previewUrl);
       setMemberDetails(prev => prev ? { ...prev, profilePictureUrl: newUrl } : null);
       setPreviewUrl(newUrl);
+      updateUser({ profilePictureUrl: newUrl }); // Update the context
       toast({ title: "Success", description: "Your profile picture has been updated." });
     } catch (error: any) {
       toast({ title: "Upload Failed", description: error.message || "Could not save your new picture.", variant: "destructive" });
