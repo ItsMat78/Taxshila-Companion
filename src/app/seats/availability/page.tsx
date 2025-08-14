@@ -26,7 +26,6 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Button } from '@/components/ui/button';
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Armchair, Users, UserCheck, Loader2, Circle, Sunrise, Sunset, Sun, Briefcase, Edit, UserCircle as UserProfileIcon, PhoneIcon } from 'lucide-react';
 import { getAvailableSeatsFromList, getAllStudents } from '@/services/student-service';
@@ -75,7 +74,7 @@ export default function SeatAvailabilityPage() {
   const { toast } = useToast();
   const [allStudents, setAllStudents] = React.useState<Student[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
-  const [selectedShiftView, setSelectedShiftView] = React.useState<ShiftView>('morning');
+  const selectedShiftView: ShiftView = 'fullday_occupied';
   
   const [occupiedMorningStudentsCount, setOccupiedMorningStudentsCount] = React.useState(0);
   const [occupiedEveningStudentsCount, setOccupiedEveningStudentsCount] = React.useState(0);
@@ -85,7 +84,6 @@ export default function SeatAvailabilityPage() {
   const [availableEveningSlotsCount, setAvailableEveningSlotsCount] = React.useState(0);
   const [availableForFullDayBookingCount, setAvailableForFullDayBookingCount] = React.useState(0);
   const [isLoadingOverallAvailableStats, setIsLoadingOverallAvailableStats] = React.useState(true);
-
 
   const [showOccupiedSeatsDialog, setShowOccupiedSeatsDialog] = React.useState(false);
   const [showAvailableSeatsDialog, setShowAvailableSeatsDialog] = React.useState(false);
@@ -209,151 +207,27 @@ export default function SeatAvailabilityPage() {
     <>
       <PageTitle title="Seat Availability & Occupancy" description="Overall hall status and shift-specific seat layout." />
       
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-6 mb-6">
-        <Card className="shadow-md">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg flex items-center">
-              <Briefcase className="mr-2 h-4 w-4 flex-shrink-0" />
-              Total Daily Slots
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold">{serviceAllSeats.length * 2}</p>
-            <p className="text-xs text-muted-foreground pt-1">Across morning & evening shifts</p>
-          </CardContent>
-        </Card>
-
-        <Dialog open={showOccupiedSeatsDialog} onOpenChange={setShowOccupiedSeatsDialog}>
-          <DialogTrigger asChild>
-            <Card className="cursor-pointer hover:shadow-lg transition-shadow shadow-md" onClick={handleOpenOccupiedSeatsDialog}>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-lg flex items-center">
-                  <Users className="mr-2 h-4 w-4 flex-shrink-0" />
-                  Occupied Slots
-                </CardTitle>
-                <CardDescription className="text-xs">Click to view details for '{getShiftViewLabel(selectedShiftView)}'</CardDescription>
-              </CardHeader>
-              <CardContent className="text-sm space-y-1 pt-2">
-                {isLoading ? <div className="flex justify-center py-1"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div> : (
-                  <>
-                    <div className="flex justify-between"><span>Morning:</span> <span className="font-semibold">{occupiedMorningStudentsCount} students</span></div>
-                    <div className="flex justify-between"><span>Evening:</span> <span className="font-semibold">{occupiedEveningStudentsCount} students</span></div>
-                    <div className="flex justify-between"><span>Full Day:</span> <span className="font-semibold">{occupiedFullDayStudentsCount} students</span></div>
-                  </>
-                )}
-              </CardContent>
-            </Card>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[725px]">
-            <DialogHeader>
-              <DialogTitle className="flex items-center"><UserCheck className="mr-2 h-5 w-5" />{occupiedDialogTitle}</DialogTitle>
-            </DialogHeader>
-            <div className="max-h-[60vh] overflow-y-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Student ID</TableHead>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Phone</TableHead>
-                    <TableHead>Seat</TableHead>
-                    <TableHead>Shift</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {dialogOccupiedStudentList.map((student) => (
-                    <TableRow key={student.studentId} className={student.feeStatus === 'Overdue' ? "bg-destructive/5" : ""}>
-                      <TableCell>{student.studentId}</TableCell>
-                      <TableCell className="font-medium">{student.name}</TableCell>
-                      <TableCell>{student.phone}</TableCell>
-                      <TableCell>{student.seatNumber}</TableCell>
-                      <TableCell className="capitalize">{student.shift}</TableCell>
-                    </TableRow>
-                  ))}
-                  {dialogOccupiedStudentList.length === 0 && (
-                      <TableRow>
-                        <TableCell colSpan={5} className="text-center text-muted-foreground py-4">
-                          No students occupying seats for this view.
-                        </TableCell>
-                      </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </div>
-          </DialogContent>
-        </Dialog>
-
-        <Dialog open={showAvailableSeatsDialog} onOpenChange={setShowAvailableSeatsDialog}>
-          <DialogTrigger asChild>
-            <Card className="cursor-pointer hover:shadow-lg transition-shadow shadow-md" onClick={handleOpenAvailableSeatsDialog}>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-lg flex items-center">
-                  <Armchair className="mr-2 h-4 w-4 flex-shrink-0" />
-                  Available Booking Slots
-                </CardTitle>
-                <CardDescription className="text-xs">Click to view details for '{getShiftViewLabel(selectedShiftView)}'</CardDescription>
-              </CardHeader>
-              <CardContent className="text-sm space-y-1 pt-2">
-                 {isLoadingOverallAvailableStats ? <div className="flex justify-center py-1"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div> : (
-                  <>
-                    <div className="flex justify-between"><span>Morning:</span> <span className="font-semibold">{availableMorningSlotsCount} slots</span></div>
-                    <div className="flex justify-between"><span>Evening:</span> <span className="font-semibold">{availableEveningSlotsCount} slots</span></div>
-                    <div className="flex justify-between"><span>Full Day:</span> <span className="font-semibold">{availableForFullDayBookingCount} slots</span></div>
-                  </>
-                )}
-              </CardContent>
-            </Card>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[425px]">
-            <DialogHeader>
-               <DialogTitle className="flex items-center"><Armchair className="mr-2 h-5 w-5" />
-                 {availableDialogTitle}
-               </DialogTitle>
-            </DialogHeader>
-            <div className="max-h-[60vh] overflow-y-auto">
-              {isLoadingDialogSeats ? <div className="flex justify-center p-4"><Loader2 className="mx-auto h-6 w-6 animate-spin"/></div> : (
-              <Table>
-                <TableHeader>
-                  <TableRow><TableHead>Seat Number</TableHead></TableRow>
-                </TableHeader>
-                <TableBody>
-                  {dialogAvailableSeatList.map((seat) => (
-                    <TableRow key={seat}><TableCell className="font-medium">{seat}</TableCell></TableRow>
-                  ))}
-                  {dialogAvailableSeatList.length === 0 && (
-                      <TableRow><TableCell className="text-center text-muted-foreground">No seats available for this view.</TableCell></TableRow>
-                  )}
-                </TableBody>
-              </Table>
-              )}
-            </div>
-          </DialogContent>
-        </Dialog>
-      </div>
-
       <Card className="mb-6 shadow-md">
         <CardHeader>
-          <CardTitle>Shift View Selector</CardTitle>
-          <CardDescription>Select a shift to see its specific occupancy in the layout below. Dialogs will also reflect this selection.</CardDescription>
+            <CardTitle className="text-lg">Hall Statistics</CardTitle>
         </CardHeader>
-        <CardContent>
-          <RadioGroup
-            value={selectedShiftView}
-            onValueChange={(value) => setSelectedShiftView(value as ShiftView)}
-            className="flex flex-col sm:flex-row gap-4"
-          >
-            <div className="flex items-center space-x-2">
-              <RadioGroupItem value="morning" id="morning-view" />
-              <Label htmlFor="morning-view" className="flex items-center"><Sunrise className="mr-2 h-4 w-4 text-orange-500"/>Morning Shift View</Label>
+        <CardContent className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-center">
+            <div className="p-2 rounded-lg bg-muted/50">
+                <p className="text-xs text-muted-foreground">Total Daily Slots</p>
+                <p className="text-xl font-bold">{serviceAllSeats.length * 2}</p>
             </div>
-            <div className="flex items-center space-x-2">
-              <RadioGroupItem value="evening" id="evening-view" />
-              <Label htmlFor="evening-view" className="flex items-center"><Sunset className="mr-2 h-4 w-4 text-purple-500"/>Evening Shift View</Label>
+            <div className="p-2 rounded-lg bg-muted/50">
+                <p className="text-xs text-muted-foreground">Occupied Students</p>
+                {isLoading ? <Loader2 className="h-5 w-5 animate-spin mx-auto mt-1" /> : <p className="text-xl font-bold">{activeStudents.length}</p>}
             </div>
-            <div className="flex items-center space-x-2">
-              <RadioGroupItem value="fullday_occupied" id="fullday-view" />
-              <Label htmlFor="fullday-view" className="flex items-center"><Sun className="mr-2 h-4 w-4 text-yellow-500"/>Full Day Occupancy View</Label>
+            <div className="p-2 rounded-lg bg-muted/50 col-span-2 sm:col-span-1">
+                <p className="text-xs text-muted-foreground">Available Slots (M/E/FD)</p>
+                {isLoadingOverallAvailableStats ? <Loader2 className="h-5 w-5 animate-spin mx-auto mt-1" /> : (
+                    <p className="text-xl font-bold">
+                        {availableMorningSlotsCount} / {availableEveningSlotsCount} / {availableForFullDayBookingCount}
+                    </p>
+                )}
             </div>
-          </RadioGroup>
         </CardContent>
       </Card>
       
@@ -366,8 +240,8 @@ export default function SeatAvailabilityPage() {
         <>
           <Card className="mt-6 shadow-lg">
             <CardHeader>
-              <CardTitle>Seat Layout ({getShiftViewLabel(selectedShiftView)})</CardTitle>
-              <CardDescription>Visual representation of seat occupancy for the selected view. Click a seat for more details.</CardDescription>
+              <CardTitle>Seat Layout (Full Day Occupancy)</CardTitle>
+              <CardDescription>Visual representation of seat occupancy. Click a seat for more details.</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mb-4 text-xs sm:text-sm">
@@ -394,7 +268,7 @@ export default function SeatAvailabilityPage() {
               </div>
               <div className="grid grid-cols-[repeat(auto-fill,minmax(2.75rem,1fr))] sm:grid-cols-[repeat(auto-fill,minmax(3.25rem,1fr))] gap-1 sm:gap-1.5">
                 {serviceAllSeats.map((seatNum) => {
-                  const seatStatusKey = getSeatStatusKey(seatNum, selectedShiftView);
+                  const seatStatusKey = getSeatStatusKey(seatNum, 'fullday_occupied');
                   const styles = SEAT_STYLES[seatStatusKey];
                   const ShiftIcon = styles.icon;
                   const studentsOnThisSeat = activeStudents.filter(s => s.seatNumber === seatNum);
@@ -461,4 +335,3 @@ export default function SeatAvailabilityPage() {
     </>
   );
 }
-
