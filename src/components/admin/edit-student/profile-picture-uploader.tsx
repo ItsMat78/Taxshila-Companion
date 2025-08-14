@@ -123,7 +123,15 @@ export function ProfilePictureUploader({
       base64UrlToUpload = await toBase64(selectedFile);
     } else if (previewUrl && previewUrl.startsWith('data:image')) {
       base64UrlToUpload = previewUrl;
-    } else {
+    } else if (previewUrl && !previewUrl.startsWith('data:image')) {
+      // It's a blob url from file selection, but the file was cleared. This means it's an old preview.
+      // We need either a new file or a new camera capture.
+      // If we got here via camera, previewUrl is already a data URL.
+      // If we got here via file, but cleared it, we need to re-select.
+      // The logic here is a bit tricky. The safest is to check for data URL.
+    }
+    
+    if (!base64UrlToUpload) {
        toast({
         title: "No new image selected",
         description: "Please select a file or capture a new photo to upload.",
@@ -132,10 +140,6 @@ export function ProfilePictureUploader({
       return;
     }
     
-    if (!base64UrlToUpload) {
-        toast({ title: "Upload Error", description: "Could not process the image.", variant: "destructive" });
-        return;
-    }
 
     setIsUploading(true);
     try {
