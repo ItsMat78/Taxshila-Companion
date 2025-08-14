@@ -19,6 +19,7 @@ export default function LoginPageRedirect() {
         router.replace(destination);
       } else {
         // If no user, redirect to the specific admin login page
+        // This is the main public entry point for login.
         router.replace('/login/admin');
       }
     }

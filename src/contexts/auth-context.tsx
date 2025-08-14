@@ -17,7 +17,6 @@ import { useToast } from "@/hooks/use-toast";
 import { getMessaging, getToken, deleteToken } from 'firebase/messaging';
 import { getAuth, signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import { app as firebaseApp } from '@/lib/firebase';
-import { VAPID_KEY_FROM_CLIENT_LIB } from '@/lib/firebase-messaging-client';
 import { useTheme } from 'next-themes';
 
 interface User {
@@ -54,7 +53,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (storedUser) {
         const parsedUser: User = JSON.parse(storedUser);
         setUser(parsedUser);
-        setTheme(parsedUser.theme);
+        if (parsedUser.theme) {
+          setTheme(parsedUser.theme);
+        }
       }
     } catch (error) {
       console.error("Failed to parse user from localStorage", error);
@@ -161,8 +162,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (loggedOutUser && loggedOutUser.firestoreId && typeof window !== 'undefined') {
       try {
         const messaging = getMessaging(firebaseApp);
-        if (VAPID_KEY_FROM_CLIENT_LIB && !VAPID_KEY_FROM_CLIENT_LIB.includes("REPLACE THIS")) {
-          const currentToken = await getToken(messaging, { vapidKey: VAPID_KEY_FROM_CLIENT_LIB }).catch(() => null);
+        const VAPID_KEY = process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY;
+        if (VAPID_KEY) {
+          const registration = await navigator.serviceWorker.getRegistration('/firebase-push-worker.js');
+          const currentToken = await getToken(messaging, { vapidKey: VAPID_KEY, serviceWorkerRegistration: registration }).catch(() => null);
           if (currentToken) {
             if (loggedOutUser.role === 'member') await removeFCMTokenForStudent(loggedOutUser.firestoreId, currentToken);
             else if (loggedOutUser.role === 'admin') await removeAdminFCMToken(loggedOutUser.firestoreId, currentToken);
@@ -174,7 +177,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     }
     
-    router.push('/login/admin');
+    router.push('/login');
   };
 
   const saveThemePreference = React.useCallback(async (newTheme: string) => {

@@ -13,7 +13,7 @@ import { useNotificationCounts } from '@/hooks/use-notification-counts';
 import { NotificationBadge } from '@/components/shared/notification-badge';
 import { cn } from '@/lib/utils';
 import { TopProgressBar } from '@/components/shared/top-progress-bar';
-import { initPushNotifications, VAPID_KEY_FROM_CLIENT_LIB } from '@/lib/firebase-messaging-client';
+import { setupPushNotifications } from '@/lib/notification-setup';
 import { useToast } from '@/hooks/use-toast';
 import { useNotificationContext } from '@/contexts/notification-context';
 import { useTheme } from "next-themes";
@@ -63,10 +63,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const { theme, setTheme } = useTheme();
 
   React.useEffect(() => {
-    // This is the CORRECT place for the redirect logic.
     const isPublicPath = pathname.startsWith('/login');
     if (!isAuthLoading && !user && !isPublicPath) {
-      router.replace('/login/admin');
+      router.replace('/login');
     }
   }, [user, isAuthLoading, pathname, router]);
 
@@ -88,21 +87,13 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   }, [user, theme, setTheme]);
 
   React.useEffect(() => {
-    const setupPush = async () => {
-      if (user && user.firestoreId && typeof window !== 'undefined' && 'serviceWorker' in navigator) {
-        if (!VAPID_KEY_FROM_CLIENT_LIB || VAPID_KEY_FROM_CLIENT_LIB.includes("REPLACE THIS")) {
-            console.warn("[AppLayout] VAPID_KEY is not configured. Push notifications will not be initialized.");
-            return;
-        }
-        try {
-          await initPushNotifications(user.firestoreId, user.role);
-        } catch (error) {
-          console.error(`[AppLayout] Error during push notification setup for ${user.role}:`, error);
-        }
+    const setupNotifications = async () => {
+      if (user && user.firestoreId && user.role) {
+        await setupPushNotifications(user.firestoreId, user.role);
       }
     };
     if (!isAuthLoading && user) {
-      setupPush();
+      setupNotifications();
     }
   }, [user, isAuthLoading]);
 
