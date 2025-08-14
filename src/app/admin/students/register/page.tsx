@@ -136,37 +136,36 @@ export default function StudentRegisterPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedShift, toast, form.setValue]);
 
-  const startVideoStream = useCallback(async () => {
-    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia && videoRef.current) {
+  // Effect to handle camera stream when dialog opens/closes
+  React.useEffect(() => {
+    let stream: MediaStream | null = null;
+
+    const getCameraStream = async () => {
+      if (isCameraDialogOpen && videoRef.current) {
         try {
-            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
-            videoRef.current.srcObject = stream;
-            setHasCameraPermission(true);
+          stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+          videoRef.current.srcObject = stream;
+          setHasCameraPermission(true);
         } catch (err) {
-            console.error("Camera access error in startVideoStream:", err);
-            setHasCameraPermission(false);
-            toast({ variant: "destructive", title: "Camera Access Denied", description: "Please enable camera permissions in your browser settings and try again." });
+          console.error("Camera access error:", err);
+          setHasCameraPermission(false);
+          toast({ variant: "destructive", title: "Camera Access Denied", description: "Please enable camera permissions in your browser settings and try again." });
         }
-    } else {
-        setHasCameraPermission(false);
-        toast({ variant: "destructive", title: "Camera Not Supported", description: "Your browser does not support camera access." });
-    }
-  }, [toast]);
+      }
+    };
 
-  const stopVideoStream = useCallback(() => {
-    if (videoRef.current && videoRef.current.srcObject) {
-      const stream = videoRef.current.srcObject as MediaStream;
-      stream.getTracks().forEach(track => track.stop());
-      videoRef.current.srcObject = null;
-    }
-  }, []);
+    getCameraStream();
 
-  const handleCameraDialogOpenChange = (open: boolean) => {
-    setIsCameraDialogOpen(open);
-    if (!open) {
-      stopVideoStream();
-    }
-  }
+    // Cleanup function to stop the stream
+    return () => {
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+      }
+      if (videoRef.current) {
+        videoRef.current.srcObject = null;
+      }
+    };
+  }, [isCameraDialogOpen, toast]);
 
 
   const handleCapture = () => {
@@ -182,8 +181,7 @@ export default function StudentRegisterPage() {
             setPreviewUrl(dataUrl);
             form.setValue('profilePictureUrl', dataUrl, { shouldDirty: true });
         }
-        stopVideoStream();
-        setIsCameraDialogOpen(false);
+        setIsCameraDialogOpen(false); // This will trigger the useEffect cleanup
     }
   };
 
@@ -276,9 +274,9 @@ export default function StudentRegisterPage() {
                             ref={fileInputRef}
                         />
                       </FormControl>
-                       <Dialog open={isCameraDialogOpen} onOpenChange={handleCameraDialogOpenChange}>
+                       <Dialog open={isCameraDialogOpen} onOpenChange={setIsCameraDialogOpen}>
                           <DialogTrigger asChild>
-                              <Button type="button" variant="outline" className="w-full" disabled={isSubmitting} onClick={startVideoStream}>
+                              <Button type="button" variant="outline" className="w-full" disabled={isSubmitting}>
                                   <Camera className="mr-2 h-4 w-4" /> Open Camera
                               </Button>
                           </DialogTrigger>

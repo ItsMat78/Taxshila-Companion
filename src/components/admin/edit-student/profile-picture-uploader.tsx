@@ -45,41 +45,36 @@ export function ProfilePictureUploader({
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  const startVideoStream = useCallback(async () => {
-    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia && videoRef.current) {
+  // Effect to handle camera stream when dialog opens/closes
+  React.useEffect(() => {
+    let stream: MediaStream | null = null;
+
+    const getCameraStream = async () => {
+      if (isCameraDialogOpen && videoRef.current) {
         try {
-            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
-            videoRef.current.srcObject = stream;
-            setHasCameraPermission(true);
+          stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+          videoRef.current.srcObject = stream;
+          setHasCameraPermission(true);
         } catch (err) {
-            console.error("Camera access error in startVideoStream:", err);
-            setHasCameraPermission(false);
-            toast({
-                variant: "destructive",
-                title: "Camera Access Denied",
-                description: "Please enable camera permissions in your browser settings and try again."
-            });
+          console.error("Camera access error:", err);
+          setHasCameraPermission(false);
+          toast({ variant: "destructive", title: "Camera Access Denied", description: "Please enable camera permissions in your browser settings and try again." });
         }
-    } else {
-        setHasCameraPermission(false);
-        toast({ variant: "destructive", title: "Camera Not Supported", description: "Your browser does not support camera access." });
-    }
-  }, [toast]);
-
-  const stopVideoStream = useCallback(() => {
-    if (videoRef.current && videoRef.current.srcObject) {
-      const stream = videoRef.current.srcObject as MediaStream;
-      stream.getTracks().forEach(track => track.stop());
-      videoRef.current.srcObject = null;
-    }
-  }, []);
-
-  const handleCameraDialogOpenChange = (open: boolean) => {
-      setIsCameraDialogOpen(open);
-      if (!open) {
-          stopVideoStream();
       }
-  };
+    };
+
+    getCameraStream();
+
+    // Cleanup function to stop the stream
+    return () => {
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+      }
+       if (videoRef.current) {
+        videoRef.current.srcObject = null;
+      }
+    };
+  }, [isCameraDialogOpen, toast]);
 
   const handleCapture = () => {
     if (videoRef.current && canvasRef.current) {
@@ -94,8 +89,7 @@ export function ProfilePictureUploader({
             setPreviewUrl(dataUrl);
             setSelectedFile(null); // Clear file selection if capturing from camera
         }
-        stopVideoStream();
-        setIsCameraDialogOpen(false);
+        setIsCameraDialogOpen(false); // This will trigger the useEffect cleanup
     }
   };
 
@@ -123,12 +117,6 @@ export function ProfilePictureUploader({
       base64UrlToUpload = await toBase64(selectedFile);
     } else if (previewUrl && previewUrl.startsWith('data:image')) {
       base64UrlToUpload = previewUrl;
-    } else if (previewUrl && !previewUrl.startsWith('data:image')) {
-      // It's a blob url from file selection, but the file was cleared. This means it's an old preview.
-      // We need either a new file or a new camera capture.
-      // If we got here via camera, previewUrl is already a data URL.
-      // If we got here via file, but cleared it, we need to re-select.
-      // The logic here is a bit tricky. The safest is to check for data URL.
     }
     
     if (!base64UrlToUpload) {
@@ -209,9 +197,9 @@ export function ProfilePictureUploader({
             />
           </div>
 
-           <Dialog open={isCameraDialogOpen} onOpenChange={handleCameraDialogOpenChange}>
+           <Dialog open={isCameraDialogOpen} onOpenChange={setIsCameraDialogOpen}>
             <DialogTrigger asChild>
-                <Button type="button" variant="outline" className="w-full max-w-sm" disabled={isUploading} onClick={startVideoStream}>
+                <Button type="button" variant="outline" className="w-full max-w-sm" disabled={isUploading}>
                     <Camera className="mr-2 h-4 w-4" /> Open Camera
                 </Button>
             </DialogTrigger>
