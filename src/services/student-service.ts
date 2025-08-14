@@ -25,7 +25,7 @@ import {
   arrayRemove,
   increment,
   auth,
-  
+  setDoc
 } from '@/lib/firebase';
 import type { Student, Shift, FeeStatus, PaymentRecord, ActivityStatus, AttendanceRecord, FeeStructure, AttendanceImportData, PaymentImportData, CheckedInStudentInfo } from '@/types/student';
 import type { FeedbackItem, FeedbackType, FeedbackStatus, AlertItem } from '@/types/communication';
@@ -268,75 +268,37 @@ export interface AddStudentData {
 }
 
 export async function addStudent(studentData: AddStudentData): Promise<Student> {
-    if (!studentData.password) {
-        throw new Error("Password is required to create a student account.");
-    }
-    
-    // --- Step 1: Create Auth User via API Route ---
-    const authPayload = {
-        email: studentData.email,
-        phone: studentData.phone,
-        password: studentData.password,
-        name: studentData.name,
-        profilePictureUrl: studentData.profilePictureUrl
-    };
-
-    const authResponse = await fetch('/api/admin/create-student-auth', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(authPayload),
-    });
-
-    const authResult = await response.json();
-
-    if (!response.ok) {
-        throw new Error(authResult.error || "Failed to create authentication account.");
-    }
-    
-    const newUid = authResult.uid;
-    if (!newUid) {
-        throw new Error("API did not return a new user UID.");
-    }
-
-    // --- Step 2: Create Firestore Document ---
     const studentId = await getNextCustomStudentId();
-    const studentDocRef = doc(db, STUDENTS_COLLECTION, studentId);
+    const newStudentDocRef = doc(collection(db, STUDENTS_COLLECTION)); // Firestore auto-generates an ID
 
-    const firestorePayload = {
-      uid: newUid,
+    const firestorePayload: Omit<Student, 'id' | 'firestoreId' | 'paymentHistory'> = {
+      uid: undefined, // Will be set after auth sync
       studentId: studentId,
       name: studentData.name,
-      email: studentData.email || null,
+      email: studentData.email || undefined,
       phone: studentData.phone,
       address: studentData.address,
       shift: studentData.shift,
       seatNumber: studentData.seatNumber,
-      profilePictureUrl: studentData.profilePictureUrl || null,
-      activityStatus: 'Active' as ActivityStatus,
-      feeStatus: 'Due' as FeeStatus,
-      amountDue: 'Rs. 0', // Will be calculated by fee status logic
-      registrationDate: Timestamp.fromDate(new Date()),
-      createdAt: Timestamp.fromDate(new Date()),
-      lastPaymentDate: null,
-      nextDueDate: Timestamp.fromDate(new Date()),
-      paymentHistory: [],
+      profilePictureUrl: studentData.profilePictureUrl || undefined,
+      activityStatus: 'Active',
+      feeStatus: 'Due',
+      amountDue: 'Rs. 0',
+      registrationDate: format(new Date(), 'yyyy-MM-dd'),
+      lastPaymentDate: undefined,
+      nextDueDate: format(new Date(), 'yyyy-MM-dd'),
+      leftDate: undefined,
+      password: studentData.phone, // Default password
     };
-
-    await setDoc(studentDocRef, firestorePayload);
-
-    const newStudent = await getStudentByCustomId(studentId);
-    if (!newStudent) {
-        throw new Error("Student document created, but failed to retrieve it.");
-    }
-
-    // Final step: update fee status to correctly set initial amount due
-    await refreshAllStudentFeeStatuses();
     
-    const finalStudentDoc = await getStudentByCustomId(studentId);
-    if (!finalStudentDoc) {
-         throw new Error("Student registered but failed to retrieve final record.");
+    await setDoc(newStudentDocRef, firestorePayload);
+
+    // After saving, get the full student object to return
+    const finalStudent = await getStudentByCustomId(studentId);
+    if (!finalStudent) {
+        throw new Error("Student document was created, but failed to be retrieved immediately after.");
     }
-    return finalStudentDoc;
+    return finalStudent;
 }
 
 export async function updateStudent(customStudentId: string, studentUpdateData: Partial<Student>): Promise<Student | undefined> {
@@ -428,7 +390,7 @@ if (authUpdatePayload.email || authUpdatePayload.password || authUpdatePayload.p
     // Preserve lastPaymentDate and nextDueDate
     delete payload.lastPaymentDate;
     delete payload.nextDueDate;
-    payload.leftDate = new Date().toISOString();
+    payload.leftDate = format(new Date(), 'yyyy-MM-dd');
   } else if (studentUpdateData.activityStatus === 'Active' && studentToUpdate.activityStatus === 'Left') {
     if (!payload.seatNumber || !ALL_SEAT_NUMBERS.includes(payload.seatNumber)) {
         throw new Error("A valid seat must be selected to re-activate a student.");

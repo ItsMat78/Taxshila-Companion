@@ -21,7 +21,8 @@ import {
   startAfter,
   getCountFromServer,
   runTransaction,
-  increment
+  increment,
+  setDoc
 } from 'firebase/firestore';
 import { getStorage, ref as storageRef, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage';
 import { getAuth } from 'firebase/auth'; // Import getAuth
@@ -83,5 +84,6 @@ export {
   startAfter,
   getCountFromServer,
   runTransaction,
-  increment
+  increment,
+  setDoc
 };

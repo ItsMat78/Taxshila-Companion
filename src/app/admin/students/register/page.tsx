@@ -51,15 +51,10 @@ const studentFormSchema = z.object({
     .length(10, { message: "Phone number must be exactly 10 digits." })
     .regex(/^\d+$/, { message: "Phone number must contain only digits." }),
   address: z.string(),
-  password: z.string().min(6, { message: "Password must be at least 6 characters." }),
-  confirmPassword: z.string(),
   shift: z.enum(["morning", "evening", "fullday"], { required_error: "Shift selection is required." }),
   seatNumber: z.string().min(1, "Seat selection is required."),
   idCardFileName: z.string().optional(),
-  profilePictureUrl: z.string().optional(), // Added for the profile picture
-}).refine(data => data.password === data.confirmPassword, {
-  message: "Passwords don't match",
-  path: ["confirmPassword"],
+  profilePictureUrl: z.string().optional(),
 });
 
 type StudentFormValues = z.infer<typeof studentFormSchema>;
@@ -99,8 +94,6 @@ export default function StudentRegisterPage() {
       email: "",
       phone: "",
       address: "",
-      password: "",
-      confirmPassword: "",
       shift: undefined,
       seatNumber: "",
       idCardFileName: "",
@@ -214,7 +207,7 @@ export default function StudentRegisterPage() {
         email: data.email || undefined,
         phone: data.phone,
         address: data.address,
-        password: data.password,
+        // password is now handled separately
         shift: data.shift,
         seatNumber: data.seatNumber,
         idCardFileName: data.idCardFileName,
@@ -222,8 +215,8 @@ export default function StudentRegisterPage() {
       };
       const newStudent = await addStudent(studentPayload);
       toast({
-        title: "Student Registered Successfully",
-        description: `${newStudent.name} (ID: ${newStudent.studentId}) has been registered with seat ${newStudent.seatNumber} for ${newStudent.shift} shift.`,
+        title: "Student Saved to Database",
+        description: `${newStudent.name} (ID: ${newStudent.studentId}) has been saved. Go to Data Management to sync their authentication account.`,
       });
       form.reset();
       setPreviewUrl(null); // Clear preview after successful submission
@@ -253,11 +246,11 @@ export default function StudentRegisterPage() {
 
   return (
     <>
-      <PageTitle title="Register New Student" description="Add a new student to the system." />
+      <PageTitle title="Register New Student" description="Add a new student to the system. Authentication account must be synced separately." />
       <Card className="w-full md:max-w-2xl mx-auto shadow-lg">
         <CardHeader>
           <CardTitle>Student Registration Form</CardTitle>
-          <CardDescription>Fill in the details below. Student ID will be auto-generated.</CardDescription>
+          <CardDescription>Fill in the details below. Student ID will be auto-generated. The student's phone number will be used as their initial password when you sync their auth account.</CardDescription>
         </CardHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)}>
@@ -328,12 +321,6 @@ export default function StudentRegisterPage() {
               <FormField control={form.control} name="address" render={({ field }) => (
                 <FormItem><FormLabel>Address</FormLabel><FormControl><Input placeholder="Enter address" {...field} disabled={isSubmitting} /></FormControl><FormMessage /></FormItem>
               )} />
-              <FormField control={form.control} name="password" render={({ field }) => (
-                <FormItem><FormLabel>Password</FormLabel><FormControl><Input type="password" placeholder="Enter password (min 6 characters)" {...field} disabled={isSubmitting} /></FormControl><FormMessage /></FormItem>
-              )} />
-              <FormField control={form.control} name="confirmPassword" render={({ field }) => (
-                <FormItem><FormLabel>Confirm Password</FormLabel><FormControl><Input type="password" placeholder="Re-enter password" {...field} disabled={isSubmitting} /></FormControl><FormMessage /></FormItem>
-              )} />
               <FormField control={form.control} name="shift" render={({ field }) => (
                 <FormItem className="space-y-3"><FormLabel>Shift Selection</FormLabel>
                   <FormControl>
@@ -386,7 +373,7 @@ export default function StudentRegisterPage() {
             <CardFooter>
               <Button type="submit" className="w-full sm:w-auto" disabled={isSubmitting || isLoadingSeats || !selectedShift}>
                 {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UserPlus className="mr-2 h-4 w-4" />}
-                {isSubmitting ? "Registering..." : "Register Student"}
+                {isSubmitting ? "Saving..." : "Save Student to Database"}
               </Button>
             </CardFooter>
           </form>
@@ -395,5 +382,3 @@ export default function StudentRegisterPage() {
     </>
   );
 }
-
-    

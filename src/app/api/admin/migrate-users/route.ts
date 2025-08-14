@@ -3,8 +3,10 @@ import { NextResponse } from 'next/server';
 import { getAuth, getDb } from '@/lib/firebase-admin';
 import type { UserRecord, CreateRequest } from 'firebase-admin/auth';
 
-// This is the primary admin email from your environment variables.
-const SUPER_ADMIN_EMAIL = process.env.NEXT_PUBLIC_FIREBASE_ADMIN_EMAIL;
+const isValidIndianPhoneNumber = (phone: string): boolean => {
+    const regex = /^[6-9]\d{9}$/;
+    return typeof phone === 'string' && regex.test(phone);
+};
 
 export async function POST() {
   const auth = getAuth();
@@ -21,80 +23,64 @@ export async function POST() {
 
     for (const studentDoc of studentsSnapshot.docs) {
       const student = studentDoc.data();
-      const studentId = student.studentId || 'N/A';
       const studentName = student.name || 'N/A';
-
-      if (!student.phone && !student.email) {
-          errors.push(`Skipping student ${studentName} (${studentId}) due to missing phone and email.`);
-          errorCount++;
-          continue;
+      
+      // Skip if student already has a UID
+      if (student.uid) {
+        continue;
+      }
+      
+      // Ensure phone number is valid before proceeding
+      if (!student.phone || !isValidIndianPhoneNumber(student.phone)) {
+        errors.push(`Skipping ${studentName}: Invalid or missing phone number.`);
+        errorCount++;
+        continue;
       }
 
-      const userEmail = student.email || `${student.phone}@taxshila-auth.com`;
-      const phoneNumber = student.phone ? (student.phone.startsWith('+') ? student.phone : `+91${student.phone}`) : undefined;
+      const phoneNumber = `+91${student.phone}`;
+      const email = student.email || `${student.phone}@taxshila-auth.com`; // Fallback email
+      const password = student.password || student.phone; // Fallback password
 
       try {
         let userRecord: UserRecord | null = null;
         
-        // Find existing user by UID, Email, or Phone
-        if (student.uid) {
-            try { userRecord = await auth.getUser(student.uid); } catch (e: any) { if (e.code !== 'auth/user-not-found') throw e; }
+        // Check for existing user by email or phone
+        try { 
+            userRecord = await auth.getUserByEmail(email); 
+        } catch (e: any) { 
+            if (e.code !== 'auth/user-not-found') throw e; 
         }
+        
         if (!userRecord) {
-            try { userRecord = await auth.getUserByEmail(userEmail); } catch (e: any) { if (e.code !== 'auth/user-not-found') throw e; }
-        }
-        if (!userRecord && phoneNumber) {
-            try { userRecord = await auth.getUserByPhoneNumber(phoneNumber); } catch (e: any) { if (e.code !== 'auth/user-not-found') throw e; }
+            try { 
+                userRecord = await auth.getUserByPhoneNumber(phoneNumber); 
+            } catch (e: any) { 
+                if (e.code !== 'auth/user-not-found') throw e; 
+            }
         }
 
-        // --- Create or Update ---
         if (userRecord) {
-          // UPDATE
-          const updates: { email?: string; phoneNumber?: string; displayName?: string } = {};
-          if (userRecord.email !== userEmail) updates.email = userEmail;
-          if (phoneNumber && userRecord.phoneNumber !== phoneNumber) updates.phoneNumber = phoneNumber;
-          if (userRecord.displayName !== studentName) updates.displayName = studentName;
-
-          if (Object.keys(updates).length > 0) {
-            await auth.updateUser(userRecord.uid, updates);
-            updatedCount++;
-          }
-          if (student.uid !== userRecord.uid) {
-            await studentDoc.ref.update({ uid: userRecord.uid, email: userEmail });
-          }
-
+          // User exists, link it
+          await studentDoc.ref.update({ uid: userRecord.uid, email: userRecord.email || email });
+          updatedCount++;
         } else {
-          // CREATE
+          // User does not exist, create it
           const createRequest: CreateRequest = {
-            email: userEmail,
+            email: email,
+            phoneNumber: phoneNumber,
+            password: password,
             displayName: studentName,
-            password: student.password || student.phone,
+            photoURL: student.profilePictureUrl || undefined,
+            disabled: student.activityStatus === 'Left',
           };
-          if (phoneNumber) createRequest.phoneNumber = phoneNumber;
           
           const newUserRecord = await auth.createUser(createRequest);
-          await studentDoc.ref.update({ uid: newUserRecord.uid, email: userEmail });
-          userRecord = newUserRecord; // Use the new record for the claim step
+          await studentDoc.ref.update({ uid: newUserRecord.uid });
           createdCount++;
-        }
-
-        // *** FIX: Grant Admin Privileges ***
-        // If the user's email matches the super admin email, ensure they have the admin claim.
-        if (userRecord && userRecord.email === SUPER_ADMIN_EMAIL) {
-            if (userRecord.customClaims?.admin !== true) {
-                await auth.setCustomUserClaims(userRecord.uid, { admin: true });
-                // Also ensure they have a record in the 'admins' collection for consistency
-                await db.collection('admins').doc(userRecord.uid).set({
-                    name: userRecord.displayName,
-                    email: userRecord.email,
-                    role: 'admin'
-                }, { merge: true });
-                updatedCount++; // Count this as an update
-            }
         }
         
       } catch (userError: any) {
-        errors.push(`Error processing ${studentName} (${userEmail}): ${userError.message}`);
+        errors.push(`Error processing ${studentName} (${email}): ${userError.message}`);
         errorCount++;
       }
     }
