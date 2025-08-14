@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import * as React from 'react';
@@ -18,8 +19,7 @@ import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from '@/contexts/auth-context';
-import { getStudentByEmail, getStudentByCustomId } from '@/services/student-service'; 
-import { saveProfilePicture } from '@/services/profile-picture-service';
+import { getStudentByEmail, getStudentByCustomId, updateProfilePicture } from '@/services/student-service'; 
 import type { Student } from '@/types/student'; 
 import { UserCircle, UploadCloud, Save, Mail, Phone, BookOpen, MapPin, Receipt, Loader2, Edit, SquareUser, IndianRupee, Camera, View, Video, VideoOff } from 'lucide-react';
 import { Label } from '@/components/ui/label';
@@ -154,7 +154,7 @@ export default function MemberProfilePage() {
   
     setIsSavingPicture(true);
     try {
-      const newUrl = await saveProfilePicture(memberDetails.firestoreId, 'member', previewUrl);
+      const newUrl = await updateProfilePicture(memberDetails.firestoreId, 'member', previewUrl);
       setMemberDetails(prev => prev ? { ...prev, profilePictureUrl: newUrl } : null);
       setPreviewUrl(newUrl);
       toast({ title: "Success", description: "Your profile picture has been updated." });

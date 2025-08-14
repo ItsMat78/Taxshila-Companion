@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { Button } from "@/components/ui/button";
@@ -7,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { saveProfilePicture } from "@/services/profile-picture-service";
+import { updateProfilePicture } from '@/services/student-service';
 import { Loader2, Camera, Video, VideoOff, View } from "lucide-react";
 import Image from "next/image";
 import { useState, useRef, useEffect, useCallback } from "react";
@@ -109,7 +110,7 @@ export function ProfilePictureUploader({
     
     setIsUploading(true);
     try {
-      const newUrl = await saveProfilePicture(studentFirestoreId, 'member', base64Preview);
+      const newUrl = await updateProfilePicture(studentFirestoreId, 'member', base64Preview);
       onUploadSuccess(newUrl);
       toast({ title: "Upload Successful", description: "Profile picture has been updated." });
     } catch (error: any) {

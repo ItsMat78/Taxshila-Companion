@@ -296,7 +296,7 @@ export async function addStudent(studentData: AddStudentData): Promise<Student> 
       address: studentData.address,
       shift: studentData.shift,
       seatNumber: studentData.seatNumber,
-      profilePictureUrl: null,
+      profilePictureUrl: studentData.profilePictureUrl || null,
       activityStatus: 'Active',
       feeStatus: 'Due',
       amountDue: 'Rs. 0',
@@ -307,24 +307,19 @@ export async function addStudent(studentData: AddStudentData): Promise<Student> 
     };
     
     await setDoc(studentDocRef, firestorePayload);
-    let downloadURL: string | null = null;
-    
-    if (studentData.profilePictureUrl) {
-      const imageRef = storageRef(storage, `students/${studentId}/profilePicture.jpg`);
-      await uploadString(imageRef, studentData.profilePictureUrl, 'data_url');
-      downloadURL = await getDownloadURL(imageRef);
-      await updateDoc(studentDocRef, { profilePictureUrl: downloadURL });
-    }
-
-    const firebaseAuth = getAuth();
-    if (firebaseAuth.currentUser && firebaseAuth.currentUser.uid === newUid) {
-      await updateProfile(firebaseAuth.currentUser, { photoURL: downloadURL });
-    }
 
     const finalStudent = await getStudentByCustomId(studentId);
     if (!finalStudent) {
         throw new Error("Student document was created, but failed to be retrieved immediately after.");
     }
+
+    if (finalStudent.uid) {
+        const firebaseAuth = getAuth();
+        if (firebaseAuth.currentUser && firebaseAuth.currentUser.uid === finalStudent.uid) {
+            await updateProfile(firebaseAuth.currentUser, { photoURL: finalStudent.profilePictureUrl });
+        }
+    }
+    
     return finalStudent;
 }
 
@@ -1020,31 +1015,6 @@ export async function sendShiftWarningAlert(customStudentId: string): Promise<vo
 }
 
 
-// --- Firebase Storage Service Functions ---
-export async function uploadProfilePictureToStorage(studentFirestoreId: string, file: File): Promise<string> {
-  if (!studentFirestoreId) {
-    throw new Error("Student Firestore ID is required.");
-  }
-  if (!file) {
-    throw new Error("File is required.");
-  }
-
-  const fileExtension = file.name.split('.').pop();
-  const fileName = `profilePicture.${fileExtension}`;
-  const imageRef = storageRef(storage, `profilePictures/${studentFirestoreId}/${fileName}`);
-
-  const uploadTask = await uploadString(imageRef, file, 'data_url');
-  return await getDownloadURL(uploadTask.ref);
-}
-
-// --- Data Management Service Functions ---
-export interface BatchImportSummary {
-  processedCount: number;
-  successCount: number;
-  errorCount: number;
-  errors: string[];
-}
-
 export async function batchImportStudents(studentsToImport: AddStudentData[]): Promise<BatchImportSummary> {
   let successCount = 0;
   let errorCount = 0;
@@ -1374,6 +1344,37 @@ export async function updateUserTheme(firestoreId: string, role: 'admin' | 'memb
 }
 
 
+/**
+ * Saves a new profile picture Base64 string to the user's document in Firestore.
+ *
+ * @param firestoreId The Firestore document ID of the user.
+ * @param role The role of the user ('admin' or 'member').
+ * @param base64Url The Base64 data URI of the new image.
+ * @returns The Base64 string that was saved.
+ */
+export async function updateProfilePicture(firestoreId: string, role: 'admin' | 'member', base64Url: string): Promise<string> {
+  if (!firestoreId || !role || !base64Url) {
+    throw new Error("User ID, role, and image data are required.");
+  }
+  
+  const collectionName = role === 'admin' ? 'admins' : 'students';
+  const userDocRef = doc(db, collectionName, firestoreId);
+  await updateDoc(userDocRef, { profilePictureUrl: base64Url });
+
+  // Update auth profile if it's the current user
+  const auth = getAuth();
+  if (auth.currentUser) {
+    const student = await getStudentByCustomId(firestoreId); // Assuming members have studentId
+    if (student?.uid === auth.currentUser.uid) {
+        await updateProfile(auth.currentUser, { photoURL: base64Url });
+    }
+  }
+
+  return base64Url;
+}
+
+
+
 declare module '@/types/student' {
   interface Student {
     id?: string;
@@ -1391,4 +1392,5 @@ declare module '@/types/communication' {
 }
 
     
+
 
