@@ -1,4 +1,5 @@
 
+
 import {
   db,
   collection,
@@ -268,37 +269,44 @@ export interface AddStudentData {
 
 export async function addStudent(studentData: AddStudentData): Promise<Student> {
     const studentId = await getNextCustomStudentId();
-    const newStudentDocRef = doc(collection(db, STUDENTS_COLLECTION)); // Firestore auto-generates an ID
+    const newStudentDocRef = doc(collection(db, STUDENTS_COLLECTION));
 
-    const firestorePayload: Omit<Student, 'id' | 'firestoreId' | 'paymentHistory'> = {
+    const firestorePayload = {
       uid: null,
       studentId: studentId,
       name: studentData.name,
-      email: studentData.email || undefined,
+      email: studentData.email || null,
       phone: studentData.phone,
       address: studentData.address,
       shift: studentData.shift,
       seatNumber: studentData.seatNumber,
-      profilePictureUrl: studentData.profilePictureUrl,
+      profilePictureUrl: studentData.profilePictureUrl || null,
       activityStatus: 'Active',
       feeStatus: 'Due',
       amountDue: 'Rs. 0',
       registrationDate: format(new Date(), 'yyyy-MM-dd'),
-      lastPaymentDate: undefined,
+      lastPaymentDate: null,
       nextDueDate: format(new Date(), 'yyyy-MM-dd'),
-      leftDate: undefined,
-      password: studentData.password, // Save the password
+      leftDate: null,
+      password: studentData.password,
     };
+
+    // Remove undefined fields before saving
+    Object.keys(firestorePayload).forEach(key => {
+        if ((firestorePayload as any)[key] === undefined) {
+            delete (firestorePayload as any)[key];
+        }
+    });
     
     await setDoc(newStudentDocRef, firestorePayload);
 
-    // After saving, get the full student object to return
     const finalStudent = await getStudentByCustomId(studentId);
     if (!finalStudent) {
         throw new Error("Student document was created, but failed to be retrieved immediately after.");
     }
     return finalStudent;
 }
+
 
 export async function updateStudent(customStudentId: string, studentUpdateData: Partial<Student>): Promise<Student | undefined> {
   const studentToUpdate = await getStudentByCustomId(customStudentId);
@@ -386,9 +394,6 @@ if (authUpdatePayload.email || authUpdatePayload.password || authUpdatePayload.p
     payload.seatNumber = null;
     payload.feeStatus = 'N/A';
     payload.amountDue = 'N/A';
-    // Preserve lastPaymentDate and nextDueDate
-    delete payload.lastPaymentDate;
-    delete payload.nextDueDate;
     payload.leftDate = format(new Date(), 'yyyy-MM-dd');
   } else if (studentUpdateData.activityStatus === 'Active' && studentToUpdate.activityStatus === 'Left') {
     if (!payload.seatNumber || !ALL_SEAT_NUMBERS.includes(payload.seatNumber)) {
@@ -405,9 +410,8 @@ if (authUpdatePayload.email || authUpdatePayload.password || authUpdatePayload.p
     }
     payload.feeStatus = 'Due';
     payload.amountDue = amountDueForShift;
-    payload.lastPaymentDate = null;
-    payload.nextDueDate = new Date();
-    payload.paymentHistory = [];
+    payload.lastPaymentDate = format(new Date(), 'yyyy-MM-dd');
+    payload.nextDueDate = format(new Date(), 'yyyy-MM-dd');
     payload.leftDate = null;
   }
 
