@@ -47,20 +47,22 @@ export function ProfilePictureUploader({
 
   const startVideoStream = useCallback(async () => {
     if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia && videoRef.current) {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
-        videoRef.current.srcObject = stream;
-        videoRef.current.play();
-        setHasCameraPermission(true);
-      } catch (err) {
-        console.error("Error accessing camera:", err);
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+            videoRef.current.srcObject = stream;
+            setHasCameraPermission(true);
+        } catch (err) {
+            console.error("Camera access error in startVideoStream:", err);
+            setHasCameraPermission(false);
+            toast({
+                variant: "destructive",
+                title: "Camera Access Denied",
+                description: "Please enable camera permissions in your browser settings and try again."
+            });
+        }
+    } else {
         setHasCameraPermission(false);
-        toast({
-            variant: "destructive",
-            title: "Camera Access Denied",
-            description: "Please enable camera permissions in your browser settings to use this feature."
-        });
-      }
+        toast({ variant: "destructive", title: "Camera Not Supported", description: "Your browser does not support camera access." });
     }
   }, [toast]);
 
@@ -72,14 +74,12 @@ export function ProfilePictureUploader({
     }
   }, []);
 
-  useEffect(() => {
-    if (isCameraDialogOpen) {
-      startVideoStream();
-    } else {
-      stopVideoStream();
-    }
-    return () => stopVideoStream();
-  }, [isCameraDialogOpen, startVideoStream, stopVideoStream]);
+  const handleCameraDialogOpenChange = (open: boolean) => {
+      setIsCameraDialogOpen(open);
+      if (!open) {
+          stopVideoStream();
+      }
+  };
 
   const handleCapture = () => {
     if (videoRef.current && canvasRef.current) {
@@ -205,9 +205,9 @@ export function ProfilePictureUploader({
             />
           </div>
 
-           <Dialog open={isCameraDialogOpen} onOpenChange={setIsCameraDialogOpen}>
+           <Dialog open={isCameraDialogOpen} onOpenChange={handleCameraDialogOpenChange}>
             <DialogTrigger asChild>
-                <Button variant="outline" className="w-full max-w-sm" disabled={isUploading}>
+                <Button type="button" variant="outline" className="w-full max-w-sm" disabled={isUploading} onClick={startVideoStream}>
                     <Camera className="mr-2 h-4 w-4" /> Open Camera
                 </Button>
             </DialogTrigger>
@@ -230,7 +230,7 @@ export function ProfilePictureUploader({
                     <canvas ref={canvasRef} className="hidden" />
                 </div>
                 <DialogFooter>
-                    <Button onClick={handleCapture} disabled={!hasCameraPermission}>
+                    <Button type="button" onClick={handleCapture} disabled={!hasCameraPermission}>
                         <Camera className="mr-2 h-4 w-4" /> Capture and Use
                     </Button>
                 </DialogFooter>

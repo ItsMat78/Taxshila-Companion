@@ -138,15 +138,18 @@ export default function StudentRegisterPage() {
 
   const startVideoStream = useCallback(async () => {
     if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia && videoRef.current) {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
-        videoRef.current.srcObject = stream;
-        videoRef.current.play();
-        setHasCameraPermission(true);
-      } catch (err) {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+            videoRef.current.srcObject = stream;
+            setHasCameraPermission(true);
+        } catch (err) {
+            console.error("Camera access error in startVideoStream:", err);
+            setHasCameraPermission(false);
+            toast({ variant: "destructive", title: "Camera Access Denied", description: "Please enable camera permissions in your browser settings and try again." });
+        }
+    } else {
         setHasCameraPermission(false);
-        toast({ variant: "destructive", title: "Camera Access Denied", description: "Please enable camera permissions." });
-      }
+        toast({ variant: "destructive", title: "Camera Not Supported", description: "Your browser does not support camera access." });
     }
   }, [toast]);
 
@@ -158,14 +161,13 @@ export default function StudentRegisterPage() {
     }
   }, []);
 
-  React.useEffect(() => {
-    if (isCameraDialogOpen) {
-      startVideoStream();
-    } else {
+  const handleCameraDialogOpenChange = (open: boolean) => {
+    setIsCameraDialogOpen(open);
+    if (!open) {
       stopVideoStream();
     }
-    return () => stopVideoStream();
-  }, [isCameraDialogOpen, startVideoStream, stopVideoStream]);
+  }
+
 
   const handleCapture = () => {
     if (videoRef.current && canvasRef.current) {
@@ -274,9 +276,9 @@ export default function StudentRegisterPage() {
                             ref={fileInputRef}
                         />
                       </FormControl>
-                       <Dialog open={isCameraDialogOpen} onOpenChange={setIsCameraDialogOpen}>
+                       <Dialog open={isCameraDialogOpen} onOpenChange={handleCameraDialogOpenChange}>
                           <DialogTrigger asChild>
-                              <Button variant="outline" className="w-full" disabled={isSubmitting}>
+                              <Button type="button" variant="outline" className="w-full" disabled={isSubmitting} onClick={startVideoStream}>
                                   <Camera className="mr-2 h-4 w-4" /> Open Camera
                               </Button>
                           </DialogTrigger>
@@ -299,7 +301,7 @@ export default function StudentRegisterPage() {
                                   <canvas ref={canvasRef} className="hidden" />
                               </div>
                               <DialogFooter>
-                                  <Button onClick={handleCapture} disabled={!hasCameraPermission}>
+                                  <Button type="button" onClick={handleCapture} disabled={!hasCameraPermission}>
                                       <Camera className="mr-2 h-4 w-4" /> Capture and Use
                                   </Button>
                               </DialogFooter>
@@ -391,4 +393,3 @@ export default function StudentRegisterPage() {
     </>
   );
 }
-
