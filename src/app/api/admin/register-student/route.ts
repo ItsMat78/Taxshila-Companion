@@ -11,7 +11,7 @@ const isValidIndianPhoneNumber = (phone: string): boolean => {
 
 export async function POST(request: NextRequest) {
   try {
-    const { name, email, phone, password, address, shift, seatNumber } = await request.json();
+    const { name, email, phone, password, address, shift, seatNumber, profilePictureUrl } = await request.json();
 
     // --- Validation ---
     if (!name || !password || !address || !shift || !seatNumber || !phone) {
@@ -45,11 +45,10 @@ export async function POST(request: NextRequest) {
       displayName: name,
       disabled: false,
       phoneNumber: `+91${phone}`,
+      photoURL: profilePictureUrl || undefined, // Use the provided URL
   };
 
   // If a real email is provided, use it. Otherwise, create a "proxy" email.
-  // This ensures every user has an email for signInWithEmailAndPassword to work.
-  // Make sure the domain is unique to your app.
   userPayload.email = email || `${phone}@taxshila-auth.com`;
 
     
@@ -71,6 +70,7 @@ export async function POST(request: NextRequest) {
       profileSetupComplete: true,
       registrationDate: new Date().toISOString(),
       feeStatus: 'Due',
+      profilePictureUrl: profilePictureUrl || null, // Save the URL here
       createdAt: FieldValue.serverTimestamp(),
     });
 
@@ -84,3 +84,5 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: false, error: "An unexpected server error occurred." }, { status: 500 });
   }
 }
+
+    

@@ -65,3 +65,5 @@ export interface PaymentImportData {
 }
 
 export type CheckedInStudentInfo = Student & { checkInTime: string; isOutsideShift: boolean; };
+
+    

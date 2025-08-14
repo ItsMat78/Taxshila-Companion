@@ -3,6 +3,7 @@
 
 import * as React from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { PageTitle } from '@/components/shared/page-title';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -26,14 +27,15 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Button } from '@/components/ui/button';
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
-import { Armchair, Users, UserCheck, Loader2, Circle, Sunrise, Sunset, Sun, Briefcase, Edit, UserCircle as UserProfileIcon, PhoneIcon } from 'lucide-react';
+import { Armchair, Users, UserCheck, Loader2, Circle, Sunrise, Sunset, Sun, Briefcase, Edit, UserCircle as UserProfileIcon, PhoneIcon, View } from 'lucide-react';
 import { getAvailableSeatsFromList, getAllStudents } from '@/services/student-service';
 import { ALL_SEAT_NUMBERS as serviceAllSeats } from '@/config/seats';
 import type { Student, Shift } from '@/types/student';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+
 
 type ShiftView = Shift | 'fullday_occupied';
 type SeatStatusKey = "available" | "morning" | "evening" | "fullday" | "split";
@@ -71,11 +73,16 @@ const SEAT_STYLES: Record<SeatStatusKey, { bgClass: string; textClass: string; b
   },
 };
 
+const getInitials = (name?: string) => {
+    if (!name) return 'S';
+    return name.split(' ').map(n => n[0]).join('').substring(0,2).toUpperCase();
+}
+
+
 export default function SeatAvailabilityPage() {
   const { toast } = useToast();
   const [allStudents, setAllStudents] = React.useState<Student[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
-  const [selectedShiftView, setSelectedShiftView] = React.useState<ShiftView>('morning');
   
   const [occupiedMorningStudentsCount, setOccupiedMorningStudentsCount] = React.useState(0);
   const [occupiedEveningStudentsCount, setOccupiedEveningStudentsCount] = React.useState(0);
@@ -85,13 +92,6 @@ export default function SeatAvailabilityPage() {
   const [availableEveningSlotsCount, setAvailableEveningSlotsCount] = React.useState(0);
   const [availableForFullDayBookingCount, setAvailableForFullDayBookingCount] = React.useState(0);
   const [isLoadingOverallAvailableStats, setIsLoadingOverallAvailableStats] = React.useState(true);
-
-
-  const [showOccupiedSeatsDialog, setShowOccupiedSeatsDialog] = React.useState(false);
-  const [showAvailableSeatsDialog, setShowAvailableSeatsDialog] = React.useState(false);
-  const [dialogOccupiedStudentList, setDialogOccupiedStudentList] = React.useState<Student[]>([]);
-  const [dialogAvailableSeatList, setDialogAvailableSeatList] = React.useState<string[]>([]);
-  const [isLoadingDialogSeats, setIsLoadingDialogSeats] = React.useState(false);
 
   const activeStudents = React.useMemo(() => allStudents.filter(s => s.activityStatus === "Active"), [allStudents]);
 
@@ -133,227 +133,49 @@ export default function SeatAvailabilityPage() {
     fetchData();
   }, [toast]);
 
-  const handleOpenOccupiedSeatsDialog = () => {
-    let studentsToList: Student[];
-    if (selectedShiftView === 'morning') {
-      studentsToList = activeStudents.filter(s => s.seatNumber && (s.shift === 'morning' || s.shift === 'fullday'));
-    } else if (selectedShiftView === 'evening') {
-      studentsToList = activeStudents.filter(s => s.seatNumber && (s.shift === 'evening' || s.shift === 'fullday'));
-    } else { // fullday_occupied
-      studentsToList = activeStudents.filter(s => s.seatNumber && s.shift === 'fullday');
-    }
-    setDialogOccupiedStudentList(studentsToList.sort((a,b) => parseInt(a.seatNumber!) - parseInt(b.seatNumber!)));
-    setShowOccupiedSeatsDialog(true);
-  };
-  
-  const handleOpenAvailableSeatsDialog = async () => {
-    setIsLoadingDialogSeats(true);
-    setShowAvailableSeatsDialog(true);
-    try {
-      const targetShift = selectedShiftView === 'fullday_occupied' ? 'fullday' : selectedShiftView;
-      const seats = await getAvailableSeatsFromList(targetShift, allStudents);
-      setDialogAvailableSeatList(seats.sort((a,b) => parseInt(a) - parseInt(b)));
-    } catch (e) {
-      toast({ title: "Error", description: `Could not load available seats.`, variant: "destructive"});
-      setDialogAvailableSeatList([]);
-    } finally {
-      setIsLoadingDialogSeats(false);
-    }
-  };
 
-  const getSeatStatusKey = (seatNumber: string, view: ShiftView): SeatStatusKey => {
+  const getSeatStatusKey = (seatNumber: string): SeatStatusKey => {
     const studentMorning = activeStudents.find(s => s.seatNumber === seatNumber && s.shift === 'morning');
     const studentEvening = activeStudents.find(s => s.seatNumber === seatNumber && s.shift === 'evening');
     const studentFullDay = activeStudents.find(s => s.seatNumber === seatNumber && s.shift === 'fullday');
 
-    if (view === 'morning') {
-        if (studentFullDay) return 'fullday';
-        if (studentMorning) return 'morning';
-    } else if (view === 'evening') {
-        if (studentFullDay) return 'fullday';
-        if (studentEvening) return 'evening';
-    } else if (view === 'fullday_occupied') {
-        if (studentFullDay) return 'fullday';
-        if (studentMorning && studentEvening) return 'split';
-        if (studentMorning) return 'morning';
-        if (studentEvening) return 'evening';
-    }
+    if (studentFullDay) return 'fullday';
+    if (studentMorning && studentEvening) return 'split';
+    if (studentMorning) return 'morning';
+    if (studentEvening) return 'evening';
 
     return 'available';
-  };
-  
-  const occupiedDialogTitle = React.useMemo(() => {
-    if (selectedShiftView === 'morning') return "Students (Morning View)";
-    if (selectedShiftView === 'evening') return "Students (Evening View)";
-    if (selectedShiftView === 'fullday_occupied') return "Students (Full Day)";
-    return "Occupied By";
-  }, [selectedShiftView]);
-
-  const availableDialogTitle = React.useMemo(() => {
-    if (selectedShiftView === 'morning') return "Available Seats (Morning Shift)";
-    if (selectedShiftView === 'evening') return "Available Seats (Evening Shift)";
-    if (selectedShiftView === 'fullday_occupied') return "Available Seats (Full Day Booking)";
-    return "Available Seats";
-  }, [selectedShiftView]);
-
-  const getShiftViewLabel = (view: ShiftView) => {
-    switch(view) {
-      case 'morning': return 'Morning Shift';
-      case 'evening': return 'Evening Shift';
-      case 'fullday_occupied': return 'Full Day Bookings';
-      default: return 'Selected View';
-    }
   };
 
   return (
     <>
       <PageTitle title="Seat Availability & Occupancy" description="Overall hall status and shift-specific seat layout." />
       
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-6 mb-6">
-        <Card className="shadow-md">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg flex items-center">
-              <Briefcase className="mr-2 h-4 w-4 flex-shrink-0" />
-              Total Daily Slots
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold">{serviceAllSeats.length * 2}</p>
-            <p className="text-xs text-muted-foreground pt-1">Across morning & evening shifts</p>
-          </CardContent>
-        </Card>
-
-        <Dialog open={showOccupiedSeatsDialog} onOpenChange={setShowOccupiedSeatsDialog}>
-          <DialogTrigger asChild>
-            <Card className="cursor-pointer hover:shadow-lg transition-shadow shadow-md" onClick={handleOpenOccupiedSeatsDialog}>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-lg flex items-center">
-                  <Users className="mr-2 h-4 w-4 flex-shrink-0" />
-                  Occupied Slots
-                </CardTitle>
-                <CardDescription className="text-xs">Click to view details for '{getShiftViewLabel(selectedShiftView)}'</CardDescription>
-              </CardHeader>
-              <CardContent className="text-sm space-y-1 pt-2">
-                {isLoading ? <div className="flex justify-center py-1"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div> : (
-                  <>
-                    <div className="flex justify-between"><span>Morning:</span> <span className="font-semibold">{occupiedMorningStudentsCount} students</span></div>
-                    <div className="flex justify-between"><span>Evening:</span> <span className="font-semibold">{occupiedEveningStudentsCount} students</span></div>
-                    <div className="flex justify-between"><span>Full Day:</span> <span className="font-semibold">{occupiedFullDayStudentsCount} students</span></div>
-                  </>
-                )}
-              </CardContent>
-            </Card>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[725px]">
-            <DialogHeader>
-              <DialogTitle className="flex items-center"><UserCheck className="mr-2 h-5 w-5" />{occupiedDialogTitle}</DialogTitle>
-            </DialogHeader>
-            <div className="max-h-[60vh] overflow-y-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Student ID</TableHead>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Phone</TableHead>
-                    <TableHead>Seat</TableHead>
-                    <TableHead>Shift</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {dialogOccupiedStudentList.map((student) => (
-                    <TableRow key={student.studentId} className={student.feeStatus === 'Overdue' ? "bg-destructive/5" : ""}>
-                      <TableCell>{student.studentId}</TableCell>
-                      <TableCell className="font-medium">{student.name}</TableCell>
-                      <TableCell>{student.phone}</TableCell>
-                      <TableCell>{student.seatNumber}</TableCell>
-                      <TableCell className="capitalize">{student.shift}</TableCell>
-                    </TableRow>
-                  ))}
-                  {dialogOccupiedStudentList.length === 0 && (
-                      <TableRow>
-                        <TableCell colSpan={5} className="text-center text-muted-foreground py-4">
-                          No students occupying seats for this view.
-                        </TableCell>
-                      </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </div>
-          </DialogContent>
-        </Dialog>
-
-        <Dialog open={showAvailableSeatsDialog} onOpenChange={setShowAvailableSeatsDialog}>
-          <DialogTrigger asChild>
-            <Card className="cursor-pointer hover:shadow-lg transition-shadow shadow-md" onClick={handleOpenAvailableSeatsDialog}>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-lg flex items-center">
-                  <Armchair className="mr-2 h-4 w-4 flex-shrink-0" />
-                  Available Booking Slots
-                </CardTitle>
-                <CardDescription className="text-xs">Click to view details for '{getShiftViewLabel(selectedShiftView)}'</CardDescription>
-              </CardHeader>
-              <CardContent className="text-sm space-y-1 pt-2">
-                 {isLoadingOverallAvailableStats ? <div className="flex justify-center py-1"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div> : (
-                  <>
-                    <div className="flex justify-between"><span>Morning:</span> <span className="font-semibold">{availableMorningSlotsCount} slots</span></div>
-                    <div className="flex justify-between"><span>Evening:</span> <span className="font-semibold">{availableEveningSlotsCount} slots</span></div>
-                    <div className="flex justify-between"><span>Full Day:</span> <span className="font-semibold">{availableForFullDayBookingCount} slots</span></div>
-                  </>
-                )}
-              </CardContent>
-            </Card>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[425px]">
-            <DialogHeader>
-               <DialogTitle className="flex items-center"><Armchair className="mr-2 h-5 w-5" />
-                 {availableDialogTitle}
-               </DialogTitle>
-            </DialogHeader>
-            <div className="max-h-[60vh] overflow-y-auto">
-              {isLoadingDialogSeats ? <div className="flex justify-center p-4"><Loader2 className="mx-auto h-6 w-6 animate-spin"/></div> : (
-              <Table>
-                <TableHeader>
-                  <TableRow><TableHead>Seat Number</TableHead></TableRow>
-                </TableHeader>
-                <TableBody>
-                  {dialogAvailableSeatList.map((seat) => (
-                    <TableRow key={seat}><TableCell className="font-medium">{seat}</TableCell></TableRow>
-                  ))}
-                  {dialogAvailableSeatList.length === 0 && (
-                      <TableRow><TableCell className="text-center text-muted-foreground">No seats available for this view.</TableCell></TableRow>
-                  )}
-                </TableBody>
-              </Table>
-              )}
-            </div>
-          </DialogContent>
-        </Dialog>
-      </div>
-
       <Card className="mb-6 shadow-md">
         <CardHeader>
-          <CardTitle>Shift View Selector</CardTitle>
-          <CardDescription>Select a shift to see its specific occupancy in the layout below. Dialogs will also reflect this selection.</CardDescription>
+            <CardTitle className="text-lg">Hall Statistics</CardTitle>
         </CardHeader>
-        <CardContent>
-          <RadioGroup
-            value={selectedShiftView}
-            onValueChange={(value) => setSelectedShiftView(value as ShiftView)}
-            className="flex flex-col sm:flex-row gap-4"
-          >
-            <div className="flex items-center space-x-2">
-              <RadioGroupItem value="morning" id="morning-view" />
-              <Label htmlFor="morning-view" className="flex items-center"><Sunrise className="mr-2 h-4 w-4 text-orange-500"/>Morning Shift View</Label>
+        <CardContent className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-center">
+            <div className="p-2 rounded-lg bg-muted/50">
+                <p className="text-xs text-muted-foreground">Total Daily Slots</p>
+                <p className="text-xl font-bold">{serviceAllSeats.length * 2}</p>
             </div>
-            <div className="flex items-center space-x-2">
-              <RadioGroupItem value="evening" id="evening-view" />
-              <Label htmlFor="evening-view" className="flex items-center"><Sunset className="mr-2 h-4 w-4 text-purple-500"/>Evening Shift View</Label>
+            <div className="p-2 rounded-lg bg-muted/50">
+                <p className="text-xs text-muted-foreground">Occupied (M/E/FD)</p>
+                {isLoading ? <Loader2 className="h-5 w-5 animate-spin mx-auto mt-1" /> : (
+                  <p className="text-xl font-bold text-foreground">
+                    {occupiedMorningStudentsCount} / {occupiedEveningStudentsCount} / {occupiedFullDayStudentsCount}
+                  </p>
+                )}
             </div>
-            <div className="flex items-center space-x-2">
-              <RadioGroupItem value="fullday_occupied" id="fullday-view" />
-              <Label htmlFor="fullday-view" className="flex items-center"><Sun className="mr-2 h-4 w-4 text-yellow-500"/>Full Day Occupancy View</Label>
+            <div className="p-2 rounded-lg bg-muted/50 col-span-2 sm:col-span-1">
+                <p className="text-xs text-muted-foreground">Available Slots (M/E/FD)</p>
+                {isLoadingOverallAvailableStats ? <Loader2 className="h-5 w-5 animate-spin mx-auto mt-1" /> : (
+                    <p className="text-xl font-bold">
+                        {availableMorningSlotsCount} / {availableEveningSlotsCount} / {availableForFullDayBookingCount}
+                    </p>
+                )}
             </div>
-          </RadioGroup>
         </CardContent>
       </Card>
       
@@ -366,8 +188,8 @@ export default function SeatAvailabilityPage() {
         <>
           <Card className="mt-6 shadow-lg">
             <CardHeader>
-              <CardTitle>Seat Layout ({getShiftViewLabel(selectedShiftView)})</CardTitle>
-              <CardDescription>Visual representation of seat occupancy for the selected view. Click a seat for more details.</CardDescription>
+              <CardTitle>Seat Layout</CardTitle>
+              <CardDescription>Visual representation of seat occupancy. Click a seat for more details.</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mb-4 text-xs sm:text-sm">
@@ -394,7 +216,7 @@ export default function SeatAvailabilityPage() {
               </div>
               <div className="grid grid-cols-[repeat(auto-fill,minmax(2.75rem,1fr))] sm:grid-cols-[repeat(auto-fill,minmax(3.25rem,1fr))] gap-1 sm:gap-1.5">
                 {serviceAllSeats.map((seatNum) => {
-                  const seatStatusKey = getSeatStatusKey(seatNum, selectedShiftView);
+                  const seatStatusKey = getSeatStatusKey(seatNum);
                   const styles = SEAT_STYLES[seatStatusKey];
                   const ShiftIcon = styles.icon;
                   const studentsOnThisSeat = activeStudents.filter(s => s.seatNumber === seatNum);
@@ -402,10 +224,11 @@ export default function SeatAvailabilityPage() {
 
                   return (
                     <Popover key={seatNum}>
-                      <PopoverTrigger asChild>
+                      <PopoverTrigger asChild disabled={studentsOnThisSeat.length === 0}>
                         <div
                           className={cn(
-                            "relative flex items-center justify-center h-10 w-10 sm:h-12 sm:w-12 text-xs sm:text-sm rounded-md border-2 transition-colors font-medium cursor-pointer",
+                            "relative flex items-center justify-center h-10 w-10 sm:h-12 sm:w-12 text-xs sm:text-sm rounded-md border-2 transition-colors font-medium",
+                            studentsOnThisSeat.length > 0 ? "cursor-pointer" : "cursor-default",
                             styles.bgClass,
                             styles.borderClass,
                             isFemaleOnly && "female-only-seat"
@@ -416,39 +239,58 @@ export default function SeatAvailabilityPage() {
                           <span className={cn(styles.textClass)}>{seatNum}</span>
                         </div>
                       </PopoverTrigger>
-                      <PopoverContent className="w-auto p-4" side="top" align="center">
-                        <div className="space-y-3">
-                          <h4 className="font-semibold text-md">Seat {seatNum}</h4>
-                          {studentsOnThisSeat.length > 0 ? (
-                            studentsOnThisSeat.map(student => (
-                              <div key={student.studentId} className="border-b pb-2 last:border-b-0 last:pb-0">
-                                <p className="text-sm font-medium">{student.name}</p>
-                                <p className="text-xs text-muted-foreground capitalize">
-                                  Shift: {student.shift}
-                                </p>
-                                <p className="text-xs text-muted-foreground">
-                                  Phone: {student.phone}
-                                </p>
-                                <div className="mt-2 flex space-x-2">
-                                  <Link href={`/students/profiles/${student.studentId}`} passHref legacyBehavior>
-                                    <Button variant="outline" size="sm">
-                                      <UserProfileIcon className="mr-1 h-3 w-3" /> Profile
-                                    </Button>
-                                  </Link>
-                                  <Link href={`/admin/students/edit/${student.studentId}`} passHref legacyBehavior>
-                                    <Button variant="outline" size="sm">
-                                      <Edit className="mr-1 h-3 w-3" /> Edit
-                                    </Button>
-                                  </Link>
-                                </div>
+                       <PopoverContent className="w-64 p-0" side="top" align="center">
+                          <div className="p-3">
+                              <h4 className="font-semibold text-md mb-2 border-b pb-2 text-center">Seat {seatNum}</h4>
+                              <div className="space-y-3">
+                                  {studentsOnThisSeat.map(student => (
+                                      <div key={student.studentId} className="space-y-2 border-b pb-3 last:border-b-0 last:pb-0">
+                                          <div className="flex items-center gap-3">
+                                              <Dialog>
+                                                <DialogTrigger asChild>
+                                                  <div className="cursor-pointer relative group flex-shrink-0">
+                                                    <Avatar className="h-10 w-10 border">
+                                                        <AvatarImage src={student.profilePictureUrl || undefined} alt={student.name} data-ai-hint="profile person" />
+                                                        <AvatarFallback>{getInitials(student.name)}</AvatarFallback>
+                                                    </Avatar>
+                                                     <div className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                                        <View className="text-white h-5 w-5"/>
+                                                    </div>
+                                                  </div>
+                                                </DialogTrigger>
+                                                <DialogContent className="max-w-md w-auto p-2">
+                                                    <Image
+                                                        src={student.profilePictureUrl || "https://placehold.co/400x400.png"}
+                                                        alt={`${student.name}'s profile picture`}
+                                                        width={400}
+                                                        height={400}
+                                                        className="rounded-md object-contain max-h-[70vh] w-full h-auto"
+                                                    />
+                                                </DialogContent>
+                                              </Dialog>
+                                              <div className="min-w-0 flex-1">
+                                                  <p className="text-sm font-medium truncate">{student.name}</p>
+                                                  <p className="text-xs text-muted-foreground capitalize truncate">
+                                                      Shift: {student.shift}
+                                                  </p>
+                                              </div>
+                                          </div>
+                                          <div className="flex items-center gap-2">
+                                              <Link href={`/students/profiles/${student.studentId}`} passHref legacyBehavior>
+                                                  <Button variant="outline" size="sm" className="flex-1">
+                                                      <UserProfileIcon className="mr-1 h-3 w-3" /> Profile
+                                                  </Button>
+                                              </Link>
+                                              <Link href={`/admin/students/edit/${student.studentId}`} passHref legacyBehavior>
+                                                  <Button variant="outline" size="sm" className="flex-1">
+                                                      <Edit className="mr-1 h-3 w-3" /> Edit
+                                                  </Button>
+                                              </Link>
+                                          </div>
+                                      </div>
+                                  ))}
                               </div>
-                            ))
-                          ) : (
-                            <p className="text-sm text-muted-foreground">
-                              This seat is currently unassigned and fully available.
-                            </p>
-                          )}
-                        </div>
+                          </div>
                       </PopoverContent>
                     </Popover>
                   );
@@ -461,4 +303,3 @@ export default function SeatAvailabilityPage() {
     </>
   );
 }
-

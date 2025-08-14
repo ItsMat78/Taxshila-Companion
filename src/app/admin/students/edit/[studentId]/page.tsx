@@ -2,7 +2,6 @@
 "use client";
 
 import * as React from 'react';
-import Image from 'next/image';
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
@@ -46,12 +45,12 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Save, ClipboardCheck, Loader2, UserX, UserCheck, FileText, KeyRound, Trash2 } from 'lucide-react';
+import { ArrowLeft, Save, ClipboardCheck, Loader2, UserX, UserCheck, KeyRound, Trash2, CalendarDays, User, Settings, AlertTriangle, Armchair } from 'lucide-react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { getStudentById, updateStudent, getAvailableSeats, recordStudentPayment, deleteStudentCompletely, getFeeStructure } from '@/services/student-service';
+import { getStudentById, updateStudent, getAvailableSeats, recordStudentPayment, getFeeStructure } from '@/services/student-service';
 import type { Student, Shift, FeeStructure, PaymentRecord } from '@/types/student';
-import { format, addMonths } from 'date-fns';
+import { format } from 'date-fns';
 import { Calendar } from '@/components/ui/calendar'
 import {
   Popover,
@@ -61,8 +60,8 @@ import {
 import { cn } from "@/lib/utils"
 import { Skeleton } from '@/components/ui/skeleton';
 import { useNotificationContext } from '@/contexts/notification-context';
-
-const ID_CARD_PLACEHOLDER_EDIT = "https://placehold.co/150x100.png?text=ID+Preview";
+import { ProfilePictureUploader } from '@/components/admin/edit-student/profile-picture-uploader';
+import { Separator } from '@/components/ui/separator';
 
 const studentEditFormSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
@@ -103,6 +102,17 @@ const shiftOptions = [
   { value: "fullday" as Shift, label: "Full Day (7 AM - 9:30 PM)" },
 ];
 
+const getShiftColorClass = (shift: Shift | undefined) => {
+  if (!shift) return 'bg-gray-100 text-gray-800 border-gray-300';
+  switch (shift) {
+    case 'morning': return 'bg-seat-morning text-seat-morning-foreground border-orange-300 dark:border-orange-700';
+    case 'evening': return 'bg-seat-evening text-seat-evening-foreground border-purple-300 dark:border-purple-700';
+    case 'fullday': return 'bg-seat-fullday text-seat-fullday-foreground border-yellow-300 dark:border-yellow-700';
+    default: return 'bg-gray-100 text-gray-800 border-gray-300';
+  }
+};
+
+
 export default function EditStudentPage() {
   const { toast } = useToast();
   const params = useParams();
@@ -116,7 +126,6 @@ export default function EditStudentPage() {
   const [isSaving, setIsSaving] = React.useState(false);
   const [isDeleting, setIsDeleting] = React.useState(false);
   const [isLoadingSeats, setIsLoadingSeats] = React.useState(false);
-  const fileInputRef = React.useRef<HTMLInputElement>(null);
   const [isDirtyOverride, setIsDirtyOverride] = React.useState(false);
 
   const [isConfirmPaymentOpen, setIsConfirmPaymentOpen] = React.useState(false);
@@ -141,7 +150,6 @@ export default function EditStudentPage() {
   });
 
   const selectedShift = form.watch("shift");
-  const currentIdCardFilename = form.watch("idCardFileName");
   const isStudentLeft = studentData?.activityStatus === 'Left';
 
   const fetchStudentDetails = React.useCallback(async (currentStudentId: string) => {
@@ -415,15 +423,14 @@ export default function EditStudentPage() {
     if (!studentId || !studentData) return;
     setIsDeleting(true);
     try {
-      // Call the backend API to delete from both Auth and Firestore
       const response = await fetch('/api/admin/delete-student', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          uid: studentData.uid,           // Pass the Auth UID
-          studentId: studentData.studentId // Pass the custom Student ID
+          uid: studentData.uid,
+          studentId: studentData.studentId
         }),
       });
 
@@ -447,17 +454,16 @@ export default function EditStudentPage() {
     }
   };
 
-
-
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      form.setValue("idCardFileName", file.name, {shouldDirty: true});
-      setIsDirtyOverride(true);
-    } else {
-      form.setValue("idCardFileName", studentData?.idCardFileName || "", {shouldDirty: true});
+  const onPictureUploadSuccess = (newUrl: string) => {
+    if (studentData) {
+      setStudentData({ ...studentData, profilePictureUrl: newUrl });
     }
+    toast({
+      title: 'Profile Picture Updated',
+      description: "The student's new profile picture has been saved.",
+    });
   };
+
 
   if (isLoading) {
     return (
@@ -465,19 +471,15 @@ export default function EditStudentPage() {
         <PageTitle title="Edit Student: ..." description="Loading student details...">
          <Skeleton className="h-10 w-36" />
         </PageTitle>
-        <Card className="w-full md:max-w-2xl mx-auto shadow-lg">
-          <CardHeader>
-            <Skeleton className="h-6 w-48 mb-2" />
-            <Skeleton className="h-4 w-full" />
-          </CardHeader>
-          <CardContent className="space-y-6">
-            {[...Array(8)].map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}
-          </CardContent>
-          <CardFooter className="flex justify-between">
-            <Skeleton className="h-10 w-40" />
-            <Skeleton className="h-10 w-32" />
-          </CardFooter>
-        </Card>
+        <div className="grid md:grid-cols-3 gap-6">
+            <div className="md:col-span-1 space-y-6">
+                <Skeleton className="h-56 w-full" />
+                <Skeleton className="h-40 w-full" />
+            </div>
+            <div className="md:col-span-2 space-y-6">
+                 <Skeleton className="h-96 w-full" />
+            </div>
+        </div>
       </>
     );
   }
@@ -510,225 +512,199 @@ export default function EditStudentPage() {
 
   const amountDueDisplay = getAmountDueDisplay();
 
+  const isSaveDisabled = isSaving || isDeleting || isLoadingSeats || (!isStudentLeft && !form.formState.isDirty && !isDirtyOverride && !form.getValues("newPassword"));
+
   return (
     <>
       <PageTitle title={`Edit Student: ${studentData.name}`} description={`Modifying details for Student ID: ${studentId}`}>
         <Link href="/students/list" passHref legacyBehavior>
           <Button variant="outline" disabled={isSaving || isDeleting}>
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Student List
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Back to List
           </Button>
         </Link>
       </PageTitle>
-      <Card className="w-full md:max-w-2xl mx-auto shadow-lg">
-        <CardHeader>
-          <CardTitle>Edit Student Details</CardTitle>
-          <CardDescription>
-            Current Fee Status: <span className="font-semibold">{studentData.feeStatus}</span>.
-            Activity Status: <span className={`font-semibold ${isStudentLeft ? 'text-destructive' : 'text-green-600'}`}>{studentData.activityStatus}</span>.
-            {isStudentLeft && " Update details and select a shift & seat to re-activate."}
-          </CardDescription>
-        </CardHeader>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSaveChanges)}>
-            <CardContent className="space-y-6">
-              <FormItem>
-                <FormLabel>Student ID</FormLabel>
-                <FormControl>
-                  <Input value={studentId} disabled />
-                </FormControl>
-              </FormItem>
-              <FormField control={form.control} name="name" render={({ field }) => (
-                <FormItem><FormLabel>Full Name</FormLabel><FormControl><Input placeholder="Enter student's full name" {...field} disabled={isSaving || isDeleting} /></FormControl><FormMessage /></FormItem>
-              )} />
-              <FormField control={form.control} name="email" render={({ field }) => (
-                <FormItem><FormLabel>Email Address (Optional)</FormLabel><FormControl><Input type="email" placeholder="student@example.com" {...field} disabled={isSaving || isDeleting} /></FormControl><FormMessage /></FormItem>
-              )} />
-              <FormField control={form.control} name="phone" render={({ field }) => (
-                <FormItem><FormLabel>Phone Number</FormLabel><FormControl><Input type="tel" placeholder="Enter 10-digit phone number" {...field} disabled={isSaving || isDeleting} /></FormControl><FormMessage /></FormItem>
-              )} />
-              <FormField control={form.control} name="address" render={({ field }) => (
-                <FormItem><FormLabel>Address</FormLabel><FormControl><Input placeholder="Enter address" {...field} disabled={isSaving || isDeleting} /></FormControl><FormMessage /></FormItem>
-              )} />
-              <FormField control={form.control} name="shift" render={({ field }) => (
-                <FormItem className="space-y-3"><FormLabel>Shift Selection</FormLabel>
-                  <FormControl>
-                    <RadioGroup onValueChange={(value) => { field.onChange(value); setIsDirtyOverride(true); }} value={field.value} className="flex flex-col space-y-2" disabled={isSaving || isDeleting}>
-                      {shiftOptions.map(option => (
-                        <FormItem key={option.value} className="flex items-center space-x-3 space-y-0">
-                          <FormControl><RadioGroupItem value={option.value} disabled={isSaving || isDeleting} /></FormControl>
-                          <FormLabel className="font-normal">{option.label}</FormLabel>
-                        </FormItem>
-                      ))}
-                    </RadioGroup>
-                  </FormControl>
-                <FormMessage /></FormItem>
-              )} />
-               <FormField
-                control={form.control}
-                name="seatNumber"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Seat Number</FormLabel>
-                    <Select
-                        onValueChange={(value) => { field.onChange(value); setIsDirtyOverride(true); }}
-                        value={field.value || ""}
-                        disabled={isSaving || isDeleting || isLoadingSeats || !selectedShift}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder={!selectedShift ? "Select shift first" : (isLoadingSeats ? "Loading seats..." : (isStudentLeft ? "Select new seat" : "Select a seat"))} />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {!selectedShift && (<p className="p-2 text-xs text-muted-foreground">Select a shift to see available seats.</p>)}
-                        {selectedShift && isLoadingSeats && (<p className="p-2 text-xs text-muted-foreground">Loading seats...</p>)}
-                        {selectedShift && !isLoadingSeats && availableSeatOptions.length === 0 && (
-                           <p className="p-2 text-xs text-muted-foreground">No seats currently available for {selectedShift} shift.</p>)}
-                        {availableSeatOptions.map(seat => (
-                          <SelectItem key={seat} value={seat}>
-                            {seat}{seat === studentData.seatNumber && studentData.shift === selectedShift && !isStudentLeft ? " (Current)" : ""}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {isStudentLeft && <FormDescription>Student is Left. Selecting a shift and new seat is required to re-activate.</FormDescription>}
-                    {!isStudentLeft && studentData.seatNumber && studentData.shift !== selectedShift && form.getValues("seatNumber") !== studentData.seatNumber && <FormDescription>Shift changed. Select a new seat for the {selectedShift} shift.</FormDescription>}
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <FormField
-                control={form.control}
-                name="nextDueDate"
-                render={({ field }) => (
-                  <FormItem className="flex flex-col">
-                    <FormLabel>Next Due Date</FormLabel>
-                    <Popover>
-                      <PopoverTrigger asChild>
+
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSaveChanges)}>
+          <Card className="shadow-lg">
+            <CardContent className="p-6 grid grid-cols-1 md:grid-cols-3 gap-8">
+              {/* Left Column for Picture */}
+              <div className="md:col-span-1">
+                 <ProfilePictureUploader
+                    studentFirestoreId={studentData.firestoreId!}
+                    currentProfilePictureUrl={studentData.profilePictureUrl}
+                    onUploadSuccess={onPictureUploadSuccess}
+                  />
+              </div>
+
+              {/* Right Column for Form */}
+              <div className="md:col-span-2 space-y-6">
+                 <div>
+                    <h3 className="text-lg font-medium flex items-center mb-2"><User className="mr-2 h-5 w-5" />Personal Information</h3>
+                    <div className="space-y-4">
+                      <FormItem>
+                          <FormLabel>Student ID</FormLabel>
+                          <FormControl>
+                          <Input value={studentId} disabled />
+                          </FormControl>
+                      </FormItem>
+                      <FormField control={form.control} name="name" render={({ field }) => (
+                          <FormItem><FormLabel>Full Name</FormLabel><FormControl><Input placeholder="Enter student's full name" {...field} disabled={isSaving || isDeleting} /></FormControl><FormMessage /></FormItem>
+                      )} />
+                      <FormField control={form.control} name="email" render={({ field }) => (
+                          <FormItem><FormLabel>Email Address (Optional)</FormLabel><FormControl><Input type="email" placeholder="student@example.com" {...field} disabled={isSaving || isDeleting} /></FormControl><FormMessage /></FormItem>
+                      )} />
+                      <FormField control={form.control} name="phone" render={({ field }) => (
+                          <FormItem><FormLabel>Phone Number</FormLabel><FormControl><Input type="tel" placeholder="Enter 10-digit phone number" {...field} disabled={isSaving || isDeleting} /></FormControl><FormMessage /></FormItem>
+                      )} />
+                      <FormField control={form.control} name="address" render={({ field }) => (
+                          <FormItem><FormLabel>Address</FormLabel><FormControl><Input placeholder="Enter address" {...field} disabled={isSaving || isDeleting} /></FormControl><FormMessage /></FormItem>
+                      )} />
+                    </div>
+                </div>
+
+                <Separator />
+                
+                <div>
+                  <h3 className="text-lg font-medium flex items-center mb-2"><Settings className="mr-2 h-5 w-5" />Configuration</h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                      Fee Status: <span className="font-semibold">{studentData.feeStatus}</span>.
+                      Activity Status: <span className={`font-semibold ${isStudentLeft ? 'text-destructive' : 'text-green-600'}`}>{studentData.activityStatus}</span>.
+                      {isStudentLeft && " Update details and select a shift & seat to re-activate."}
+                  </p>
+                  <div className="space-y-4">
+                     <FormField control={form.control} name="shift" render={({ field }) => (
+                        <FormItem className="space-y-3"><FormLabel>Shift Selection</FormLabel>
                         <FormControl>
-                          <Button
-                            variant={"outline"}
-                            className={cn(
-                              "w-[240px] pl-3 text-left font-normal",
-                              !field.value && "text-muted-foreground"
-                            )}
-                          >
-                            {field.value ? (
-                              format(field.value, "PPP")
-                            ) : (
-                              <span>Pick a date</span>
-                            )}
-                          </Button>
+                            <RadioGroup onValueChange={(value) => { field.onChange(value); setIsDirtyOverride(true); }} value={field.value} className="flex flex-col space-y-2" disabled={isSaving || isDeleting}>
+                            {shiftOptions.map(option => (
+                                <FormItem key={option.value} className="flex items-center space-x-3 space-y-0">
+                                <FormControl><RadioGroupItem value={option.value} disabled={isSaving || isDeleting} /></FormControl>
+                                <FormLabel className="font-normal">{option.label}</FormLabel>
+                                </FormItem>
+                            ))}
+                            </RadioGroup>
                         </FormControl>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                          mode="single"
-                          selected={field.value}
-                          onSelect={field.onChange}
-                          disabled={isSaving || isDeleting}
-                          initialFocus
-                        />
-                      </PopoverContent>
-                    </Popover>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                        <FormMessage /></FormItem>
+                    )} />
+                    
+                    <FormField control={form.control} name="seatNumber" render={({ field }) => (
+                        <FormItem>
+                          <div className="flex items-center justify-between">
+                            <FormLabel>Seat Number</FormLabel>
+                            {!isStudentLeft && field.value && (
+                              <div className={cn("flex items-center justify-center h-8 w-8 text-sm rounded-md border-2 font-bold", getShiftColorClass(form.getValues("shift")))}>
+                                {field.value}
+                              </div>
+                            )}
+                          </div>
+                            <Select
+                                onValueChange={(value) => { field.onChange(value); setIsDirtyOverride(true); }}
+                                value={field.value || ""}
+                                disabled={isSaving || isDeleting || isLoadingSeats || !selectedShift}
+                            >
+                            <FormControl>
+                                <SelectTrigger>
+                                <SelectValue placeholder={!selectedShift ? "Select shift first" : (isLoadingSeats ? "Loading seats..." : (isStudentLeft ? "Select new seat" : "Select a seat"))} />
+                                </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                                {!selectedShift && (<p className="p-2 text-xs text-muted-foreground">Select a shift to see available seats.</p>)}
+                                {selectedShift && isLoadingSeats && (<p className="p-2 text-xs text-muted-foreground">Loading seats...</p>)}
+                                {selectedShift && !isLoadingSeats && availableSeatOptions.length === 0 && (
+                                <p className="p-2 text-xs text-muted-foreground">No seats currently available for {selectedShift} shift.</p>)}
+                                {availableSeatOptions.map(seat => (
+                                <SelectItem key={seat} value={seat}>
+                                    {seat}{seat === studentData.seatNumber && studentData.shift === selectedShift && !isStudentLeft ? " (Current)" : ""}
+                                </SelectItem>
+                                ))}
+                            </SelectContent>
+                            </Select>
+                            {isStudentLeft && <FormDescription>Student is Left. Selecting a shift and new seat is required to re-activate.</FormDescription>}
+                            {!isStudentLeft && studentData.seatNumber && studentData.shift !== selectedShift && form.getValues("seatNumber") !== studentData.seatNumber && <FormDescription>Shift changed. Select a new seat for the {selectedShift} shift.</FormDescription>}
+                            <FormMessage />
+                        </FormItem>
+                        )}
+                    />
+                     <FormField control={form.control} name="nextDueDate" render={({ field }) => (
+                        <FormItem className="flex flex-col">
+                            <FormLabel className="flex items-center"><CalendarDays className="mr-2 h-4 w-4 text-muted-foreground"/>Next Due Date</FormLabel>
+                            <Popover>
+                            <PopoverTrigger asChild>
+                                <FormControl>
+                                <Button
+                                    variant={"outline"}
+                                    className={cn(
+                                    "w-full sm:w-[240px] pl-3 text-left font-normal",
+                                    !field.value && "text-muted-foreground"
+                                    )}
+                                >
+                                    {field.value ? (
+                                    format(field.value, "PPP")
+                                    ) : (
+                                    <span>Pick a date</span>
+                                    )}
+                                </Button>
+                                </FormControl>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                                <Calendar
+                                mode="single"
+                                selected={field.value}
+                                onSelect={field.onChange}
+                                disabled={isSaving || isDeleting}
+                                initialFocus
+                                />
+                            </PopoverContent>
+                            </Popover>
+                            <FormMessage />
+                        </FormItem>
+                        )}
+                    />
 
-              <div className="space-y-2 pt-4 border-t">
-                <FormLabel className="flex items-center"><KeyRound className="mr-2 h-4 w-4 text-muted-foreground" />Update Password (Optional)</FormLabel>
-                 <FormField control={form.control} name="newPassword" render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-xs text-muted-foreground">New Password</FormLabel>
-                    <FormControl><Input type="password" placeholder="Enter new password (min 6 chars)" {...field} disabled={isSaving || isDeleting} /></FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )} />
-                <FormField control={form.control} name="confirmNewPassword" render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-xs text-muted-foreground">Confirm New Password</FormLabel>
-                    <FormControl><Input type="password" placeholder="Re-enter new password" {...field} disabled={isSaving || isDeleting} /></FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )} />
+                    <div className="space-y-2 pt-4 border-t">
+                        <FormLabel className="flex items-center"><KeyRound className="mr-2 h-4 w-4 text-muted-foreground" />Update Password (Optional)</FormLabel>
+                        <FormField control={form.control} name="newPassword" render={({ field }) => (
+                        <FormItem>
+                            <FormLabel className="text-xs text-muted-foreground">New Password</FormLabel>
+                            <FormControl><Input type="password" placeholder="Enter new password (min 6 chars)" {...field} disabled={isSaving || isDeleting} /></FormControl>
+                            <FormMessage />
+                        </FormItem>
+                        )} />
+                        <FormField control={form.control} name="confirmNewPassword" render={({ field }) => (
+                        <FormItem>
+                            <FormLabel className="text-xs text-muted-foreground">Confirm New Password</FormLabel>
+                            <FormControl><Input type="password" placeholder="Re-enter new password" {...field} disabled={isSaving || isDeleting} /></FormControl>
+                            <FormMessage />
+                        </FormItem>
+                        )} />
+                    </div>
+                  </div>
+                </div>
+
               </div>
-
             </CardContent>
-            <CardFooter className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-4">
-              <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-                  <AlertDialog open={isConfirmMarkLeftOpen} onOpenChange={setIsConfirmMarkLeftOpen}>
-                    <AlertDialogTrigger asChild>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        disabled={isSaving || isDeleting || isStudentLeft}
-                        className={isStudentLeft ? "hidden" : ""}
-                        onClick={() => setIsConfirmMarkLeftOpen(true)}
-                      >
-                        <UserX className="mr-2 h-4 w-4" /> Mark as Left
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Mark {studentData.name} as Left?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          This will mark the student as inactive and their seat will become available. Are you sure?
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel onClick={() => setIsConfirmMarkLeftOpen(false)} disabled={isSaving}>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleMarkAsLeft} disabled={isSaving}>
-                          {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                          Confirm
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
+            <CardFooter className="flex flex-col sm:flex-row items-center gap-2 p-6 bg-muted/30 border-t">
+               <Button type="submit" className="w-full sm:w-auto" disabled={isSaveDisabled}>
+                  {isSaving && !isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : (isStudentLeft ? <UserCheck className="mr-2 h-4 w-4" /> : <Save className="mr-2 h-4 w-4" />)}
+                  {isStudentLeft ? "Save and Re-activate" : "Save Changes"}
+              </Button>
 
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button
-                        type="button"
-                        variant="destructive"
-                        disabled={isSaving || isDeleting}
-                      >
-                        <Trash2 className="mr-2 h-4 w-4" /> Delete Student
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          This action cannot be undone. This will permanently delete the student
-                          ({studentData.name} - {studentId}) and all their associated data (like attendance records).
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleDeleteStudent} disabled={isDeleting} className="bg-destructive hover:bg-destructive/90">
-                          {isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                          Confirm Delete
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-              </div>
-              <div className="flex flex-col sm:flex-row sm:items-center gap-2 w-full sm:w-auto justify-end">
+              <div className="w-full sm:w-auto sm:ml-auto flex flex-col sm:flex-row gap-2">
                  <AlertDialog open={isConfirmPaymentOpen} onOpenChange={setIsConfirmPaymentOpen}>
                     <AlertDialogTrigger asChild>
                         <Button
                             type="button"
                             variant="outline"
+                            className="w-full"
                             disabled={isSaving || isDeleting || studentData.feeStatus === "Paid" || isStudentLeft}
                             onClick={() => {
-                              setPaymentMethod('Cash'); // Default to Cash when opening dialog
-                              setIsConfirmPaymentOpen(true)
+                            setPaymentMethod('Desk Payment');
+                            setIsConfirmPaymentOpen(true)
                             }}
                         >
-                            <ClipboardCheck className="mr-2 h-4 w-4" /> Mark Payment as Paid
+                           <ClipboardCheck className="mr-2 h-4 w-4"/> Mark as Paid
                         </Button>
                     </AlertDialogTrigger>
                     <AlertDialogContent>
@@ -739,15 +715,15 @@ export default function EditStudentPage() {
                             </AlertDialogDescription>
                         </AlertDialogHeader>
                         <div className="py-4">
-                           <RadioGroup defaultValue="Cash" onValueChange={(value) => setPaymentMethod(value as PaymentRecord['method'])}>
-                              <div className="flex items-center space-x-2">
+                        <RadioGroup defaultValue="Cash" onValueChange={(value) => setPaymentMethod(value as PaymentRecord['method'])}>
+                            <div className="flex items-center space-x-2">
                                 <RadioGroupItem value="Cash" id="payment-cash" />
                                 <FormLabel htmlFor="payment-cash">Cash</FormLabel>
-                              </div>
-                              <div className="flex items-center space-x-2">
+                            </div>
+                            <div className="flex items-center space-x-2">
                                 <RadioGroupItem value="Online" id="payment-online" />
                                 <FormLabel htmlFor="payment-online">Online (UPI/Card)</FormLabel>
-                              </div>
+                            </div>
                             </RadioGroup>
                         </div>
                         <AlertDialogFooter>
@@ -759,15 +735,70 @@ export default function EditStudentPage() {
                         </AlertDialogFooter>
                     </AlertDialogContent>
                 </AlertDialog>
-                <Button type="submit" disabled={isSaving || isDeleting || isLoadingSeats || (!isStudentLeft && !form.formState.isDirty && !isDirtyOverride && !form.getValues("newPassword")) }>
-                  {isSaving && !isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : (isStudentLeft ? <UserCheck className="mr-2 h-4 w-4" /> : <Save className="mr-2 h-4 w-4" />)}
-                  {isStudentLeft ? "Save and Re-activate" : "Save Changes"}
-                </Button>
+
+                <AlertDialog open={isConfirmMarkLeftOpen} onOpenChange={setIsConfirmMarkLeftOpen}>
+                  <AlertDialogTrigger asChild>
+                  <Button
+                      type="button"
+                      variant="outline"
+                        className="w-full"
+                      disabled={isSaving || isDeleting || isStudentLeft}
+                      onClick={() => setIsConfirmMarkLeftOpen(true)}
+                  >
+                      <UserX className="mr-2 h-4 w-4" /> Mark as Left
+                  </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                  <AlertDialogHeader>
+                      <AlertDialogTitle>Mark {studentData.name} as Left?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                      This will mark the student as inactive and their seat will become available. Are you sure?
+                      </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                      <AlertDialogCancel onClick={() => setIsConfirmMarkLeftOpen(false)} disabled={isSaving}>Cancel</AlertDialogCancel>
+                      <AlertDialogAction onClick={handleMarkAsLeft} disabled={isSaving}>
+                      {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                      Confirm
+                      </AlertDialogAction>
+                  </AlertDialogFooter>
+                  </AlertDialogContent>
+              </AlertDialog>
+
+              <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                  <Button
+                      type="button"
+                      variant="destructive"
+                        className="w-full"
+                      disabled={isSaving || isDeleting}
+                  >
+                      <Trash2 className="mr-2 h-4 w-4" /> Delete Student
+                  </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                  <AlertDialogHeader>
+                      <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                      This action cannot be undone. This will permanently delete the student
+                      ({studentData.name} - {studentId}) and all their associated data.
+                      </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                      <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+                      <AlertDialogAction onClick={handleDeleteStudent} disabled={isDeleting} className="bg-destructive hover:bg-destructive/90">
+                      {isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                      Confirm Delete
+                      </AlertDialogAction>
+                  </AlertDialogFooter>
+                  </AlertDialogContent>
+              </AlertDialog>
               </div>
+
             </CardFooter>
-          </form>
-        </Form>
-      </Card>
+          </Card>
+        </form>
+      </Form>
     </>
   );
 }

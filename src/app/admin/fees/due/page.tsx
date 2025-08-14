@@ -22,16 +22,25 @@ import {
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
-import { AlertTriangle, CalendarClock, CheckCircle2, Loader2, User, IndianRupee, Edit, UserCheck, Eye, UserX, RefreshCw } from 'lucide-react';
+import { AlertTriangle, CalendarClock, CheckCircle2, Loader2, User, IndianRupee, Edit, UserCheck, Eye, UserX, RefreshCw, Info } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { getAllStudents, getAllAttendanceRecords, refreshAllStudentFeeStatuses } from '@/services/student-service';
 import type { Student } from '@/types/student';
 import { useToast } from '@/hooks/use-toast';
 import { format, parseISO, isValid } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+
 
 interface StudentWithLastAttended extends Student {
   lastAttended?: string; // ISO string
 }
+
+const getInitials = (name?: string) => {
+    if (!name) return 'S';
+    return name.split(' ').map(n => n[0]).join('').substring(0,2).toUpperCase();
+}
+
 
 const getFeeStatusBadge = (student: Student) => {
     const baseClasses = "text-xs px-1.5 py-0.5 border-transparent";
@@ -39,7 +48,9 @@ const getFeeStatusBadge = (student: Student) => {
       case 'Overdue':
         return <Badge variant="destructive" className={cn(baseClasses, "capitalize")}><CalendarClock className="mr-1 h-3 w-3" />{student.feeStatus}</Badge>;
       case 'Due':
-        return <Badge style={{ backgroundColor: 'hsl(var(--status-due-bg))', color: 'hsl(var(--status-due-text))' }} className={cn(baseClasses, "capitalize")}>{student.feeStatus}</Badge>;
+        return <Badge style={{ backgroundColor: 'hsl(var(--status-due-bg))', color: 'hsl(var(--status-due-text))' }} className={cn(baseClasses, "capitalize")}>Due</Badge>;
+       case 'Paid':
+        return <Badge style={{ backgroundColor: 'hsl(var(--status-paid-bg))', color: 'hsl(var(--status-paid-text))' }} className={cn(baseClasses, "capitalize")}>Paid</Badge>;
       default:
         return <Badge variant="outline" className={cn("text-xs px-1.5 py-0.5")}>{student.feeStatus}</Badge>;
     }
@@ -50,10 +61,18 @@ const FeeDueCardItem = ({ student }: { student: StudentWithLastAttended }) => {
     <Card className={cn("w-full shadow-md", student.feeStatus === "Overdue" ? "bg-destructive/5 border-destructive/30" : "")}>
       <CardHeader className="pb-2">
         <div className="flex justify-between items-start gap-2">
-          <CardTitle className="text-md break-words">{student.name}</CardTitle>
+            <div className="flex items-center gap-3">
+              <Avatar className="h-10 w-10 border">
+                  <AvatarImage src={student.profilePictureUrl || undefined} alt={student.name} data-ai-hint="profile person"/>
+                  <AvatarFallback>{getInitials(student.name)}</AvatarFallback>
+              </Avatar>
+              <div className="min-w-0">
+                <CardTitle className="text-md break-words">{student.name}</CardTitle>
+                <CardDescription className="text-xs break-words">ID: {student.studentId}</CardDescription>
+              </div>
+            </div>
           {getFeeStatusBadge(student)}
         </div>
-        <CardDescription className="text-xs break-words">ID: {student.studentId}</CardDescription>
       </CardHeader>
       <CardContent className="text-xs space-y-1 pb-3">
         <p><span className="font-medium">Amount Due:</span> {student.amountDue || 'N/A'}</p>
@@ -82,6 +101,24 @@ export default function FeesDuePage() {
   const [feesDueStudents, setFeesDueStudents] = React.useState<StudentWithLastAttended[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [isRefreshing, setIsRefreshing] = React.useState(false);
+
+  // Manual refresh handler
+  const handleManualRefresh = async () => {
+      setIsRefreshing(true);
+      try {
+        const result = await refreshAllStudentFeeStatuses();
+        toast({
+          title: "Fee Statuses Refreshed",
+          description: `${result.updatedCount} student(s) had their fee status updated.`,
+        });
+        await fetchFeesDue(); // Re-fetch the list after manual refresh
+      } catch (error: any) {
+        console.error("Failed to refresh fee statuses:", error);
+        toast({ title: "Error", description: error.message || "Could not refresh fee statuses.", variant: "destructive" });
+      } finally {
+        setIsRefreshing(false);
+      }
+  };
 
   const fetchFeesDue = React.useCallback(async () => {
     setIsLoading(true);
@@ -132,49 +169,59 @@ export default function FeesDuePage() {
     }
   }, [toast]);
 
+  // Fetch data on initial load
   React.useEffect(() => {
     fetchFeesDue();
   }, [fetchFeesDue]);
 
-  const handleRefreshStatuses = async () => {
-    setIsRefreshing(true);
-    try {
-      const result = await refreshAllStudentFeeStatuses();
-      toast({
-        title: "Fee Statuses Refreshed",
-        description: `${result.updatedCount} student(s) had their fee status updated.`,
-      });
-      await fetchFeesDue(); // Re-fetch the list to show updated results
-    } catch (error: any) {
-      console.error("Failed to refresh fee statuses:", error);
-      toast({ title: "Error", description: error.message || "Could not refresh fee statuses.", variant: "destructive" });
-    } finally {
-      setIsRefreshing(false);
-    }
-  };
-
   return (
     <>
-      <PageTitle title="Student Fees Due" description="Manage and track students with outstanding fee payments.">
-         <Button onClick={handleRefreshStatuses} variant="outline" disabled={isRefreshing || isLoading}>
+      <PageTitle title="Student Fees Due">
+         <Button onClick={handleManualRefresh} variant="outline" disabled={isRefreshing || isLoading}>
           {isRefreshing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
-          Refresh Statuses
+          Refresh Manually
         </Button>
       </PageTitle>
 
-      <Link href="/admin/students/potential-left" className="block no-underline">
-        <Card className="mb-6 shadow-md border-orange-500/20 bg-orange-500/5 hover:shadow-lg hover:border-orange-500/40 transition-shadow cursor-pointer">
-          <CardHeader>
-            <CardTitle className="flex items-center text-orange-700">
-              <UserX className="mr-2 h-5 w-5" />
-              Potentially Left Students
-            </CardTitle>
-            <CardDescription className="text-orange-600">
-              Click here to view active students who have not attended in the last 5 days and manage them.
-            </CardDescription>
-          </CardHeader>
-        </Card>
-      </Link>
+      <Alert className="mb-6">
+        <Info className="h-4 w-4" />
+        <AlertTitle>Fee Status Guide</AlertTitle>
+        <AlertDescription>
+          <ul className="list-disc list-inside text-xs space-y-2 pt-1">
+            <li className="flex items-center gap-2">
+              <Badge style={{ backgroundColor: 'hsl(var(--status-paid-bg))', color: 'hsl(var(--status-paid-text))' }} className="border-transparent">Paid</Badge>
+              - Fees are up to date.
+            </li>
+            <li className="flex items-center gap-2">
+              <Badge style={{ backgroundColor: 'hsl(var(--status-due-bg))', color: 'hsl(var(--status-due-text))' }} className="border-transparent">Due</Badge>
+              - Fee payment is due within the next 5 days or has recently passed.
+            </li>
+            <li className="flex items-center gap-2">
+              <Badge variant="destructive">Overdue</Badge>
+              - Fee has not been paid for more than 5 days past the due date. Attendance is revoked.
+            </li>
+          </ul>
+        </AlertDescription>
+      </Alert>
+
+
+      <Card className="mb-6 shadow-md border-border bg-card hover:shadow-lg hover:border-primary/30 transition-shadow">
+        <Link href="/admin/students/potential-left" className="block no-underline">
+            <CardHeader className="flex flex-row items-center justify-between p-4">
+                <div className="min-w-0">
+                    <CardTitle className="text-base flex items-center">
+                        <UserX className="mr-2 h-5 w-5" />
+                        Absent Students
+                    </CardTitle>
+                    <CardDescription className="text-xs mt-1">
+                        View active students who have been absent for over 5 days.
+                    </CardDescription>
+                </div>
+                <Button variant="outline" size="sm">View List</Button>
+            </CardHeader>
+        </Link>
+      </Card>
+
 
       <Card className="shadow-lg w-full">
         <CardHeader>
@@ -211,7 +258,6 @@ export default function FeesDuePage() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Student ID</TableHead>
                       <TableHead>Name</TableHead>
                       <TableHead>Last Payment</TableHead>
                       <TableHead>Next Due Date</TableHead>
@@ -223,8 +269,18 @@ export default function FeesDuePage() {
                   <TableBody>
                     {feesDueStudents.map((student) => (
                       <TableRow key={student.studentId} className={student.feeStatus === "Overdue" ? "bg-destructive/10 hover:bg-destructive/15" : "hover:bg-muted/30"}>
-                        <TableCell>{student.studentId}</TableCell>
-                        <TableCell className="font-medium">{student.name}</TableCell>
+                        <TableCell className="font-medium">
+                            <div className="flex items-center gap-3">
+                                <Avatar className="h-9 w-9 border">
+                                    <AvatarImage src={student.profilePictureUrl || undefined} alt={student.name} data-ai-hint="profile person"/>
+                                    <AvatarFallback>{getInitials(student.name)}</AvatarFallback>
+                                </Avatar>
+                                <div>
+                                    {student.name}
+                                    <span className="block text-xs text-muted-foreground">{student.studentId}</span>
+                                </div>
+                            </div>
+                        </TableCell>
                         <TableCell className="whitespace-nowrap">
                           {student.lastPaymentDate && isValid(parseISO(student.lastPaymentDate))
                             ? format(parseISO(student.lastPaymentDate), 'MMM d, yyyy')

@@ -1,4 +1,3 @@
-require('dotenv').config({ path: './.env' });
 
 import type {NextConfig} from 'next';
 
@@ -10,10 +9,13 @@ const nextConfig: NextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
-  env: {
-    FIREBASE_PROJECT_ID: process.env.FIREBASE_PROJECT_ID,
-    FIREBASE_CLIENT_EMAIL: process.env.FIREBASE_CLIENT_EMAIL,
-    FIREBASE_PRIVATE_KEY: process.env.FIREBASE_PRIVATE_KEY,
+  async rewrites() {
+    return [
+      {
+        source: '/sw.js',
+        destination: '/sw.js',
+      },
+    ]
   },
   images: {
     remotePatterns: [
@@ -23,13 +25,12 @@ const nextConfig: NextConfig = {
         port: '',
         pathname: '/**',
       },
-      {
-        protocol: 'https',
-        hostname: 'drive.google.com',
-        port: '',
-        pathname: '/**',
-      },
     ],
+    // Add support for data: URLs to allow Base64 images
+    domains: [],
+    dangerouslyAllowSVG: true,
+    contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
+    unoptimized: false, // Make sure optimization is not globally disabled
   },
   // Allow cross-origin requests from the Firebase Studio preview environment
   // for a smoother development experience.

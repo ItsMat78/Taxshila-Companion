@@ -61,7 +61,7 @@ export const mainNav: NavItem[] = [
         roles: ['admin'],
       },
       {
-        title: 'Potential Left',
+        title: 'Absent Students',
         href: '/admin/students/potential-left',
         icon: UserX,
         roles: ['admin'],

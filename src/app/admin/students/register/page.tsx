@@ -31,11 +31,18 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  FormDescription,
 } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
-import { UserPlus, Loader2 } from 'lucide-react';
+import { UserPlus, Loader2, Camera, Upload, Video, VideoOff } from 'lucide-react';
 import { addStudent, getAvailableSeats, type AddStudentData } from '@/services/student-service';
 import type { Shift } from '@/types/student';
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import { useCallback } from 'react';
+import { Label } from '@/components/ui/label';
+
 
 const studentFormSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
@@ -49,6 +56,7 @@ const studentFormSchema = z.object({
   shift: z.enum(["morning", "evening", "fullday"], { required_error: "Shift selection is required." }),
   seatNumber: z.string().min(1, "Seat selection is required."),
   idCardFileName: z.string().optional(),
+  profilePictureUrl: z.string().optional(), // Added for the profile picture
 }).refine(data => data.password === data.confirmPassword, {
   message: "Passwords don't match",
   path: ["confirmPassword"],
@@ -62,12 +70,27 @@ const shiftOptions = [
   { value: "fullday" as Shift, label: "Full Day (7 AM - 9:30 PM)" },
 ];
 
+const toBase64 = (file: File): Promise<string> => new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = error => reject(error);
+});
+
+
 export default function StudentRegisterPage() {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [availableSeatOptions, setAvailableSeatOptions] = React.useState<string[]>([]);
   const [isLoadingSeats, setIsLoadingSeats] = React.useState(false);
+  
+  const [previewUrl, setPreviewUrl] = React.useState<string | null>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  const [isCameraDialogOpen, setIsCameraDialogOpen] = React.useState(false);
+  const [hasCameraPermission, setHasCameraPermission] = React.useState(true);
+  const videoRef = React.useRef<HTMLVideoElement>(null);
+  const canvasRef = React.useRef<HTMLCanvasElement>(null);
 
   const form = useForm<StudentFormValues>({
     resolver: zodResolver(studentFormSchema),
@@ -81,6 +104,7 @@ export default function StudentRegisterPage() {
       shift: undefined,
       seatNumber: "",
       idCardFileName: "",
+      profilePictureUrl: "",
     },
   });
 
@@ -112,6 +136,75 @@ export default function StudentRegisterPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedShift, toast, form.setValue]);
 
+  // Effect to handle camera stream when dialog opens/closes
+  React.useEffect(() => {
+    let stream: MediaStream | null = null;
+    const videoElem = videoRef.current;
+
+    if (isCameraDialogOpen) {
+      const getCameraPermission = async () => {
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({ video: true });
+          setHasCameraPermission(true);
+          if (videoRef.current) {
+            videoRef.current.srcObject = stream;
+          }
+        } catch (error) {
+          console.error("Error accessing camera:", error);
+          setHasCameraPermission(false);
+          toast({
+            variant: "destructive",
+            title: "Camera Access Denied",
+            description: "Please enable camera permissions in your browser settings to use this app.",
+          });
+          setIsCameraDialogOpen(false);
+        }
+      };
+      getCameraPermission();
+    }
+
+    return () => {
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+      }
+      if (videoElem) {
+        videoElem.srcObject = null;
+      }
+    };
+  }, [isCameraDialogOpen, toast]);
+
+
+  const handleCapture = () => {
+    if (videoRef.current && canvasRef.current) {
+        const video = videoRef.current;
+        const canvas = canvasRef.current;
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        const context = canvas.getContext('2d');
+        if (context) {
+            context.drawImage(video, 0, 0, video.videoWidth, video.videoHeight);
+            const dataUrl = canvas.toDataURL('image/jpeg');
+            setPreviewUrl(dataUrl);
+            form.setValue('profilePictureUrl', dataUrl, { shouldDirty: true });
+        }
+        setIsCameraDialogOpen(false); // This will trigger the useEffect cleanup
+    }
+  };
+
+
+  const handleProfilePictureChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      if (file.size > 3 * 1024 * 1024) { // 3MB limit
+        toast({ title: "File Too Large", description: "Please select an image smaller than 3MB.", variant: "destructive" });
+        return;
+      }
+      const base64 = await toBase64(file);
+      setPreviewUrl(base64);
+      form.setValue('profilePictureUrl', base64, { shouldDirty: true });
+    }
+  };
+
 
   async function onSubmit(data: StudentFormValues) {
     setIsSubmitting(true);
@@ -125,6 +218,7 @@ export default function StudentRegisterPage() {
         shift: data.shift,
         seatNumber: data.seatNumber,
         idCardFileName: data.idCardFileName,
+        profilePictureUrl: data.profilePictureUrl, // Pass the base64 url
       };
       const newStudent = await addStudent(studentPayload);
       toast({
@@ -132,6 +226,7 @@ export default function StudentRegisterPage() {
         description: `${newStudent.name} (ID: ${newStudent.studentId}) has been registered with seat ${newStudent.seatNumber} for ${newStudent.shift} shift.`,
       });
       form.reset();
+      setPreviewUrl(null); // Clear preview after successful submission
       if (fileInputRef.current) {
         fileInputRef.current.value = ""; 
       }
@@ -167,6 +262,60 @@ export default function StudentRegisterPage() {
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)}>
             <CardContent className="space-y-6">
+              
+              <FormItem>
+                <FormLabel>Profile Picture (Optional)</FormLabel>
+                <div className="flex items-center gap-4">
+                    <Avatar className="h-20 w-20 border">
+                        <AvatarImage src={previewUrl || undefined} alt="Profile preview" data-ai-hint="profile person"/>
+                        <AvatarFallback><UserPlus /></AvatarFallback>
+                    </Avatar>
+                    <div className="flex-grow space-y-2">
+                      <FormControl>
+                        <Input
+                            type="file"
+                            accept="image/jpeg,image/png,image/webp"
+                            onChange={handleProfilePictureChange}
+                            disabled={isSubmitting}
+                            ref={fileInputRef}
+                        />
+                      </FormControl>
+                       <Dialog open={isCameraDialogOpen} onOpenChange={setIsCameraDialogOpen}>
+                          <DialogTrigger asChild>
+                              <Button type="button" variant="outline" className="w-full" disabled={isSubmitting}>
+                                  <Camera className="mr-2 h-4 w-4" /> Open Camera
+                              </Button>
+                          </DialogTrigger>
+                          <DialogContent>
+                              <DialogHeader>
+                                  <DialogTitle>Capture Photo</DialogTitle>
+                              </DialogHeader>
+                              <div className="py-4">
+                                  <video ref={videoRef} className="w-full aspect-video rounded-md bg-muted" autoPlay playsInline muted />
+                                  { !hasCameraPermission && (
+                                      <Alert variant="destructive">
+                                          <AlertTitle>Camera Access Required</AlertTitle>
+                                          <AlertDescription>
+                                            Please allow camera access to use this feature.
+                                          </AlertDescription>
+                                      </Alert>
+                                  )}
+                                  <canvas ref={canvasRef} className="hidden" />
+                              </div>
+                              <DialogFooter>
+                                  <Button type="button" onClick={handleCapture} disabled={!hasCameraPermission}>
+                                      <Camera className="mr-2 h-4 w-4" /> Capture and Use
+                                  </Button>
+                              </DialogFooter>
+                          </DialogContent>
+                      </Dialog>
+                      <FormDescription className="text-xs">
+                          Select a file (max 3MB) or capture from camera.
+                      </FormDescription>
+                    </div>
+                </div>
+              </FormItem>
+
               <FormField control={form.control} name="name" render={({ field }) => (
                 <FormItem><FormLabel>Full Name</FormLabel><FormControl><Input placeholder="Enter student's full name" {...field} disabled={isSubmitting} /></FormControl><FormMessage /></FormItem>
               )} />
@@ -233,8 +382,6 @@ export default function StudentRegisterPage() {
                   </FormItem>
                 )}
               />
-              
-
             </CardContent>
             <CardFooter>
               <Button type="submit" className="w-full sm:w-auto" disabled={isSubmitting || isLoadingSeats || !selectedShift}>
@@ -248,3 +395,5 @@ export default function StudentRegisterPage() {
     </>
   );
 }
+
+    

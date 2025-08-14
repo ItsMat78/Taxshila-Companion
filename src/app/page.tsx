@@ -2,6 +2,7 @@
 "use client";
 import * as React from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { PageTitle } from '@/components/shared/page-title';
 import {
   Users,
@@ -17,14 +18,21 @@ import {
   CreditCard,
   History,
   UserX,
+  Clock,
+  AlertTriangle,
+  Database,
+  Shield,
+  ListChecks,
+  View,
 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle as ShadcnCardTitle, CardDescription as ShadcnCardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle as ShadcnCardTitle, CardDescription as ShadcnCardDescription, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle as ShadcnDialogTitle,
+  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
   Table,
@@ -34,39 +42,153 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAuth } from '@/contexts/auth-context';
 import { useRouter, usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
-import { getAllStudents, getAvailableSeats, getAllAttendanceRecords, calculateMonthlyRevenue, getTodaysActiveAttendanceRecords, processCheckedInStudentsFromSnapshot } from '@/services/student-service';
+import { getAllStudents, getAvailableSeats, getAllAttendanceRecords, calculateMonthlyRevenue, getTodaysActiveAttendanceRecords, processCheckedInStudentsFromSnapshot, refreshAllStudentFeeStatuses, sendShiftWarningAlert } from '@/services/student-service';
 import type { Student, Shift, AttendanceRecord, CheckedInStudentInfo } from '@/types/student';
 import type { FeedbackItem } from '@/types/communication';
 import { format, parseISO, isToday, getHours, getMinutes } from 'date-fns';
 import { useNotificationCounts } from '@/hooks/use-notification-counts';
 import { useFinancialCounts } from '@/hooks/use-financial-counts';
 import { ALL_SEAT_NUMBERS as serviceAllSeats } from '@/config/seats';
+import { Button } from '@/components/ui/button';
+import { useToast } from '@/hooks/use-toast';
 
 const staticAdminActionTilesConfig = [
-  { baseTitle: "Manage Students", icon: Users, description: "View, edit student details.", href: "/students/list" },
-  { baseTitle: "Register Student", icon: UserPlus, description: "Add new students to system.", href: "/admin/students/register" },
-  { baseTitle: "Attendance Overview", icon: CalendarDays, description: "Check student attendance logs.", href: "/attendance/calendar" },
-  {
-    baseTitle: "Payment Due List",
-    icon: CreditCard,
-    description: "View students with due fees.",
-    href: "/admin/fees/due",
-    isFinancialTile: true,
-  },
-  { baseTitle: "Payment History", icon: History, description: "See all past transactions.", href: "/admin/fees/payments-history" },
-  { baseTitle: "Send Alert", icon: SendIcon, description: "Broadcast to all members.", href: "/admin/alerts/send" },
-  {
-    baseTitle: "View Feedback",
-    icon: Inbox,
-    description: "Review member suggestions.",
-    href: "/admin/feedback",
-    isFeedbackTile: true,
-  },
-  { baseTitle: "Seat Dashboard", icon: Eye, description: "View current seat status.", href: "/seats/availability" },
+    {
+        href: "/students/list",
+        icon: ListChecks,
+        baseTitle: "Manage Students",
+        description: "View and edit students.",
+    },
+    {
+        href: "/admin/students/register",
+        icon: UserPlus,
+        baseTitle: "Register Student",
+        description: "Add a new member.",
+    },
+    {
+        href: "/attendance/calendar",
+        icon: CalendarDays,
+        baseTitle: "Attendance Overview",
+        description: "View daily check-ins.",
+    },
+    {
+        href: "/admin/fees/due",
+        icon: CreditCard,
+        baseTitle: "Payment Due",
+        description: "View students with fees due.",
+        isFinancialTile: true,
+    },
+    {
+        href: "/admin/fees/payments-history",
+        icon: History,
+        baseTitle: "Payment History",
+        description: "Browse all transactions.",
+    },
+    {
+        href: "/admin/alerts/send",
+        icon: SendIcon,
+        baseTitle: "Send Alert",
+        description: "Broadcast a message.",
+    },
+    {
+        href: "/admin/feedback",
+        icon: Inbox,
+        baseTitle: "View Feedback",
+        description: "Check new messages.",
+        isFeedbackTile: true,
+    },
+    {
+        href: "/seats/availability",
+        icon: Armchair,
+        baseTitle: "Seat Availability",
+        description: "Check hall occupancy.",
+    },
 ];
+
+
+const getInitials = (name?: string) => {
+    if (!name) return 'S';
+    return name.split(' ').map(n => n[0]).join('').substring(0,2).toUpperCase();
+}
+
+const getShiftColorClass = (shift: Shift | undefined) => {
+  if (!shift) return 'bg-gray-100 text-gray-800 border-gray-300';
+  switch (shift) {
+    case 'morning': return 'bg-seat-morning text-seat-morning-foreground border-orange-300 dark:border-orange-700';
+    case 'evening': return 'bg-seat-evening text-seat-evening-foreground border-purple-300 dark:border-purple-700';
+    case 'fullday': return 'bg-seat-fullday text-seat-fullday-foreground border-yellow-300 dark:border-yellow-700';
+    default: return 'bg-gray-100 text-gray-800 border-gray-300';
+  }
+};
+
+const CheckedInStudentCard = ({ student, onWarn, isWarning }: { student: CheckedInStudentInfo, onWarn: (studentId: string) => void, isWarning: boolean }) => {
+  return (
+    <Card className="w-full">
+      <CardContent className="p-3 flex items-center justify-between gap-3">
+        <Dialog>
+          <DialogTrigger asChild>
+            <div className="flex items-center gap-3 min-w-0 cursor-pointer group">
+              <Avatar className="h-10 w-10 border flex-shrink-0">
+                <AvatarImage src={student.profilePictureUrl || undefined} alt={student.name} data-ai-hint="profile person" />
+                <AvatarFallback>{getInitials(student.name)}</AvatarFallback>
+              </Avatar>
+              <div className="flex-grow min-w-0">
+                <p className="text-sm font-semibold truncate group-hover:underline">{student.name}</p>
+                <div className="flex items-center gap-2 mt-1">
+                  <div
+                    className={cn(
+                      'h-6 w-6 flex items-center justify-center rounded-md border text-xs font-bold',
+                      getShiftColorClass(student.shift)
+                    )}
+                    title={`Seat ${student.seatNumber}`}
+                  >
+                    {student.seatNumber || '?'}
+                  </div>
+                  <div className="text-xs text-muted-foreground flex items-center">
+                      <LogIn className="h-3 w-3 mr-1 text-green-500" />
+                      {format(parseISO(student.checkInTime), 'p')}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </DialogTrigger>
+          <DialogContent className="max-w-md w-auto p-2">
+            <DialogHeader className="mb-2">
+              <ShadcnDialogTitle>{student.name}</ShadcnDialogTitle>
+            </DialogHeader>
+            <Image
+              src={student.profilePictureUrl || "https://placehold.co/400x400.png"}
+              alt={`${student.name}'s profile picture`}
+              width={400}
+              height={400}
+              className="rounded-md object-contain max-h-[70vh] w-full h-auto"
+            />
+          </DialogContent>
+        </Dialog>
+        {student.isOutsideShift && (
+          <Button
+            size="sm"
+            variant="outline"
+            className="border-yellow-500 text-yellow-600 hover:bg-yellow-500/10 flex-shrink-0"
+            onClick={() => onWarn(student.studentId)}
+            disabled={isWarning}
+          >
+            {isWarning ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <AlertTriangle className="h-4 w-4" />
+            )}
+            <span className="ml-2">Warn</span>
+          </Button>
+        )}
+      </CardContent>
+    </Card>
+  );
+};
 
 
 function AdminDashboardContent() {
@@ -82,6 +204,9 @@ function AdminDashboardContent() {
   const [monthlyRevenue, setMonthlyRevenue] = React.useState<string | null>(null);
   const [currentMonthName, setCurrentMonthName] = React.useState<string>(format(new Date(), 'MMMM'));
 
+  const [isWarningStudentId, setIsWarningStudentId] = React.useState<string | null>(null);
+  const { toast } = useToast();
+
   const { count: openFeedbackCount, isLoadingCount: isLoadingFeedbackCount } = useNotificationCounts();
   const { count: financialCount, isLoadingCount: isLoadingFinancialCount } = useFinancialCounts();
 
@@ -94,6 +219,9 @@ function AdminDashboardContent() {
       setIsLoadingRevenue(true);
 
       try {
+        // Run fee status refresh silently in the background
+        await refreshAllStudentFeeStatuses();
+
         const [
           allStudentsData,
           attendanceSnapshot,
@@ -165,6 +293,25 @@ function AdminDashboardContent() {
     };
   }, [showCheckedInDialog, baseCheckedInStudents]);
 
+  const handleWarnStudent = async (studentId: string) => {
+    setIsWarningStudentId(studentId);
+    try {
+      await sendShiftWarningAlert(studentId);
+      toast({
+        title: "Warning Sent",
+        description: `An alert has been sent to the student regarding their shift timing.`
+      });
+    } catch (error) {
+      toast({
+        title: "Error Sending Alert",
+        description: "Could not send the warning alert. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsWarningStudentId(null);
+    }
+  };
+
   const activeStudents = allStudents.filter(s => s.activityStatus === "Active");
   const morningShiftStudentCount = activeStudents.filter(s => s.shift === 'morning').length;
   const eveningShiftStudentCount = activeStudents.filter(s => s.shift === 'evening').length;
@@ -185,7 +332,7 @@ function AdminDashboardContent() {
       <PageTitle title="Admin Dashboard" description="Overview of Taxshila Companion activities." />
 
       <Dialog open={showCheckedInDialog} onOpenChange={setShowCheckedInDialog}>
-        <DialogContent className="sm:max-w-[725px]">
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <ShadcnDialogTitle className="flex items-center"><LogIn className="mr-2 h-5 w-5" />Students Currently In Library</ShadcnDialogTitle>
           </DialogHeader>
@@ -194,41 +341,21 @@ function AdminDashboardContent() {
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
           ) : (
-            <div className="max-h-[60vh] overflow-y-auto mt-4">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Shift</TableHead>
-                    <TableHead>Seat</TableHead>
-                    <TableHead>Check-in Time</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {studentsToDisplayInDialog.map((student) => (
-                    <TableRow key={student.studentId}>
-                      <TableCell className="font-medium flex items-center">
-                        {student.name}
-                        {student.isOutsideShift && (
-                          <Badge variant="outline" className="ml-2 border-yellow-500 text-yellow-600 text-xs">
-                            Outside Shift
-                          </Badge>
-                        )}
-                      </TableCell>
-                      <TableCell className="capitalize">{student.shift}</TableCell>
-                      <TableCell>{student.seatNumber || 'N/A'}</TableCell>
-                      <TableCell>{format(parseISO(student.checkInTime), 'p' )}</TableCell>
-                    </TableRow>
-                  ))}
-                  {studentsToDisplayInDialog.length === 0 && (
-                    <TableRow>
-                      <TableCell colSpan={4} className="text-center text-muted-foreground py-4">
-                        No students are currently checked in.
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
+            <div className="max-h-[60vh] overflow-y-auto mt-4 space-y-2">
+              {studentsToDisplayInDialog.length > 0 ? (
+                studentsToDisplayInDialog.map((student) => (
+                  <CheckedInStudentCard 
+                    key={student.studentId} 
+                    student={student} 
+                    onWarn={handleWarnStudent}
+                    isWarning={isWarningStudentId === student.studentId}
+                  />
+                ))
+              ) : (
+                 <div className="text-center text-muted-foreground py-6">
+                    No students are currently checked in.
+                  </div>
+              )}
             </div>
           )}
         </DialogContent>
@@ -399,3 +526,5 @@ export default function MainPage() {
     </div>
   );
 }
+
+    
