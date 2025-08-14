@@ -1,4 +1,5 @@
 
+
 import { initializeApp, getApp, getApps } from 'firebase/app';
 import { 
   getFirestore, 
@@ -24,7 +25,7 @@ import {
   increment,
   setDoc
 } from 'firebase/firestore';
-import { getStorage, ref as storageRef, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage';
+import { getStorage, ref as storageRef, uploadBytesResumable, getDownloadURL, deleteObject, uploadString } from 'firebase/storage';
 import { getAuth } from 'firebase/auth'; // Import getAuth
 import { getMessaging } from 'firebase/messaging';
 
@@ -62,7 +63,8 @@ export {
   storage, 
   messaging,
   storageRef, 
-  uploadBytesResumable, 
+  uploadBytesResumable,
+  uploadString, 
   getDownloadURL, 
   deleteObject, 
   collection,

@@ -1,3 +1,4 @@
+
 // src/app/api/admin/create-student-auth/route.ts
 import { NextResponse } from 'next/server';
 import { getAuth } from '@/lib/firebase-admin';
@@ -10,7 +11,7 @@ const isValidIndianPhoneNumber = (phone: string): boolean => {
 
 export async function POST(request: Request) {
   try {
-    const { email, phone, password, name, profilePictureUrl } = await request.json();
+    const { email, phone, password, name } = await request.json();
 
     // --- Validation ---
     if (!name || !password || !phone) {
@@ -49,7 +50,6 @@ export async function POST(request: Request) {
       phoneNumber: `+91${phone}`,
     };
     if (email) userPayload.email = email;
-    if (profilePictureUrl) userPayload.photoURL = profilePictureUrl;
     
     const userRecord = await auth.createUser(userPayload);
 
