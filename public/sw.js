@@ -1,104 +1,73 @@
-// public/sw.js
 
-// Shim for 'process' if it's causing issues with Firebase SDK in SW context
-if (typeof self.process === 'undefined') {
-  self.process = { env: {} };
-}
+// Scripts for Firebase App and Messaging
+importScripts('https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js');
+importScripts('https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js');
 
-importScripts('https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js');
-importScripts('https://www.gstatic.com/firebasejs/9.22.1/firebase-messaging-compat.js');
-
-// ==========================================================================================
-// !!! CRITICAL: ENSURE THIS CONFIG MATCHES YOUR ACTUAL FIREBASE PROJECT'S CONFIG !!!
-// ==========================================================================================
+// Your web app's Firebase configuration.
+// This is sourced from the environment variables you've provided.
 const firebaseConfig = {
-  apiKey: "AIzaSyDeZ6OoD1SUctiVxTZWEU1ziWTgIoV5EVQ", // <<< --- REPLACE THIS!
-  authDomain: "taxshila-companion.firebaseapp.com", // <<< --- REPLACE THIS!
-  projectId: "taxshila-companion", // <<< --- REPLACE THIS!
-  storageBucket: "taxshila-companion.firebasestorage.app", // <<< --- REPLACE THIS!
-  messagingSenderId: "855781562502", // <<< --- REPLACE THIS!
-  appId: "1:855781562502:web:f2089ec4be77f2780e1907", // <<< --- REPLACE THIS!
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
-// ==========================================================================================
 
-if (firebaseConfig.apiKey && !firebaseConfig.apiKey.includes("YOUR_")) {
-  try {
-    firebase.initializeApp(firebaseConfig);
 
-    if (firebase.messaging.isSupported()) {
-      const messaging = firebase.messaging();
-      console.log('[Service Worker] Firebase Messaging initialized successfully.');
-
-      messaging.onBackgroundMessage((payload) => {
-        console.log('[Service Worker] Received background message ', payload);
-
-        if (!payload.data || !payload.data.title) {
-          console.log('[Service Worker] Background message missing title, not showing notification.');
-          return;
-        }
-
-        const notificationTitle = payload.data.title;
-        const notificationOptions = {
-          body: payload.data.body || 'New message',
-          icon: payload.data.icon || '/logo.png', // Default icon
-          data: {
-              url: payload.data.url || '/', // URL to open on click
-              ...(payload.data || {}) // Pass along other data
-          }
-        };
-        
-        console.log('[Service Worker] Showing notification:', notificationTitle, notificationOptions);
-        self.registration.showNotification(notificationTitle, notificationOptions)
-          .catch(err => console.error('[Service Worker] Error showing notification:', err));
-      });
-    } else {
-      console.log('[Service Worker] Firebase Messaging is not supported in this browser (within sw.js).');
-    }
-  } catch (e) {
-    console.error('[Service Worker] Error initializing Firebase app in service worker:', e);
-  }
-} else {
-  console.error('[Service Worker] Firebase config is not set or still contains placeholders in sw.js. Push notifications WILL NOT WORK.');
+// Initialize Firebase
+if (firebase.apps.length === 0) {
+  firebase.initializeApp(firebaseConfig);
 }
 
-self.addEventListener('notificationclick', (event) => {
-  console.log('[Service Worker] Notification click Received.', event.notification);
-  event.notification.close();
+// Retrieve an instance of Firebase Messaging so that it can handle background
+// notifications.
+let messaging;
+try {
+  messaging = firebase.messaging();
+} catch (e) {
+  console.error("Could not retrieve messaging object in service worker.", e);
+}
 
-  const targetUrl = event.notification.data && event.notification.data.url ? event.notification.data.url : '/';
+
+if (messaging) {
+  messaging.onBackgroundMessage((payload) => {
+    console.log('[sw.js] Received background message ', payload);
+    
+    // Customize notification here
+    const notificationTitle = payload.notification.title;
+    const notificationOptions = {
+      body: payload.notification.body,
+      icon: payload.notification.icon || '/logo.png',
+      data: {
+        url: payload.data.url || '/', // Default to root if no URL is provided
+      }
+    };
+
+    self.registration.showNotification(notificationTitle, notificationOptions);
+  });
+}
+
+// Handle notification click
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const urlToOpen = event.notification.data.url || '/';
 
   event.waitUntil(
-    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
-      // Check if there's already a window open at the target URL.
+    clients.matchAll({
+      type: 'window',
+      includeUncontrolled: true,
+    }).then((clientList) => {
+      // If a window for this app is already open, focus it.
       for (const client of clientList) {
-        // If we find an existing client and it can be focused, focus it.
-        if (new URL(client.url).pathname === new URL(targetUrl, self.location.origin).pathname && 'focus' in client) {
+        if (client.url === urlToOpen && 'focus' in client) {
           return client.focus();
         }
       }
-      // If no existing client was found or focused, open a new window.
+      // Otherwise, open a new window.
       if (clients.openWindow) {
-        return clients.openWindow(targetUrl);
+        return clients.openWindow(urlToOpen);
       }
-    }).catch(err => console.error('[Service Worker] Error handling notification click:', err))
+    })
   );
-});
-
-self.addEventListener('pushsubscriptionchange', (event) => {
-  console.log('[Service Worker] Push subscription changed (e.g., token refresh):', event);
-  // Here you would typically re-subscribe and send the new subscription (token) to your server.
-  // This event is important for keeping FCM tokens up-to-date.
-  // The main app (`firebase-messaging-client.ts`) also tries to get and save the token on load,
-  // which often covers this, but handling `pushsubscriptionchange` is best practice.
-});
-
-// Add a basic install event listener to ensure the SW activates
-self.addEventListener('install', (event) => {
-  console.log('[Service Worker] Install event fired.');
-  // event.waitUntil(self.skipWaiting()); // Optional: forces the waiting service worker to become the active service worker
-});
-
-self.addEventListener('activate', (event) => {
-  console.log('[Service Worker] Activate event fired.');
-  // event.waitUntil(self.clients.claim()); // Optional: allows an active service worker to take control of the page immediately
 });
