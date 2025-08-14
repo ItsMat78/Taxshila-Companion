@@ -21,9 +21,10 @@ import { useAuth } from '@/contexts/auth-context';
 import { getStudentByEmail, getStudentByCustomId } from '@/services/student-service'; 
 import { saveProfilePicture } from '@/services/profile-picture-service';
 import type { Student } from '@/types/student'; 
-import { UserCircle, UploadCloud, Save, Mail, Phone, BookOpen, MapPin, Receipt, Loader2, Edit, SquareUser, IndianRupee, Camera, View } from 'lucide-react';
+import { UserCircle, UploadCloud, Save, Mail, Phone, BookOpen, MapPin, Receipt, Loader2, Edit, SquareUser, IndianRupee, Camera, View, Video, VideoOff } from 'lucide-react';
 import { Label } from '@/components/ui/label';
-import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTrigger, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 
 const DEFAULT_PROFILE_PLACEHOLDER = "https://placehold.co/200x200.png";
 
@@ -37,6 +38,11 @@ export default function MemberProfilePage() {
 
   const [previewUrl, setPreviewUrl] = React.useState<string | null>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+  
+  const [isCameraDialogOpen, setIsCameraDialogOpen] = React.useState(false);
+  const [hasCameraPermission, setHasCameraPermission] = React.useState(true);
+  const videoRef = React.useRef<HTMLVideoElement>(null);
+  const canvasRef = React.useRef<HTMLCanvasElement>(null);
 
   React.useEffect(() => {
     setIsLoading(true);
@@ -68,6 +74,59 @@ export default function MemberProfilePage() {
     }
   }, [user, toast]);
 
+  React.useEffect(() => {
+    let stream: MediaStream | null = null;
+    const videoElem = videoRef.current;
+
+    if (isCameraDialogOpen) {
+      const getCameraPermission = async () => {
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({ video: true });
+          setHasCameraPermission(true);
+          if (videoRef.current) {
+            videoRef.current.srcObject = stream;
+          }
+        } catch (error) {
+          console.error("Error accessing camera:", error);
+          setHasCameraPermission(false);
+          toast({
+            variant: "destructive",
+            title: "Camera Access Denied",
+            description: "Please enable camera permissions in your browser settings.",
+          });
+          setIsCameraDialogOpen(false);
+        }
+      };
+      getCameraPermission();
+    }
+
+    return () => {
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+      }
+      if (videoElem) {
+        videoElem.srcObject = null;
+      }
+    };
+  }, [isCameraDialogOpen, toast]);
+
+  const handleCapture = () => {
+    if (videoRef.current && canvasRef.current) {
+        const video = videoRef.current;
+        const canvas = canvasRef.current;
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        const context = canvas.getContext('2d');
+        if (context) {
+            context.drawImage(video, 0, 0, video.videoWidth, video.videoHeight);
+            const dataUrl = canvas.toDataURL('image/jpeg');
+            setPreviewUrl(dataUrl);
+        }
+        setIsCameraDialogOpen(false); // This will trigger the useEffect cleanup
+    }
+  };
+
+
   const toBase64 = (file: File): Promise<string> => new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.readAsDataURL(file);
@@ -97,7 +156,7 @@ export default function MemberProfilePage() {
     try {
       const newUrl = await saveProfilePicture(memberDetails.firestoreId, 'member', previewUrl);
       setMemberDetails(prev => prev ? { ...prev, profilePictureUrl: newUrl } : null);
-      setPreviewUrl(newUrl); // Update preview to the new permanent URL
+      setPreviewUrl(newUrl);
       toast({ title: "Success", description: "Your profile picture has been updated." });
     } catch (error: any) {
       toast({ title: "Upload Failed", description: error.message || "Could not save your new picture.", variant: "destructive" });
@@ -172,6 +231,33 @@ export default function MemberProfilePage() {
               <div className="w-full space-y-2">
                 <Label htmlFor="picture-upload">Change Picture (Max 2MB)</Label>
                 <Input id="picture-upload" type="file" accept="image/*" onChange={handleFileChange} ref={fileInputRef} disabled={isSavingPicture} />
+                <Dialog open={isCameraDialogOpen} onOpenChange={setIsCameraDialogOpen}>
+                    <DialogTrigger asChild>
+                        <Button type="button" variant="outline" className="w-full" disabled={isSavingPicture}>
+                            <Camera className="mr-2 h-4 w-4" /> Use Camera
+                        </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                        <DialogHeader>
+                            <DialogTitle>Capture Photo</DialogTitle>
+                        </DialogHeader>
+                        <div className="py-4">
+                            <video ref={videoRef} className="w-full aspect-video rounded-md bg-muted" autoPlay playsInline muted />
+                            { !hasCameraPermission && (
+                                <Alert variant="destructive" className="mt-2">
+                                    <AlertTitle>Camera Access Required</AlertTitle>
+                                    <AlertDescription>Please allow camera access to use this feature.</AlertDescription>
+                                </Alert>
+                            )}
+                            <canvas ref={canvasRef} className="hidden" />
+                        </div>
+                        <DialogFooter>
+                            <Button type="button" onClick={handleCapture} disabled={!hasCameraPermission}>
+                                <Camera className="mr-2 h-4 w-4" /> Capture and Use
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
               </div>
             </CardContent>
             <CardFooter>
