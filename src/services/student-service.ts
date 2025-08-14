@@ -388,6 +388,7 @@ if (authUpdatePayload.email || authUpdatePayload.password || authUpdatePayload.p
     // Preserve lastPaymentDate and nextDueDate
     delete payload.lastPaymentDate;
     delete payload.nextDueDate;
+    payload.leftDate = new Date().toISOString();
   } else if (studentUpdateData.activityStatus === 'Active' && studentToUpdate.activityStatus === 'Left') {
     if (!payload.seatNumber || !ALL_SEAT_NUMBERS.includes(payload.seatNumber)) {
         throw new Error("A valid seat must be selected to re-activate a student.");
@@ -405,8 +406,7 @@ if (authUpdatePayload.email || authUpdatePayload.password || authUpdatePayload.p
     payload.amountDue = amountDueForShift;
     payload.lastPaymentDate = null;
     payload.leftDate = null;
-    payload.paymentHistory = []; // Reset payment history on re-activation
-    payload.nextDueDate = new Date(); // Set to now
+    payload.nextDueDate = new Date(); 
   }
 
   const finalNextDueDateString = payload.nextDueDate !== undefined ? payload.nextDueDate : studentToUpdate.nextDueDate;
@@ -1391,3 +1391,6 @@ declare module '@/types/communication' {
   }
 }
 
+
+
+    

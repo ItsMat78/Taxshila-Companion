@@ -65,7 +65,6 @@ export async function POST(request: NextRequest) {
       email: email || null,
       phone,
       address,
-      password,
       shift,
       seatNumber,
       activityStatus: 'Active',
@@ -86,3 +85,5 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: false, error: "An unexpected server error occurred." }, { status: 500 });
   }
 }
+
+    
