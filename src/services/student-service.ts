@@ -24,7 +24,7 @@ import {
   arrayRemove,
   increment,
   auth,
-  setDoc
+  setDoc,
 } from '@/lib/firebase';
 import type { Student, Shift, FeeStatus, PaymentRecord, ActivityStatus, AttendanceRecord, FeeStructure, AttendanceImportData, PaymentImportData, CheckedInStudentInfo } from '@/types/student';
 import type { FeedbackItem, FeedbackType, FeedbackStatus, AlertItem } from '@/types/communication';
@@ -271,7 +271,7 @@ export async function addStudent(studentData: AddStudentData): Promise<Student> 
     const newStudentDocRef = doc(collection(db, STUDENTS_COLLECTION)); // Firestore auto-generates an ID
 
     const firestorePayload: Omit<Student, 'id' | 'firestoreId' | 'paymentHistory'> = {
-      uid: null, // Will be set after auth sync
+      uid: null,
       studentId: studentId,
       name: studentData.name,
       email: studentData.email || undefined,
@@ -279,7 +279,7 @@ export async function addStudent(studentData: AddStudentData): Promise<Student> 
       address: studentData.address,
       shift: studentData.shift,
       seatNumber: studentData.seatNumber,
-      profilePictureUrl: studentData.profilePictureUrl || undefined,
+      profilePictureUrl: studentData.profilePictureUrl,
       activityStatus: 'Active',
       feeStatus: 'Due',
       amountDue: 'Rs. 0',
@@ -386,7 +386,6 @@ if (authUpdatePayload.email || authUpdatePayload.password || authUpdatePayload.p
     payload.seatNumber = null;
     payload.feeStatus = 'N/A';
     payload.amountDue = 'N/A';
-    payload.leftDate = new Date();
     // Preserve lastPaymentDate and nextDueDate
     delete payload.lastPaymentDate;
     delete payload.nextDueDate;
@@ -1393,5 +1392,3 @@ declare module '@/types/communication' {
     firestoreId?: string;
   }
 }
-
-    
