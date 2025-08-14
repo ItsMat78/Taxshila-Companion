@@ -227,10 +227,9 @@ export default function SeatAvailabilityPage() {
             <div className="p-2 rounded-lg bg-muted/50">
                 <p className="text-xs text-muted-foreground">Occupied Students</p>
                 {isLoading ? <Loader2 className="h-5 w-5 animate-spin mx-auto mt-1" /> : (
-                  <>
-                    <p className="text-xl font-bold">{activeStudents.length}</p>
-                    <p className="text-xs text-muted-foreground">M: {occupiedMorningStudentsCount}, E: {occupiedEveningStudentsCount}, FD: {occupiedFullDayStudentsCount}</p>
-                  </>
+                  <p className="text-sm font-semibold text-foreground">
+                    M: {occupiedMorningStudentsCount}, E: {occupiedEveningStudentsCount}, FD: {occupiedFullDayStudentsCount}
+                  </p>
                 )}
             </div>
             <div className="p-2 rounded-lg bg-muted/50 col-span-2 sm:col-span-1">
@@ -303,48 +302,50 @@ export default function SeatAvailabilityPage() {
                           <span className={cn(styles.textClass)}>{seatNum}</span>
                         </div>
                       </PopoverTrigger>
-                      <PopoverContent className="w-auto p-4" side="top" align="center">
-                        <div className="space-y-3">
-                          <h4 className="font-semibold text-md">Seat {seatNum}</h4>
-                          {studentsOnThisSeat.length > 0 ? (
-                            studentsOnThisSeat.map(student => (
-                              <div key={student.studentId} className="border-b pb-2 last:border-b-0 last:pb-0">
-                                <div className="flex items-center gap-3 mb-2">
-                                  <Avatar className="h-10 w-10 border">
-                                    <AvatarImage src={student.profilePictureUrl || undefined} alt={student.name} data-ai-hint="profile person" />
-                                    <AvatarFallback>{getInitials(student.name)}</AvatarFallback>
-                                  </Avatar>
-                                  <div>
-                                    <p className="text-sm font-medium">{student.name}</p>
-                                    <p className="text-xs text-muted-foreground capitalize">
-                                      Shift: {student.shift}
+                      <PopoverContent className="w-auto p-0" side="top" align="center">
+                         <div className="p-4">
+                            <h4 className="font-semibold text-md mb-3 border-b pb-2">Seat {seatNum}</h4>
+                            <div className="space-y-3">
+                              {studentsOnThisSeat.length > 0 ? (
+                                studentsOnThisSeat.map(student => (
+                                  <div key={student.studentId} className="border-b pb-3 last:border-b-0 last:pb-0">
+                                    <div className="flex items-center gap-3 mb-2">
+                                      <Avatar className="h-10 w-10 border">
+                                        <AvatarImage src={student.profilePictureUrl || undefined} alt={student.name} data-ai-hint="profile person" />
+                                        <AvatarFallback>{getInitials(student.name)}</AvatarFallback>
+                                      </Avatar>
+                                      <div>
+                                        <p className="text-sm font-medium">{student.name}</p>
+                                        <p className="text-xs text-muted-foreground capitalize">
+                                          Shift: {student.shift}
+                                        </p>
+                                      </div>
+                                    </div>
+                                    
+                                    <p className="text-xs text-muted-foreground flex items-center">
+                                      <PhoneIcon className="mr-1.5 h-3 w-3" /> {student.phone}
                                     </p>
+                                    <div className="mt-2 flex space-x-2">
+                                      <Link href={`/students/profiles/${student.studentId}`} passHref legacyBehavior>
+                                        <Button variant="outline" size="sm">
+                                          <UserProfileIcon className="mr-1 h-3 w-3" /> Profile
+                                        </Button>
+                                      </Link>
+                                      <Link href={`/admin/students/edit/${student.studentId}`} passHref legacyBehavior>
+                                        <Button variant="outline" size="sm">
+                                          <Edit className="mr-1 h-3 w-3" /> Edit
+                                        </Button>
+                                      </Link>
+                                    </div>
                                   </div>
-                                </div>
-                                
-                                <p className="text-xs text-muted-foreground flex items-center">
-                                  <PhoneIcon className="mr-1.5 h-3 w-3" /> {student.phone}
+                                ))
+                              ) : (
+                                <p className="text-sm text-muted-foreground">
+                                  This seat is currently unassigned and fully available.
                                 </p>
-                                <div className="mt-2 flex space-x-2">
-                                  <Link href={`/students/profiles/${student.studentId}`} passHref legacyBehavior>
-                                    <Button variant="outline" size="sm">
-                                      <UserProfileIcon className="mr-1 h-3 w-3" /> Profile
-                                    </Button>
-                                  </Link>
-                                  <Link href={`/admin/students/edit/${student.studentId}`} passHref legacyBehavior>
-                                    <Button variant="outline" size="sm">
-                                      <Edit className="mr-1 h-3 w-3" /> Edit
-                                    </Button>
-                                  </Link>
-                                </div>
-                              </div>
-                            ))
-                          ) : (
-                            <p className="text-sm text-muted-foreground">
-                              This seat is currently unassigned and fully available.
-                            </p>
-                          )}
-                        </div>
+                              )}
+                            </div>
+                         </div>
                       </PopoverContent>
                     </Popover>
                   );
