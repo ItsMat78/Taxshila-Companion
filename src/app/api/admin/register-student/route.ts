@@ -46,18 +46,20 @@ export async function POST(request: NextRequest) {
       disabled: false,
       phoneNumber: `+91${phone}`,
       photoURL: profilePictureUrl || undefined, // Use the provided URL
-  };
+    };
 
-  // If a real email is provided, use it. Otherwise, create a "proxy" email.
-  userPayload.email = email || `${phone}@taxshila-auth.com`;
+    // If a real email is provided, use it. Otherwise, create a "proxy" email.
+    userPayload.email = email || `${phone}@taxshila-auth.com`;
 
     
     const userRecord = await auth.createUser(userPayload);
 
     // --- Create Firestore Student Document ---
     const studentId = `TSMEM${String(Date.now()).slice(-6)}`;
-    await db.collection('students').doc(userRecord.uid).set({
-      uid: userRecord.uid,
+    const studentDocRef = db.collection('students').doc(); // Auto-generate Firestore document ID
+
+    await studentDocRef.set({
+      uid: userRecord.uid, // Save the Auth UID
       studentId,
       name,
       email: email || null,
@@ -70,7 +72,7 @@ export async function POST(request: NextRequest) {
       profileSetupComplete: true,
       registrationDate: new Date().toISOString(),
       feeStatus: 'Due',
-      profilePictureUrl: profilePictureUrl || null, // Save the URL here
+      profilePictureUrl: profilePictureUrl || null,
       createdAt: FieldValue.serverTimestamp(),
     });
 
@@ -84,5 +86,3 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: false, error: "An unexpected server error occurred." }, { status: 500 });
   }
 }
-
-    
