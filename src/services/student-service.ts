@@ -1,4 +1,5 @@
 
+
 import {
   db,
   collection,
@@ -411,6 +412,7 @@ if (authUpdatePayload.email || authUpdatePayload.password || authUpdatePayload.p
     payload.feeStatus = 'Due';
     payload.amountDue = amountDueForShift;
     payload.lastPaymentDate = null;
+    payload.leftDate = null; // Use null to clear the field in Firestore
     payload.nextDueDate = format(new Date(), 'yyyy-MM-dd'); // Due today
     payload.paymentHistory = []; // Clear payment history on reactivation
   }
