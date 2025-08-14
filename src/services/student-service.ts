@@ -312,13 +312,6 @@ export async function addStudent(studentData: AddStudentData): Promise<Student> 
     if (!finalStudent) {
         throw new Error("Student document was created, but failed to be retrieved immediately after.");
     }
-
-    if (finalStudent.uid) {
-        const firebaseAuth = getAuth();
-        if (firebaseAuth.currentUser && firebaseAuth.currentUser.uid === finalStudent.uid) {
-            await updateProfile(firebaseAuth.currentUser, { photoURL: finalStudent.profilePictureUrl });
-        }
-    }
     
     return finalStudent;
 }
@@ -1361,15 +1354,6 @@ export async function updateProfilePicture(firestoreId: string, role: 'admin' | 
   const userDocRef = doc(db, collectionName, firestoreId);
   await updateDoc(userDocRef, { profilePictureUrl: base64Url });
 
-  // Update auth profile if it's the current user
-  const auth = getAuth();
-  if (auth.currentUser) {
-    const student = await getStudentByCustomId(firestoreId); // Assuming members have studentId
-    if (student?.uid === auth.currentUser.uid) {
-        await updateProfile(auth.currentUser, { photoURL: base64Url });
-    }
-  }
-
   return base64Url;
 }
 
@@ -1392,5 +1376,6 @@ declare module '@/types/communication' {
 }
 
     
+
 
 
