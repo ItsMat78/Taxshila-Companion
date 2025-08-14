@@ -135,12 +135,12 @@
     --seat-fullday-foreground: 54 100% 91%;
 
     /* Status Badge Colors */
-    --status-paid-bg: 143 76% 28%;   /* green-700 */
-    --status-paid-text: 142 76% 94%;   /* green-100 */
-    --status-due-bg: 44 95% 28%;     /* yellow-700 */
-    --status-due-text: 48 96% 89%;     /* yellow-100 */
-    --status-left-bg: 220 9% 46%;    /* gray-700 */
-    --status-left-text: 220 13% 91%;   /* gray-100 */
+    --status-paid-bg: 143 76% 28%;
+    --status-paid-text: 142 76% 94%;
+    --status-due-bg: 44 95% 28%;
+    --status-due-text: 48 96% 89%;
+    --status-left-bg: 220 9% 46%;
+    --status-left-text: 220 13% 91%;
 
     /* Audience Badge Colors */
     --audience-targeted-bg: 221 60% 25%; /* indigo-800 */
@@ -511,5 +511,6 @@
 }
 
 .female-only-seat {
-  outline: 2px solid rgb(255, 162, 177);
+  outline: 3px solid #EC4899; /* pink-500 */
+  outline-offset: 1px;
 }
