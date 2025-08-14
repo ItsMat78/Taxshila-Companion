@@ -207,7 +207,7 @@ export default function StudentRegisterPage() {
         email: data.email || undefined,
         phone: data.phone,
         address: data.address,
-        // password is now handled separately
+        password: data.phone, // Use phone number as initial password
         shift: data.shift,
         seatNumber: data.seatNumber,
         idCardFileName: data.idCardFileName,
@@ -382,3 +382,5 @@ export default function StudentRegisterPage() {
     </>
   );
 }
+
+    

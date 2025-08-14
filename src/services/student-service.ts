@@ -287,7 +287,7 @@ export async function addStudent(studentData: AddStudentData): Promise<Student> 
       lastPaymentDate: undefined,
       nextDueDate: format(new Date(), 'yyyy-MM-dd'),
       leftDate: undefined,
-      password: studentData.phone, // Default password
+      password: studentData.password, // Save the password
     };
     
     await setDoc(newStudentDocRef, firestorePayload);
@@ -1392,3 +1392,5 @@ declare module '@/types/communication' {
     firestoreId?: string;
   }
 }
+
+    
