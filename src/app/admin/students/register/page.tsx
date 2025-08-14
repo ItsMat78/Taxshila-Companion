@@ -141,24 +141,28 @@ export default function StudentRegisterPage() {
     let stream: MediaStream | null = null;
     const videoElem = videoRef.current;
 
-    const startVideoStream = async () => {
-      if (isCameraDialogOpen && videoElem) {
+    if (isCameraDialogOpen) {
+      const getCameraPermission = async () => {
         try {
-          stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
-          videoElem.srcObject = stream;
+          stream = await navigator.mediaDevices.getUserMedia({ video: true });
           setHasCameraPermission(true);
-        } catch (err) {
-          console.error("Camera access error:", err);
+          if (videoRef.current) {
+            videoRef.current.srcObject = stream;
+          }
+        } catch (error) {
+          console.error("Error accessing camera:", error);
           setHasCameraPermission(false);
-          toast({ variant: "destructive", title: "Camera Access Denied", description: "Please enable camera permissions in your browser settings and try again." });
-          setIsCameraDialogOpen(false); // Close dialog on error
+          toast({
+            variant: "destructive",
+            title: "Camera Access Denied",
+            description: "Please enable camera permissions in your browser settings to use this app.",
+          });
+          setIsCameraDialogOpen(false);
         }
-      }
-    };
+      };
+      getCameraPermission();
+    }
 
-    startVideoStream();
-
-    // Cleanup function to stop the stream
     return () => {
       if (stream) {
         stream.getTracks().forEach(track => track.stop());
@@ -287,14 +291,12 @@ export default function StudentRegisterPage() {
                                   <DialogTitle>Capture Photo</DialogTitle>
                               </DialogHeader>
                               <div className="py-4">
-                                  {hasCameraPermission ? (
-                                      <video ref={videoRef} className="w-full aspect-video rounded-md bg-muted" playsInline autoPlay muted />
-                                  ) : (
+                                  <video ref={videoRef} className="w-full aspect-video rounded-md bg-muted" autoPlay playsInline muted />
+                                  { !hasCameraPermission && (
                                       <Alert variant="destructive">
-                                          <VideoOff className="h-4 w-4" />
-                                          <AlertTitle>Camera Permission Denied</AlertTitle>
+                                          <AlertTitle>Camera Access Required</AlertTitle>
                                           <AlertDescription>
-                                              To use this feature, please allow camera access in your browser settings.
+                                            Please allow camera access to use this feature.
                                           </AlertDescription>
                                       </Alert>
                                   )}
@@ -393,3 +395,5 @@ export default function StudentRegisterPage() {
     </>
   );
 }
+
+    
