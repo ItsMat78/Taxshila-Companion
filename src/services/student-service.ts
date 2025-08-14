@@ -458,16 +458,17 @@ if (authUpdatePayload.email || authUpdatePayload.password || authUpdatePayload.p
   } else if (payload.hasOwnProperty('lastPaymentDate') && payload.lastPaymentDate === null) {
     payload.lastPaymentDate = null;
   }
-  // NEW CODE
+
+  // Correctly handle nextDueDate conversion
   if (payload.hasOwnProperty('nextDueDate')) {
-  if (payload.nextDueDate && typeof payload.nextDueDate === 'string' && isValid(parseISO(payload.nextDueDate))) {
-      // If it's a valid date string, convert it to a Timestamp
-      payload.nextDueDate = Timestamp.fromDate(parseISO(payload.nextDueDate));
-  } else {
-      // Otherwise, set it to null in Firestore
-      payload.nextDueDate = null;
+    if (payload.nextDueDate && typeof payload.nextDueDate === 'string' && isValid(parseISO(payload.nextDueDate))) {
+        payload.nextDueDate = Timestamp.fromDate(parseISO(payload.nextDueDate));
+    } else if (payload.nextDueDate instanceof Date) { // Handle case where it might be a Date object
+        payload.nextDueDate = Timestamp.fromDate(payload.nextDueDate);
+    } else {
+        payload.nextDueDate = null;
+    }
   }
-}
 
   const hasRelevantChanges = Object.keys(payload).some(key => key !== 'newPassword' && key !== 'confirmNewPassword' && key !== 'theme');
 
