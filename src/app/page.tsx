@@ -163,7 +163,7 @@ const CheckedInStudentCard = ({ student, onWarn, isWarning }: { student: Checked
             ) : (
               <AlertTriangle className="h-4 w-4" />
             )}
-            <span className="ml-2 hidden sm:inline">Warn</span>
+            <span className="ml-2">Warn</span>
           </Button>
         )}
       </CardContent>
