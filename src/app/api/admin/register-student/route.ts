@@ -1,7 +1,7 @@
 
 import { NextResponse, type NextRequest } from 'next/server';
 import { getAuth, getDb } from '@/lib/firebase-admin';
-import { FieldValue } from 'firebase-admin/firestore';
+import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 import type { CreateRequest } from 'firebase-admin/auth';
 
 const isValidIndianPhoneNumber = (phone: string): boolean => {
@@ -33,11 +33,20 @@ export async function POST(request: NextRequest) {
 
     // --- Check for Existing User ---
     if (email) {
-        const existingStudentByEmail = await db.collection('students').where('email', '==', email).limit(1).get();
-        if (!existingStudentByEmail.empty) return NextResponse.json({ success: false, error: 'A student with this email already exists.' }, { status: 409 });
+        try {
+            await auth.getUserByEmail(email);
+            return NextResponse.json({ success: false, error: 'An account with this email already exists in Firebase Auth.' }, { status: 409 });
+        } catch (error: any) {
+            if (error.code !== 'auth/user-not-found') throw error;
+        }
     }
-    const existingStudentByPhone = await db.collection('students').where('phone', '==', phone).limit(1).get();
-    if (!existingStudentByPhone.empty) return NextResponse.json({ success: false, error: 'A student with this phone number already exists.' }, { status: 409 });
+     try {
+        await auth.getUserByPhoneNumber(`+91${phone}`);
+        return NextResponse.json({ success: false, error: 'An account with this phone number already exists in Firebase Auth.' }, { status: 409 });
+    } catch (error: any) {
+        if (error.code !== 'auth/user-not-found') throw error;
+    }
+
 
     // --- 1. Create Firebase Auth User ---
     const userPayload: CreateRequest = {
@@ -45,9 +54,14 @@ export async function POST(request: NextRequest) {
       displayName: name,
       disabled: false,
       phoneNumber: `+91${phone}`,
-      photoURL: profilePictureUrl || undefined,
     };
-    userPayload.email = email || `${phone}@taxshila-auth.com`;
+    // Only add email if it's provided and not an empty string
+    if (email) {
+      userPayload.email = email;
+    }
+    if (profilePictureUrl) {
+      userPayload.photoURL = profilePictureUrl;
+    }
     
     const userRecord = await auth.createUser(userPayload);
 
@@ -66,10 +80,10 @@ export async function POST(request: NextRequest) {
       seatNumber,
       activityStatus: 'Active',
       profileSetupComplete: true,
-      registrationDate: FieldValue.serverTimestamp(),
+      registrationDate: Timestamp.fromDate(new Date()), // Use a valid Timestamp
       feeStatus: 'Due',
       profilePictureUrl: profilePictureUrl || null,
-      createdAt: FieldValue.serverTimestamp(),
+      createdAt: Timestamp.fromDate(new Date()), // Use a valid Timestamp
     });
 
     return NextResponse.json({ success: true, studentId });
