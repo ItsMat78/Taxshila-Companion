@@ -32,7 +32,7 @@ import type { AlertItem } from '@/types/communication';
 import type { Student, AttendanceRecord, FeeStatus } from '@/types/student';
 import { format, parseISO, differenceInMilliseconds, isValid } from 'date-fns';
 import { Html5QrcodeScanner, Html5QrcodeSupportedFormats, Html5QrcodeScanType } from 'html5-qrcode';
-import { initPushNotifications } from '@/lib/firebase-messaging-client';
+import { setupPushNotifications } from '@/lib/notification-setup';
 
 const DASHBOARD_QR_SCANNER_ELEMENT_ID = "qr-reader-dashboard";
 const LIBRARY_QR_CODE_PAYLOAD = "TAXSHILA_LIBRARY_CHECKIN_QR_V1";
@@ -160,7 +160,7 @@ function NotificationPrompt({ onDismiss }: { onDismiss: () => void }) {
 
   const handleEnableNotifications = async () => {
     if (user && user.firestoreId && user.role) {
-      await initPushNotifications(user.firestoreId, user.role);
+      await setupPushNotifications(user.firestoreId, user.role);
     }
     onDismiss();
   };

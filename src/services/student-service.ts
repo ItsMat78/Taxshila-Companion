@@ -1,4 +1,5 @@
 
+
 import {
   db,
   collection,
@@ -241,21 +242,17 @@ export async function getStudentByIdentifier(identifier: string): Promise<Studen
 }
 
 async function getNextCustomStudentId(): Promise<string> {
-  const studentsRef = collection(db, STUDENTS_COLLECTION);
-  const q = query(studentsRef, orderBy("studentId", "desc"), limit(1));
-  const querySnapshot = await getDocs(q);
-
-  let maxIdNum = 0;
-  if (!querySnapshot.empty) {
-    const lastStudent = studentFromDoc(querySnapshot.docs[0]);
-    if (lastStudent.studentId && lastStudent.studentId.startsWith('TSMEM')) {
-      const idNum = parseInt(lastStudent.studentId.replace('TSMEM', ''), 10);
-      if (!isNaN(idNum)) {
-        maxIdNum = idNum;
-      }
+  const counterRef = doc(db, APP_CONFIG_COLLECTION, 'studentCounter');
+  
+  return runTransaction(db, async (transaction) => {
+    const counterDoc = await transaction.get(counterRef);
+    let newIdNumber = 1;
+    if (counterDoc.exists()) {
+      newIdNumber = (counterDoc.data().lastId || 0) + 1;
     }
-  }
-  return `TSMEM${String(maxIdNum + 1).padStart(3, '0')}`;
+    transaction.set(counterRef, { lastId: newIdNumber }, { merge: true });
+    return `TSMEM${String(newIdNumber).padStart(4, '0')}`;
+  });
 }
 
 export interface AddStudentData {
@@ -267,43 +264,79 @@ export interface AddStudentData {
   shift: Shift;
   seatNumber: string;
   idCardFileName?: string;
-  profilePictureUrl?: string; // Added this line
+  profilePictureUrl?: string;
 }
 
 export async function addStudent(studentData: AddStudentData): Promise<Student> {
-  // All registration logic is now handled by our secure backend API.
-  // This function now just sends the data to that endpoint.
-  try {
-    const response = await fetch('/api/admin/register-student', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(studentData),
+    if (!studentData.password) {
+        throw new Error("Password is required to create a student account.");
+    }
+    
+    // --- Step 1: Create Auth User via API Route ---
+    const authPayload = {
+        email: studentData.email,
+        phone: studentData.phone,
+        password: studentData.password,
+        name: studentData.name,
+        profilePictureUrl: studentData.profilePictureUrl
+    };
+
+    const authResponse = await fetch('/api/admin/create-student-auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(authPayload),
     });
 
-    const result = await response.json();
+    const authResult = await response.json();
 
     if (!response.ok) {
-      // If the server returns an error, we throw it to be caught by the UI
-      throw new Error(result.error || `Registration failed with status: ${response.status}`);
+        throw new Error(authResult.error || "Failed to create authentication account.");
+    }
+    
+    const newUid = authResult.uid;
+    if (!newUid) {
+        throw new Error("API did not return a new user UID.");
     }
 
-    // Since the API now handles everything, we need to get the newly created
-    // student's full profile to return it, which is consistent with the
-    // function's return type. We can get it using the new studentId.
-    const newStudent = await getStudentByCustomId(result.studentId);
+    // --- Step 2: Create Firestore Document ---
+    const studentId = await getNextCustomStudentId();
+    const studentDocRef = doc(db, STUDENTS_COLLECTION, studentId);
+
+    const firestorePayload = {
+      uid: newUid,
+      studentId: studentId,
+      name: studentData.name,
+      email: studentData.email || null,
+      phone: studentData.phone,
+      address: studentData.address,
+      shift: studentData.shift,
+      seatNumber: studentData.seatNumber,
+      profilePictureUrl: studentData.profilePictureUrl || null,
+      activityStatus: 'Active' as ActivityStatus,
+      feeStatus: 'Due' as FeeStatus,
+      amountDue: 'Rs. 0', // Will be calculated by fee status logic
+      registrationDate: Timestamp.fromDate(new Date()),
+      createdAt: Timestamp.fromDate(new Date()),
+      lastPaymentDate: null,
+      nextDueDate: Timestamp.fromDate(new Date()),
+      paymentHistory: [],
+    };
+
+    await setDoc(studentDocRef, firestorePayload);
+
+    const newStudent = await getStudentByCustomId(studentId);
     if (!newStudent) {
-        // This is a fallback, in case the getStudentById fails right after creation.
-        throw new Error("Student was registered, but there was an issue retrieving the new profile.");
+        throw new Error("Student document created, but failed to retrieve it.");
     }
 
-    return newStudent;
-
-  } catch (error: any) {
-    // Re-throw the error so it can be caught and displayed by the form's error handler
-    throw error;
-  }
+    // Final step: update fee status to correctly set initial amount due
+    await refreshAllStudentFeeStatuses();
+    
+    const finalStudentDoc = await getStudentByCustomId(studentId);
+    if (!finalStudentDoc) {
+         throw new Error("Student registered but failed to retrieve final record.");
+    }
+    return finalStudentDoc;
 }
 
 export async function updateStudent(customStudentId: string, studentUpdateData: Partial<Student>): Promise<Student | undefined> {
@@ -395,6 +428,7 @@ if (authUpdatePayload.email || authUpdatePayload.password || authUpdatePayload.p
     // Preserve lastPaymentDate and nextDueDate
     delete payload.lastPaymentDate;
     delete payload.nextDueDate;
+    payload.leftDate = new Date().toISOString();
   } else if (studentUpdateData.activityStatus === 'Active' && studentToUpdate.activityStatus === 'Left') {
     if (!payload.seatNumber || !ALL_SEAT_NUMBERS.includes(payload.seatNumber)) {
         throw new Error("A valid seat must be selected to re-activate a student.");
@@ -411,15 +445,15 @@ if (authUpdatePayload.email || authUpdatePayload.password || authUpdatePayload.p
     payload.feeStatus = 'Due';
     payload.amountDue = amountDueForShift;
     payload.lastPaymentDate = null;
-    payload.nextDueDate = format(new Date(), 'yyyy-MM-dd'); // Due today
-    payload.paymentHistory = [];
+    payload.leftDate = null;
+    payload.nextDueDate = new Date();
   }
 
   const finalNextDueDateString = payload.nextDueDate !== undefined ? payload.nextDueDate : studentToUpdate.nextDueDate;
   const isNowActive = (payload.activityStatus === 'Active' || (payload.activityStatus === undefined && studentToUpdate.activityStatus === 'Active'));
 
-  if (finalNextDueDateString && typeof finalNextDueDateString === 'string' && isNowActive) {
-      const dueDate = startOfDay(parseISO(finalNextDueDateString));
+  if (finalNextDueDateString && (typeof finalNextDueDateString === 'string' || finalNextDueDateString instanceof Date) && isNowActive) {
+      const dueDate = startOfDay(finalNextDueDateString instanceof Date ? finalNextDueDateString : parseISO(finalNextDueDateString));
       const today = startOfDay(new Date());
 
       if (isAfter(dueDate, today)) {
@@ -458,16 +492,17 @@ if (authUpdatePayload.email || authUpdatePayload.password || authUpdatePayload.p
   } else if (payload.hasOwnProperty('lastPaymentDate') && payload.lastPaymentDate === null) {
     payload.lastPaymentDate = null;
   }
-  // NEW CODE
+
+  // Correctly handle nextDueDate conversion
   if (payload.hasOwnProperty('nextDueDate')) {
-  if (payload.nextDueDate && typeof payload.nextDueDate === 'string' && isValid(parseISO(payload.nextDueDate))) {
-      // If it's a valid date string, convert it to a Timestamp
-      payload.nextDueDate = Timestamp.fromDate(parseISO(payload.nextDueDate));
-  } else {
-      // Otherwise, set it to null in Firestore
-      payload.nextDueDate = null;
+    if (payload.nextDueDate && typeof payload.nextDueDate === 'string' && isValid(parseISO(payload.nextDueDate))) {
+        payload.nextDueDate = Timestamp.fromDate(parseISO(payload.nextDueDate));
+    } else if (payload.nextDueDate instanceof Date) { // Handle case where it might be a Date object
+        payload.nextDueDate = Timestamp.fromDate(payload.nextDueDate);
+    } else {
+        payload.nextDueDate = null;
+    }
   }
-}
 
   const hasRelevantChanges = Object.keys(payload).some(key => key !== 'newPassword' && key !== 'confirmNewPassword' && key !== 'theme');
 
@@ -956,13 +991,6 @@ export async function getAlertsForStudent(customStudentId: string): Promise<Aler
   ];
 
   return contextualizedAlerts.sort((a, b) => parseISO(b.dateSent).getTime() - parseISO(a.dateSent).getTime());
-}
-
-
-export async function getAllAdminSentAlerts(): Promise<AlertItem[]> {
-  const q = query(collection(db, ALERTS_COLLECTION), orderBy("dateSent", "desc"));
-  const querySnapshot = await getDocs(q);
-  return querySnapshot.docs.map(doc => alertItemFromDoc(doc));
 }
 
 

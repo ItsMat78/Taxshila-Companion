@@ -13,8 +13,7 @@ import { useNotificationCounts } from '@/hooks/use-notification-counts';
 import { NotificationBadge } from '@/components/shared/notification-badge';
 import { cn } from '@/lib/utils';
 import { TopProgressBar } from '@/components/shared/top-progress-bar';
-import { initPushNotifications, VAPID_KEY_FROM_CLIENT_LIB } from '@/lib/firebase-messaging-client';
-// Removed getStudentByEmail as it's no longer directly needed here for admin token check
+import { setupPushNotifications } from '@/lib/notification-setup';
 import { useToast } from '@/hooks/use-toast';
 import { useNotificationContext } from '@/contexts/notification-context';
 import { useTheme } from "next-themes";
@@ -55,8 +54,8 @@ function NotificationIconArea() {
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, isLoading: isAuthLoading } = useAuth();
-  const pathname = usePathname();
   const router = useRouter();
+  const pathname = usePathname();
   const [isRouteLoading, setIsRouteLoading] = React.useState(false);
   const prevPathnameRef = React.useRef(pathname);
   const { toast } = useToast();
@@ -64,7 +63,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const { theme, setTheme } = useTheme();
 
   React.useEffect(() => {
-    if (!isAuthLoading && !user && !pathname.startsWith('/login')) {
+    const isPublicPath = pathname.startsWith('/login');
+    if (!isAuthLoading && !user && !isPublicPath) {
       router.replace('/login');
     }
   }, [user, isAuthLoading, pathname, router]);
@@ -80,44 +80,27 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     }
   }, [pathname]);
 
-  // Apply theme from user context when it loads
   React.useEffect(() => {
     if (user?.theme && user.theme !== theme) {
       setTheme(user.theme);
     }
   }, [user, theme, setTheme]);
 
-
   React.useEffect(() => {
-    const setupPush = async () => {
-      if (user && user.firestoreId && typeof window !== 'undefined' && 'serviceWorker' in navigator) {
-        
-        if (!VAPID_KEY_FROM_CLIENT_LIB || VAPID_KEY_FROM_CLIENT_LIB.includes("REPLACE THIS")) {
-            console.warn("[AppLayout] VAPID_KEY is not configured in firebase-messaging-client.ts. Push notifications will not be initialized.");
-            return;
-        }
-        try {
-          // Pass both firestoreId and role to initPushNotifications
-          console.log(`[AppLayout] Attempting to initialize push notifications for ${user.role}:`, user.firestoreId);
-          await initPushNotifications(user.firestoreId, user.role);
-        } catch (error) {
-          console.error(`[AppLayout] Error during push notification setup for ${user.role}:`, error);
-        }
-      } else if (user && !user.firestoreId && user.role === 'admin') {
-        console.warn("[AppLayout] Admin user logged in but no firestoreId found in auth context. FCM token cannot be saved. Ensure admin user exists in 'admins' Firestore collection.");
+    const setupNotifications = async () => {
+      if (user && user.firestoreId && user.role) {
+        await setupPushNotifications(user.firestoreId, user.role);
       }
     };
     if (!isAuthLoading && user) {
-      setupPush();
+      setupNotifications();
     }
-  }, [user, isAuthLoading]); // Depend on user to re-run if user object (with firestoreId) changes
+  }, [user, isAuthLoading]);
 
-  
   React.useEffect(() => {
     const handleForegroundMessage = (event: Event) => {
       const customEvent = event as CustomEvent;
       const notificationPayload = customEvent.detail;
-      console.log("[AppLayout] Foreground message event received:", notificationPayload);
       if (notificationPayload && notificationPayload.title && notificationPayload.body) {
         toast({
           title: notificationPayload.title,
@@ -131,15 +114,10 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       window.removeEventListener('show-foreground-message', handleForegroundMessage);
     };
   }, [toast, refreshNotifications]);
-
   
   React.useEffect(() => {
     const handleNewFeedback = (event: Event) => {
-      const customEvent = event as CustomEvent;
-      const feedbackId = customEvent.detail?.feedbackId;
-      console.log(`[AppLayout] 'new-feedback-submitted' event caught. Feedback ID: ${feedbackId}. User role: ${user?.role}.`);
       if (user && user.role === 'admin') {
-        console.log("[AppLayout] Admin detected, showing toast for new feedback and refreshing notifications.");
         toast({
           title: "New Feedback Received",
           description: "A member has submitted new feedback. Please check the feedback section.",
@@ -153,8 +131,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     };
   }, [user, toast, refreshNotifications]);
 
+  const isPublicPath = pathname.startsWith('/login');
 
-  if (isAuthLoading) {
+  if (isAuthLoading && !isPublicPath) {
     return (
       <div className="flex min-h-screen w-full flex-col items-center justify-center bg-background">
         <Skeleton className="h-12 w-12 rounded-full" />
@@ -163,12 +142,12 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       </div>
     );
   }
-
-  if (!user && !pathname.startsWith('/login')) {
+  
+  if (!user && !isPublicPath) {
     return null;
   }
 
-  if (pathname.startsWith('/login')) {
+  if (isPublicPath) {
     return (
       <>
         <TopProgressBar isLoading={isRouteLoading} />
@@ -176,30 +155,34 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       </>
     );
   }
+  
+  if (user) {
+    return (
+      <SidebarProvider defaultOpen>
+        <TopProgressBar isLoading={isRouteLoading} />
+        <AppSidebarContent />
+        <SidebarInset>
+          <header className="sticky top-0 z-10 flex h-14 items-center gap-4 border-b bg-background/80 px-4 backdrop-blur-sm sm:h-16 sm:px-6 md:hidden">
+            <SidebarTrigger asChild>
+              <Button size="icon" variant="outline" className="md:hidden">
+                <PanelLeft className="h-5 w-5" />
+                <span className="sr-only">Toggle Menu</span>
+              </Button>
+            </SidebarTrigger>
+            <Link href="/" className="flex items-center gap-2 font-headline text-lg font-semibold">
+               Taxshila Companion
+            </Link>
+            <div className="ml-auto flex items-center gap-2">
+              <NotificationIconArea />
+            </div>
+          </header>
+          <main className="flex-1 p-4 sm:p-6 lg:p-8 min-w-0">
+            {children}
+          </main>
+        </SidebarInset>
+      </SidebarProvider>
+    );
+  }
 
-  return (
-    <SidebarProvider defaultOpen>
-      <TopProgressBar isLoading={isRouteLoading} />
-      <AppSidebarContent />
-      <SidebarInset>
-        <header className="sticky top-0 z-10 flex h-14 items-center gap-4 border-b bg-background/80 px-4 backdrop-blur-sm sm:h-16 sm:px-6 md:hidden">
-          <SidebarTrigger asChild>
-            <Button size="icon" variant="outline" className="md:hidden">
-              <PanelLeft className="h-5 w-5" />
-              <span className="sr-only">Toggle Menu</span>
-            </Button>
-          </SidebarTrigger>
-          <Link href="/" className="flex items-center gap-2 font-headline text-lg font-semibold">
-             Taxshila Companion
-          </Link>
-          <div className="ml-auto flex items-center gap-2">
-            <NotificationIconArea />
-          </div>
-        </header>
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 min-w-0">
-          {children}
-        </main>
-      </SidebarInset>
-    </SidebarProvider>
-  );
+  return null;
 }

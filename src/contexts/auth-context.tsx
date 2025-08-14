@@ -11,23 +11,22 @@ import {
   removeAdminFCMToken, 
   updateUserTheme,
 } from '@/services/student-service';
-import type { Student } from '@/types/student'; // Corrected Import
-import type { Admin } from '@/types/auth';      // Corrected Import
+import type { Student } from '@/types/student';
+import type { Admin } from '@/types/auth';
 import { useToast } from "@/hooks/use-toast";
 import { getMessaging, getToken, deleteToken } from 'firebase/messaging';
 import { getAuth, signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import { app as firebaseApp } from '@/lib/firebase';
-import { VAPID_KEY_FROM_CLIENT_LIB } from '@/lib/firebase-messaging-client';
 import { useTheme } from 'next-themes';
 
 interface User {
   email?: string;
   role: UserRole;
   profilePictureUrl?: string;
-  firestoreId: string; // Made non-optional as it's critical for operations
+  firestoreId: string;
   studentId?: string;
   identifierForDisplay?: string;
-  theme: string; // Made non-optional
+  theme: string;
 }
 
 interface AuthContextType {
@@ -44,7 +43,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = React.useState<User | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
   const router = useRouter();
-  const pathname = usePathname();
   const { toast } = useToast();
   const { setTheme } = useTheme();
   const auth = getAuth(firebaseApp);
@@ -55,7 +53,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (storedUser) {
         const parsedUser: User = JSON.parse(storedUser);
         setUser(parsedUser);
-        setTheme(parsedUser.theme);
+        if (parsedUser.theme) {
+          setTheme(parsedUser.theme);
+        }
       }
     } catch (error) {
       console.error("Failed to parse user from localStorage", error);
@@ -65,12 +65,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [setTheme]);
 
-  React.useEffect(() => {
-    if (!isLoading && !user && !pathname.startsWith('/login')) {
-      router.replace('/login');
-    }
-  }, [user, isLoading, pathname, router]);
-
   const login = async (identifier: string, passwordAttempt: string): Promise<User | null> => {
     setIsLoading(true);
     let userRecord: Student | Admin | null = null;
@@ -78,7 +72,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     let emailForAuth: string | undefined = undefined;
 
     if (identifier.includes('@')) {
-        // This part handles logins via a real email address
         const admin = await getAdminByEmail(identifier);
         if (admin) {
             userRecord = admin;
@@ -88,12 +81,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
         emailForAuth = identifier;
     } else {
-        // This part handles login via phone number
         userRecord = (await getStudentByIdentifier(identifier)) ?? null;
-        
         if (userRecord) {
-            // If the user has a real email, use it.
-            // Otherwise, construct the proxy email that matches the registration API.
             emailForAuth = userRecord.email || `${identifier}@taxshila-auth.com`;
         }
     }
@@ -162,7 +151,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const logout = async () => {
-    const loggedOutUser = user; // Capture user state before setting it to null
+    const loggedOutUser = user;
     
     setUser(null);
     localStorage.removeItem('taxshilaUser');
@@ -173,8 +162,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (loggedOutUser && loggedOutUser.firestoreId && typeof window !== 'undefined') {
       try {
         const messaging = getMessaging(firebaseApp);
-        if (VAPID_KEY_FROM_CLIENT_LIB && !VAPID_KEY_FROM_CLIENT_LIB.includes("REPLACE THIS")) {
-          const currentToken = await getToken(messaging, { vapidKey: VAPID_KEY_FROM_CLIENT_LIB }).catch(() => null);
+        const VAPID_KEY = process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY;
+        if (VAPID_KEY) {
+          const registration = await navigator.serviceWorker.getRegistration('/firebase-push-worker.js');
+          const currentToken = await getToken(messaging, { vapidKey: VAPID_KEY, serviceWorkerRegistration: registration }).catch(() => null);
           if (currentToken) {
             if (loggedOutUser.role === 'member') await removeFCMTokenForStudent(loggedOutUser.firestoreId, currentToken);
             else if (loggedOutUser.role === 'admin') await removeAdminFCMToken(loggedOutUser.firestoreId, currentToken);
