@@ -242,21 +242,17 @@ export async function getStudentByIdentifier(identifier: string): Promise<Studen
 }
 
 async function getNextCustomStudentId(): Promise<string> {
-  const studentsRef = collection(db, STUDENTS_COLLECTION);
-  const q = query(studentsRef, orderBy("studentId", "desc"), limit(1));
-  const querySnapshot = await getDocs(q);
-
-  let maxIdNum = 0;
-  if (!querySnapshot.empty) {
-    const lastStudent = studentFromDoc(querySnapshot.docs[0]);
-    if (lastStudent.studentId && lastStudent.studentId.startsWith('TSMEM')) {
-      const idNum = parseInt(lastStudent.studentId.replace('TSMEM', ''), 10);
-      if (!isNaN(idNum)) {
-        maxIdNum = idNum;
-      }
+  const counterRef = doc(db, APP_CONFIG_COLLECTION, 'studentCounter');
+  
+  return runTransaction(db, async (transaction) => {
+    const counterDoc = await transaction.get(counterRef);
+    let newIdNumber = 1;
+    if (counterDoc.exists()) {
+      newIdNumber = (counterDoc.data().lastId || 0) + 1;
     }
-  }
-  return `TSMEM${String(maxIdNum + 1).padStart(3, '0')}`;
+    transaction.set(counterRef, { lastId: newIdNumber }, { merge: true });
+    return `TSMEM${String(newIdNumber).padStart(4, '0')}`;
+  });
 }
 
 export interface AddStudentData {
@@ -268,35 +264,79 @@ export interface AddStudentData {
   shift: Shift;
   seatNumber: string;
   idCardFileName?: string;
-  profilePictureUrl?: string; // Added this line
+  profilePictureUrl?: string;
 }
 
 export async function addStudent(studentData: AddStudentData): Promise<Student> {
-  try {
-    const response = await fetch('/api/admin/register-student', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(studentData),
-    });
-
-    const result = await response.json();
-
-    if (!response.ok) {
-      throw new Error(result.error || `Registration failed with status: ${response.status}`);
+    if (!studentData.password) {
+        throw new Error("Password is required to create a student account.");
     }
     
-    const newStudent = await getStudentByCustomId(result.studentId);
-    if (!newStudent) {
-        throw new Error("Student was registered, but there was an issue retrieving the new profile.");
+    // --- Step 1: Create Auth User via API Route ---
+    const authPayload = {
+        email: studentData.email,
+        phone: studentData.phone,
+        password: studentData.password,
+        name: studentData.name,
+        profilePictureUrl: studentData.profilePictureUrl
+    };
+
+    const authResponse = await fetch('/api/admin/create-student-auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(authPayload),
+    });
+
+    const authResult = await response.json();
+
+    if (!response.ok) {
+        throw new Error(authResult.error || "Failed to create authentication account.");
+    }
+    
+    const newUid = authResult.uid;
+    if (!newUid) {
+        throw new Error("API did not return a new user UID.");
     }
 
-    return newStudent;
+    // --- Step 2: Create Firestore Document ---
+    const studentId = await getNextCustomStudentId();
+    const studentDocRef = doc(db, STUDENTS_COLLECTION, studentId);
 
-  } catch (error: any) {
-    throw error;
-  }
+    const firestorePayload = {
+      uid: newUid,
+      studentId: studentId,
+      name: studentData.name,
+      email: studentData.email || null,
+      phone: studentData.phone,
+      address: studentData.address,
+      shift: studentData.shift,
+      seatNumber: studentData.seatNumber,
+      profilePictureUrl: studentData.profilePictureUrl || null,
+      activityStatus: 'Active' as ActivityStatus,
+      feeStatus: 'Due' as FeeStatus,
+      amountDue: 'Rs. 0', // Will be calculated by fee status logic
+      registrationDate: Timestamp.fromDate(new Date()),
+      createdAt: Timestamp.fromDate(new Date()),
+      lastPaymentDate: null,
+      nextDueDate: Timestamp.fromDate(new Date()),
+      paymentHistory: [],
+    };
+
+    await setDoc(studentDocRef, firestorePayload);
+
+    const newStudent = await getStudentByCustomId(studentId);
+    if (!newStudent) {
+        throw new Error("Student document created, but failed to retrieve it.");
+    }
+
+    // Final step: update fee status to correctly set initial amount due
+    await refreshAllStudentFeeStatuses();
+    
+    const finalStudentDoc = await getStudentByCustomId(studentId);
+    if (!finalStudentDoc) {
+         throw new Error("Student registered but failed to retrieve final record.");
+    }
+    return finalStudentDoc;
 }
 
 export async function updateStudent(customStudentId: string, studentUpdateData: Partial<Student>): Promise<Student | undefined> {
@@ -406,8 +446,7 @@ if (authUpdatePayload.email || authUpdatePayload.password || authUpdatePayload.p
     payload.amountDue = amountDueForShift;
     payload.lastPaymentDate = null;
     payload.leftDate = null;
-    payload.nextDueDate = new Date(); 
-    payload.paymentHistory = [];
+    payload.nextDueDate = new Date();
   }
 
   const finalNextDueDateString = payload.nextDueDate !== undefined ? payload.nextDueDate : studentToUpdate.nextDueDate;
