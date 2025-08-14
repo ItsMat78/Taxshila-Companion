@@ -272,8 +272,6 @@ export interface AddStudentData {
 }
 
 export async function addStudent(studentData: AddStudentData): Promise<Student> {
-  // All registration logic is now handled by our secure backend API.
-  // This function now just sends the data to that endpoint.
   try {
     const response = await fetch('/api/admin/register-student', {
       method: 'POST',
@@ -286,23 +284,17 @@ export async function addStudent(studentData: AddStudentData): Promise<Student> 
     const result = await response.json();
 
     if (!response.ok) {
-      // If the server returns an error, we throw it to be caught by the UI
       throw new Error(result.error || `Registration failed with status: ${response.status}`);
     }
-
-    // Since the API now handles everything, we need to get the newly created
-    // student's full profile to return it, which is consistent with the
-    // function's return type. We can get it using the new studentId.
+    
     const newStudent = await getStudentByCustomId(result.studentId);
     if (!newStudent) {
-        // This is a fallback, in case the getStudentById fails right after creation.
         throw new Error("Student was registered, but there was an issue retrieving the new profile.");
     }
 
     return newStudent;
 
   } catch (error: any) {
-    // Re-throw the error so it can be caught and displayed by the form's error handler
     throw error;
   }
 }
@@ -413,14 +405,15 @@ if (authUpdatePayload.email || authUpdatePayload.password || authUpdatePayload.p
     payload.amountDue = amountDueForShift;
     payload.lastPaymentDate = null;
     payload.leftDate = null;
-    payload.nextDueDate = format(new Date(), 'yyyy-MM-dd');
+    payload.paymentHistory = []; // Reset payment history on re-activation
+    payload.nextDueDate = new Date(); // Set to now
   }
 
   const finalNextDueDateString = payload.nextDueDate !== undefined ? payload.nextDueDate : studentToUpdate.nextDueDate;
   const isNowActive = (payload.activityStatus === 'Active' || (payload.activityStatus === undefined && studentToUpdate.activityStatus === 'Active'));
 
-  if (finalNextDueDateString && typeof finalNextDueDateString === 'string' && isNowActive) {
-      const dueDate = startOfDay(parseISO(finalNextDueDateString));
+  if (finalNextDueDateString && (typeof finalNextDueDateString === 'string' || finalNextDueDateString instanceof Date) && isNowActive) {
+      const dueDate = startOfDay(finalNextDueDateString instanceof Date ? finalNextDueDateString : parseISO(finalNextDueDateString));
       const today = startOfDay(new Date());
 
       if (isAfter(dueDate, today)) {
@@ -1397,3 +1390,4 @@ declare module '@/types/communication' {
     firestoreId?: string;
   }
 }
+
