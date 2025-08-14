@@ -139,30 +139,32 @@ export default function StudentRegisterPage() {
   // Effect to handle camera stream when dialog opens/closes
   React.useEffect(() => {
     let stream: MediaStream | null = null;
+    const videoElem = videoRef.current;
 
-    const getCameraStream = async () => {
-      if (isCameraDialogOpen && videoRef.current) {
+    const startVideoStream = async () => {
+      if (isCameraDialogOpen && videoElem) {
         try {
           stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
-          videoRef.current.srcObject = stream;
+          videoElem.srcObject = stream;
           setHasCameraPermission(true);
         } catch (err) {
           console.error("Camera access error:", err);
           setHasCameraPermission(false);
           toast({ variant: "destructive", title: "Camera Access Denied", description: "Please enable camera permissions in your browser settings and try again." });
+          setIsCameraDialogOpen(false); // Close dialog on error
         }
       }
     };
 
-    getCameraStream();
+    startVideoStream();
 
     // Cleanup function to stop the stream
     return () => {
       if (stream) {
         stream.getTracks().forEach(track => track.stop());
       }
-      if (videoRef.current) {
-        videoRef.current.srcObject = null;
+      if (videoElem) {
+        videoElem.srcObject = null;
       }
     };
   }, [isCameraDialogOpen, toast]);
