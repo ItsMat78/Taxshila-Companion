@@ -2,6 +2,7 @@
 "use client";
 import * as React from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { PageTitle } from '@/components/shared/page-title';
 import {
   Users,
@@ -22,6 +23,7 @@ import {
   Database,
   Shield,
   ListChecks,
+  View,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle as ShadcnCardTitle, CardDescription as ShadcnCardDescription, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -30,6 +32,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle as ShadcnDialogTitle,
+  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
   Table,
@@ -126,30 +129,46 @@ const CheckedInStudentCard = ({ student, onWarn, isWarning }: { student: Checked
   return (
     <Card className="w-full">
       <CardContent className="p-3 flex items-center justify-between gap-3">
-        <div className="flex items-center gap-3 min-w-0">
-          <Avatar className="h-10 w-10 border flex-shrink-0">
-            <AvatarImage src={student.profilePictureUrl || undefined} alt={student.name} data-ai-hint="profile person" />
-            <AvatarFallback>{getInitials(student.name)}</AvatarFallback>
-          </Avatar>
-          <div className="flex-grow min-w-0">
-            <p className="text-sm font-semibold truncate">{student.name}</p>
-            <div className="flex items-center gap-2 mt-1">
-              <div
-                className={cn(
-                  'h-6 w-6 flex items-center justify-center rounded-md border text-xs font-bold',
-                  getShiftColorClass(student.shift)
-                )}
-                title={`Seat ${student.seatNumber}`}
-              >
-                {student.seatNumber || '?'}
-              </div>
-              <div className="text-xs text-muted-foreground flex items-center">
-                  <LogIn className="h-3 w-3 mr-1 text-green-500" />
-                  {format(parseISO(student.checkInTime), 'p')}
+        <Dialog>
+          <DialogTrigger asChild>
+            <div className="flex items-center gap-3 min-w-0 cursor-pointer group">
+              <Avatar className="h-10 w-10 border flex-shrink-0">
+                <AvatarImage src={student.profilePictureUrl || undefined} alt={student.name} data-ai-hint="profile person" />
+                <AvatarFallback>{getInitials(student.name)}</AvatarFallback>
+              </Avatar>
+              <div className="flex-grow min-w-0">
+                <p className="text-sm font-semibold truncate group-hover:underline">{student.name}</p>
+                <div className="flex items-center gap-2 mt-1">
+                  <div
+                    className={cn(
+                      'h-6 w-6 flex items-center justify-center rounded-md border text-xs font-bold',
+                      getShiftColorClass(student.shift)
+                    )}
+                    title={`Seat ${student.seatNumber}`}
+                  >
+                    {student.seatNumber || '?'}
+                  </div>
+                  <div className="text-xs text-muted-foreground flex items-center">
+                      <LogIn className="h-3 w-3 mr-1 text-green-500" />
+                      {format(parseISO(student.checkInTime), 'p')}
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
-        </div>
+          </DialogTrigger>
+          <DialogContent className="max-w-md w-auto p-2">
+            <DialogHeader className="mb-2">
+              <ShadcnDialogTitle>{student.name}</ShadcnDialogTitle>
+            </DialogHeader>
+            <Image
+              src={student.profilePictureUrl || "https://placehold.co/400x400.png"}
+              alt={`${student.name}'s profile picture`}
+              width={400}
+              height={400}
+              className="rounded-md object-contain max-h-[70vh] w-full h-auto"
+            />
+          </DialogContent>
+        </Dialog>
         {student.isOutsideShift && (
           <Button
             size="sm"
@@ -507,3 +526,5 @@ export default function MainPage() {
     </div>
   );
 }
+
+    
