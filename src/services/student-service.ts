@@ -31,7 +31,6 @@ import type { Student, Shift, FeeStatus, PaymentRecord, ActivityStatus, Attendan
 import type { FeedbackItem, FeedbackType, FeedbackStatus, AlertItem } from '@/types/communication';
 import { format, parseISO, differenceInDays, isPast, addMonths, startOfDay, isValid, addDays, isAfter, getHours, getMinutes, isWithinInterval, startOfMonth, endOfMonth, parse, differenceInMilliseconds } from 'date-fns';
 import { ALL_SEAT_NUMBERS } from '@/config/seats';
-import { createUserWithEmailAndPassword } from 'firebase/auth'; // <-- Add this line
 
 import {
   getAuth,
@@ -268,11 +267,31 @@ export interface AddStudentData {
 }
 
 export async function addStudent(studentData: AddStudentData): Promise<Student> {
+    // Step 1: Create the auth user via the secure API route
+    const authResponse = await fetch('/api/admin/create-student-auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            email: studentData.email,
+            phone: studentData.phone,
+            password: studentData.password,
+            name: studentData.name,
+            profilePictureUrl: studentData.profilePictureUrl
+        }),
+    });
+
+    const authResult = await authResponse.json();
+    if (!authResponse.ok || !authResult.success) {
+        throw new Error(authResult.error || 'Failed to create authentication account.');
+    }
+    const newUid = authResult.uid;
+
+    // Step 2: Create the Firestore document
     const studentId = await getNextCustomStudentId();
     const newStudentDocRef = doc(collection(db, STUDENTS_COLLECTION));
 
     const firestorePayload = {
-      uid: null,
+      uid: newUid,
       studentId: studentId,
       name: studentData.name,
       email: studentData.email || null,
@@ -288,15 +307,7 @@ export async function addStudent(studentData: AddStudentData): Promise<Student> 
       lastPaymentDate: null,
       nextDueDate: format(new Date(), 'yyyy-MM-dd'),
       leftDate: null,
-      password: studentData.password,
     };
-
-    // Remove undefined fields before saving
-    Object.keys(firestorePayload).forEach(key => {
-        if ((firestorePayload as any)[key] === undefined) {
-            delete (firestorePayload as any)[key];
-        }
-    });
     
     await setDoc(newStudentDocRef, firestorePayload);
 
