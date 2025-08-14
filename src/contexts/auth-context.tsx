@@ -11,8 +11,8 @@ import {
   removeAdminFCMToken, 
   updateUserTheme,
 } from '@/services/student-service';
-import type { Student } from '@/types/student'; // Corrected Import
-import type { Admin } from '@/types/auth';      // Corrected Import
+import type { Student } from '@/types/student';
+import type { Admin } from '@/types/auth';
 import { useToast } from "@/hooks/use-toast";
 import { getMessaging, getToken, deleteToken } from 'firebase/messaging';
 import { getAuth, signInWithEmailAndPassword, signOut } from 'firebase/auth';
@@ -24,10 +24,10 @@ interface User {
   email?: string;
   role: UserRole;
   profilePictureUrl?: string;
-  firestoreId: string; // Made non-optional as it's critical for operations
+  firestoreId: string;
   studentId?: string;
   identifierForDisplay?: string;
-  theme: string; // Made non-optional
+  theme: string;
 }
 
 interface AuthContextType {
@@ -44,7 +44,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = React.useState<User | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
   const router = useRouter();
-  const pathname = usePathname();
   const { toast } = useToast();
   const { setTheme } = useTheme();
   const auth = getAuth(firebaseApp);
@@ -65,13 +64,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [setTheme]);
 
-  React.useEffect(() => {
-    const isPublicPath = pathname.startsWith('/login');
-    if (!isLoading && !user && !isPublicPath) {
-      router.replace('/login');
-    }
-  }, [user, isLoading, pathname, router]);
-
   const login = async (identifier: string, passwordAttempt: string): Promise<User | null> => {
     setIsLoading(true);
     let userRecord: Student | Admin | null = null;
@@ -79,7 +71,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     let emailForAuth: string | undefined = undefined;
 
     if (identifier.includes('@')) {
-        // This part handles logins via a real email address
         const admin = await getAdminByEmail(identifier);
         if (admin) {
             userRecord = admin;
@@ -89,12 +80,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
         emailForAuth = identifier;
     } else {
-        // This part handles login via phone number
         userRecord = (await getStudentByIdentifier(identifier)) ?? null;
-        
         if (userRecord) {
-            // If the user has a real email, use it.
-            // Otherwise, construct the proxy email that matches the registration API.
             emailForAuth = userRecord.email || `${identifier}@taxshila-auth.com`;
         }
     }
@@ -163,7 +150,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const logout = async () => {
-    const loggedOutUser = user; // Capture user state before setting it to null
+    const loggedOutUser = user;
     
     setUser(null);
     localStorage.removeItem('taxshilaUser');
@@ -187,7 +174,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     }
     
-    router.push('/login');
+    router.push('/login/admin');
   };
 
   const saveThemePreference = React.useCallback(async (newTheme: string) => {

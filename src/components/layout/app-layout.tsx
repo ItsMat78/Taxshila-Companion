@@ -1,7 +1,7 @@
 
 "use client";
 import * as React from 'react';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar';
 import { AppSidebarContent } from './app-sidebar-content';
@@ -54,6 +54,7 @@ function NotificationIconArea() {
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, isLoading: isAuthLoading } = useAuth();
+  const router = useRouter();
   const pathname = usePathname();
   const [isRouteLoading, setIsRouteLoading] = React.useState(false);
   const prevPathnameRef = React.useRef(pathname);
@@ -61,8 +62,13 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const { refreshNotifications } = useNotificationContext();
   const { theme, setTheme } = useTheme();
 
-  // The main authentication redirect logic is now handled in AuthProvider/AuthContext.
-  // This simplifies AppLayout significantly.
+  React.useEffect(() => {
+    // This is the CORRECT place for the redirect logic.
+    const isPublicPath = pathname.startsWith('/login');
+    if (!isAuthLoading && !user && !isPublicPath) {
+      router.replace('/login/admin');
+    }
+  }, [user, isAuthLoading, pathname, router]);
 
   React.useEffect(() => {
     if (prevPathnameRef.current !== pathname) {
@@ -75,44 +81,35 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     }
   }, [pathname]);
 
-  // Apply theme from user context when it loads
   React.useEffect(() => {
     if (user?.theme && user.theme !== theme) {
       setTheme(user.theme);
     }
   }, [user, theme, setTheme]);
 
-
   React.useEffect(() => {
     const setupPush = async () => {
       if (user && user.firestoreId && typeof window !== 'undefined' && 'serviceWorker' in navigator) {
-        
         if (!VAPID_KEY_FROM_CLIENT_LIB || VAPID_KEY_FROM_CLIENT_LIB.includes("REPLACE THIS")) {
-            console.warn("[AppLayout] VAPID_KEY is not configured in firebase-messaging-client.ts. Push notifications will not be initialized.");
+            console.warn("[AppLayout] VAPID_KEY is not configured. Push notifications will not be initialized.");
             return;
         }
         try {
-          // Pass both firestoreId and role to initPushNotifications
-          console.log(`[AppLayout] Attempting to initialize push notifications for ${user.role}:`, user.firestoreId);
           await initPushNotifications(user.firestoreId, user.role);
         } catch (error) {
           console.error(`[AppLayout] Error during push notification setup for ${user.role}:`, error);
         }
-      } else if (user && !user.firestoreId && user.role === 'admin') {
-        console.warn("[AppLayout] Admin user logged in but no firestoreId found in auth context. FCM token cannot be saved. Ensure admin user exists in 'admins' Firestore collection.");
       }
     };
     if (!isAuthLoading && user) {
       setupPush();
     }
-  }, [user, isAuthLoading]); // Depend on user to re-run if user object (with firestoreId) changes
+  }, [user, isAuthLoading]);
 
-  
   React.useEffect(() => {
     const handleForegroundMessage = (event: Event) => {
       const customEvent = event as CustomEvent;
       const notificationPayload = customEvent.detail;
-      console.log("[AppLayout] Foreground message event received:", notificationPayload);
       if (notificationPayload && notificationPayload.title && notificationPayload.body) {
         toast({
           title: notificationPayload.title,
@@ -126,15 +123,10 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       window.removeEventListener('show-foreground-message', handleForegroundMessage);
     };
   }, [toast, refreshNotifications]);
-
   
   React.useEffect(() => {
     const handleNewFeedback = (event: Event) => {
-      const customEvent = event as CustomEvent;
-      const feedbackId = customEvent.detail?.feedbackId;
-      console.log(`[AppLayout] 'new-feedback-submitted' event caught. Feedback ID: ${feedbackId}. User role: ${user?.role}.`);
       if (user && user.role === 'admin') {
-        console.log("[AppLayout] Admin detected, showing toast for new feedback and refreshing notifications.");
         toast({
           title: "New Feedback Received",
           description: "A member has submitted new feedback. Please check the feedback section.",
@@ -148,8 +140,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     };
   }, [user, toast, refreshNotifications]);
 
+  const isPublicPath = pathname.startsWith('/login');
 
-  if (isAuthLoading && !pathname.startsWith('/login')) {
+  if (isAuthLoading && !isPublicPath) {
     return (
       <div className="flex min-h-screen w-full flex-col items-center justify-center bg-background">
         <Skeleton className="h-12 w-12 rounded-full" />
@@ -158,15 +151,12 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       </div>
     );
   }
-
-  // If the user is not authenticated and is not on the login page, the effect in AuthContext will redirect.
-  // Return null or a loader to prevent rendering the main layout.
-  if (!user && !pathname.startsWith('/login')) {
+  
+  if (!user && !isPublicPath) {
     return null;
   }
 
-  // If we are on a public path (like login), just render the children.
-  if (pathname.startsWith('/login')) {
+  if (isPublicPath) {
     return (
       <>
         <TopProgressBar isLoading={isRouteLoading} />
@@ -175,30 +165,33 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     );
   }
   
-  // If we have a user, render the full application layout.
-  return (
-    <SidebarProvider defaultOpen>
-      <TopProgressBar isLoading={isRouteLoading} />
-      <AppSidebarContent />
-      <SidebarInset>
-        <header className="sticky top-0 z-10 flex h-14 items-center gap-4 border-b bg-background/80 px-4 backdrop-blur-sm sm:h-16 sm:px-6 md:hidden">
-          <SidebarTrigger asChild>
-            <Button size="icon" variant="outline" className="md:hidden">
-              <PanelLeft className="h-5 w-5" />
-              <span className="sr-only">Toggle Menu</span>
-            </Button>
-          </SidebarTrigger>
-          <Link href="/" className="flex items-center gap-2 font-headline text-lg font-semibold">
-             Taxshila Companion
-          </Link>
-          <div className="ml-auto flex items-center gap-2">
-            <NotificationIconArea />
-          </div>
-        </header>
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 min-w-0">
-          {children}
-        </main>
-      </SidebarInset>
-    </SidebarProvider>
-  );
+  if (user) {
+    return (
+      <SidebarProvider defaultOpen>
+        <TopProgressBar isLoading={isRouteLoading} />
+        <AppSidebarContent />
+        <SidebarInset>
+          <header className="sticky top-0 z-10 flex h-14 items-center gap-4 border-b bg-background/80 px-4 backdrop-blur-sm sm:h-16 sm:px-6 md:hidden">
+            <SidebarTrigger asChild>
+              <Button size="icon" variant="outline" className="md:hidden">
+                <PanelLeft className="h-5 w-5" />
+                <span className="sr-only">Toggle Menu</span>
+              </Button>
+            </SidebarTrigger>
+            <Link href="/" className="flex items-center gap-2 font-headline text-lg font-semibold">
+               Taxshila Companion
+            </Link>
+            <div className="ml-auto flex items-center gap-2">
+              <NotificationIconArea />
+            </div>
+          </header>
+          <main className="flex-1 p-4 sm:p-6 lg:p-8 min-w-0">
+            {children}
+          </main>
+        </SidebarInset>
+      </SidebarProvider>
+    );
+  }
+
+  return null;
 }
