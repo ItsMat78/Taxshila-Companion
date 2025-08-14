@@ -49,7 +49,11 @@ export async function POST(request: Request) {
       disabled: false,
       phoneNumber: `+91${phone}`,
     };
-    if (email) userPayload.email = email;
+    
+    // Only add email to the payload if it's a non-empty string
+    if (email && email.trim().length > 0) {
+      userPayload.email = email;
+    }
     
     const userRecord = await auth.createUser(userPayload);
 
