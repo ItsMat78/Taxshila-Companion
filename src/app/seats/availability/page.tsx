@@ -82,7 +82,6 @@ export default function SeatAvailabilityPage() {
   const { toast } = useToast();
   const [allStudents, setAllStudents] = React.useState<Student[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
-  const selectedShiftView: ShiftView = 'fullday_occupied';
   
   const [occupiedMorningStudentsCount, setOccupiedMorningStudentsCount] = React.useState(0);
   const [occupiedEveningStudentsCount, setOccupiedEveningStudentsCount] = React.useState(0);
@@ -92,12 +91,6 @@ export default function SeatAvailabilityPage() {
   const [availableEveningSlotsCount, setAvailableEveningSlotsCount] = React.useState(0);
   const [availableForFullDayBookingCount, setAvailableForFullDayBookingCount] = React.useState(0);
   const [isLoadingOverallAvailableStats, setIsLoadingOverallAvailableStats] = React.useState(true);
-
-  const [showOccupiedSeatsDialog, setShowOccupiedSeatsDialog] = React.useState(false);
-  const [showAvailableSeatsDialog, setShowAvailableSeatsDialog] = React.useState(false);
-  const [dialogOccupiedStudentList, setDialogOccupiedStudentList] = React.useState<Student[]>([]);
-  const [dialogAvailableSeatList, setDialogAvailableSeatList] = React.useState<string[]>([]);
-  const [isLoadingDialogSeats, setIsLoadingDialogSeats] = React.useState(false);
 
   const activeStudents = React.useMemo(() => allStudents.filter(s => s.activityStatus === "Active"), [allStudents]);
 
@@ -139,76 +132,18 @@ export default function SeatAvailabilityPage() {
     fetchData();
   }, [toast]);
 
-  const handleOpenOccupiedSeatsDialog = () => {
-    let studentsToList: Student[];
-    if (selectedShiftView === 'morning') {
-      studentsToList = activeStudents.filter(s => s.seatNumber && (s.shift === 'morning' || s.shift === 'fullday'));
-    } else if (selectedShiftView === 'evening') {
-      studentsToList = activeStudents.filter(s => s.seatNumber && (s.shift === 'evening' || s.shift === 'fullday'));
-    } else { // fullday_occupied
-      studentsToList = activeStudents.filter(s => s.seatNumber && s.shift === 'fullday');
-    }
-    setDialogOccupiedStudentList(studentsToList.sort((a,b) => parseInt(a.seatNumber!) - parseInt(b.seatNumber!)));
-    setShowOccupiedSeatsDialog(true);
-  };
-  
-  const handleOpenAvailableSeatsDialog = async () => {
-    setIsLoadingDialogSeats(true);
-    setShowAvailableSeatsDialog(true);
-    try {
-      const targetShift = selectedShiftView === 'fullday_occupied' ? 'fullday' : selectedShiftView;
-      const seats = await getAvailableSeatsFromList(targetShift, allStudents);
-      setDialogAvailableSeatList(seats.sort((a,b) => parseInt(a) - parseInt(b)));
-    } catch (e) {
-      toast({ title: "Error", description: `Could not load available seats.`, variant: "destructive"});
-      setDialogAvailableSeatList([]);
-    } finally {
-      setIsLoadingDialogSeats(false);
-    }
-  };
 
-  const getSeatStatusKey = (seatNumber: string, view: ShiftView): SeatStatusKey => {
+  const getSeatStatusKey = (seatNumber: string): SeatStatusKey => {
     const studentMorning = activeStudents.find(s => s.seatNumber === seatNumber && s.shift === 'morning');
     const studentEvening = activeStudents.find(s => s.seatNumber === seatNumber && s.shift === 'evening');
     const studentFullDay = activeStudents.find(s => s.seatNumber === seatNumber && s.shift === 'fullday');
 
-    if (view === 'morning') {
-        if (studentFullDay) return 'fullday';
-        if (studentMorning) return 'morning';
-    } else if (view === 'evening') {
-        if (studentFullDay) return 'fullday';
-        if (studentEvening) return 'evening';
-    } else if (view === 'fullday_occupied') {
-        if (studentFullDay) return 'fullday';
-        if (studentMorning && studentEvening) return 'split';
-        if (studentMorning) return 'morning';
-        if (studentEvening) return 'evening';
-    }
+    if (studentFullDay) return 'fullday';
+    if (studentMorning && studentEvening) return 'split';
+    if (studentMorning) return 'morning';
+    if (studentEvening) return 'evening';
 
     return 'available';
-  };
-  
-  const occupiedDialogTitle = React.useMemo(() => {
-    if (selectedShiftView === 'morning') return "Students (Morning View)";
-    if (selectedShiftView === 'evening') return "Students (Evening View)";
-    if (selectedShiftView === 'fullday_occupied') return "Students (Full Day)";
-    return "Occupied By";
-  }, [selectedShiftView]);
-
-  const availableDialogTitle = React.useMemo(() => {
-    if (selectedShiftView === 'morning') return "Available Seats (Morning Shift)";
-    if (selectedShiftView === 'evening') return "Available Seats (Evening Shift)";
-    if (selectedShiftView === 'fullday_occupied') return "Available Seats (Full Day Booking)";
-    return "Available Seats";
-  }, [selectedShiftView]);
-
-  const getShiftViewLabel = (view: ShiftView) => {
-    switch(view) {
-      case 'morning': return 'Morning Shift';
-      case 'evening': return 'Evening Shift';
-      case 'fullday_occupied': return 'Full Day Bookings';
-      default: return 'Selected View';
-    }
   };
 
   return (
@@ -225,10 +160,10 @@ export default function SeatAvailabilityPage() {
                 <p className="text-xl font-bold">{serviceAllSeats.length * 2}</p>
             </div>
             <div className="p-2 rounded-lg bg-muted/50">
-                <p className="text-xs text-muted-foreground">Occupied Students</p>
+                <p className="text-xs text-muted-foreground">Occupied (M/E/FD)</p>
                 {isLoading ? <Loader2 className="h-5 w-5 animate-spin mx-auto mt-1" /> : (
-                  <p className="text-sm font-semibold text-foreground">
-                    M: {occupiedMorningStudentsCount}, E: {occupiedEveningStudentsCount}, FD: {occupiedFullDayStudentsCount}
+                  <p className="text-xl font-bold text-foreground">
+                    {occupiedMorningStudentsCount} / {occupiedEveningStudentsCount} / {occupiedFullDayStudentsCount}
                   </p>
                 )}
             </div>
@@ -280,7 +215,7 @@ export default function SeatAvailabilityPage() {
               </div>
               <div className="grid grid-cols-[repeat(auto-fill,minmax(2.75rem,1fr))] sm:grid-cols-[repeat(auto-fill,minmax(3.25rem,1fr))] gap-1 sm:gap-1.5">
                 {serviceAllSeats.map((seatNum) => {
-                  const seatStatusKey = getSeatStatusKey(seatNum, 'fullday_occupied');
+                  const seatStatusKey = getSeatStatusKey(seatNum);
                   const styles = SEAT_STYLES[seatStatusKey];
                   const ShiftIcon = styles.icon;
                   const studentsOnThisSeat = activeStudents.filter(s => s.seatNumber === seatNum);
@@ -288,10 +223,11 @@ export default function SeatAvailabilityPage() {
 
                   return (
                     <Popover key={seatNum}>
-                      <PopoverTrigger asChild>
+                      <PopoverTrigger asChild disabled={studentsOnThisSeat.length === 0}>
                         <div
                           className={cn(
-                            "relative flex items-center justify-center h-10 w-10 sm:h-12 sm:w-12 text-xs sm:text-sm rounded-md border-2 transition-colors font-medium cursor-pointer",
+                            "relative flex items-center justify-center h-10 w-10 sm:h-12 sm:w-12 text-xs sm:text-sm rounded-md border-2 transition-colors font-medium",
+                            studentsOnThisSeat.length > 0 ? "cursor-pointer" : "cursor-default",
                             styles.bgClass,
                             styles.borderClass,
                             isFemaleOnly && "female-only-seat"
@@ -302,50 +238,40 @@ export default function SeatAvailabilityPage() {
                           <span className={cn(styles.textClass)}>{seatNum}</span>
                         </div>
                       </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" side="top" align="center">
-                         <div className="p-4">
-                            <h4 className="font-semibold text-md mb-3 border-b pb-2">Seat {seatNum}</h4>
-                            <div className="space-y-3">
-                              {studentsOnThisSeat.length > 0 ? (
-                                studentsOnThisSeat.map(student => (
-                                  <div key={student.studentId} className="border-b pb-3 last:border-b-0 last:pb-0">
-                                    <div className="flex items-center gap-3 mb-2">
-                                      <Avatar className="h-10 w-10 border">
-                                        <AvatarImage src={student.profilePictureUrl || undefined} alt={student.name} data-ai-hint="profile person" />
-                                        <AvatarFallback>{getInitials(student.name)}</AvatarFallback>
-                                      </Avatar>
-                                      <div>
-                                        <p className="text-sm font-medium">{student.name}</p>
-                                        <p className="text-xs text-muted-foreground capitalize">
-                                          Shift: {student.shift}
-                                        </p>
+                       <PopoverContent className="w-64 p-0" side="top" align="center">
+                          <div className="p-3">
+                              <h4 className="font-semibold text-md mb-2 border-b pb-2 text-center">Seat {seatNum}</h4>
+                              <div className="space-y-3">
+                                  {studentsOnThisSeat.map(student => (
+                                      <div key={student.studentId} className="space-y-2 border-b pb-3 last:border-b-0 last:pb-0">
+                                          <div className="flex items-center gap-2">
+                                              <Avatar className="h-10 w-10 border flex-shrink-0">
+                                                  <AvatarImage src={student.profilePictureUrl || undefined} alt={student.name} data-ai-hint="profile person" />
+                                                  <AvatarFallback>{getInitials(student.name)}</AvatarFallback>
+                                              </Avatar>
+                                              <div className="min-w-0 flex-1">
+                                                  <p className="text-sm font-medium truncate">{student.name}</p>
+                                                  <p className="text-xs text-muted-foreground capitalize truncate">
+                                                      Shift: {student.shift}
+                                                  </p>
+                                              </div>
+                                          </div>
+                                          <div className="flex items-center gap-2">
+                                              <Link href={`/students/profiles/${student.studentId}`} passHref legacyBehavior>
+                                                  <Button variant="outline" size="sm" className="flex-1">
+                                                      <UserProfileIcon className="mr-1 h-3 w-3" /> Profile
+                                                  </Button>
+                                              </Link>
+                                              <Link href={`/admin/students/edit/${student.studentId}`} passHref legacyBehavior>
+                                                  <Button variant="outline" size="sm" className="flex-1">
+                                                      <Edit className="mr-1 h-3 w-3" /> Edit
+                                                  </Button>
+                                              </Link>
+                                          </div>
                                       </div>
-                                    </div>
-                                    
-                                    <p className="text-xs text-muted-foreground flex items-center">
-                                      <PhoneIcon className="mr-1.5 h-3 w-3" /> {student.phone}
-                                    </p>
-                                    <div className="mt-2 flex space-x-2">
-                                      <Link href={`/students/profiles/${student.studentId}`} passHref legacyBehavior>
-                                        <Button variant="outline" size="sm">
-                                          <UserProfileIcon className="mr-1 h-3 w-3" /> Profile
-                                        </Button>
-                                      </Link>
-                                      <Link href={`/admin/students/edit/${student.studentId}`} passHref legacyBehavior>
-                                        <Button variant="outline" size="sm">
-                                          <Edit className="mr-1 h-3 w-3" /> Edit
-                                        </Button>
-                                      </Link>
-                                    </div>
-                                  </div>
-                                ))
-                              ) : (
-                                <p className="text-sm text-muted-foreground">
-                                  This seat is currently unassigned and fully available.
-                                </p>
-                              )}
-                            </div>
-                         </div>
+                                  ))}
+                              </div>
+                          </div>
                       </PopoverContent>
                     </Popover>
                   );
