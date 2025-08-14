@@ -1,4 +1,5 @@
 
+
 // src/app/api/admin/create-student-auth/route.ts
 import { NextResponse } from 'next/server';
 import { getAuth } from '@/lib/firebase-admin';
@@ -26,14 +27,15 @@ export async function POST(request: Request) {
 
     const auth = getAuth();
     
+    // Determine the email to be used for authentication
+    const emailForAuth = email || `${phone}@taxshila-auth.com`;
+    
     // --- Check for existing users ---
-    if (email) {
-        try {
-            await auth.getUserByEmail(email);
-            return NextResponse.json({ success: false, error: 'An account with this email already exists.' }, { status: 409 });
-        } catch (error: any) {
-            if (error.code !== 'auth/user-not-found') throw error;
-        }
+    try {
+        await auth.getUserByEmail(emailForAuth);
+        return NextResponse.json({ success: false, error: 'An account with this email already exists.' }, { status: 409 });
+    } catch (error: any) {
+        if (error.code !== 'auth/user-not-found') throw error;
     }
     try {
         await auth.getUserByPhoneNumber(`+91${phone}`);
@@ -48,17 +50,13 @@ export async function POST(request: Request) {
       displayName: name,
       disabled: false,
       phoneNumber: `+91${phone}`,
+      email: emailForAuth, // Always include an email
     };
-    
-    // Only add email to the payload if it's a non-empty string
-    if (email && email.trim().length > 0) {
-      userPayload.email = email;
-    }
     
     const userRecord = await auth.createUser(userPayload);
 
-    // --- Return a successful response with the new UID ---
-    return NextResponse.json({ success: true, uid: userRecord.uid });
+    // --- Return a successful response with the new UID and the email used ---
+    return NextResponse.json({ success: true, uid: userRecord.uid, email: emailForAuth });
 
   } catch (error: any) {
     console.error("Create Student Auth API Error:", error);
@@ -68,3 +66,4 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: false, error: "An unexpected server error occurred during auth creation." }, { status: 500 });
   }
 }
+

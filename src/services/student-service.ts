@@ -283,15 +283,15 @@ export async function addStudent(studentData: AddStudentData): Promise<Student> 
     if (!authResponse.ok || !authResult.success) {
         throw new Error(authResult.error || 'Failed to create authentication account.');
     }
-    const newUid = authResult.uid;
+    const { uid: newUid, email: finalEmail } = authResult;
     const studentId = await getNextCustomStudentId();
-    const newStudentDocRef = doc(db, STUDENTS_COLLECTION, studentId);
+    const studentDocRef = doc(db, STUDENTS_COLLECTION, studentId);
 
     const firestorePayload: Omit<Student, 'id' | 'firestoreId' | 'paymentHistory'> = {
       uid: newUid,
       studentId: studentId,
       name: studentData.name,
-      email: studentData.email || null,
+      email: finalEmail,
       phone: studentData.phone,
       address: studentData.address,
       shift: studentData.shift,
@@ -306,18 +306,19 @@ export async function addStudent(studentData: AddStudentData): Promise<Student> 
       leftDate: null,
     };
     
-    await setDoc(newStudentDocRef, firestorePayload);
-
+    await setDoc(studentDocRef, firestorePayload);
+    let downloadURL: string | null = null;
+    
     if (studentData.profilePictureUrl) {
       const imageRef = storageRef(storage, `students/${studentId}/profilePicture.jpg`);
       await uploadString(imageRef, studentData.profilePictureUrl, 'data_url');
-      const downloadURL = await getDownloadURL(imageRef);
-      await updateDoc(newStudentDocRef, { profilePictureUrl: downloadURL });
-      
-      const firebaseAuth = getAuth();
-      if (firebaseAuth.currentUser && firebaseAuth.currentUser.uid === newUid) {
-        await updateProfile(firebaseAuth.currentUser, { photoURL: downloadURL });
-      }
+      downloadURL = await getDownloadURL(imageRef);
+      await updateDoc(studentDocRef, { profilePictureUrl: downloadURL });
+    }
+
+    const firebaseAuth = getAuth();
+    if (firebaseAuth.currentUser && firebaseAuth.currentUser.uid === newUid) {
+      await updateProfile(firebaseAuth.currentUser, { photoURL: downloadURL });
     }
 
     const finalStudent = await getStudentByCustomId(studentId);
@@ -1390,3 +1391,4 @@ declare module '@/types/communication' {
 }
 
     
+
