@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { saveProfilePictureUrl } from "@/services/profile-picture-service";
+import { saveProfilePicture } from "@/services/profile-picture-service";
 import { Loader2, Camera, Video, VideoOff, View } from "lucide-react";
 import Image from "next/image";
 import { useState, useRef, useEffect, useCallback } from "react";
@@ -33,10 +33,7 @@ export function ProfilePictureUploader({
   currentProfilePictureUrl,
   onUploadSuccess,
 }: ProfilePictureUploaderProps) {
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(
-    currentProfilePictureUrl || null
-  );
+  const [base64Preview, setBase64Preview] = useState<string | null>(currentProfilePictureUrl || null);
   const [isUploading, setIsUploading] = useState(false);
   const { toast } = useToast();
 
@@ -45,7 +42,10 @@ export function ProfilePictureUploader({
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  // Effect to handle camera stream when dialog opens/closes
+  useEffect(() => {
+    setBase64Preview(currentProfilePictureUrl || null);
+  }, [currentProfilePictureUrl]);
+
   useEffect(() => {
     let stream: MediaStream | null = null;
     const videoElem = videoRef.current;
@@ -55,17 +55,11 @@ export function ProfilePictureUploader({
         try {
           stream = await navigator.mediaDevices.getUserMedia({ video: true });
           setHasCameraPermission(true);
-          if (videoRef.current) {
-            videoRef.current.srcObject = stream;
-          }
+          if (videoRef.current) videoRef.current.srcObject = stream;
         } catch (error) {
           console.error("Error accessing camera:", error);
           setHasCameraPermission(false);
-          toast({
-            variant: "destructive",
-            title: "Camera Access Denied",
-            description: "Please enable camera permissions in your browser settings to use this app.",
-          });
+          toast({ variant: "destructive", title: "Camera Access Denied" });
           setIsCameraDialogOpen(false);
         }
       };
@@ -73,12 +67,8 @@ export function ProfilePictureUploader({
     }
     
     return () => {
-      if (stream) {
-        stream.getTracks().forEach(track => track.stop());
-      }
-      if (videoElem) {
-        videoElem.srcObject = null;
-      }
+      if (stream) stream.getTracks().forEach(track => track.stop());
+      if (videoElem) videoElem.srcObject = null;
     };
   }, [isCameraDialogOpen, toast]);
 
@@ -92,71 +82,44 @@ export function ProfilePictureUploader({
         if (context) {
             context.drawImage(video, 0, 0, video.videoWidth, video.videoHeight);
             const dataUrl = canvas.toDataURL('image/jpeg');
-            setPreviewUrl(dataUrl);
-            setSelectedFile(null); // Clear file selection if capturing from camera
+            setBase64Preview(dataUrl);
         }
-        setIsCameraDialogOpen(false); // This will trigger the useEffect cleanup
+        setIsCameraDialogOpen(false);
     }
   };
 
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      if (file.size > 3 * 1024 * 1024) { // 3MB limit
-        toast({
-          title: "File Too Large",
-          description: "Please select an image smaller than 3MB.",
-          variant: "destructive",
-        });
+      if (file.size > 3 * 1024 * 1024) {
+        toast({ title: "File Too Large", description: "Image must be smaller than 3MB.", variant: "destructive" });
         return;
       }
-      setSelectedFile(file);
-      setPreviewUrl(URL.createObjectURL(file));
+      const base64 = await toBase64(file);
+      setBase64Preview(base64);
     }
   };
 
   const handleUpload = async () => {
-    let base64UrlToUpload: string | null = null;
-    
-    if (selectedFile) {
-      base64UrlToUpload = await toBase64(selectedFile);
-    } else if (previewUrl && previewUrl.startsWith('data:image')) {
-      base64UrlToUpload = previewUrl;
-    }
-    
-    if (!base64UrlToUpload) {
-       toast({
-        title: "No new image selected",
-        description: "Please select a file or capture a new photo to upload.",
-        variant: "destructive",
-      });
+    if (!base64Preview || !base64Preview.startsWith('data:image')) {
+       toast({ title: "No New Image", description: "Please select or capture a new photo.", variant: "destructive" });
       return;
     }
     
-
     setIsUploading(true);
     try {
-      await saveProfilePictureUrl(studentFirestoreId, base64UrlToUpload);
-
-      setPreviewUrl(base64UrlToUpload);
-      setSelectedFile(null);
-      onUploadSuccess(base64UrlToUpload);
-      toast({
-        title: "Upload successful",
-        description: "Profile picture has been updated.",
-      });
-    } catch (error) {
-      console.error("Error saving profile picture:", error);
-      toast({
-        title: "Upload failed",
-        description: "Could not save the profile picture. Please try again.",
-        variant: "destructive",
-      });
+      const newUrl = await saveProfilePicture(studentFirestoreId, 'member', base64Preview);
+      onUploadSuccess(newUrl);
+      toast({ title: "Upload Successful", description: "Profile picture has been updated." });
+    } catch (error: any) {
+      toast({ title: "Upload Failed", description: error.message || "Could not save the picture.", variant: "destructive" });
     } finally {
       setIsUploading(false);
     }
   };
+
+  const hasUnsavedChanges = base64Preview && base64Preview !== currentProfilePictureUrl;
 
   return (
     <Card>
@@ -170,7 +133,7 @@ export function ProfilePictureUploader({
             <DialogTrigger asChild>
                 <div className="cursor-pointer relative group">
                     <Image
-                        src={previewUrl || "/path/to/placeholder.png"}
+                        src={base64Preview || "https://placehold.co/150x150.png"}
                         alt="Profile Picture Preview"
                         width={150}
                         height={150}
@@ -183,7 +146,7 @@ export function ProfilePictureUploader({
             </DialogTrigger>
             <DialogContent className="max-w-md w-auto p-2">
                 <Image
-                    src={previewUrl || "/path/to/placeholder.png"}
+                    src={base64Preview || "https://placehold.co/400x400.png"}
                     alt="Profile Picture Full View"
                     width={500}
                     height={500}
@@ -193,14 +156,8 @@ export function ProfilePictureUploader({
           </Dialog>
 
           <div className="grid w-full max-w-sm items-center gap-1.5">
-            <Label htmlFor="picture">Select File</Label>
-            <Input
-              id="picture"
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              onChange={handleFileChange}
-              disabled={isUploading}
-            />
+            <Label htmlFor="picture">Select File (Max 3MB)</Label>
+            <Input id="picture" type="file" accept="image/*" onChange={handleFileChange} disabled={isUploading} />
           </div>
 
            <Dialog open={isCameraDialogOpen} onOpenChange={setIsCameraDialogOpen}>
@@ -216,11 +173,9 @@ export function ProfilePictureUploader({
                 <div className="py-4">
                     <video ref={videoRef} className="w-full aspect-video rounded-md bg-muted" autoPlay playsInline muted />
                     { !hasCameraPermission && (
-                      <Alert variant="destructive">
+                      <Alert variant="destructive" className="mt-2">
                         <AlertTitle>Camera Access Required</AlertTitle>
-                        <AlertDescription>
-                          Please allow camera access to use this feature.
-                        </AlertDescription>
+                        <AlertDescription>Please allow camera access to use this feature.</AlertDescription>
                       </Alert>
                     )}
                     <canvas ref={canvasRef} className="hidden" />
@@ -234,12 +189,10 @@ export function ProfilePictureUploader({
         </Dialog>
 
         </div>
-        <Button onClick={handleUpload} disabled={isUploading || (!selectedFile && !previewUrl?.startsWith('data:image'))}>
+        <Button onClick={handleUpload} disabled={isUploading || !hasUnsavedChanges}>
           {isUploading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/> Uploading...</> : "Save Picture"}
         </Button>
       </CardContent>
     </Card>
   );
 }
-
-    
