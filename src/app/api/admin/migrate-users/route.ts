@@ -75,7 +75,8 @@ export async function POST() {
           };
           
           const newUserRecord = await auth.createUser(createRequest);
-          await studentDoc.ref.update({ uid: newUserRecord.uid });
+          // Save the new UID and the generated email back to the database record
+          await studentDoc.ref.update({ uid: newUserRecord.uid, email: email });
           createdCount++;
         }
         
