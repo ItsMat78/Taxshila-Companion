@@ -27,6 +27,42 @@ import { Dialog, DialogContent, DialogTrigger, DialogHeader, DialogTitle, Dialog
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 
 const DEFAULT_PROFILE_PLACEHOLDER = "https://placehold.co/200x200.png";
+const MAX_IMAGE_DIMENSION = 500; // Max width/height in pixels
+
+const resizeImage = (file: File): Promise<string> => new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (event) => {
+        const img = new Image();
+        img.onload = () => {
+            const canvas = document.createElement('canvas');
+            let { width, height } = img;
+
+            if (width > height) {
+                if (width > MAX_IMAGE_DIMENSION) {
+                    height *= MAX_IMAGE_DIMENSION / width;
+                    width = MAX_IMAGE_DIMENSION;
+                }
+            } else {
+                if (height > MAX_IMAGE_DIMENSION) {
+                    width *= MAX_IMAGE_DIMENSION / height;
+                    height = MAX_IMAGE_DIMENSION;
+                }
+            }
+
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            if (!ctx) return reject(new Error('Could not get canvas context'));
+            ctx.drawImage(img, 0, 0, width, height);
+            resolve(canvas.toDataURL('image/jpeg', 0.9)); // Get JPEG with 90% quality
+        };
+        img.onerror = reject;
+        img.src = event.target?.result as string;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+});
+
 
 export default function MemberProfilePage() {
   const { user, updateUser } = useAuth(); // Get updateUser from context
@@ -114,35 +150,41 @@ export default function MemberProfilePage() {
     if (videoRef.current && canvasRef.current) {
         const video = videoRef.current;
         const canvas = canvasRef.current;
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
+        let { videoWidth: width, videoHeight: height } = video;
+
+        if (width > height) {
+            if (width > MAX_IMAGE_DIMENSION) {
+                height *= MAX_IMAGE_DIMENSION / width;
+                width = MAX_IMAGE_DIMENSION;
+            }
+        } else {
+            if (height > MAX_IMAGE_DIMENSION) {
+                width *= MAX_IMAGE_DIMENSION / height;
+                height = MAX_IMAGE_DIMENSION;
+            }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
         const context = canvas.getContext('2d');
         if (context) {
-            context.drawImage(video, 0, 0, video.videoWidth, video.videoHeight);
-            const dataUrl = canvas.toDataURL('image/jpeg');
+            context.drawImage(video, 0, 0, width, height);
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
             setPreviewUrl(dataUrl);
         }
         setIsCameraDialogOpen(false); // This will trigger the useEffect cleanup
     }
   };
 
-
-  const toBase64 = (file: File): Promise<string> => new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = error => reject(error);
-  });
-
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      if (file.size > 2 * 1024 * 1024) {
-        toast({ title: "File Too Large", description: "Please select an image smaller than 2MB.", variant: "destructive" });
-        return;
+      try {
+        const resizedBase64 = await resizeImage(file);
+        setPreviewUrl(resizedBase64);
+      } catch(error) {
+        toast({ title: "Image Processing Error", description: "Could not process the selected image.", variant: "destructive" });
       }
-      const base64 = await toBase64(file);
-      setPreviewUrl(base64);
     }
   };
 
@@ -230,7 +272,7 @@ export default function MemberProfilePage() {
               </Dialog>
               
               <div className="w-full space-y-2">
-                <Label htmlFor="picture-upload">Change Picture (Max 2MB)</Label>
+                <Label htmlFor="picture-upload">Change Picture</Label>
                 <Input id="picture-upload" type="file" accept="image/*" onChange={handleFileChange} ref={fileInputRef} disabled={isSavingPicture} />
                 <Dialog open={isCameraDialogOpen} onOpenChange={setIsCameraDialogOpen}>
                     <DialogTrigger asChild>
