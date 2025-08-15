@@ -11,24 +11,19 @@ function getAdminApp(): App {
     return adminApp;
   }
 
-  // If there are already initialized apps, use the default one.
-  // This handles the case where another part of the system might initialize it.
   if (getApps().length > 0) {
     adminApp = getApps()[0]!;
     return adminApp;
   }
-  
-  // Read credentials from environment variables
-  const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+
+  // Explicitly read server-side environment variables
+  const projectId = process.env.FIREBASE_PROJECT_ID;
   const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
+  // Crucially, replace \\n with \n for the private key to be parsed correctly.
   const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n');
 
-  // Log for debugging - this will now run when the service is first called
-  console.log(`[Firebase Admin] LAZY INITIALIZATION TRIGGERED`);
-  console.log(`[Firebase Admin] Project ID from env: ${projectId ? 'Loaded' : 'MISSING'}`);
-  
   if (!projectId || !clientEmail || !privateKey) {
-    console.error('[Firebase Admin] SDK initialization failed: Required environment variables are missing.');
+    console.error('[Firebase Admin] SDK initialization failed: Required environment variables FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, or FIREBASE_PRIVATE_KEY are missing.');
     throw new Error('Firebase Admin SDK is not configured properly. Missing environment variables.');
   }
 
@@ -41,11 +36,11 @@ function getAdminApp(): App {
       }),
       projectId: projectId,
     });
-    console.log('[Firebase Admin] SDK has been initialized successfully via lazy-load.');
+    console.log('[Firebase Admin] SDK has been initialized successfully.');
     return adminApp;
   } catch (error: any) {
-    console.error('[Firebase Admin] SDK lazy initialization error:', error.message);
-    throw error;
+    console.error('[Firebase Admin] SDK initialization error:', error.message);
+    throw new Error(`Firebase Admin SDK initialization failed: ${error.message}`);
   }
 }
 
