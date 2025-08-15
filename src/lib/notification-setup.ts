@@ -21,9 +21,10 @@ export async function setupPushNotifications(firestoreId: string, role: 'admin' 
     // --- Handle Foreground Messages ---
     onMessage(messaging, (payload) => {
         console.log('Message received in foreground.', payload);
+        // Correctly access title and body from the `data` property
         toast({
-            title: payload.notification?.title,
-            description: payload.notification?.body,
+            title: payload.data?.title,
+            description: payload.data?.body,
         });
         
         // Dispatch a custom event that other components can listen to
