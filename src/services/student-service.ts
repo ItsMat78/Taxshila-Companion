@@ -289,7 +289,8 @@ export async function addStudent(studentData: AddStudentData): Promise<Student> 
   const studentId = await getNextCustomStudentId();
   const studentDocRef = doc(collection(db, STUDENTS_COLLECTION));
 
-  const firestorePayload: Omit<Student, 'id' | 'firestoreId' | 'paymentHistory'> = {
+  // Corrected payload: removed 'undefined' values
+  const firestorePayload: Omit<Student, 'id' | 'firestoreId' | 'paymentHistory' | 'lastPaymentDate' | 'leftDate'> = {
     uid: uid,
     studentId: studentId,
     name: studentData.name,
@@ -303,9 +304,7 @@ export async function addStudent(studentData: AddStudentData): Promise<Student> 
     feeStatus: 'Due',
     amountDue: 'Rs. 0',
     registrationDate: format(new Date(), 'yyyy-MM-dd'),
-    lastPaymentDate: undefined,
     nextDueDate: format(new Date(), 'yyyy-MM-dd'),
-    leftDate: undefined,
   };
     
   await setDoc(studentDocRef, firestorePayload);
@@ -1322,8 +1321,8 @@ declare module '@/types/communication' {
     firestoreId?: string;
   }
 }
-
     
+
 
 
 
