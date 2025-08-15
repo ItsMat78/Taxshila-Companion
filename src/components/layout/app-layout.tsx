@@ -13,6 +13,7 @@ import { useNotificationCounts } from '@/hooks/use-notification-counts';
 import { NotificationBadge } from '@/components/shared/notification-badge';
 import { cn } from '@/lib/utils';
 import { TopProgressBar } from '@/components/shared/top-progress-bar';
+import { setupPushNotifications } from '@/lib/notification-setup';
 import { useToast } from '@/hooks/use-toast';
 import { useNotificationContext } from '@/contexts/notification-context';
 import { useTheme } from "next-themes";
@@ -85,7 +86,11 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     }
   }, [user, theme, setTheme]);
 
-  // Removed push notification setup useEffect hook
+  React.useEffect(() => {
+    if (user && user.firestoreId && user.role) {
+      setupPushNotifications(user.firestoreId, user.role);
+    }
+  }, [user]);
 
   React.useEffect(() => {
     // This listener can be repurposed for other real-time events if needed

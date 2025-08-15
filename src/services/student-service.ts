@@ -31,6 +31,7 @@ import type { Student, Shift, FeeStatus, PaymentRecord, ActivityStatus, Attendan
 import type { FeedbackItem, FeedbackType, FeedbackStatus, AlertItem } from '@/types/communication';
 import { format, parseISO, differenceInDays, isPast, addMonths, startOfDay, isValid, addDays, isAfter, getHours, getMinutes, isWithinInterval, startOfMonth, endOfMonth, parse, differenceInMilliseconds } from 'date-fns';
 import { ALL_SEAT_NUMBERS } from '@/config/seats';
+import { triggerAlertNotification, triggerFeedbackNotification } from './notification-service';
 
 import {
   getAuth,
@@ -268,22 +269,28 @@ export interface AddStudentData {
 }
 
 export async function addStudent(studentData: AddStudentData): Promise<Student> {
-  
-  const authInstance = getAuth();
-  let newUid, finalEmail;
-  
-  if(authInstance.currentUser){
-      newUid = authInstance.currentUser.uid;
-      finalEmail = authInstance.currentUser.email || studentData.email || `${studentData.phone}@taxshila-auth.com`;
-  } else {
-      throw new Error("No authenticated user found for student registration.");
+  const authResponse = await fetch('/api/admin/create-student-auth', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      name: studentData.name,
+      email: studentData.email,
+      phone: studentData.phone,
+      password: studentData.password,
+    }),
+  });
+
+  if (!authResponse.ok) {
+    const errorResult = await authResponse.json();
+    throw new Error(errorResult.error || "Failed to create authentication user.");
   }
+  const { uid, email: finalEmail } = await authResponse.json();
 
   const studentId = await getNextCustomStudentId();
-  const studentDocRef = doc(db, STUDENTS_COLLECTION, studentId);
+  const studentDocRef = doc(collection(db, STUDENTS_COLLECTION));
 
   const firestorePayload: Omit<Student, 'id' | 'firestoreId' | 'paymentHistory'> = {
-    uid: newUid,
+    uid: uid,
     studentId: studentId,
     name: studentData.name,
     email: finalEmail,
@@ -755,17 +762,17 @@ export async function submitFeedback(
   };
   const docRef = await addDoc(collection(db, FEEDBACK_COLLECTION), newFeedbackData);
   
-  if (typeof window !== 'undefined') {
-    window.dispatchEvent(new CustomEvent('new-feedback-submitted', { detail: { feedbackId: docRef.id } }));
-  }
-
-  return {
+  const feedbackItem = {
     id: docRef.id,
     ...newFeedbackData,
     studentId: newFeedbackData.studentId === null ? undefined : newFeedbackData.studentId,
     studentName: newFeedbackData.studentName === null ? undefined : newFeedbackData.studentName,
     dateSubmitted: newFeedbackData.dateSubmitted.toDate().toISOString(),
    };
+  
+  await triggerFeedbackNotification(feedbackItem);
+  
+  return feedbackItem;
 }
 
 export async function getAllFeedback(): Promise<FeedbackItem[]> {
@@ -792,7 +799,7 @@ export async function sendGeneralAlert(title: string, message: string, type: Ale
   };
   const docRef = await addDoc(collection(db, ALERTS_COLLECTION), newAlertData);
 
-  return {
+  const alertItem = {
     id: docRef.id,
     studentId: undefined,
     title: newAlertData.title,
@@ -801,6 +808,10 @@ export async function sendGeneralAlert(title: string, message: string, type: Ale
     dateSent: newAlertData.dateSent.toDate().toISOString(),
     isRead: newAlertData.isRead,
   };
+
+  await triggerAlertNotification(alertItem);
+
+  return alertItem;
 }
 
 export async function sendAlertToStudent(
@@ -825,7 +836,10 @@ export async function sendAlertToStudent(
   const docRef = await addDoc(collection(db, ALERTS_COLLECTION), newAlertDataForFirestore);
 
   const newDocSnap = await getDoc(docRef);
-  return alertItemFromDoc(newDocSnap);
+  const alertItem = alertItemFromDoc(newDocSnap);
+  await triggerAlertNotification(alertItem);
+  
+  return alertItem;
 }
 
 
@@ -1310,6 +1324,7 @@ declare module '@/types/communication' {
 }
 
     
+
 
 
 
