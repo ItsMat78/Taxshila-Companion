@@ -31,7 +31,9 @@ import {
 import { Loader2, UserPlus, UserMinus, Eye, Edit } from 'lucide-react';
 import { getAllStudents, getAllAttendanceRecords } from '@/services/student-service';
 import type { Student as StudentData } from '@/types/student';
-import { format, parseISO, isValid, isWithinInterval, startOfMonth, endOfMonth, subMonths, parse } from 'date-fns';
+import { format, parseISO, isValid, isWithinInterval, startOfMonth, endOfMonth, subMonths, parse, compareDesc } from 'date-fns';
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { getInitials } from '@/lib/utils';
 
 type StudentWithAttendance = StudentData & {
     lastAttendanceDate?: string;
@@ -41,9 +43,17 @@ type StudentWithAttendance = StudentData & {
 const StudentMovementCardItem = ({ student, type }: { student: StudentWithAttendance; type: 'new' | 'left' }) => {
   return (
     <Card className="w-full shadow-sm">
-      <CardHeader className="pb-2">
-        <CardTitle className="text-md break-words">{student.name}</CardTitle>
-        <CardDescription className="text-xs break-words">ID: {student.studentId}</CardDescription>
+      <CardHeader className="pb-3">
+        <div className="flex items-center gap-3">
+            <Avatar className="h-10 w-10 border">
+              <AvatarImage src={student.profilePictureUrl} alt={student.name} data-ai-hint="profile person"/>
+              <AvatarFallback>{getInitials(student.name)}</AvatarFallback>
+            </Avatar>
+            <div className="min-w-0">
+                <CardTitle className="text-md break-words">{student.name}</CardTitle>
+                <CardDescription className="text-xs break-words">ID: {student.studentId}</CardDescription>
+            </div>
+        </div>
       </CardHeader>
       <CardContent className="space-y-1 text-xs pb-3">
         <p><span className="font-medium">Date {type === 'new' ? 'Registered' : 'Left'}:</span> {type === 'new' ? (student.registrationDate && isValid(parseISO(student.registrationDate)) ? format(parseISO(student.registrationDate), 'PP') : 'N/A') : (student.leftDate && isValid(parseISO(student.leftDate)) ? format(parseISO(student.leftDate), 'PP') : 'N/A')}</p>
@@ -105,15 +115,19 @@ export default function StudentMovementPage() {
     const periodStart = parse(selectedMonth, 'yyyy-MM', new Date());
     const periodEnd = endOfMonth(periodStart);
 
-    const newRegs = allStudents.filter(student => 
+    const newRegs = allStudents
+      .filter(student => 
         student.registrationDate && isValid(parseISO(student.registrationDate)) && 
         isWithinInterval(parseISO(student.registrationDate), { start: periodStart, end: periodEnd })
-    );
+      )
+      .sort((a, b) => compareDesc(parseISO(a.registrationDate!), parseISO(b.registrationDate!)));
 
-    const whoLeft = allStudents.filter(student => 
+    const whoLeft = allStudents
+      .filter(student => 
         student.leftDate && isValid(parseISO(student.leftDate)) &&
         isWithinInterval(parseISO(student.leftDate), { start: periodStart, end: periodEnd })
-    );
+      )
+      .sort((a, b) => compareDesc(parseISO(a.leftDate!), parseISO(b.leftDate!)));
 
     return {
         newRegistrations: newRegs,
@@ -138,7 +152,18 @@ export default function StudentMovementPage() {
             <TableBody>
                 {students.map((student) => (
                     <TableRow key={student.studentId}>
-                        <TableCell className="font-medium">{student.name}</TableCell>
+                        <TableCell className="font-medium">
+                          <div className="flex items-center gap-3">
+                              <Avatar className="h-9 w-9 border">
+                                  <AvatarImage src={student.profilePictureUrl || undefined} alt={student.name} data-ai-hint="profile person"/>
+                                  <AvatarFallback>{getInitials(student.name)}</AvatarFallback>
+                              </Avatar>
+                              <div>
+                                  {student.name}
+                                  <span className="block text-xs text-muted-foreground">{student.studentId}</span>
+                              </div>
+                          </div>
+                        </TableCell>
                         <TableCell>
                             {type === 'new' ? 
                                 (student.registrationDate && isValid(parseISO(student.registrationDate)) ? format(parseISO(student.registrationDate), 'PP') : 'N/A') :
@@ -251,3 +276,5 @@ export default function StudentMovementPage() {
     </>
   );
 }
+
+    
