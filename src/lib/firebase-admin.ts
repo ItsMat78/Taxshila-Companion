@@ -1,4 +1,3 @@
-
 // src/lib/firebase-admin.ts
 
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
@@ -8,9 +7,9 @@ import { getMessaging } from 'firebase-admin/messaging';
 
 // Check if the app is already initialized to prevent re-initialization
 if (!getApps().length) {
-  // Use a fallback for projectId to ensure it's available on the server.
-  const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID; // Correctly read the variable
+  const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
   const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
+  // Replace \\n with \n to ensure the private key is parsed correctly
   const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n');
 
   console.log(`[Firebase Admin] Attempting to initialize with Project ID: ${projectId}`);
@@ -25,7 +24,6 @@ if (!getApps().length) {
           privateKey,
         }),
         databaseURL: `https://${projectId}.firebaseio.com`,
-        projectId: projectId, 
       });
       console.log('[Firebase Admin] SDK has been initialized successfully.');
     } catch (error) {
