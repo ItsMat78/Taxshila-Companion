@@ -1,7 +1,8 @@
+// DO NOT USE import statements in this file. It is a service worker and runs in a different context.
 
-// Import and initialize the Firebase SDK
-import { initializeApp } from 'firebase/app';
-import { getMessaging, onBackgroundMessage } from 'firebase/messaging/sw';
+// Use importScripts to load the Firebase SDKs
+importScripts("https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js");
+importScripts("https://www.gstatic.com/firebasejs/9.22.1/firebase-messaging-compat.js");
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
@@ -11,52 +12,55 @@ const firebaseConfig = {
   storageBucket: "YOUR_STORAGE_BUCKET",
   messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
   appId: "YOUR_APP_ID",
-  measurementId: "YOUR_MEASUREMENT_ID"
+  measurementId: "YOUR_MEASUREMENT_ID",
 };
 
-const app = initializeApp(firebaseConfig);
-const messaging = getMessaging(app);
+// Initialize Firebase
+if (firebase.apps.length === 0) {
+    firebase.initializeApp(firebaseConfig);
+}
 
-// Handler for background notifications
-onBackgroundMessage(messaging, (payload) => {
-  console.log('[firebase-messaging-sw.js] Received background message ', payload);
+// Retrieve an instance of Firebase Messaging so that it can handle background messages.
+const messaging = firebase.messaging();
+
+messaging.onBackgroundMessage((payload) => {
+  console.log(
+    "[firebase-messaging-sw.js] Received background message ",
+    payload
+  );
   
-  const notificationTitle = payload.notification?.title || 'New Notification';
+  // Customize notification here
+  const notificationTitle = payload.notification.title;
   const notificationOptions = {
-    body: payload.notification?.body || 'You have a new update.',
-    icon: payload.notification?.icon || '/logo.png',
+    body: payload.notification.body,
+    icon: payload.notification.icon || "/logo.png",
     data: {
-      url: payload.data?.url || '/'
+        url: payload.data.url // Pass the URL to the click event
     }
   };
 
   self.registration.showNotification(notificationTitle, notificationOptions);
 });
 
-
-// This event listener is for handling clicks on the notification
 self.addEventListener('notificationclick', (event) => {
-  console.log('[firebase-messaging-sw.js] Notification click Received.', event);
+    event.notification.close(); // Close the notification
 
-  event.notification.close();
-
-  const urlToOpen = event.notification.data.url || '/';
-
-  event.waitUntil(
-    clients.matchAll({
-      type: 'window',
-      includeUncontrolled: true
-    }).then((clientList) => {
-      // If a window for this origin is already open, focus it.
-      for (const client of clientList) {
-        if (client.url === urlToOpen && 'focus' in client) {
-          return client.focus();
-        }
-      }
-      // Otherwise, open a new window.
-      if (clients.openWindow) {
-        return clients.openWindow(urlToOpen);
-      }
-    })
-  );
+    const urlToOpen = event.notification.data.url || '/';
+    
+    event.waitUntil(
+        clients.matchAll({
+            type: 'window',
+            includeUncontrolled: true
+        }).then((clientList) => {
+            for (let i = 0; i < clientList.length; i++) {
+                const client = clientList[i];
+                if (client.url === urlToOpen && 'focus' in client) {
+                    return client.focus();
+                }
+            }
+            if (clients.openWindow) {
+                return clients.openWindow(urlToOpen);
+            }
+        })
+    );
 });
