@@ -1,38 +1,67 @@
 // src/lib/firebase-admin.ts
-
-import { initializeApp, getApps, cert } from 'firebase-admin/app';
+import { initializeApp, getApps, cert, App } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 import { getAuth } from 'firebase-admin/auth';
 import { getMessaging } from 'firebase-admin/messaging';
 
-// Check if the app is already initialized to prevent re-initialization
-if (!getApps().length) {
-  const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+let adminApp: App | null = null;
+
+function getAdminApp(): App {
+  if (adminApp) {
+    return adminApp;
+  }
+
+  if (getApps().length > 0) {
+    adminApp = getApps()[0]!;
+    return adminApp;
+  }
+
+  // Explicitly read server-side environment variables
+  const projectId = process.env.FIREBASE_PROJECT_ID;
   const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
+  // Crucially, replace \\n with \n for the private key to be parsed correctly.
   const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n');
 
-  // Ensure all required environment variables are present before initializing
-  if (projectId && clientEmail && privateKey) {
-    try {
-      initializeApp({
-        credential: cert({
-          projectId,
-          clientEmail,
-          privateKey,
-        }),
-        databaseURL: `https://${projectId}.firebaseio.com`,
-      });
-      console.log('Firebase Admin SDK has been initialized.');
-    } catch (error) {
-      console.error('Firebase Admin SDK initialization error:', error);
-    }
-  } else {
-    // This log is crucial for debugging missing environment variables
-    console.error('Firebase Admin SDK initialization failed: Missing required environment variables.');
+  if (!projectId || !clientEmail || !privateKey) {
+    console.error('[Firebase Admin] SDK initialization failed: Required environment variables FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, or FIREBASE_PRIVATE_KEY are missing.');
+    throw new Error('Firebase Admin SDK is not configured properly. Missing environment variables.');
+  }
+
+  try {
+    adminApp = initializeApp({
+      credential: cert({
+        projectId,
+        clientEmail,
+        privateKey,
+      }),
+      projectId: projectId,
+    });
+    console.log('[Firebase Admin] SDK has been initialized successfully.');
+    return adminApp;
+  } catch (error: any) {
+    console.error('[Firebase Admin] SDK initialization error:', error.message);
+    throw new Error(`Firebase Admin SDK initialization failed: ${error.message}`);
   }
 }
 
-// By exporting the getter functions directly from the SDK,
-// we ensure that any file importing them gets the properly initialized instance.
-// We alias getFirestore to getDb to match the usage in your API routes.
-export { getFirestore as getDb, getAuth, getMessaging };
+// Export functions that ensure the app is initialized before returning the service
+function getInitializedFirestore() {
+  getAdminApp(); // Ensure app is initialized
+  return getFirestore();
+}
+
+function getInitializedAuth() {
+  getAdminApp(); // Ensure app is initialized
+  return getAuth();
+}
+
+function getInitializedMessaging() {
+  getAdminApp(); // Ensure app is initialized
+  return getMessaging();
+}
+
+export { 
+  getInitializedFirestore as getDb, 
+  getInitializedAuth as getAuth, 
+  getInitializedMessaging as getMessaging 
+};

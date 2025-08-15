@@ -1,4 +1,5 @@
 
+
 import { NextResponse, type NextRequest } from 'next/server';
 import { getDb, getAuth, getMessaging } from '@/lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
@@ -148,21 +149,56 @@ export async function POST(request: NextRequest) {
     
     const requestBody = await request.json();
 
+    // Check if the request is for user migration
     if (requestBody.action === 'migrateUsers') {
-      console.log("API Route (send-alert): Received 'migrateUsers' action. Starting migration...");
       const migrationResult = await handleUserMigration(db, auth);
-      console.log("API Route (send-alert): Migration finished. Result:", migrationResult);
       return NextResponse.json(migrationResult);
     }
 
+    // Assume it's an alert payload if not a migration action
     let alertPayload: AlertPayload = requestBody;
-    console.log("API Route: /api/send-alert-notification POST request received for alert.");
     
-    // ... rest of the notification logic
-    return NextResponse.json({ success: true, message: "Alert logic not fully implemented in this refactor." });
+    const messaging = getMessaging();
+    const notification = {
+        title: alertPayload.title,
+        body: alertPayload.message,
+        icon: "/logo.png",
+    };
+    
+    const dataPayload = {
+        ...notification,
+        url: '/member/alerts'
+    };
+
+
+    if (alertPayload.studentId) {
+      // Send to a specific student
+      const studentQuery = await db.collection('students').where('studentId', '==', alertPayload.studentId).limit(1).get();
+      if (!studentQuery.empty) {
+        const student = studentQuery.docs[0].data();
+        if (student.fcmTokens && student.fcmTokens.length > 0) {
+            await messaging.sendEachForMulticast({ tokens: student.fcmTokens, data: dataPayload });
+        }
+      }
+    } else {
+      // Send to all active students
+      const studentsSnapshot = await db.collection('students').where('activityStatus', '==', 'Active').get();
+      const allTokens = studentsSnapshot.docs.flatMap(doc => doc.data().fcmTokens || []);
+      const uniqueTokens = [...new Set(allTokens)];
+
+      if (uniqueTokens.length > 0) {
+        // Break into chunks of 500 for multicast
+        for (let i = 0; i < uniqueTokens.length; i += 500) {
+          const chunk = uniqueTokens.slice(i, i + 500);
+          await messaging.sendEachForMulticast({ tokens: chunk, data: dataPayload });
+        }
+      }
+    }
+
+    return NextResponse.json({ success: true, message: "Alert notification process initiated." });
 
   } catch (error: any) {
-    console.error("API Route: Error processing request:", error.message, error.stack, error);
+    console.error("API Route (send-alert-notification): Error processing request:", error);
     return NextResponse.json({ success: false, error: error.message || "An unexpected server error occurred." }, { status: 500 });
   }
 }

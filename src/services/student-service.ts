@@ -31,7 +31,6 @@ import type { Student, Shift, FeeStatus, PaymentRecord, ActivityStatus, Attendan
 import type { FeedbackItem, FeedbackType, FeedbackStatus, AlertItem } from '@/types/communication';
 import { format, parseISO, differenceInDays, isPast, addMonths, startOfDay, isValid, addDays, isAfter, getHours, getMinutes, isWithinInterval, startOfMonth, endOfMonth, parse, differenceInMilliseconds } from 'date-fns';
 import { ALL_SEAT_NUMBERS } from '@/config/seats';
-import { triggerAlertNotification, triggerFeedbackNotification } from './notification-service';
 
 import {
   getAuth,
@@ -290,7 +289,7 @@ export async function addStudent(studentData: AddStudentData): Promise<Student> 
   const studentDocRef = doc(collection(db, STUDENTS_COLLECTION));
 
   // Corrected payload: removed 'undefined' values
-  const firestorePayload: Omit<Student, 'id' | 'firestoreId' | 'paymentHistory' > = {
+  const firestorePayload: Omit<Student, 'id' | 'firestoreId' | 'paymentHistory' | 'lastPaymentDate' | 'leftDate'> = {
     uid: uid,
     studentId: studentId,
     name: studentData.name,
@@ -789,7 +788,16 @@ export async function submitFeedback(
     dateSubmitted: newFeedbackData.dateSubmitted.toDate().toISOString(),
    };
   
-  await triggerFeedbackNotification(feedbackItem);
+   // Use fetch to call the API route
+   await fetch('/api/send-admin-feedback-notification', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        studentName: feedbackItem.studentName || "Anonymous",
+        messageSnippet: feedbackItem.message.substring(0, 100),
+        feedbackId: feedbackItem.id,
+      }),
+   });
   
   return feedbackItem;
 }
@@ -828,7 +836,13 @@ export async function sendGeneralAlert(title: string, message: string, type: Ale
     isRead: newAlertData.isRead,
   };
 
-  await triggerAlertNotification(alertItem);
+  // Use fetch to call the API route
+  await fetch('/api/send-alert-notification', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(alertItem),
+  });
+
 
   return alertItem;
 }
@@ -841,24 +855,29 @@ export async function sendAlertToStudent(
   originalFeedbackId?: string,
   originalFeedbackMessageSnippet?: string
 ): Promise<AlertItem> {
-  const newAlertDataForFirestore: any = {
-    studentId: customStudentId,
-    title,
-    message,
-    type,
-    dateSent: Timestamp.fromDate(new Date()),
-    isRead: false,
-  };
-  if (originalFeedbackId) newAlertDataForFirestore.originalFeedbackId = originalFeedbackId;
-  if (originalFeedbackMessageSnippet) newAlertDataForFirestore.originalFeedbackMessageSnippet = originalFeedbackMessageSnippet;
+    const newAlertDataForFirestore: any = {
+        studentId: customStudentId,
+        title,
+        message,
+        type,
+        dateSent: serverTimestamp(), // Use serverTimestamp for consistency
+        isRead: false,
+    };
+    if (originalFeedbackId) newAlertDataForFirestore.originalFeedbackId = originalFeedbackId;
+    if (originalFeedbackMessageSnippet) newAlertDataForFirestore.originalFeedbackMessageSnippet = originalFeedbackMessageSnippet;
 
-  const docRef = await addDoc(collection(db, ALERTS_COLLECTION), newAlertDataForFirestore);
+    const docRef = await addDoc(collection(db, ALERTS_COLLECTION), newAlertDataForFirestore);
+    const newDocSnap = await getDoc(docRef);
+    const alertItem = alertItemFromDoc(newDocSnap);
+    
+    // Use fetch to call the API route
+    await fetch('/api/send-alert-notification', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(alertItem),
+    });
 
-  const newDocSnap = await getDoc(docRef);
-  const alertItem = alertItemFromDoc(newDocSnap);
-  await triggerAlertNotification(alertItem);
-  
-  return alertItem;
+    return alertItem;
 }
 
 
@@ -1342,6 +1361,9 @@ declare module '@/types/communication' {
   }
 }
     
+
+
+
 
 
 
