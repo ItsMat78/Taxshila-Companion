@@ -48,13 +48,16 @@ export async function POST(request: NextRequest) {
       title: "New Feedback Submitted",
       body: `From: ${payload.studentName} - "${payload.messageSnippet}"`,
       icon: "/logo.png",
-      url: "/admin/feedback",
-      feedbackId: payload.feedbackId,
     };
 
     const messageToSend = {
       tokens: uniqueTokens,
       data: notificationPayload,
+      webpush: {
+        fcmOptions: {
+          link: '/admin/feedback',
+        },
+      },
     };
 
     const response = await messaging.sendEachForMulticast(messageToSend);
