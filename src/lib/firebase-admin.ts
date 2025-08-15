@@ -1,3 +1,4 @@
+
 // src/lib/firebase-admin.ts
 
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
@@ -8,7 +9,7 @@ import { getMessaging } from 'firebase-admin/messaging';
 // Check if the app is already initialized to prevent re-initialization
 if (!getApps().length) {
   // Use a fallback for projectId to ensure it's available on the server.
-  const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || process.env.FIREBASE_PROJECT_ID;
+  const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID; // Directly use the public one
   const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
   const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n');
 
