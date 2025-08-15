@@ -91,6 +91,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     if (user && user.firestoreId && user.role) {
       // Delay setup slightly to ensure all browser services are ready
       setTimeout(() => {
+        console.log(`AppLayout: Triggering push notification setup for user ${user.firestoreId}`);
          setupPushNotifications(user.firestoreId, user.role);
       }, 2000);
     }
