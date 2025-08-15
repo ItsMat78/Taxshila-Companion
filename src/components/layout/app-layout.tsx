@@ -89,7 +89,6 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
   React.useEffect(() => {
     if (user && user.firestoreId && user.role) {
-      console.log(`AppLayout: Triggering push notification setup for user ${user.firestoreId}`);
       // Delay setup slightly to ensure all browser services are ready
       setTimeout(() => {
          setupPushNotifications(user.firestoreId, user.role);
