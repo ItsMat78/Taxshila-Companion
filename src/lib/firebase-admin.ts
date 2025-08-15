@@ -21,6 +21,7 @@ if (!getApps().length) {
           privateKey,
         }),
         databaseURL: `https://${projectId}.firebaseio.com`,
+        projectId: projectId, // Add projectId here
       });
       console.log('Firebase Admin SDK has been initialized.');
     } catch (error) {
