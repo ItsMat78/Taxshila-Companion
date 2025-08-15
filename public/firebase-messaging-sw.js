@@ -1,59 +1,62 @@
 
-// This file must be in the public folder.
+// Import and initialize the Firebase SDK
+import { initializeApp } from 'firebase/app';
+import { getMessaging, onBackgroundMessage } from 'firebase/messaging/sw';
 
-importScripts("https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js");
-importScripts("https://www.gstatic.com/firebasejs/9.22.0/firebase-messaging-compat.js");
+// Your web app's Firebase configuration
+const firebaseConfig = {
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_AUTH_DOMAIN",
+  projectId: "YOUR_PROJECT_ID",
+  storageBucket: "YOUR_STORAGE_BUCKET",
+  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+  appId: "YOUR_APP_ID",
+  measurementId: "YOUR_MEASUREMENT_ID"
+};
 
-self.addEventListener('fetch', () => {
-  // This is a placeholder to ensure the service worker is considered active.
+const app = initializeApp(firebaseConfig);
+const messaging = getMessaging(app);
+
+// Handler for background notifications
+onBackgroundMessage(messaging, (payload) => {
+  console.log('[firebase-messaging-sw.js] Received background message ', payload);
+  
+  const notificationTitle = payload.notification?.title || 'New Notification';
+  const notificationOptions = {
+    body: payload.notification?.body || 'You have a new update.',
+    icon: payload.notification?.icon || '/logo.png',
+    data: {
+      url: payload.data?.url || '/'
+    }
+  };
+
+  self.registration.showNotification(notificationTitle, notificationOptions);
 });
 
-// Parse query parameters from the service worker URL
-const urlParams = new URL(self.location).searchParams;
-const firebaseConfig = Object.fromEntries(urlParams.entries());
 
-// Initialize the Firebase app in the service worker with the parsed config
-if (firebaseConfig.apiKey) {
-  firebase.initializeApp(firebaseConfig);
-  const messaging = firebase.messaging();
-
-  messaging.onBackgroundMessage((payload) => {
-    console.log('[firebase-messaging-sw.js] Received background message ', payload);
-
-    const notificationTitle = payload.notification?.title || 'New Notification';
-    const notificationOptions = {
-      body: payload.notification?.body || 'You have a new message.',
-      icon: payload.notification?.icon || '/logo.png',
-      data: {
-        url: payload.data?.url || '/' // Default to root if no URL is provided
-      }
-    };
-
-    self.registration.showNotification(notificationTitle, notificationOptions);
-  });
-} else {
-    console.error("Firebase config not found in service worker query parameters.");
-}
-
-
+// This event listener is for handling clicks on the notification
 self.addEventListener('notificationclick', (event) => {
+  console.log('[firebase-messaging-sw.js] Notification click Received.', event);
+
   event.notification.close();
+
   const urlToOpen = event.notification.data.url || '/';
 
   event.waitUntil(
-    clients.matchAll({ type: 'window' }).then((clientList) => {
-      // Check if a window is already open and focus it.
-      for (let i = 0; i < clientList.length; i++) {
-        const client = clientList[i];
-        if (client.url === '/' && 'focus' in client) {
+    clients.matchAll({
+      type: 'window',
+      includeUncontrolled: true
+    }).then((clientList) => {
+      // If a window for this origin is already open, focus it.
+      for (const client of clientList) {
+        if (client.url === urlToOpen && 'focus' in client) {
           return client.focus();
         }
       }
-      // If no window is open, open a new one.
+      // Otherwise, open a new window.
       if (clients.openWindow) {
         return clients.openWindow(urlToOpen);
       }
     })
   );
 });
-

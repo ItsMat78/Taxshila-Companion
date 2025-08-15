@@ -98,6 +98,16 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   }, [user]);
 
   React.useEffect(() => {
+    const handleNewNotification = () => {
+        // This event is dispatched from `onMessage` in `notification-setup.ts`
+        // It indicates a new foreground notification has arrived.
+        // We can refresh the counts to update the UI badges.
+        refreshNotifications();
+    };
+    
+    window.addEventListener('new-foreground-notification', handleNewNotification);
+    
+    // This listener handles the legacy feedback submission event just in case
     const handleNewFeedback = (event: Event) => {
       if (user && user.role === 'admin') {
         toast({
@@ -108,7 +118,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       }
     };
     window.addEventListener('new-feedback-submitted', handleNewFeedback);
+    
     return () => {
+      window.removeEventListener('new-foreground-notification', handleNewNotification);
       window.removeEventListener('new-feedback-submitted', handleNewFeedback);
     };
   }, [user, toast, refreshNotifications]);

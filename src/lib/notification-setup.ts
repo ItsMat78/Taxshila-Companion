@@ -1,8 +1,9 @@
 
 // src/lib/notification-setup.ts
-import { getMessaging, getToken, isSupported } from 'firebase/messaging';
+import { getMessaging, getToken, isSupported, onMessage } from 'firebase/messaging';
 import { app as firebaseApp } from '@/lib/firebase';
 import { saveStudentFCMToken, saveAdminFCMToken } from '@/services/student-service';
+import { toast } from '@/hooks/use-toast';
 
 /**
  * Sets up push notifications for the current user.
@@ -17,6 +18,19 @@ export async function setupPushNotifications(firestoreId: string, role: 'admin' 
 
     const messaging = getMessaging(firebaseApp);
     
+    // --- Handle Foreground Messages ---
+    onMessage(messaging, (payload) => {
+        console.log('Message received in foreground.', payload);
+        toast({
+            title: payload.notification?.title,
+            description: payload.notification?.body,
+        });
+        
+        // Dispatch a custom event that other components can listen to
+        // For example, to refresh a list of notifications
+        window.dispatchEvent(new CustomEvent('new-foreground-notification'));
+    });
+    
     try {
         const permission = await Notification.requestPermission();
 
@@ -27,11 +41,7 @@ export async function setupPushNotifications(firestoreId: string, role: 'admin' 
                 return;
             }
             
-            // Use the static service worker path
-            const swRegistration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
-            console.log('Service Worker registered:', swRegistration);
-
-            const currentToken = await getToken(messaging, { vapidKey: vapidKey, serviceWorkerRegistration: swRegistration });
+            const currentToken = await getToken(messaging, { vapidKey });
 
             if (currentToken) {
                 console.log('FCM Token received:', currentToken);

@@ -124,11 +124,9 @@ export async function triggerAlertNotification(alert: AlertItem) {
 }
 
 export async function triggerFeedbackNotification(feedback: FeedbackItem) {
-    // This function will now be called from the API route, not directly from the service.
-    // It is kept here for potential direct server-to-server use if needed.
     const db = getDb();
     const adminsSnapshot = await db.collection('admins').get();
-    const allAdmins = adminsSnapshot.docs.map(doc => ({ ...doc.data(), firestoreId: doc.id, id: doc.id }) as Admin & {id: string});
+    const allAdmins = adminsSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }) as Admin & {id: string});
     await sendNotificationToAdmins(allAdmins, feedback);
 }
 

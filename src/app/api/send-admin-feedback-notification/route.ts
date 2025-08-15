@@ -11,10 +11,10 @@ interface FeedbackNotificationPayload {
 
 interface AdminDoc {
   fcmTokens?: string[];
+  firestoreId: string;
 }
 
 export async function POST(request: NextRequest) {
-  console.log("API Route: /api/send-admin-feedback-notification POST request received.");
   try {
     const db = getDb();
     const messaging = getMessaging();
@@ -22,27 +22,25 @@ export async function POST(request: NextRequest) {
 
     try {
       payload = await request.json();
-      console.log("API Route (Admin Feedback): Received payload:", JSON.stringify(payload, null, 2));
     } catch (e) {
       return NextResponse.json({ success: false, error: "Invalid request body." }, { status: 400 });
     }
 
-    let adminTokens: string[] = [];
     const adminsSnapshot = await db.collection("admins").get();
-    adminsSnapshot.forEach((doc) => {
-      const adminData = doc.data() as AdminDoc;
-      if (adminData.fcmTokens && adminData.fcmTokens.length > 0) {
-        adminTokens.push(...adminData.fcmTokens);
-      }
-    });
+    if (adminsSnapshot.empty) {
+       return NextResponse.json({ success: true, message: "No admin tokens found to send notification to." });
+    }
+    
+    const adminsWithTokens = adminsSnapshot.docs
+      .map(doc => ({ firestoreId: doc.id, ...doc.data() } as AdminDoc))
+      .filter(admin => admin.fcmTokens && admin.fcmTokens.length > 0);
 
-    if (adminTokens.length === 0) {
-      console.log("API Route (Admin Feedback): No admin tokens found to send notification to.");
-      return NextResponse.json({ success: true, message: "No admin tokens found to send notification to." }, { status: 200 });
+    const allTokens = adminsWithTokens.flatMap(a => a.fcmTokens!);
+    if (allTokens.length === 0) {
+      return NextResponse.json({ success: true, message: "No admin tokens found to send notification to." });
     }
 
-    const uniqueTokens = [...new Set(adminTokens)];
-    console.log("API Route (Admin Feedback): Unique admin tokens found:", uniqueTokens.length);
+    const uniqueTokens = [...new Set(allTokens)];
     
     const notificationPayload = {
       title: "New Feedback Submitted",
@@ -52,38 +50,33 @@ export async function POST(request: NextRequest) {
 
     const messageToSend = {
       tokens: uniqueTokens,
-      data: notificationPayload,
-      webpush: {
-        fcmOptions: {
-          link: '/admin/feedback',
-        },
-      },
+      data: { ...notificationPayload, url: '/admin/feedback' }, // Add URL for click action
     };
 
     const response = await messaging.sendEachForMulticast(messageToSend);
-    console.log("API Route (Admin Feedback): FCM response: Successes:", response.successCount, "Failures:", response.failureCount);
-
-    const cleanupPromises = response.responses.map(async (result, index) => {
-        const currentToken = uniqueTokens[index];
-        if (!result.success) {
-            const errorCode = result.error?.code;
-            console.error(`API Route (Admin Feedback): Failed to send to token ${currentToken.substring(0,10)}... Error: ${errorCode}`);
-            if (errorCode === 'messaging/registration-token-not-registered' || errorCode === 'messaging/invalid-registration-token') {
-                const adminsWithTokenQuery = db.collection('admins').where('fcmTokens', 'array-contains', currentToken);
-                const querySnapshot = await adminsWithTokenQuery.get();
-                if (!querySnapshot.empty) {
-                    const batch = db.batch();
-                    querySnapshot.forEach(doc => {
-                        console.log(`API Route (Admin Feedback): Removing invalid token from admin document ${doc.id}`);
-                        batch.update(doc.ref, { fcmTokens: FieldValue.arrayRemove(currentToken) });
-                    });
-                    await batch.commit();
-                }
-            }
+    
+    const tokensToRemove: string[] = [];
+    response.responses.forEach((result, index) => {
+      const error = result.error;
+      if (error) {
+        if (error.code === 'messaging/registration-token-not-registered' || 
+            error.code === 'messaging/invalid-registration-token') {
+          tokensToRemove.push(uniqueTokens[index]);
         }
+      }
     });
 
-    await Promise.all(cleanupPromises);
+    if (tokensToRemove.length > 0) {
+        const batch = db.batch();
+        adminsWithTokens.forEach(admin => {
+            const hasInvalidToken = admin.fcmTokens?.some(token => tokensToRemove.includes(token));
+            if(hasInvalidToken) {
+                const adminRef = db.collection('admins').doc(admin.firestoreId);
+                batch.update(adminRef, { fcmTokens: FieldValue.arrayRemove(...tokensToRemove) });
+            }
+        });
+        await batch.commit();
+    }
 
     return NextResponse.json({ success: true, message: `Admin notifications sent. Success: ${response.successCount}, Failures: ${response.failureCount}.` });
 
