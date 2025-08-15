@@ -1,70 +1,79 @@
 // public/firebase-messaging-sw.js
+
+// Give the service worker access to the Firebase Messaging library.
+// The library is imported using the `importScripts` function.
+// Note: This file is not processed by the Next.js compiler, so it uses plain JavaScript.
+
 console.log('SW: Service Worker script evaluating.');
 
-// Note: The 'firebase' and 'app' imports are not available in a service worker.
-// We need to use importScripts to load the Firebase SDK.
 try {
-  importScripts('https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js');
-  importScripts('https://www.gstatic.com/firebasejs/9.22.1/firebase-messaging-compat.js');
-  console.log('SW: Firebase scripts imported successfully.');
+    // These must be loaded before Firebase is initialized.
+    importScripts("https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js");
+    importScripts("https://www.gstatic.com/firebasejs/9.23.0/firebase-messaging-compat.js");
+    console.log('SW: Firebase scripts imported successfully.');
 } catch (e) {
-  console.error('SW: Error importing Firebase scripts.', e);
+    console.error('SW: Error importing Firebase scripts:', e);
 }
 
 
+// Parse the configuration passed as a query string
+const urlParams = new URL(self.location).searchParams;
+const firebaseConfig = Object.fromEntries(urlParams.entries());
+
+console.log('SW: Firebase config parsed from URL:', firebaseConfig);
+
+if (firebaseConfig && firebaseConfig.apiKey) {
+    // Initialize the Firebase app in the service worker with the parsed config
+    try {
+        firebase.initializeApp(firebaseConfig);
+        console.log('SW: Firebase app initialized successfully.');
+
+        // Retrieve an instance of Firebase Messaging so that it can handle background messages.
+        const messaging = firebase.messaging();
+        console.log('SW: Firebase messaging initialized successfully.');
+        
+        messaging.onBackgroundMessage((payload) => {
+            console.log('SW: Received background message ', payload);
+
+            const notificationTitle = payload.notification?.title || 'New Notification';
+            const notificationOptions = {
+                body: payload.notification?.body || 'You have a new update.',
+                icon: payload.notification?.icon || '/logo.png',
+                data: {
+                    url: payload.data?.url || '/' // Pass the URL to the click event
+                }
+            };
+
+            self.registration.showNotification(notificationTitle, notificationOptions);
+        });
+
+    } catch (e) {
+        console.error('SW: Error initializing Firebase in service worker:', e);
+    }
+} else {
+    console.error('SW: Firebase config not found in service worker URL.');
+}
+
 self.addEventListener('install', (event) => {
-  console.log('SW: Install event triggered.');
-  // Force the waiting service worker to become the active service worker.
-  event.waitUntil(self.skipWaiting());
+    console.log('SW: Install event triggered.');
+    // Force the waiting service worker to become the active service worker.
+    event.waitUntil(self.skipWaiting());
 });
 
 self.addEventListener('activate', (event) => {
-  console.log('SW: Activate event triggered.');
-  // Take control of all clients as soon as the service worker is activated.
-  event.waitUntil(self.clients.claim());
+    console.log('SW: Activate event triggered.');
+    // Tell the active service worker to take control of the page immediately.
+    event.waitUntil(self.clients.claim());
 });
 
+self.addEventListener('notificationclick', (event) => {
+    console.log('SW: Notification click received.', event.notification);
+    event.notification.close();
 
-if (self.firebase && typeof self.firebase.initializeApp === 'function') {
-  // Your web app's Firebase configuration
-  // The config is passed as a query parameter from notification-setup.ts
-  const urlParams = new URLSearchParams(location.search);
-  const firebaseConfig = {
-    apiKey: urlParams.get('apiKey'),
-    authDomain: urlParams.get('authDomain'),
-    projectId: urlParams.get('projectId'),
-    storageBucket: urlParams.get('storageBucket'),
-    messagingSenderId: urlParams.get('messagingSenderId'),
-    appId: urlParams.get('appId'),
-    measurementId: urlParams.get('measurementId'), // Ensure this is passed
-  };
+    const urlToOpen = event.notification.data?.url || '/';
+    console.log('SW: Opening URL:', urlToOpen);
 
-  console.log('SW: Firebase config parsed from URL:', firebaseConfig);
-
-  try {
-    const app = self.firebase.initializeApp(firebaseConfig);
-    console.log('SW: Firebase app initialized successfully.');
-    
-    const messaging = self.firebase.messaging(app);
-    console.log('SW: Firebase messaging initialized successfully.');
-    
-    // Optional: Set a background message handler
-    messaging.onBackgroundMessage((payload) => {
-      console.log('SW: [firebase-messaging-sw.js] Received background message ', payload);
-
-      const notificationTitle = payload.notification.title;
-      const notificationOptions = {
-        body: payload.notification.body,
-        icon: '/logo.png', // Or use payload.notification.icon
-      };
-
-      self.registration.showNotification(notificationTitle, notificationOptions);
-    });
-
-  } catch (error) {
-    console.error('SW: Error initializing Firebase in Service Worker', error);
-  }
-
-} else {
-  console.error('SW: Firebase is not available on self. Firebase scripts might not have been loaded correctly.');
-}
+    event.waitUntil(
+        self.clients.openWindow(urlToOpen)
+    );
+});

@@ -30,11 +30,9 @@ async function sendNotificationToStudent(student: Student, alert: AlertItem) {
             body: alert.message,
             icon: "/logo.png",
         },
-        webpush: {
-            fcmOptions: {
-                link: `/member/alerts`,
-            },
-        },
+        data: {
+          url: '/member/alerts'
+        }
     };
 
     const response = await messaging.sendToDevice(student.fcmTokens, payload);
@@ -71,11 +69,9 @@ async function sendNotificationToAllStudents(allStudents: Student[], alert: Aler
             body: alert.message,
             icon: "/logo.png",
         },
-        webpush: {
-            fcmOptions: {
-                link: `/member/alerts`,
-            },
-        },
+        data: {
+          url: '/member/alerts'
+        }
     };
 
     for (const chunk of tokenChunks) {
@@ -113,11 +109,9 @@ async function sendNotificationToAdmins(allAdmins: Admin[], feedback: FeedbackIt
             body: messageBody,
             icon: "/logo.png",
         },
-        webpush: {
-            fcmOptions: {
-                link: `/admin/feedback`,
-            },
-        },
+        data: {
+          url: '/admin/feedback'
+        }
     };
 
     const message = { ...payload, tokens: uniqueTokens };
@@ -150,8 +144,7 @@ export async function triggerFeedbackNotification(feedback: FeedbackItem) {
     console.log(`SNS: triggerFeedbackNotification called for feedback ID: ${feedback.id}`);
     const db = getDb();
     const adminsSnapshot = await db.collection('admins').get();
-    // Corrected to use 'id' instead of 'firestoreId' from the document snapshot
-    const allAdmins = adminsSnapshot.docs.map(doc => ({ ...doc.data(), firestoreId: doc.id }) as Admin);
+    const allAdmins = adminsSnapshot.docs.map(doc => ({ ...doc.data(), firestoreId: doc.id, id: doc.id }) as Admin & {id: string});
     await sendNotificationToAdmins(allAdmins, feedback);
 }
 
