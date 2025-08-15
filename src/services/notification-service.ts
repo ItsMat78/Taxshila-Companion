@@ -150,6 +150,7 @@ export async function triggerFeedbackNotification(feedback: FeedbackItem) {
     console.log(`SNS: triggerFeedbackNotification called for feedback ID: ${feedback.id}`);
     const db = getDb();
     const adminsSnapshot = await db.collection('admins').get();
+    // Corrected to use 'id' instead of 'firestoreId' from the document snapshot
     const allAdmins = adminsSnapshot.docs.map(doc => ({ ...doc.data(), firestoreId: doc.id }) as Admin);
     await sendNotificationToAdmins(allAdmins, feedback);
 }

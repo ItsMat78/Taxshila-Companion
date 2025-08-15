@@ -290,7 +290,7 @@ export async function addStudent(studentData: AddStudentData): Promise<Student> 
   const studentDocRef = doc(collection(db, STUDENTS_COLLECTION));
 
   // Corrected payload: removed 'undefined' values
-  const firestorePayload: Omit<Student, 'id' | 'firestoreId' | 'paymentHistory' > = {
+  const firestorePayload: Omit<Student, 'id' | 'firestoreId' | 'paymentHistory' | 'lastPaymentDate' | 'leftDate'> = {
     uid: uid,
     studentId: studentId,
     name: studentData.name,
@@ -841,24 +841,24 @@ export async function sendAlertToStudent(
   originalFeedbackId?: string,
   originalFeedbackMessageSnippet?: string
 ): Promise<AlertItem> {
-  const newAlertDataForFirestore: any = {
-    studentId: customStudentId,
-    title,
-    message,
-    type,
-    dateSent: Timestamp.fromDate(new Date()),
-    isRead: false,
-  };
-  if (originalFeedbackId) newAlertDataForFirestore.originalFeedbackId = originalFeedbackId;
-  if (originalFeedbackMessageSnippet) newAlertDataForFirestore.originalFeedbackMessageSnippet = originalFeedbackMessageSnippet;
+    const newAlertDataForFirestore: any = {
+        studentId: customStudentId,
+        title,
+        message,
+        type,
+        dateSent: serverTimestamp(), // Use serverTimestamp for consistency
+        isRead: false,
+    };
+    if (originalFeedbackId) newAlertDataForFirestore.originalFeedbackId = originalFeedbackId;
+    if (originalFeedbackMessageSnippet) newAlertDataForFirestore.originalFeedbackMessageSnippet = originalFeedbackMessageSnippet;
 
-  const docRef = await addDoc(collection(db, ALERTS_COLLECTION), newAlertDataForFirestore);
+    const docRef = await addDoc(collection(db, ALERTS_COLLECTION), newAlertDataForFirestore);
+    const newDocSnap = await getDoc(docRef);
+    const alertItem = alertItemFromDoc(newDocSnap);
 
-  const newDocSnap = await getDoc(docRef);
-  const alertItem = alertItemFromDoc(newDocSnap);
-  await triggerAlertNotification(alertItem);
-  
-  return alertItem;
+    await triggerAlertNotification(alertItem);
+
+    return alertItem;
 }
 
 
@@ -1342,6 +1342,7 @@ declare module '@/types/communication' {
   }
 }
     
+
 
 
 
