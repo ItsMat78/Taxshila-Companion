@@ -1,4 +1,3 @@
-
 // src/lib/notification-setup.ts
 import { getMessaging, getToken, isSupported, onMessage } from 'firebase/messaging';
 import { app as firebaseApp } from '@/lib/firebase';
@@ -41,8 +40,18 @@ export async function setupPushNotifications(firestoreId: string, role: 'admin' 
                 console.error("VAPID key is missing. Ensure NEXT_PUBLIC_FIREBASE_VAPID_KEY is set in your environment.");
                 return;
             }
+
+             // Dynamically build the service worker URL with the config
+            const firebaseConfig = firebaseApp.options;
+            const encodedConfig = encodeURIComponent(JSON.stringify(firebaseConfig));
+            const serviceWorkerUrl = `/firebase-messaging-sw.js?firebaseConfig=${encodedConfig}`;
             
-            const currentToken = await getToken(messaging, { vapidKey });
+            const registration = await navigator.serviceWorker.register(serviceWorkerUrl);
+
+            const currentToken = await getToken(messaging, { 
+                vapidKey,
+                serviceWorkerRegistration: registration, // Use the specific registration
+            });
 
             if (currentToken) {
                 console.log('FCM Token received:', currentToken);
