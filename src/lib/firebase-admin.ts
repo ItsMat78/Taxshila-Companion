@@ -1,6 +1,7 @@
+
 // src/lib/firebase-admin.ts
 
-import { initializeApp, getApps, cert } from 'firebase-admin/app';
+import { initializeApp, getApps, cert, App } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 import { getAuth } from 'firebase-admin/auth';
 import { getMessaging } from 'firebase-admin/messaging';
@@ -12,8 +13,11 @@ if (!getApps().length) {
   // Replace \\n with \n to ensure the private key is parsed correctly
   const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n');
 
-  console.log(`[Firebase Admin] Attempting to initialize with Project ID: ${projectId}`);
-
+  console.log(`[Firebase Admin] Attempting to initialize...`);
+  console.log(`[Firebase Admin] Project ID from env: ${projectId ? 'Loaded' : 'MISSING'}`);
+  console.log(`[Firebase Admin] Client Email from env: ${clientEmail ? 'Loaded' : 'MISSING'}`);
+  console.log(`[Firebase Admin] Private Key from env: ${privateKey ? 'Loaded' : 'MISSING'}`);
+  
   // Ensure all required environment variables are present before initializing
   if (projectId && clientEmail && privateKey) {
     try {
@@ -24,14 +28,15 @@ if (!getApps().length) {
           privateKey,
         }),
         databaseURL: `https://${projectId}.firebaseio.com`,
+        projectId: projectId, // Explicitly set projectId for all services
       });
       console.log('[Firebase Admin] SDK has been initialized successfully.');
-    } catch (error) {
-      console.error('[Firebase Admin] SDK initialization error:', error);
+    } catch (error: any) {
+      console.error('[Firebase Admin] SDK initialization error:', error.message);
     }
   } else {
     // This log is crucial for debugging missing environment variables
-    console.error('[Firebase Admin] SDK initialization failed: Missing required environment variables.');
+    console.error('[Firebase Admin] SDK initialization failed: One or more required environment variables are missing.');
   }
 }
 
