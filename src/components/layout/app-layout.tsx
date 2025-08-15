@@ -1,4 +1,5 @@
 
+
 "use client";
 import * as React from 'react';
 import { usePathname, useRouter } from 'next/navigation';
@@ -87,34 +88,15 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   }, [user, theme, setTheme]);
 
   React.useEffect(() => {
-    const setupNotifications = async () => {
-      if (user && user.firestoreId && user.role) {
-        await setupPushNotifications(user.firestoreId, user.role);
-      }
-    };
-    if (!isAuthLoading && user) {
-      setupNotifications();
+    if (user && user.firestoreId && user.role) {
+      // Delay setup slightly to ensure all browser services are ready
+      setTimeout(() => {
+        console.log(`AppLayout: Triggering push notification setup for user ${user.firestoreId}`);
+         setupPushNotifications(user.firestoreId, user.role);
+      }, 2000);
     }
-  }, [user, isAuthLoading]);
+  }, [user]);
 
-  React.useEffect(() => {
-    const handleForegroundMessage = (event: Event) => {
-      const customEvent = event as CustomEvent;
-      const notificationPayload = customEvent.detail;
-      if (notificationPayload && notificationPayload.title && notificationPayload.body) {
-        toast({
-          title: notificationPayload.title,
-          description: notificationPayload.body,
-        });
-        refreshNotifications();
-      }
-    };
-    window.addEventListener('show-foreground-message', handleForegroundMessage);
-    return () => {
-      window.removeEventListener('show-foreground-message', handleForegroundMessage);
-    };
-  }, [toast, refreshNotifications]);
-  
   React.useEffect(() => {
     const handleNewFeedback = (event: Event) => {
       if (user && user.role === 'admin') {

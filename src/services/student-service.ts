@@ -31,6 +31,7 @@ import type { Student, Shift, FeeStatus, PaymentRecord, ActivityStatus, Attendan
 import type { FeedbackItem, FeedbackType, FeedbackStatus, AlertItem } from '@/types/communication';
 import { format, parseISO, differenceInDays, isPast, addMonths, startOfDay, isValid, addDays, isAfter, getHours, getMinutes, isWithinInterval, startOfMonth, endOfMonth, parse, differenceInMilliseconds } from 'date-fns';
 import { ALL_SEAT_NUMBERS } from '@/config/seats';
+import { triggerAlertNotification, triggerFeedbackNotification } from './notification-service';
 
 import {
   getAuth,
@@ -268,52 +269,53 @@ export interface AddStudentData {
 }
 
 export async function addStudent(studentData: AddStudentData): Promise<Student> {
-    const authResponse = await fetch('/api/admin/create-student-auth', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            email: studentData.email,
-            phone: studentData.phone,
-            password: studentData.password,
-            name: studentData.name,
-        }),
-    });
-
-    const authResult = await authResponse.json();
-    if (!authResponse.ok || !authResult.success) {
-        throw new Error(authResult.error || 'Failed to create authentication account.');
-    }
-    const { uid: newUid, email: finalEmail } = authResult;
-    const studentId = await getNextCustomStudentId();
-    const studentDocRef = doc(db, STUDENTS_COLLECTION, studentId);
-
-    const firestorePayload: Omit<Student, 'id' | 'firestoreId' | 'paymentHistory'> = {
-      uid: newUid,
-      studentId: studentId,
+  const authResponse = await fetch('/api/admin/create-student-auth', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
       name: studentData.name,
-      email: finalEmail,
+      email: studentData.email,
       phone: studentData.phone,
-      address: studentData.address,
-      shift: studentData.shift,
-      seatNumber: studentData.seatNumber,
-      profilePictureUrl: studentData.profilePictureUrl || null,
-      activityStatus: 'Active',
-      feeStatus: 'Due',
-      amountDue: 'Rs. 0',
-      registrationDate: format(new Date(), 'yyyy-MM-dd'),
-      lastPaymentDate: null,
-      nextDueDate: format(new Date(), 'yyyy-MM-dd'),
-      leftDate: null,
-    };
-    
-    await setDoc(studentDocRef, firestorePayload);
+      password: studentData.password,
+    }),
+  });
 
-    const finalStudent = await getStudentByCustomId(studentId);
-    if (!finalStudent) {
-        throw new Error("Student document was created, but failed to be retrieved immediately after.");
-    }
+  if (!authResponse.ok) {
+    const errorResult = await authResponse.json();
+    throw new Error(errorResult.error || "Failed to create authentication user.");
+  }
+  const { uid, email: finalEmail } = await authResponse.json();
+
+  const studentId = await getNextCustomStudentId();
+  const studentDocRef = doc(collection(db, STUDENTS_COLLECTION));
+
+  const firestorePayload: Omit<Student, 'id' | 'firestoreId' | 'paymentHistory'> = {
+    uid: uid,
+    studentId: studentId,
+    name: studentData.name,
+    email: finalEmail,
+    phone: studentData.phone,
+    address: studentData.address,
+    shift: studentData.shift,
+    seatNumber: studentData.seatNumber,
+    profilePictureUrl: studentData.profilePictureUrl,
+    activityStatus: 'Active',
+    feeStatus: 'Due',
+    amountDue: 'Rs. 0',
+    registrationDate: format(new Date(), 'yyyy-MM-dd'),
+    lastPaymentDate: undefined,
+    nextDueDate: format(new Date(), 'yyyy-MM-dd'),
+    leftDate: undefined,
+  };
     
-    return finalStudent;
+  await setDoc(studentDocRef, firestorePayload);
+
+  const finalStudent = await getStudentByCustomId(studentId);
+  if (!finalStudent) {
+      throw new Error("Student document was created, but failed to be retrieved immediately after.");
+  }
+    
+  return finalStudent;
 }
 
 
@@ -454,19 +456,6 @@ export async function updateStudent(customStudentId: string, studentUpdateData: 
   const hasRelevantChanges = Object.keys(payload).some(key => key !== 'newPassword' && key !== 'confirmNewPassword' && key !== 'theme');
 
   await updateDoc(studentDocRef, payload);
-  
-  if (hasRelevantChanges) {
-    try {
-      await sendAlertToStudent(
-        customStudentId,
-        "Profile Details Updated",
-        `Hi ${studentToUpdate.name}, your profile details have been updated by the admin. Please review them in the app.`,
-        "info"
-      );
-    } catch (alertError) { 
-      console.warn("Failed to send profile update alert for student:", customStudentId, alertError);
-    }
-  }
   
   const updatedDocSnap = await getDoc(studentDocRef);
   return studentFromDoc(updatedDocSnap);
@@ -773,34 +762,17 @@ export async function submitFeedback(
   };
   const docRef = await addDoc(collection(db, FEEDBACK_COLLECTION), newFeedbackData);
   
-  try {
-    const messageSnippet = message.substring(0, 100) + (message.length > 100 ? "..." : "");
-    const apiPayload = {
-      studentName: studentName || "Anonymous",
-      messageSnippet: messageSnippet,
-      feedbackId: docRef.id,
-    };
-    
-    await fetch('/api/send-admin-feedback-notification', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(apiPayload),
-    });
-  } catch (apiError) {
-      console.error("[StudentService] Failed to trigger API for admin feedback push notification:", apiError);
-  }
-
-  if (typeof window !== 'undefined') {
-    window.dispatchEvent(new CustomEvent('new-feedback-submitted', { detail: { feedbackId: docRef.id } }));
-  }
-
-  return {
+  const feedbackItem = {
     id: docRef.id,
     ...newFeedbackData,
     studentId: newFeedbackData.studentId === null ? undefined : newFeedbackData.studentId,
     studentName: newFeedbackData.studentName === null ? undefined : newFeedbackData.studentName,
     dateSubmitted: newFeedbackData.dateSubmitted.toDate().toISOString(),
    };
+  
+  await triggerFeedbackNotification(feedbackItem);
+  
+  return feedbackItem;
 }
 
 export async function getAllFeedback(): Promise<FeedbackItem[]> {
@@ -827,24 +799,7 @@ export async function sendGeneralAlert(title: string, message: string, type: Ale
   };
   const docRef = await addDoc(collection(db, ALERTS_COLLECTION), newAlertData);
 
-  const apiPayload = {
-    alertId: docRef.id,
-    title,
-    message,
-    type,
-  };
-
-  try {
-    await fetch('/api/send-alert-notification', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(apiPayload),
-    });
-  } catch (apiError) {
-    console.error("[StudentService] Failed to trigger API for push notification (general alert):", apiError);
-  }
-
-  return {
+  const alertItem = {
     id: docRef.id,
     studentId: undefined,
     title: newAlertData.title,
@@ -853,6 +808,10 @@ export async function sendGeneralAlert(title: string, message: string, type: Ale
     dateSent: newAlertData.dateSent.toDate().toISOString(),
     isRead: newAlertData.isRead,
   };
+
+  await triggerAlertNotification(alertItem);
+
+  return alertItem;
 }
 
 export async function sendAlertToStudent(
@@ -876,28 +835,11 @@ export async function sendAlertToStudent(
 
   const docRef = await addDoc(collection(db, ALERTS_COLLECTION), newAlertDataForFirestore);
 
-  const apiPayload = {
-    alertId: docRef.id,
-    studentId: customStudentId,
-    title,
-    message,
-    type,
-    originalFeedbackId,
-    originalFeedbackMessageSnippet
-  };
-  
-  try {
-    await fetch('/api/send-alert-notification', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(apiPayload),
-    });
-  } catch (apiError) {
-    console.error(`[StudentService] Failed to trigger API for push notification (student ${customStudentId}):`, apiError);
-  }
-
   const newDocSnap = await getDoc(docRef);
-  return alertItemFromDoc(newDocSnap);
+  const alertItem = alertItemFromDoc(newDocSnap);
+  await triggerAlertNotification(alertItem);
+  
+  return alertItem;
 }
 
 
@@ -938,6 +880,12 @@ export async function getAlertsForStudent(customStudentId: string): Promise<Aler
   ];
 
   return contextualizedAlerts.sort((a, b) => parseISO(b.dateSent).getTime() - parseISO(a.dateSent).getTime());
+}
+
+export async function getAllAdminSentAlerts(): Promise<AlertItem[]> {
+  const q = query(collection(db, ALERTS_COLLECTION), orderBy("dateSent", "desc"));
+  const querySnapshot = await getDocs(q);
+  return querySnapshot.docs.map(doc => alertItemFromDoc(doc));
 }
 
 
@@ -1007,7 +955,7 @@ export async function sendShiftWarningAlert(customStudentId: string): Promise<vo
   );
 }
 
-
+/*
 export async function batchImportStudents(studentsToImport: AddStudentData[]): Promise<BatchImportSummary> {
   let successCount = 0;
   let errorCount = 0;
@@ -1078,7 +1026,7 @@ export async function batchImportPayments(recordsToImport: PaymentImportData[]):
   // This function would need a proper implementation similar to the others.
   // For now, it's a placeholder.
   return { processedCount: 0, successCount: 0, errorCount: 0, errors: ["Not implemented"] };
-}
+}*/
 
 export async function deleteAllData(): Promise<void> {
   const collectionsToDelete = [
@@ -1376,6 +1324,8 @@ declare module '@/types/communication' {
 }
 
     
+
+
 
 
 

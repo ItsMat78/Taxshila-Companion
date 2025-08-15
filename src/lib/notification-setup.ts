@@ -1,72 +1,70 @@
+// src/lib/notification-setup.ts
+console.log('NS: notification-setup.ts script loaded.');
 
-"use client";
-
-import { getMessaging, getToken, onMessage } from 'firebase/messaging';
-import { app as firebaseApp } from './firebase'; 
+import { getMessaging, getToken, isSupported } from 'firebase/messaging';
+import { app as firebaseApp } from '@/lib/firebase';
 import { saveStudentFCMToken, saveAdminFCMToken } from '@/services/student-service';
-import type { UserRole } from '@/types/auth';
 
-const VAPID_KEY = process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY;
+/**
+ * Sets up push notifications for the current user.
+ * Requests permission and saves the FCM token to Firestore.
+ */
+export async function setupPushNotifications(firestoreId: string, role: 'admin' | 'member'): Promise<void> {
+    console.log(`NS: setupPushNotifications called for user: ${firestoreId} role: ${role}`);
+    
+    const supported = await isSupported();
+    if (!supported) {
+        console.log("NS: Firebase Messaging is not supported in this browser.");
+        return;
+    }
+    console.log("NS: Firebase Messaging is supported.");
 
-export const setupPushNotifications = async (firestoreId: string, userRole: UserRole) => {
-  if (typeof window === 'undefined' || !('serviceWorker' in navigator)) {
-    console.warn('[Push Setup] Push messaging is not supported in this environment.');
-    return;
-  }
-  
-  if (!VAPID_KEY) {
-    console.error("[Push Setup] VAPID key is missing. Push notifications cannot be initialized.");
-    return;
-  }
-
-  try {
     const messaging = getMessaging(firebaseApp);
     
-    // Register the service worker
-    const registration = await navigator.serviceWorker.register('/firebase-push-worker.js');
-    console.log('[Push Setup] Service worker registered successfully.');
+    try {
+        console.log('NS: Requesting notification permission...');
+        const permission = await Notification.requestPermission();
+        console.log('NS: Notification permission status:', permission);
 
-    const permission = await Notification.requestPermission();
-    if (permission !== 'granted') {
-      console.warn('[Push Setup] Notification permission denied.');
-      return;
-    }
-    
-    console.log('[Push Setup] Notification permission granted. Requesting token...');
-    const currentToken = await getToken(messaging, {
-      vapidKey: VAPID_KEY,
-      serviceWorkerRegistration: registration,
-    });
+        if (permission === 'granted') {
+            console.log('NS: Notification permission granted.');
+            const vapidKey = process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY;
+            if (!vapidKey) {
+                console.error("NS: VAPID key is missing. Ensure NEXT_PUBLIC_FIREBASE_VAPID_KEY is set in your environment.");
+                return;
+            }
+            console.log('NS: Attempting to get FCM token with VAPID key:', vapidKey.substring(0, 10) + '...');
+            
+            // The service worker needs the full config to initialize Firebase in the background.
+            // We pass it as a query string.
+            const firebaseConfig = firebaseApp.options;
+            const swUrl = `/firebase-messaging-sw.js?apiKey=${firebaseConfig.apiKey}&authDomain=${firebaseConfig.authDomain}&projectId=${firebaseConfig.projectId}&storageBucket=${firebaseConfig.storageBucket}&messagingSenderId=${firebaseConfig.messagingSenderId}&appId=${firebaseConfig.appId}&measurementId=${firebaseConfig.measurementId}`;
 
-    if (currentToken) {
-      console.log('[Push Setup] Token received:', currentToken);
-      // Save the token to the appropriate collection based on user role
-      if (userRole === 'member') {
-        await saveStudentFCMToken(firestoreId, currentToken);
-      } else if (userRole === 'admin') {
-        await saveAdminFCMToken(firestoreId, currentToken);
-      }
-      console.log('[Push Setup] Token saved to database.');
-    } else {
-      console.warn('[Push Setup] No registration token available. Request permission to generate one.');
-    }
+            navigator.serviceWorker.register(swUrl)
+              .then(async (swRegistration) => {
+                console.log("NS: Service worker registered successfully:", swRegistration.scope);
+                const currentToken = await getToken(messaging, { vapidKey: vapidKey, serviceWorkerRegistration: swRegistration });
 
-    // Handle foreground messages
-    onMessage(messaging, (payload) => {
-      console.log('[Push Setup] Message received in foreground:', payload);
-      const notificationTitle = payload.notification?.title || "New Notification";
-      const notificationBody = payload.notification?.body || "You have a new message.";
-      
-      window.dispatchEvent(new CustomEvent('show-foreground-message', {
-        detail: {
-          title: notificationTitle,
-          body: notificationBody,
-          data: payload.data
+                if (currentToken) {
+                    console.log('NS: FCM Token generated:', currentToken);
+                    if (role === 'admin') {
+                        await saveAdminFCMToken(firestoreId, currentToken);
+                        console.log('NS: Admin FCM token saved to Firestore.');
+                    } else {
+                        await saveStudentFCMToken(firestoreId, currentToken);
+                        console.log('NS: Student FCM token saved to Firestore.');
+                    }
+                } else {
+                    console.log('NS: No registration token available. Request permission to generate one.');
+                }
+              }).catch((err) => {
+                console.error('NS: Service Worker registration failed: ', err);
+              });
+
+        } else {
+            console.log('NS: Unable to get permission to notify.');
         }
-      }));
-    });
-
-  } catch (error) {
-    console.error('[Push Setup] An error occurred during push notification setup:', error);
-  }
-};
+    } catch (err) {
+        console.error('NS: An error occurred while retrieving token. ', err);
+    }
+}
