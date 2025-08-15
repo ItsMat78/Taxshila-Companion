@@ -13,7 +13,6 @@ import { useNotificationCounts } from '@/hooks/use-notification-counts';
 import { NotificationBadge } from '@/components/shared/notification-badge';
 import { cn } from '@/lib/utils';
 import { TopProgressBar } from '@/components/shared/top-progress-bar';
-import { setupPushNotifications } from '@/lib/notification-setup';
 import { useToast } from '@/hooks/use-toast';
 import { useNotificationContext } from '@/contexts/notification-context';
 import { useTheme } from "next-themes";
@@ -86,36 +85,10 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     }
   }, [user, theme, setTheme]);
 
-  React.useEffect(() => {
-    const setupNotifications = async () => {
-      if (user && user.firestoreId && user.role) {
-        await setupPushNotifications(user.firestoreId, user.role);
-      }
-    };
-    if (!isAuthLoading && user) {
-      setupNotifications();
-    }
-  }, [user, isAuthLoading]);
+  // Removed push notification setup useEffect hook
 
   React.useEffect(() => {
-    const handleForegroundMessage = (event: Event) => {
-      const customEvent = event as CustomEvent;
-      const notificationPayload = customEvent.detail;
-      if (notificationPayload && notificationPayload.title && notificationPayload.body) {
-        toast({
-          title: notificationPayload.title,
-          description: notificationPayload.body,
-        });
-        refreshNotifications();
-      }
-    };
-    window.addEventListener('show-foreground-message', handleForegroundMessage);
-    return () => {
-      window.removeEventListener('show-foreground-message', handleForegroundMessage);
-    };
-  }, [toast, refreshNotifications]);
-  
-  React.useEffect(() => {
+    // This listener can be repurposed for other real-time events if needed
     const handleNewFeedback = (event: Event) => {
       if (user && user.role === 'admin') {
         toast({

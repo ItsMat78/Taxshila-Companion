@@ -268,52 +268,47 @@ export interface AddStudentData {
 }
 
 export async function addStudent(studentData: AddStudentData): Promise<Student> {
-    const authResponse = await fetch('/api/admin/create-student-auth', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            email: studentData.email,
-            phone: studentData.phone,
-            password: studentData.password,
-            name: studentData.name,
-        }),
-    });
+  
+  const authInstance = getAuth();
+  let newUid, finalEmail;
+  
+  if(authInstance.currentUser){
+      newUid = authInstance.currentUser.uid;
+      finalEmail = authInstance.currentUser.email || studentData.email || `${studentData.phone}@taxshila-auth.com`;
+  } else {
+      throw new Error("No authenticated user found for student registration.");
+  }
 
-    const authResult = await authResponse.json();
-    if (!authResponse.ok || !authResult.success) {
-        throw new Error(authResult.error || 'Failed to create authentication account.');
-    }
-    const { uid: newUid, email: finalEmail } = authResult;
-    const studentId = await getNextCustomStudentId();
-    const studentDocRef = doc(db, STUDENTS_COLLECTION, studentId);
+  const studentId = await getNextCustomStudentId();
+  const studentDocRef = doc(db, STUDENTS_COLLECTION, studentId);
 
-    const firestorePayload: Omit<Student, 'id' | 'firestoreId' | 'paymentHistory'> = {
-      uid: newUid,
-      studentId: studentId,
-      name: studentData.name,
-      email: finalEmail,
-      phone: studentData.phone,
-      address: studentData.address,
-      shift: studentData.shift,
-      seatNumber: studentData.seatNumber,
-      profilePictureUrl: studentData.profilePictureUrl || undefined,
-      activityStatus: 'Active',
-      feeStatus: 'Due',
-      amountDue: 'Rs. 0',
-      registrationDate: format(new Date(), 'yyyy-MM-dd'),
-      lastPaymentDate: undefined,
-      nextDueDate: format(new Date(), 'yyyy-MM-dd'),
-      leftDate: undefined,
-    };
+  const firestorePayload: Omit<Student, 'id' | 'firestoreId' | 'paymentHistory'> = {
+    uid: newUid,
+    studentId: studentId,
+    name: studentData.name,
+    email: finalEmail,
+    phone: studentData.phone,
+    address: studentData.address,
+    shift: studentData.shift,
+    seatNumber: studentData.seatNumber,
+    profilePictureUrl: studentData.profilePictureUrl,
+    activityStatus: 'Active',
+    feeStatus: 'Due',
+    amountDue: 'Rs. 0',
+    registrationDate: format(new Date(), 'yyyy-MM-dd'),
+    lastPaymentDate: undefined,
+    nextDueDate: format(new Date(), 'yyyy-MM-dd'),
+    leftDate: undefined,
+  };
     
-    await setDoc(studentDocRef, firestorePayload);
+  await setDoc(studentDocRef, firestorePayload);
 
-    const finalStudent = await getStudentByCustomId(studentId);
-    if (!finalStudent) {
-        throw new Error("Student document was created, but failed to be retrieved immediately after.");
-    }
+  const finalStudent = await getStudentByCustomId(studentId);
+  if (!finalStudent) {
+      throw new Error("Student document was created, but failed to be retrieved immediately after.");
+  }
     
-    return finalStudent;
+  return finalStudent;
 }
 
 
@@ -454,19 +449,6 @@ export async function updateStudent(customStudentId: string, studentUpdateData: 
   const hasRelevantChanges = Object.keys(payload).some(key => key !== 'newPassword' && key !== 'confirmNewPassword' && key !== 'theme');
 
   await updateDoc(studentDocRef, payload);
-  
-  if (hasRelevantChanges) {
-    try {
-      await sendAlertToStudent(
-        customStudentId,
-        "Profile Details Updated",
-        `Hi ${studentToUpdate.name}, your profile details have been updated by the admin. Please review them in the app.`,
-        "info"
-      );
-    } catch (alertError) { 
-      console.warn("Failed to send profile update alert for student:", customStudentId, alertError);
-    }
-  }
   
   const updatedDocSnap = await getDoc(studentDocRef);
   return studentFromDoc(updatedDocSnap);
@@ -773,23 +755,6 @@ export async function submitFeedback(
   };
   const docRef = await addDoc(collection(db, FEEDBACK_COLLECTION), newFeedbackData);
   
-  try {
-    const messageSnippet = message.substring(0, 100) + (message.length > 100 ? "..." : "");
-    const apiPayload = {
-      studentName: studentName || "Anonymous",
-      messageSnippet: messageSnippet,
-      feedbackId: docRef.id,
-    };
-    
-    await fetch('/api/send-admin-feedback-notification', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(apiPayload),
-    });
-  } catch (apiError) {
-      console.error("[StudentService] Failed to trigger API for admin feedback push notification:", apiError);
-  }
-
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent('new-feedback-submitted', { detail: { feedbackId: docRef.id } }));
   }
@@ -827,23 +792,6 @@ export async function sendGeneralAlert(title: string, message: string, type: Ale
   };
   const docRef = await addDoc(collection(db, ALERTS_COLLECTION), newAlertData);
 
-  const apiPayload = {
-    alertId: docRef.id,
-    title,
-    message,
-    type,
-  };
-
-  try {
-    await fetch('/api/send-alert-notification', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(apiPayload),
-    });
-  } catch (apiError) {
-    console.error("[StudentService] Failed to trigger API for push notification (general alert):", apiError);
-  }
-
   return {
     id: docRef.id,
     studentId: undefined,
@@ -875,26 +823,6 @@ export async function sendAlertToStudent(
   if (originalFeedbackMessageSnippet) newAlertDataForFirestore.originalFeedbackMessageSnippet = originalFeedbackMessageSnippet;
 
   const docRef = await addDoc(collection(db, ALERTS_COLLECTION), newAlertDataForFirestore);
-
-  const apiPayload = {
-    alertId: docRef.id,
-    studentId: customStudentId,
-    title,
-    message,
-    type,
-    originalFeedbackId,
-    originalFeedbackMessageSnippet
-  };
-  
-  try {
-    await fetch('/api/send-alert-notification', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(apiPayload),
-    });
-  } catch (apiError) {
-    console.error(`[StudentService] Failed to trigger API for push notification (student ${customStudentId}):`, apiError);
-  }
 
   const newDocSnap = await getDoc(docRef);
   return alertItemFromDoc(newDocSnap);
@@ -1382,6 +1310,7 @@ declare module '@/types/communication' {
 }
 
     
+
 
 
 

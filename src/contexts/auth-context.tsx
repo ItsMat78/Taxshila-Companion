@@ -7,14 +7,11 @@ import { useRouter, usePathname } from 'next/navigation';
 import { 
   getStudentByIdentifier, 
   getAdminByEmail, 
-  removeFCMTokenForStudent, 
-  removeAdminFCMToken, 
   updateUserTheme,
 } from '@/services/student-service';
 import type { Student } from '@/types/student';
 import type { Admin } from '@/types/auth';
 import { useToast } from "@/hooks/use-toast";
-import { getMessaging, getToken, deleteToken } from 'firebase/messaging';
 import { getAuth, signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import { app as firebaseApp } from '@/lib/firebase';
 import { useTheme } from 'next-themes';
@@ -161,31 +158,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const logout = async () => {
-    const loggedOutUser = user;
-    
     setUser(null);
     localStorage.removeItem('taxshilaUser');
     setTheme('light-default');
     
     await signOut(auth).catch(err => console.warn("Firebase sign out error:", err));
-    
-    if (loggedOutUser && loggedOutUser.firestoreId && typeof window !== 'undefined') {
-      try {
-        const messaging = getMessaging(firebaseApp);
-        const VAPID_KEY = process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY;
-        if (VAPID_KEY) {
-          const registration = await navigator.serviceWorker.getRegistration('/firebase-push-worker.js');
-          const currentToken = await getToken(messaging, { vapidKey: VAPID_KEY, serviceWorkerRegistration: registration }).catch(() => null);
-          if (currentToken) {
-            if (loggedOutUser.role === 'member') await removeFCMTokenForStudent(loggedOutUser.firestoreId, currentToken);
-            else if (loggedOutUser.role === 'admin') await removeAdminFCMToken(loggedOutUser.firestoreId, currentToken);
-            await deleteToken(messaging).catch(err => console.warn("[AuthContext] Failed to delete token:", err));
-          }
-        }
-      } catch (error) {
-        console.error("[AuthContext] Error on logout:", error);
-      }
-    }
     
     router.push('/login');
   };
