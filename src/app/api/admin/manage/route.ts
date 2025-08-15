@@ -11,19 +11,24 @@ async function verifyAndHealAdmin(request: Request): Promise<boolean> {
     try {
         const auth = getAuth();
         const decodedToken = await auth.verifyIdToken(idToken);
-
+        
+        // If the custom claim is already set, they are an admin.
         if (decodedToken.admin === true) {
             return true;
         }
 
+        // If no custom claim, check the database directly.
         const db = getDb();
         const adminDoc = await db.collection('admins').doc(decodedToken.uid).get();
 
+        // If they exist in the admins collection, they are an admin.
+        // Heal their token by setting the custom claim for future requests.
         if (adminDoc.exists) {
             await auth.setCustomUserClaims(decodedToken.uid, { admin: true });
             return true;
         }
-
+        
+        // If they are not in the database, they are not an admin.
         return false;
     } catch (error) {
         console.error("Error in admin verification:", error);

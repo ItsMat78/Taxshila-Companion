@@ -296,14 +296,14 @@ export async function addStudent(studentData: AddStudentData): Promise<Student> 
       address: studentData.address,
       shift: studentData.shift,
       seatNumber: studentData.seatNumber,
-      profilePictureUrl: studentData.profilePictureUrl || null,
+      profilePictureUrl: studentData.profilePictureUrl || undefined,
       activityStatus: 'Active',
       feeStatus: 'Due',
       amountDue: 'Rs. 0',
       registrationDate: format(new Date(), 'yyyy-MM-dd'),
-      lastPaymentDate: null,
+      lastPaymentDate: undefined,
       nextDueDate: format(new Date(), 'yyyy-MM-dd'),
-      leftDate: null,
+      leftDate: undefined,
     };
     
     await setDoc(studentDocRef, firestorePayload);
@@ -940,6 +940,12 @@ export async function getAlertsForStudent(customStudentId: string): Promise<Aler
   return contextualizedAlerts.sort((a, b) => parseISO(b.dateSent).getTime() - parseISO(a.dateSent).getTime());
 }
 
+export async function getAllAdminSentAlerts(): Promise<AlertItem[]> {
+  const q = query(collection(db, ALERTS_COLLECTION), orderBy("dateSent", "desc"));
+  const querySnapshot = await getDocs(q);
+  return querySnapshot.docs.map(doc => alertItemFromDoc(doc));
+}
+
 
 export async function markAlertAsRead(alertId: string, customStudentId: string): Promise<AlertItem | undefined> {
     const alertDocRef = doc(db, ALERTS_COLLECTION, alertId);
@@ -1007,7 +1013,7 @@ export async function sendShiftWarningAlert(customStudentId: string): Promise<vo
   );
 }
 
-
+/*
 export async function batchImportStudents(studentsToImport: AddStudentData[]): Promise<BatchImportSummary> {
   let successCount = 0;
   let errorCount = 0;
@@ -1078,7 +1084,7 @@ export async function batchImportPayments(recordsToImport: PaymentImportData[]):
   // This function would need a proper implementation similar to the others.
   // For now, it's a placeholder.
   return { processedCount: 0, successCount: 0, errorCount: 0, errors: ["Not implemented"] };
-}
+}*/
 
 export async function deleteAllData(): Promise<void> {
   const collectionsToDelete = [
