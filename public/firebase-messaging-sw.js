@@ -1,79 +1,59 @@
-// public/firebase-messaging-sw.js
 
-// Give the service worker access to the Firebase Messaging library.
-// The library is imported using the `importScripts` function.
-// Note: This file is not processed by the Next.js compiler, so it uses plain JavaScript.
+// This file must be in the public folder.
 
-console.log('SW: Service Worker script evaluating.');
+importScripts("https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js");
+importScripts("https://www.gstatic.com/firebasejs/9.22.0/firebase-messaging-compat.js");
 
-try {
-    // These must be loaded before Firebase is initialized.
-    importScripts("https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js");
-    importScripts("https://www.gstatic.com/firebasejs/9.23.0/firebase-messaging-compat.js");
-    console.log('SW: Firebase scripts imported successfully.');
-} catch (e) {
-    console.error('SW: Error importing Firebase scripts:', e);
-}
+self.addEventListener('fetch', () => {
+  // This is a placeholder to ensure the service worker is considered active.
+});
 
-
-// Parse the configuration passed as a query string
+// Parse query parameters from the service worker URL
 const urlParams = new URL(self.location).searchParams;
 const firebaseConfig = Object.fromEntries(urlParams.entries());
 
-console.log('SW: Firebase config parsed from URL:', firebaseConfig);
+// Initialize the Firebase app in the service worker with the parsed config
+if (firebaseConfig.apiKey) {
+  firebase.initializeApp(firebaseConfig);
+  const messaging = firebase.messaging();
 
-if (firebaseConfig && firebaseConfig.apiKey) {
-    // Initialize the Firebase app in the service worker with the parsed config
-    try {
-        firebase.initializeApp(firebaseConfig);
-        console.log('SW: Firebase app initialized successfully.');
+  messaging.onBackgroundMessage((payload) => {
+    console.log('[firebase-messaging-sw.js] Received background message ', payload);
 
-        // Retrieve an instance of Firebase Messaging so that it can handle background messages.
-        const messaging = firebase.messaging();
-        console.log('SW: Firebase messaging initialized successfully.');
-        
-        messaging.onBackgroundMessage((payload) => {
-            console.log('SW: Received background message ', payload);
+    const notificationTitle = payload.notification?.title || 'New Notification';
+    const notificationOptions = {
+      body: payload.notification?.body || 'You have a new message.',
+      icon: payload.notification?.icon || '/logo.png',
+      data: {
+        url: payload.data?.url || '/' // Default to root if no URL is provided
+      }
+    };
 
-            const notificationTitle = payload.notification?.title || 'New Notification';
-            const notificationOptions = {
-                body: payload.notification?.body || 'You have a new update.',
-                icon: payload.notification?.icon || '/logo.png',
-                data: {
-                    url: payload.data?.url || '/' // Pass the URL to the click event
-                }
-            };
-
-            self.registration.showNotification(notificationTitle, notificationOptions);
-        });
-
-    } catch (e) {
-        console.error('SW: Error initializing Firebase in service worker:', e);
-    }
+    self.registration.showNotification(notificationTitle, notificationOptions);
+  });
 } else {
-    console.error('SW: Firebase config not found in service worker URL.');
+    console.error("Firebase config not found in service worker query parameters.");
 }
 
-self.addEventListener('install', (event) => {
-    console.log('SW: Install event triggered.');
-    // Force the waiting service worker to become the active service worker.
-    event.waitUntil(self.skipWaiting());
-});
-
-self.addEventListener('activate', (event) => {
-    console.log('SW: Activate event triggered.');
-    // Tell the active service worker to take control of the page immediately.
-    event.waitUntil(self.clients.claim());
-});
 
 self.addEventListener('notificationclick', (event) => {
-    console.log('SW: Notification click received.', event.notification);
-    event.notification.close();
+  event.notification.close();
+  const urlToOpen = event.notification.data.url || '/';
 
-    const urlToOpen = event.notification.data?.url || '/';
-    console.log('SW: Opening URL:', urlToOpen);
-
-    event.waitUntil(
-        self.clients.openWindow(urlToOpen)
-    );
+  event.waitUntil(
+    clients.matchAll({ type: 'window' }).then((clientList) => {
+      // Check if a window is already open and focus it.
+      for (let i = 0; i < clientList.length; i++) {
+        const client = clientList[i];
+        if (client.url === '/' && 'focus' in client) {
+          return client.focus();
+        }
+      }
+      // If no window is open, open a new one.
+      if (clients.openWindow) {
+        return clients.openWindow(urlToOpen);
+      }
+    })
+  );
 });
+

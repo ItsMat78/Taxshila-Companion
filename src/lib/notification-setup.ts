@@ -27,24 +27,25 @@ export async function setupPushNotifications(firestoreId: string, role: 'admin' 
                 return;
             }
             
-            const firebaseConfig = firebaseApp.options;
-            const swUrl = `/firebase-messaging-sw.js?apiKey=${firebaseConfig.apiKey}&authDomain=${firebaseConfig.authDomain}&projectId=${firebaseConfig.projectId}&storageBucket=${firebaseConfig.storageBucket}&messagingSenderId=${firebaseConfig.messagingSenderId}&appId=${firebaseConfig.appId}&measurementId=${firebaseConfig.measurementId}`;
+            // Use the static service worker path
+            const swRegistration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+            console.log('Service Worker registered:', swRegistration);
 
-            navigator.serviceWorker.register(swUrl)
-              .then(async (swRegistration) => {
-                const currentToken = await getToken(messaging, { vapidKey: vapidKey, serviceWorkerRegistration: swRegistration });
+            const currentToken = await getToken(messaging, { vapidKey: vapidKey, serviceWorkerRegistration: swRegistration });
 
-                if (currentToken) {
-                    if (role === 'admin') {
-                        await saveAdminFCMToken(firestoreId, currentToken);
-                    } else {
-                        await saveStudentFCMToken(firestoreId, currentToken);
-                    }
+            if (currentToken) {
+                console.log('FCM Token received:', currentToken);
+                if (role === 'admin') {
+                    await saveAdminFCMToken(firestoreId, currentToken);
+                } else {
+                    await saveStudentFCMToken(firestoreId, currentToken);
                 }
-              }).catch((err) => {
-                console.error('Service Worker registration failed: ', err);
-              });
+            } else {
+                console.log('No registration token available. Request permission to generate one.');
+            }
 
+        } else {
+            console.log('Notification permission not granted.');
         }
     } catch (err) {
         console.error('An error occurred while retrieving token. ', err);
