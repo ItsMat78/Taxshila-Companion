@@ -290,7 +290,7 @@ export async function addStudent(studentData: AddStudentData): Promise<Student> 
   const studentDocRef = doc(collection(db, STUDENTS_COLLECTION));
 
   // Corrected payload: removed 'undefined' values
-  const firestorePayload: Omit<Student, 'id' | 'firestoreId' | 'paymentHistory' | 'lastPaymentDate' | 'leftDate'> = {
+  const firestorePayload: Omit<Student, 'id' | 'firestoreId' | 'paymentHistory' > = {
     uid: uid,
     studentId: studentId,
     name: studentData.name,
@@ -320,21 +320,41 @@ export async function addStudent(studentData: AddStudentData): Promise<Student> 
 
 export async function updateStudent(customStudentId: string, studentUpdateData: Partial<Student>): Promise<Student | undefined> {
   const studentToUpdate = await getStudentByCustomId(customStudentId);
-  if (!studentToUpdate || !studentToUpdate.firestoreId) {
-    throw new Error("Student not found.");
+  if (!studentToUpdate || !studentToUpdate.firestoreId || !studentToUpdate.uid) {
+    throw new Error("Student not found or is missing critical data (Firestore ID or Auth UID).");
   }
   const studentDocRef = doc(db, STUDENTS_COLLECTION, studentToUpdate.firestoreId);
 
   // --- Firebase Auth Update ---
-  if (studentUpdateData.password && studentToUpdate.uid) {
-      const auth = getAuth();
-      const userToUpdate = auth.currentUser;
-      
-      if (!userToUpdate) {
-          throw new Error("Admin not authenticated to perform this action.");
-      }
-      
+  const authUpdatePayload: { uid: string; email?: string; phone?: string; password?: string } = { uid: studentToUpdate.uid };
+  let authNeedsUpdate = false;
+
+  if (studentUpdateData.email && studentUpdateData.email !== studentToUpdate.email) {
+      authUpdatePayload.email = studentUpdateData.email;
+      authNeedsUpdate = true;
   }
+  if (studentUpdateData.phone && studentUpdateData.phone !== studentToUpdate.phone) {
+      authUpdatePayload.phone = studentUpdateData.phone;
+      authNeedsUpdate = true;
+  }
+  if (studentUpdateData.password) {
+      authUpdatePayload.password = studentUpdateData.password;
+      authNeedsUpdate = true;
+  }
+
+  if (authNeedsUpdate) {
+      const authResponse = await fetch('/api/admin/update-student-auth', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(authUpdatePayload),
+      });
+
+      if (!authResponse.ok) {
+          const errorResult = await authResponse.json();
+          throw new Error(`Auth Update Failed: ${errorResult.error || 'An unknown error occurred.'}`);
+      }
+  }
+
 
   // --- Firestore Data Update ---
   const firestoreUpdateData = { ...studentUpdateData };
@@ -1322,6 +1342,7 @@ declare module '@/types/communication' {
   }
 }
     
+
 
 
 
