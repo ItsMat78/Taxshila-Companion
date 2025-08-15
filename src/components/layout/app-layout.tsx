@@ -89,6 +89,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
   React.useEffect(() => {
     if (user && user.firestoreId && user.role) {
+      console.log(`AppLayout: Triggering push notification setup for user ${user.firestoreId}`);
       // Delay setup slightly to ensure all browser services are ready
       setTimeout(() => {
          setupPushNotifications(user.firestoreId, user.role);
@@ -97,7 +98,6 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   }, [user]);
 
   React.useEffect(() => {
-    // This listener can be repurposed for other real-time events if needed
     const handleNewFeedback = (event: Event) => {
       if (user && user.role === 'admin') {
         toast({

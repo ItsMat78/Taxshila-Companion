@@ -1,39 +1,60 @@
+// public/firebase-messaging-sw.js
 
-// This file must be in the public directory.
-
-// Use importScripts to load the Firebase SDK
+// Using importScripts to load the Firebase SDK
 importScripts("https://www.gstatic.com/firebasejs/10.12.3/firebase-app-compat.js");
 importScripts("https://www.gstatic.com/firebasejs/10.12.3/firebase-messaging-compat.js");
 
-// Your web app's Firebase configuration
+console.log('SW: Service Worker script evaluating.');
+
 const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
-  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
+  apiKey: self.location.search.split('apiKey=')[1].split('&')[0],
+  authDomain: self.location.search.split('authDomain=')[1].split('&')[0],
+  projectId: self.location.search.split('projectId=')[1].split('&')[0],
+  storageBucket: self.location.search.split('storageBucket=')[1].split('&')[0],
+  messagingSenderId: self.location.search.split('messagingSenderId=')[1].split('&')[0],
+  appId: self.location.search.split('appId=')[1].split('&')[0],
+  measurementId: self.location.search.split('measurementId=')[1].split('&')[0],
 };
 
-// Initialize Firebase
-firebase.initializeApp(firebaseConfig);
+console.log('SW: Firebase config parsed from URL:', firebaseConfig);
 
-// Retrieve an instance of Firebase Messaging so that it can handle background messages.
-const messaging = firebase.messaging();
 
-messaging.onBackgroundMessage((payload) => {
-  console.log(
-    "[firebase-messaging-sw.js] Received background message ",
-    payload
-  );
-  
-  // Customize notification here
-  const notificationTitle = payload.notification.title;
-  const notificationOptions = {
-    body: payload.notification.body,
-    icon: payload.notification.icon || "/logo.png",
-  };
+try {
+  if (!firebase.apps.length) {
+    firebase.initializeApp(firebaseConfig);
+    console.log('SW: Firebase app initialized successfully.');
+  } else {
+    firebase.app(); // if already initialized, use that one
+    console.log('SW: Firebase app already initialized.');
+  }
 
-  self.registration.showNotification(notificationTitle, notificationOptions);
+  const messaging = firebase.messaging();
+  console.log('SW: Firebase messaging initialized successfully.');
+
+  messaging.onBackgroundMessage((payload) => {
+    console.log('SW: Received background message ', payload);
+    const notificationTitle = payload.notification.title;
+    const notificationOptions = {
+      body: payload.notification.body,
+      icon: '/logo.png', // Ensure this icon exists
+    };
+
+    self.registration.showNotification(notificationTitle, notificationOptions);
+  });
+} catch (error) {
+  console.error('SW: Error during Firebase initialization:', error);
+}
+
+self.addEventListener('install', (event) => {
+  console.log('SW: Install event triggered.');
+  event.waitUntil(self.skipWaiting());
+});
+
+self.addEventListener('activate', (event) => {
+  console.log('SW: Activate event triggered.');
+  event.waitUntil(self.clients.claim());
+});
+
+self.addEventListener('push', (event) => {
+  console.log('SW: Push event received:', event.data.text());
 });
