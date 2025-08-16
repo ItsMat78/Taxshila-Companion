@@ -895,9 +895,12 @@ export async function getAlertsForStudent(customStudentId: string): Promise<Aler
     where("studentId", "==", customStudentId)
   );
 
+  // Filter general alerts by the student's registration date
+  const registrationTimestamp = Timestamp.fromDate(parseISO(student.registrationDate));
   const generalAlertsQuery = query(
       collection(db, ALERTS_COLLECTION),
-      where("studentId", "==", null)
+      where("studentId", "==", null),
+      where("dateSent", ">=", registrationTimestamp)
   );
 
   const targetedAlertsSnapshot = await getDocs(targetedQuery);
@@ -906,7 +909,7 @@ export async function getAlertsForStudent(customStudentId: string): Promise<Aler
   const generalAlertsSnapshot = await getDocs(generalAlertsQuery);
   const generalAlerts = generalAlertsSnapshot.docs
       .map(doc => alertItemFromDoc(doc))
-      .filter(alert => alert.type !== 'feedback_response');
+      .filter(alert => alert.type !== 'feedback_response'); // Exclude feedback responses from general alerts
 
 
   const contextualizedAlerts = [
@@ -1361,6 +1364,7 @@ declare module '@/types/communication' {
   }
 }
     
+
 
 
 
