@@ -884,32 +884,36 @@ export async function getAlertsForStudent(customStudentId: string): Promise<Aler
   const studentSnap = await getDoc(studentDocRef);
   const studentData = studentSnap.data() as Student | undefined;
   const readGeneralAlertIdsSet = new Set(studentData?.readGeneralAlertIds || []);
+  const registrationDate = parseISO(student.registrationDate);
 
   const targetedQuery = query(
     collection(db, ALERTS_COLLECTION),
     where("studentId", "==", customStudentId)
   );
 
-  // Filter general alerts by the student's registration date
-  const registrationTimestamp = Timestamp.fromDate(parseISO(student.registrationDate));
   const generalAlertsQuery = query(
       collection(db, ALERTS_COLLECTION),
-      where("studentId", "==", null),
-      where("dateSent", ">=", registrationTimestamp)
+      where("studentId", "==", null)
   );
 
   const targetedAlertsSnapshot = await getDocs(targetedQuery);
   const studentAlerts = targetedAlertsSnapshot.docs.map(doc => alertItemFromDoc(doc));
 
   const generalAlertsSnapshot = await getDocs(generalAlertsQuery);
-  const generalAlerts = generalAlertsSnapshot.docs
-      .map(doc => alertItemFromDoc(doc))
-      .filter(alert => alert.type !== 'feedback_response'); // Exclude feedback responses from general alerts
+  const allGeneralAlerts = generalAlertsSnapshot.docs.map(doc => alertItemFromDoc(doc));
 
+  // Filter general alerts in code instead of in the query
+  const relevantGeneralAlerts = allGeneralAlerts.filter(alert => {
+      const alertDate = parseISO(alert.dateSent);
+      return (
+          alert.type !== 'feedback_response' &&
+          (isAfter(alertDate, registrationDate) || format(alertDate, 'yyyy-MM-dd') === format(registrationDate, 'yyyy-MM-dd'))
+      );
+  });
 
   const contextualizedAlerts = [
     ...studentAlerts,
-    ...generalAlerts.map(alert => ({
+    ...relevantGeneralAlerts.map(alert => ({
       ...alert,
       isRead: readGeneralAlertIdsSet.has(alert.id)
     }))
@@ -1359,6 +1363,7 @@ declare module '@/types/communication' {
   }
 }
     
+
 
 
 
