@@ -131,7 +131,7 @@ export default function EditStudentPage() {
   const [isConfirmPaymentOpen, setIsConfirmPaymentOpen] = React.useState(false);
   const [isConfirmMarkLeftOpen, setIsConfirmMarkLeftOpen] = React.useState(false);
   const [feeStructure, setFeeStructure] = React.useState<FeeStructure | null>(null);
-  const [paymentMethod, setPaymentMethod] = React.useState<PaymentRecord['method']>('Desk Payment');
+  const [paymentMethod, setPaymentMethod] = React.useState<PaymentRecord['method']>('Cash');
 
   const form = useForm<StudentEditFormValues>({
     resolver: zodResolver(studentEditFormSchema),
@@ -326,7 +326,7 @@ export default function EditStudentPage() {
     }
   }
 
-  async function handleMarkPaymentPaid(selectedMethod: PaymentRecord['method']) {
+  async function handleMarkPaymentPaid() {
     if (!studentId || !studentData || isStudentLeft || !feeStructure) return;
     setIsSaving(true);
     
@@ -344,14 +344,14 @@ export default function EditStudentPage() {
     }
 
     try {
-      const updatedStudent = await recordStudentPayment(studentId, amountToPay, selectedMethod);
+      const updatedStudent = await recordStudentPayment(studentId, amountToPay, paymentMethod);
       if (updatedStudent) {
         setStudentData(updatedStudent); 
         setIsDirtyOverride(false);
         refreshNotifications(); // Refresh sidebar counts
          toast({
           title: "Payment Status Updated",
-          description: `Payment for ${updatedStudent.name} has been marked as Paid via ${selectedMethod}. An alert has been sent.`,
+          description: `Payment for ${updatedStudent.name} has been marked as Paid via ${paymentMethod}. An alert has been sent.`,
         });
       } else {
         toast({ title: "Error", description: "Failed to update payment status.", variant: "destructive"});
@@ -700,8 +700,8 @@ export default function EditStudentPage() {
                             className="w-full"
                             disabled={isSaving || isDeleting || studentData.feeStatus === "Paid" || isStudentLeft}
                             onClick={() => {
-                            setPaymentMethod('Desk Payment');
-                            setIsConfirmPaymentOpen(true)
+                              setPaymentMethod('Cash'); // Default to cash on open
+                              setIsConfirmPaymentOpen(true)
                             }}
                         >
                            <ClipboardCheck className="mr-2 h-4 w-4"/> Mark as Paid
@@ -728,7 +728,7 @@ export default function EditStudentPage() {
                         </div>
                         <AlertDialogFooter>
                             <AlertDialogCancel onClick={() => setIsConfirmPaymentOpen(false)} disabled={isSaving}>Cancel</AlertDialogCancel>
-                            <AlertDialogAction onClick={() => handleMarkPaymentPaid(paymentMethod)} disabled={isSaving}>
+                            <AlertDialogAction onClick={handleMarkPaymentPaid} disabled={isSaving}>
                                 {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                                 Confirm Payment
                             </AlertDialogAction>

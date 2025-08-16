@@ -27,7 +27,10 @@ async function sendNotificationToStudent(student: Student, alert: AlertItem) {
             icon: "/logo.png",
         },
         data: {
-          url: '/member/alerts'
+          url: '/member/alerts',
+          title: alert.title,
+          body: alert.message,
+          icon: "/logo.png",
         }
     };
 
@@ -63,7 +66,10 @@ async function sendNotificationToAllStudents(allStudents: Student[], alert: Aler
             icon: "/logo.png",
         },
         data: {
-          url: '/member/alerts'
+          url: '/member/alerts',
+          title: alert.title,
+          body: alert.message,
+          icon: "/logo.png",
         }
     };
 
@@ -90,15 +96,20 @@ async function sendNotificationToAdmins(allAdmins: Admin[], feedback: FeedbackIt
     const messageBody = feedback.studentName 
         ? `From ${feedback.studentName}: "${feedback.message.substring(0, 100)}..."` 
         : `An anonymous user submitted feedback: "${feedback.message.substring(0, 100)}..."`;
+    
+    const notificationTitle = `New Feedback: ${feedback.type}`;
 
     const payload = {
         notification: {
-            title: `New Feedback: ${feedback.type}`,
+            title: notificationTitle,
             body: messageBody,
             icon: "/logo.png",
         },
         data: {
-          url: '/admin/feedback'
+          url: '/admin/feedback',
+          title: notificationTitle,
+          body: messageBody,
+          icon: "/logo.png",
         }
     };
 

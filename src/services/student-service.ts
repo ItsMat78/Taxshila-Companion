@@ -31,6 +31,7 @@ import type { Student, Shift, FeeStatus, PaymentRecord, ActivityStatus, Attendan
 import type { FeedbackItem, FeedbackType, FeedbackStatus, AlertItem } from '@/types/communication';
 import { format, parseISO, differenceInDays, isPast, addMonths, startOfDay, isValid, addDays, isAfter, getHours, getMinutes, isWithinInterval, startOfMonth, endOfMonth, parse, differenceInMilliseconds } from 'date-fns';
 import { ALL_SEAT_NUMBERS } from '@/config/seats';
+import { triggerAlertNotification, triggerFeedbackNotification } from './notification-service';
 
 import {
   getAuth,
@@ -705,7 +706,9 @@ export async function recordStudentPayment(
       `Hi ${updatedStudent.name}, your fee payment of ${newPaymentRecord.amount} has been recorded. Fees paid up to ${updatedStudent.nextDueDate ? format(parseISO(updatedStudent.nextDueDate), 'PP') : 'N/A'}.`,
       "info"
     );
-  } catch (alertError) { }
+  } catch (alertError) { 
+    console.error("Failed to send payment confirmation alert, but payment was recorded.", alertError);
+  }
 
   return updatedStudent;
 }
@@ -788,16 +791,11 @@ export async function submitFeedback(
     dateSubmitted: newFeedbackData.dateSubmitted.toDate().toISOString(),
    };
   
-   // Use fetch to call the API route
-   await fetch('/api/send-admin-feedback-notification', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        studentName: feedbackItem.studentName || "Anonymous",
-        messageSnippet: feedbackItem.message.substring(0, 100),
-        feedbackId: feedbackItem.id,
-      }),
-   });
+   try {
+     await triggerFeedbackNotification(feedbackItem);
+   } catch (e) {
+     console.error("Failed to trigger feedback notification, but feedback was saved.", e);
+   }
   
   return feedbackItem;
 }
@@ -836,13 +834,11 @@ export async function sendGeneralAlert(title: string, message: string, type: Ale
     isRead: newAlertData.isRead,
   };
 
-  // Use fetch to call the API route
-  await fetch('/api/send-alert-notification', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(alertItem),
-  });
-
+  try {
+    await triggerAlertNotification(alertItem);
+  } catch (e) {
+    console.error("Failed to trigger general alert notification, but alert was saved.", e);
+  }
 
   return alertItem;
 }
@@ -870,13 +866,12 @@ export async function sendAlertToStudent(
     const newDocSnap = await getDoc(docRef);
     const alertItem = alertItemFromDoc(newDocSnap);
     
-    // Use fetch to call the API route
-    await fetch('/api/send-alert-notification', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(alertItem),
-    });
-
+    try {
+      await triggerAlertNotification(alertItem);
+    } catch (e) {
+      console.error(`Failed to trigger alert notification for student ${customStudentId}, but alert was saved.`, e);
+    }
+    
     return alertItem;
 }
 
@@ -889,6 +884,7 @@ export async function getAlertsForStudent(customStudentId: string): Promise<Aler
   const studentSnap = await getDoc(studentDocRef);
   const studentData = studentSnap.data() as Student | undefined;
   const readGeneralAlertIdsSet = new Set(studentData?.readGeneralAlertIds || []);
+  const registrationDate = parseISO(student.registrationDate);
 
   const targetedQuery = query(
     collection(db, ALERTS_COLLECTION),
@@ -904,14 +900,20 @@ export async function getAlertsForStudent(customStudentId: string): Promise<Aler
   const studentAlerts = targetedAlertsSnapshot.docs.map(doc => alertItemFromDoc(doc));
 
   const generalAlertsSnapshot = await getDocs(generalAlertsQuery);
-  const generalAlerts = generalAlertsSnapshot.docs
-      .map(doc => alertItemFromDoc(doc))
-      .filter(alert => alert.type !== 'feedback_response');
+  const allGeneralAlerts = generalAlertsSnapshot.docs.map(doc => alertItemFromDoc(doc));
 
+  // Filter general alerts in code instead of in the query
+  const relevantGeneralAlerts = allGeneralAlerts.filter(alert => {
+      const alertDate = parseISO(alert.dateSent);
+      return (
+          alert.type !== 'feedback_response' &&
+          (isAfter(alertDate, registrationDate) || format(alertDate, 'yyyy-MM-dd') === format(registrationDate, 'yyyy-MM-dd'))
+      );
+  });
 
   const contextualizedAlerts = [
     ...studentAlerts,
-    ...generalAlerts.map(alert => ({
+    ...relevantGeneralAlerts.map(alert => ({
       ...alert,
       isRead: readGeneralAlertIdsSet.has(alert.id)
     }))
@@ -1361,6 +1363,9 @@ declare module '@/types/communication' {
   }
 }
     
+
+
+
 
 
 
