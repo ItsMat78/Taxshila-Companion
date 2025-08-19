@@ -1,4 +1,5 @@
 
+
 // src/app/api/admin/update-student-auth/route.ts
 import { NextResponse } from 'next/server';
 import { getAuth } from '@/lib/firebase-admin';
@@ -11,7 +12,7 @@ const isValidIndianPhoneNumber = (phone: string): boolean => {
 
 export async function POST(request: Request) {
   try {
-    const { uid, email, phone } = await request.json();
+    const { uid, email, phone, password } = await request.json();
 
     if (!uid) {
         return NextResponse.json({ success: false, error: "User UID is required." }, { status: 400 });
@@ -54,6 +55,14 @@ export async function POST(request: Request) {
              // Phone number is not in use, so it's safe to add it to the payload.
             updatePayload.phoneNumber = fullPhoneNumber;
         }
+    }
+
+    // Add password to payload if provided
+    if (password) {
+        if (password.length < 6) {
+            return NextResponse.json({ success: false, error: "Password must be at least 6 characters long." }, { status: 400 });
+        }
+        updatePayload.password = password;
     }
     
     // If there's nothing to update, return early.

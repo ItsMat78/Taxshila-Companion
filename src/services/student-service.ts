@@ -364,6 +364,7 @@ export async function updateStudent(customStudentId: string, studentUpdateData: 
   delete payload.firestoreId;
   delete payload.studentId;
   delete payload.id;
+  delete payload.password; // Ensure password is not written to Firestore
 
   const newShift = payload.shift;
   
@@ -1363,6 +1364,7 @@ declare module '@/types/communication' {
   }
 }
     
+
 
 
 
