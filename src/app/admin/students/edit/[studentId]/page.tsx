@@ -282,7 +282,6 @@ export default function EditStudentPage() {
         seatNumber: data.seatNumber,
         idCardFileName: data.idCardFileName,
         nextDueDate: data.nextDueDate ? format(data.nextDueDate, 'yyyy-MM-dd') : undefined,
-        ...(data.newPassword && { password: data.newPassword }),
       };
       successMessage = `${data.name}'s details have been updated.`;
     }
