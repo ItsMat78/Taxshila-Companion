@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { updateProfilePicture } from '@/services/student-service';
 import { Loader2, Camera, Video, VideoOff, View, Save } from "lucide-react";
-import Image from "next/image";
+import NextImage from "next/image";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 
@@ -184,7 +184,7 @@ export function ProfilePictureUploader({
           <Dialog>
             <DialogTrigger asChild>
                 <div className="cursor-pointer relative group">
-                    <Image
+                    <NextImage
                         src={base64Preview || "https://placehold.co/150x150.png"}
                         alt="Profile Picture Preview"
                         width={150}
@@ -198,7 +198,7 @@ export function ProfilePictureUploader({
                 </div>
             </DialogTrigger>
             <DialogContent className="max-w-md w-auto p-2">
-                <Image
+                <NextImage
                     src={base64Preview || "https://placehold.co/400x400.png"}
                     alt="Profile Picture Full View"
                     width={500}
