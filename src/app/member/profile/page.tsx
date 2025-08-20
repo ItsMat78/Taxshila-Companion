@@ -3,7 +3,7 @@
 "use client";
 
 import * as React from 'react';
-import Image from 'next/image';
+import NextImage from 'next/image';
 import Link from 'next/link'; 
 import { PageTitle } from '@/components/shared/page-title';
 import { Button } from "@/components/ui/button";
@@ -171,9 +171,14 @@ export default function MemberProfilePage() {
             context.drawImage(video, 0, 0, width, height);
             const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
             setPreviewUrl(dataUrl);
+            onPictureSelect();
         }
         setIsCameraDialogOpen(false); // This will trigger the useEffect cleanup
     }
+  };
+
+  const onPictureSelect = () => {
+    // This function can be used to signal changes if needed, but the primary state update is in handleFileChange
   };
 
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -261,7 +266,7 @@ export default function MemberProfilePage() {
                       </div>
                   </DialogTrigger>
                   <DialogContent className="max-w-md w-auto p-2">
-                      <Image
+                      <NextImage
                           src={previewUrl || DEFAULT_PROFILE_PLACEHOLDER}
                           alt="Profile Picture Full View"
                           width={500}
