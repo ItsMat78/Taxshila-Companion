@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import * as React from 'react';
@@ -457,10 +458,15 @@ export default function EditStudentPage() {
     if (studentData) {
       setStudentData({ ...studentData, profilePictureUrl: newUrl });
     }
+    setIsDirtyOverride(false);
     toast({
       title: 'Profile Picture Updated',
       description: "The student's new profile picture has been saved.",
     });
+  };
+
+  const onPictureSelect = () => {
+    setIsDirtyOverride(true);
   };
 
 
@@ -534,6 +540,7 @@ export default function EditStudentPage() {
                     studentFirestoreId={studentData.firestoreId!}
                     currentProfilePictureUrl={studentData.profilePictureUrl}
                     onUploadSuccess={onPictureUploadSuccess}
+                    onPictureSelect={onPictureSelect}
                   />
               </div>
 

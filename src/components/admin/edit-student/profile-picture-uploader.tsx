@@ -3,13 +3,13 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { updateProfilePicture } from '@/services/student-service';
-import { Loader2, Camera, Video, VideoOff, View } from "lucide-react";
+import { Loader2, Camera, Video, VideoOff, View, Save } from "lucide-react";
 import Image from "next/image";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
@@ -19,6 +19,7 @@ interface ProfilePictureUploaderProps {
   studentFirestoreId: string;
   currentProfilePictureUrl?: string;
   onUploadSuccess: (newUrl: string) => void;
+  onPictureSelect: () => void;
 }
 
 const MAX_IMAGE_DIMENSION = 500; // Max width/height in pixels
@@ -62,6 +63,7 @@ export function ProfilePictureUploader({
   studentFirestoreId,
   currentProfilePictureUrl,
   onUploadSuccess,
+  onPictureSelect,
 }: ProfilePictureUploaderProps) {
   const [base64Preview, setBase64Preview] = useState<string | null>(currentProfilePictureUrl || null);
   const [isUploading, setIsUploading] = useState(false);
@@ -129,6 +131,7 @@ export function ProfilePictureUploader({
             context.drawImage(video, 0, 0, width, height);
             const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
             setBase64Preview(dataUrl);
+            onPictureSelect();
         }
         setIsCameraDialogOpen(false);
     }
@@ -141,6 +144,7 @@ export function ProfilePictureUploader({
       try {
         const resizedBase64 = await resizeImage(file);
         setBase64Preview(resizedBase64);
+        onPictureSelect();
       } catch(error) {
          toast({ title: "Image Processing Error", description: "Could not process the selected image.", variant: "destructive" });
       }
@@ -157,7 +161,6 @@ export function ProfilePictureUploader({
     try {
       const newUrl = await updateProfilePicture(studentFirestoreId, 'member', base64Preview);
       onUploadSuccess(newUrl);
-      toast({ title: "Upload Successful", description: "Profile picture has been updated." });
     } catch (error: any) {
       toast({ title: "Upload Failed", description: error.message || "Could not save the picture.", variant: "destructive" });
     } finally {
@@ -237,12 +240,13 @@ export function ProfilePictureUploader({
                 </DialogFooter>
             </DialogContent>
         </Dialog>
-
         </div>
-        <Button onClick={handleUpload} disabled={isUploading || !hasUnsavedChanges}>
-          {isUploading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/> Uploading...</> : "Save Picture"}
-        </Button>
       </CardContent>
+      <CardFooter>
+          <Button onClick={handleUpload} disabled={isUploading || !hasUnsavedChanges} className="w-full">
+            {isUploading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/> Uploading...</> : <><Save className="mr-2 h-4 w-4"/>Save Picture</>}
+          </Button>
+      </CardFooter>
     </Card>
   );
 }
