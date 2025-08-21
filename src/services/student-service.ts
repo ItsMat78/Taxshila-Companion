@@ -833,7 +833,6 @@ export async function sendGeneralAlert(title: string, message: string, type: Ale
     const newDocSnap = await getDoc(docRef);
     const alertItem = alertItemFromDoc(newDocSnap);
     
-    console.log(`[StudentService] Calling API to send general alert: ${alertItem.id}`);
     try {
       await fetch('/api/send-alert-notification', {
         method: 'POST',
@@ -872,7 +871,6 @@ export async function sendAlertToStudent(
     const newDocSnap = await getDoc(docRef);
     const alertItem = alertItemFromDoc(newDocSnap);
     
-    console.log(`[StudentService] Calling API to send alert ${alertItem.id} to student ${customStudentId}`);
     try {
       await fetch('/api/send-alert-notification', {
         method: 'POST',
@@ -1373,21 +1371,4 @@ declare module '@/types/communication' {
     firestoreId?: string;
   }
 }
-    
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
     
