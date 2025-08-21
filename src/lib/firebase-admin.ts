@@ -35,7 +35,7 @@ function getAdminApp(): App {
         clientEmail,
         privateKey,
       }),
-      projectId: projectId,
+      projectId: projectId, // Explicitly setting projectId here
     });
     console.log('[Firebase Admin] SDK has been initialized successfully.');
     return adminApp;
