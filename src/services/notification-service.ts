@@ -27,10 +27,7 @@ async function sendNotificationToStudent(student: Student, alert: AlertItem) {
             icon: "/logo.png",
         },
         data: {
-          url: '/member/alerts',
-          title: alert.title,
-          body: alert.message,
-          icon: "/logo.png",
+          url: '/member/alerts'
         }
     };
 
@@ -66,10 +63,7 @@ async function sendNotificationToAllStudents(allStudents: Student[], alert: Aler
             icon: "/logo.png",
         },
         data: {
-          url: '/member/alerts',
-          title: alert.title,
-          body: alert.message,
-          icon: "/logo.png",
+          url: '/member/alerts'
         }
     };
 

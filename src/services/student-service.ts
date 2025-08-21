@@ -31,7 +31,6 @@ import type { Student, Shift, FeeStatus, PaymentRecord, ActivityStatus, Attendan
 import type { FeedbackItem, FeedbackType, FeedbackStatus, AlertItem } from '@/types/communication';
 import { format, parseISO, differenceInDays, isPast, addMonths, startOfDay, isValid, addDays, isAfter, getHours, getMinutes, isWithinInterval, startOfMonth, endOfMonth, parse, differenceInMilliseconds } from 'date-fns';
 import { ALL_SEAT_NUMBERS } from '@/config/seats';
-import { triggerAlertNotification, triggerFeedbackNotification } from './notification-service';
 
 import {
   getAuth,
@@ -792,11 +791,16 @@ export async function submitFeedback(
     dateSubmitted: newFeedbackData.dateSubmitted.toDate().toISOString(),
    };
   
-   try {
-     await triggerFeedbackNotification(feedbackItem);
-   } catch (e) {
-     console.error("Failed to trigger feedback notification, but feedback was saved.", e);
-   }
+  // Use fetch to call the API route
+  await fetch('/api/send-admin-feedback-notification', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      studentName: feedbackItem.studentName || "Anonymous",
+      messageSnippet: feedbackItem.message.substring(0, 100),
+      feedbackId: feedbackItem.id,
+    }),
+  });
   
   return feedbackItem;
 }
@@ -815,33 +819,31 @@ export async function updateFeedbackStatus(feedbackId: string, status: FeedbackS
 }
 
 export async function sendGeneralAlert(title: string, message: string, type: AlertItem['type']): Promise<AlertItem> {
-  const newAlertData = {
-    title,
-    message,
-    type,
-    dateSent: Timestamp.fromDate(new Date()),
-    isRead: false,
-    studentId: null,
-  };
-  const docRef = await addDoc(collection(db, ALERTS_COLLECTION), newAlertData);
+    const newAlertData = {
+        title,
+        message,
+        type,
+        dateSent: serverTimestamp(),
+        isRead: false,
+        studentId: null,
+    };
+    const docRef = await addDoc(collection(db, ALERTS_COLLECTION), newAlertData);
 
-  const alertItem = {
-    id: docRef.id,
-    studentId: undefined,
-    title: newAlertData.title,
-    message: newAlertData.message,
-    type: newAlertData.type,
-    dateSent: newAlertData.dateSent.toDate().toISOString(),
-    isRead: newAlertData.isRead,
-  };
+    // Refetch the document to get the resolved timestamp
+    const newDocSnap = await getDoc(docRef);
+    const alertItem = alertItemFromDoc(newDocSnap);
 
-  try {
-    await triggerAlertNotification(alertItem);
-  } catch (e) {
-    console.error("Failed to trigger general alert notification, but alert was saved.", e);
-  }
-
-  return alertItem;
+    try {
+      await fetch('/api/send-alert-notification', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(alertItem),
+      });
+    } catch (error) {
+      console.error(`Failed to trigger alert notification for general alert, but alert was saved. Error:`, error);
+    }
+    
+    return alertItem;
 }
 
 export async function sendAlertToStudent(
@@ -864,13 +866,19 @@ export async function sendAlertToStudent(
     if (originalFeedbackMessageSnippet) newAlertDataForFirestore.originalFeedbackMessageSnippet = originalFeedbackMessageSnippet;
 
     const docRef = await addDoc(collection(db, ALERTS_COLLECTION), newAlertDataForFirestore);
+    
+    // Refetch the document to resolve serverTimestamp before sending to API
     const newDocSnap = await getDoc(docRef);
     const alertItem = alertItemFromDoc(newDocSnap);
     
     try {
-      await triggerAlertNotification(alertItem);
-    } catch (e) {
-      console.error(`Failed to trigger alert notification for student ${customStudentId}, but alert was saved.`, e);
+      await fetch('/api/send-alert-notification', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(alertItem),
+      });
+    } catch (error) {
+      console.error(`Failed to trigger alert notification for student ${customStudentId}, but alert was saved. Error:`, error);
     }
     
     return alertItem;
@@ -1378,3 +1386,6 @@ declare module '@/types/communication' {
 
 
 
+
+
+    
