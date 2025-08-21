@@ -23,6 +23,12 @@ function getAdminApp(): App {
   // Crucially, replace \\n with \n for the private key to be parsed correctly.
   const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n');
 
+  console.log('[Firebase Admin] Attempting to initialize...');
+  console.log(`[Firebase Admin] Project ID from env: ${projectId ? 'Loaded' : 'MISSING'}`);
+  console.log(`[Firebase Admin] Client Email from env: ${clientEmail ? 'Loaded' : 'MISSING'}`);
+  console.log(`[Firebase Admin] Private Key from env: ${privateKey ? 'Loaded' : 'MISSING'}`);
+
+
   if (!projectId || !clientEmail || !privateKey) {
     console.error('[Firebase Admin] SDK initialization failed: Required environment variables FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, or FIREBASE_PRIVATE_KEY are missing.');
     throw new Error('Firebase Admin SDK is not configured properly. Missing environment variables.');
