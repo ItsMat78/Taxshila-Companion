@@ -1,10 +1,29 @@
 
+import { NextResponse, type NextRequest } from 'next/server';
+import { triggerAlertNotification } from '@/services/notification-service';
+import type { AlertItem } from '@/types/communication';
 
-// This file is no longer used and can be removed. 
-// The notification logic is now handled directly in notification-service.ts
-// which is a server-only module. This avoids the need for an extra API route.
-import { NextResponse } from 'next/server';
+export async function POST(request: NextRequest) {
+  try {
+    const alertData: AlertItem = await request.json();
 
-export async function POST(request: Request) {
-    return NextResponse.json({ success: true, message: "This endpoint is deprecated. Logic moved to notification-service." });
+    // Basic validation
+    if (!alertData || !alertData.title || !alertData.message) {
+      return NextResponse.json({ success: false, error: "Invalid alert data provided." }, { status: 400 });
+    }
+
+    // Offload the actual notification logic to the service
+    await triggerAlertNotification(alertData);
+
+    return NextResponse.json({ success: true, message: "Notification triggered successfully." });
+    
+  } catch (error: any) {
+    console.error("API Route (send-alert-notification) Error:", error);
+    
+    if (error.message.includes("Firebase Admin SDK is not configured properly")) {
+        return NextResponse.json({ success: false, error: "Server configuration error: Firebase Admin SDK credentials are missing or invalid." }, { status: 500 });
+    }
+
+    return NextResponse.json({ success: false, error: "An unexpected server error occurred." }, { status: 500 });
+  }
 }
