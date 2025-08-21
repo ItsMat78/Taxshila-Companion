@@ -4,6 +4,7 @@ import { initializeApp, getApps, cert, App } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 import { getAuth } from 'firebase-admin/auth';
 import { getMessaging } from 'firebase-admin/messaging';
+import 'dotenv/config';
 
 let adminApp: App | null = null;
 

@@ -1,4 +1,5 @@
 
+
 import { NextResponse, type NextRequest } from 'next/server';
 import { triggerAlertNotification } from '@/services/notification-service';
 import type { AlertItem } from '@/types/communication';
