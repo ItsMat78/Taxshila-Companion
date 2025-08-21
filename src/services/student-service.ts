@@ -819,34 +819,31 @@ export async function updateFeedbackStatus(feedbackId: string, status: FeedbackS
 }
 
 export async function sendGeneralAlert(title: string, message: string, type: AlertItem['type']): Promise<AlertItem> {
-  const newAlertData = {
-    title,
-    message,
-    type,
-    dateSent: Timestamp.fromDate(new Date()),
-    isRead: false,
-    studentId: null,
-  };
-  const docRef = await addDoc(collection(db, ALERTS_COLLECTION), newAlertData);
+    const newAlertData = {
+        title,
+        message,
+        type,
+        dateSent: serverTimestamp(),
+        isRead: false,
+        studentId: null,
+    };
+    const docRef = await addDoc(collection(db, ALERTS_COLLECTION), newAlertData);
 
-  const alertItem = {
-    id: docRef.id,
-    studentId: undefined,
-    title: newAlertData.title,
-    message: newAlertData.message,
-    type: newAlertData.type,
-    dateSent: newAlertData.dateSent.toDate().toISOString(),
-    isRead: newAlertData.isRead,
-  };
+    // Refetch the document to get the resolved timestamp
+    const newDocSnap = await getDoc(docRef);
+    const alertItem = alertItemFromDoc(newDocSnap);
 
-  // Use fetch to call the API route
-  await fetch('/api/send-alert-notification', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(alertItem),
-});
-
-  return alertItem;
+    try {
+      await fetch('/api/send-alert-notification', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(alertItem),
+      });
+    } catch (error) {
+      console.error(`Failed to trigger alert notification for general alert, but alert was saved. Error:`, error);
+    }
+    
+    return alertItem;
 }
 
 export async function sendAlertToStudent(
@@ -869,16 +866,20 @@ export async function sendAlertToStudent(
     if (originalFeedbackMessageSnippet) newAlertDataForFirestore.originalFeedbackMessageSnippet = originalFeedbackMessageSnippet;
 
     const docRef = await addDoc(collection(db, ALERTS_COLLECTION), newAlertDataForFirestore);
+    
+    // Refetch the document to resolve serverTimestamp before sending to API
     const newDocSnap = await getDoc(docRef);
     const alertItem = alertItemFromDoc(newDocSnap);
     
-    // Use fetch to call the API route
-    await fetch('/api/send-alert-notification', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(alertItem),
-  });
-  
+    try {
+      await fetch('/api/send-alert-notification', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(alertItem),
+      });
+    } catch (error) {
+      console.error(`Failed to trigger alert notification for student ${customStudentId}, but alert was saved. Error:`, error);
+    }
     
     return alertItem;
 }
@@ -1385,3 +1386,6 @@ declare module '@/types/communication' {
 
 
 
+
+
+    
