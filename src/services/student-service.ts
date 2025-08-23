@@ -827,8 +827,11 @@ export async function sendGeneralAlert(title: string, message: string, type: Ale
     const alertItem = alertItemFromDoc(newDocSnap);
     
     try {
-      console.log(`[StudentService] Calling API to send general alert ${alertItem.id}`);
-      await triggerAlertNotification(alertItem);
+      await fetch('/api/send-alert-notification', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(alertItem),
+      });
     } catch (error) {
       console.error(`Failed to trigger alert notification for general alert, but alert was saved. Error:`, error);
     }
@@ -863,7 +866,12 @@ export async function sendAlertToStudent(
     
     try {
       console.log(`[StudentService] Calling API to send alert ${alertItem.id} to student ${customStudentId}`);
-      await triggerAlertNotification(alertItem);
+      await fetch('/api/send-alert-notification', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(alertItem),
+      });
+      console.log(`[StudentService] API call for alert ${alertItem.id} finished.`);
     } catch (error) {
       console.error(`Failed to trigger alert notification for student ${customStudentId}, but alert was saved. Error:`, error);
     }
@@ -1358,4 +1366,3 @@ declare module '@/types/communication' {
     firestoreId?: string;
   }
 }
-

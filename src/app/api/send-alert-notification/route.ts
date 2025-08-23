@@ -25,10 +25,16 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     console.error("[API Route (send-alert-notification)] Error:", error);
     
+    if (error.code === 'messaging/registration-token-not-registered') {
+        return NextResponse.json({ success: false, error: "The provided FCM token is invalid or expired." }, { status: 404 });
+    }
+    if (error.code === 'messaging/resource-exhausted') {
+        return NextResponse.json({ success: false, error: "Firebase quota exceeded. Please check your plan limits." }, { status: 429 });
+    }
     if (error.message.includes("Firebase Admin SDK is not configured properly")) {
         return NextResponse.json({ success: false, error: "Server configuration error: Firebase Admin SDK credentials are missing or invalid." }, { status: 500 });
     }
 
-    return NextResponse.json({ success: false, error: "An unexpected server error occurred." }, { status: 500 });
+    return NextResponse.json({ success: false, error: error.message || "An unexpected server error occurred." }, { status: 500 });
   }
 }
