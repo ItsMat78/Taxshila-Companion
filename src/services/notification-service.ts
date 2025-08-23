@@ -17,8 +17,10 @@ const messaging = getMessaging();
  */
 async function sendNotificationToStudent(student: Student, alert: AlertItem) {
     if (!student.fcmTokens || student.fcmTokens.length === 0) {
+        console.log(`[Notification Service] No FCM tokens for student ${student.studentId}. Skipping notification.`);
         return;
     }
+    console.log(`[Notification Service] Preparing to send notification to student ${student.studentId} with tokens:`, student.fcmTokens);
 
     const payload = {
         notification: {
@@ -33,6 +35,7 @@ async function sendNotificationToStudent(student: Student, alert: AlertItem) {
 
     // sendToDevice expects an array of tokens
     const response = await messaging.sendToDevice(student.fcmTokens, payload);
+    console.log(`[Notification Service] Response from FCM for student ${student.studentId}:`, JSON.stringify(response, null, 2));
     await cleanupStudentTokens(response, student);
 }
 
@@ -46,11 +49,13 @@ async function sendNotificationToAllStudents(allStudents: Student[], alert: Aler
     const allTokens = activeStudents.flatMap(s => s.fcmTokens!);
     
     if (allTokens.length === 0) {
+        console.log(`[Notification Service] No FCM tokens found for any active student. Skipping general alert.`);
         return;
     }
     
     const uniqueTokens = [...new Set(allTokens)];
-
+    console.log(`[Notification Service] Preparing to send general alert to ${uniqueTokens.length} unique tokens.`);
+    
     const tokenChunks = [];
     for (let i = 0; i < uniqueTokens.length; i += 500) {
         tokenChunks.push(uniqueTokens.slice(i, i + 500));
@@ -69,7 +74,9 @@ async function sendNotificationToAllStudents(allStudents: Student[], alert: Aler
 
     for (const chunk of tokenChunks) {
         const message = { ...payload, tokens: chunk };
-        await messaging.sendEachForMulticast(message);
+        const response = await messaging.sendEachForMulticast(message);
+        console.log(`[Notification Service] Response from FCM for general alert multicast: Success ${response.successCount}, Failure ${response.failureCount}`);
+        // Comprehensive token cleanup for multicast is more complex and often handled separately
     }
 }
 
@@ -82,10 +89,12 @@ async function sendNotificationToAdmins(allAdmins: Admin[], feedback: FeedbackIt
     const adminTokens = allAdmins.flatMap(a => a.fcmTokens || []);
 
     if (adminTokens.length === 0) {
-        return;
+      console.log("[Notification Service] No admin FCM tokens found. Skipping feedback notification.");
+      return;
     }
     
     const uniqueTokens = [...new Set(adminTokens)];
+    console.log(`[Notification Service] Preparing to send feedback notification to ${uniqueTokens.length} admin tokens.`);
 
     const messageBody = feedback.studentName 
         ? `From ${feedback.studentName}: "${feedback.message.substring(0, 100)}..."` 
@@ -109,17 +118,22 @@ async function sendNotificationToAdmins(allAdmins: Admin[], feedback: FeedbackIt
 
     const message = { ...payload, tokens: uniqueTokens };
     const response = await messaging.sendEachForMulticast(message);
+    console.log(`[Notification Service] Response from FCM for admin feedback multicast: Success ${response.successCount}, Failure ${response.failureCount}`);
     await cleanupAdminTokens(response, allAdmins, uniqueTokens);
 }
 
 
 export async function triggerAlertNotification(alert: AlertItem) {
+  console.log(`[Notification Service] Triggered for Alert ID: ${alert.id}, Student ID: ${alert.studentId || 'General'}`);
   const db = getDb();
+  
   if (alert.studentId) {
     const studentQuery = await db.collection('students').where('studentId', '==', alert.studentId).limit(1).get();
     if (!studentQuery.empty) {
       const student = { ...studentQuery.docs[0].data(), firestoreId: studentQuery.docs[0].id } as Student;
       await sendNotificationToStudent(student, alert);
+    } else {
+      console.warn(`[Notification Service] Student with ID ${alert.studentId} not found in database.`);
     }
   } else {
     const studentsSnapshot = await db.collection('students').get();
@@ -129,8 +143,13 @@ export async function triggerAlertNotification(alert: AlertItem) {
 }
 
 export async function triggerFeedbackNotification(feedback: FeedbackItem) {
+    console.log(`[Notification Service] Triggered for Feedback ID: ${feedback.id}`);
     const db = getDb();
     const adminsSnapshot = await db.collection('admins').get();
+    if(adminsSnapshot.empty) {
+        console.warn("[Notification Service] No admins found in the database to send feedback notification to.");
+        return;
+    }
     const allAdmins = adminsSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }) as Admin & {id: string});
     await sendNotificationToAdmins(allAdmins, feedback);
 }
@@ -145,6 +164,7 @@ async function cleanupStudentTokens(response: any, student: Student) {
         const error = result.error;
         if (error) {
             const tokenInError = student.fcmTokens![index];
+            console.log(`[Notification Service] FCM error for token ${tokenInError}: ${error.code}`);
             if (error.code === 'messaging/invalid-registration-token' ||
                 error.code === 'messaging/registration-token-not-registered') {
                 tokensToRemove.push(tokenInError);
@@ -153,6 +173,7 @@ async function cleanupStudentTokens(response: any, student: Student) {
     });
 
     if (tokensToRemove.length > 0 && student.firestoreId) {
+        console.log(`[Notification Service] Removing ${tokensToRemove.length} invalid tokens for student ${student.studentId}`);
         const studentRef = db.collection('students').doc(student.firestoreId);
         await studentRef.update({
             fcmTokens: FieldValue.arrayRemove(...tokensToRemove)
@@ -167,6 +188,7 @@ async function cleanupAdminTokens(response: any, allAdmins: Admin[], sentTokens:
         const error = result.error;
         if (error) {
             const invalidToken = sentTokens[index];
+             console.log(`[Notification Service] FCM error for admin token ${invalidToken}: ${error.code}`);
             if (error.code === 'messaging/invalid-registration-token' ||
                 error.code === 'messaging/registration-token-not-registered') {
                 tokensToRemove.push(invalidToken);
@@ -175,6 +197,7 @@ async function cleanupAdminTokens(response: any, allAdmins: Admin[], sentTokens:
     });
 
     if (tokensToRemove.length > 0) {
+        console.log(`[Notification Service] Removing ${tokensToRemove.length} invalid admin tokens.`);
         const batch = db.batch();
         const adminsToUpdate = allAdmins.filter(admin => admin.fcmTokens?.some(token => tokensToRemove.includes(token)));
 

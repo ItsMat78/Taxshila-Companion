@@ -31,6 +31,7 @@ import type { Student, Shift, FeeStatus, PaymentRecord, ActivityStatus, Attendan
 import type { FeedbackItem, FeedbackType, FeedbackStatus, AlertItem } from '@/types/communication';
 import { format, parseISO, differenceInDays, isPast, addMonths, startOfDay, isValid, addDays, isAfter, getHours, getMinutes, isWithinInterval, startOfMonth, endOfMonth, parse, differenceInMilliseconds } from 'date-fns';
 import { ALL_SEAT_NUMBERS } from '@/config/seats';
+import { triggerAlertNotification, triggerFeedbackNotification } from './notification-service';
 
 import {
   getAuth,
@@ -792,15 +793,7 @@ export async function submitFeedback(
    };
   
   // Use fetch to call the API route
-  await fetch('/api/send-admin-feedback-notification', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      studentName: feedbackItem.studentName || "Anonymous",
-      messageSnippet: feedbackItem.message.substring(0, 100),
-      feedbackId: feedbackItem.id,
-    }),
-  });
+  await triggerFeedbackNotification(feedbackItem);
   
   return feedbackItem;
 }
@@ -832,15 +825,24 @@ export async function sendGeneralAlert(title: string, message: string, type: Ale
     // Refetch the document to get the resolved timestamp
     const newDocSnap = await getDoc(docRef);
     const alertItem = alertItemFromDoc(newDocSnap);
-
+    
     try {
-      await fetch('/api/send-alert-notification', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(alertItem),
+      console.log(`[StudentService] Calling API to send general alert ${alertItem.id}`);
+      const response = await fetch('/api/send-alert-notification', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(alertItem),
       });
+      if (!response.ok) {
+        // Log the error response from the server to get more insight
+        const errorResult = await response.json();
+        throw new Error(errorResult.error || `API responded with status ${response.status}`);
+      }
+       console.log(`[StudentService] API call for general alert ${alertItem.id} finished.`);
     } catch (error) {
-      console.error(`Failed to trigger alert notification for general alert, but alert was saved. Error:`, error);
+      console.error(`[StudentService] Failed to trigger notification for general alert, but alert was saved. Error:`, error);
+      // Re-throw or handle as needed, e.g., show a specific toast to the admin.
+      throw new Error("Alert was saved to the database, but the push notification could not be sent. Please check the server logs.");
     }
     
     return alertItem;
@@ -872,13 +874,22 @@ export async function sendAlertToStudent(
     const alertItem = alertItemFromDoc(newDocSnap);
     
     try {
-      await fetch('/api/send-alert-notification', {
+      console.log(`[StudentService] Calling API to send alert ${alertItem.id} to student ${customStudentId}`);
+      const response = await fetch('/api/send-alert-notification', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(alertItem),
       });
+      if (!response.ok) {
+        // Log the error response from the server to get more insight
+        const errorResult = await response.json();
+        throw new Error(errorResult.error || `API responded with status ${response.status}`);
+      }
+      console.log(`[StudentService] API call for alert ${alertItem.id} finished.`);
     } catch (error) {
-      console.error(`Failed to trigger alert notification for student ${customStudentId}, but alert was saved. Error:`, error);
+      console.error(`[StudentService] Failed to trigger notification for student ${customStudentId}, but alert was saved. Error:`, error);
+      // Re-throw or handle as needed, e.g., show a specific toast to the admin.
+      throw new Error("Alert was saved to the database, but the push notification could not be sent. Please check the server logs.");
     }
     
     return alertItem;
@@ -1371,21 +1382,3 @@ declare module '@/types/communication' {
     firestoreId?: string;
   }
 }
-    
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    

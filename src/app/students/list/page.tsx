@@ -3,6 +3,7 @@
 
 import * as React from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { PageTitle } from '@/components/shared/page-title';
 import { Button } from "@/components/ui/button";
 import {
@@ -23,7 +24,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Eye, Edit, Loader2, Users, UserX, UserCheck, Search as SearchIcon, Phone, Mail, MapPin, CalendarDays, CalendarX2, CalendarCheck, CalendarClock } from 'lucide-react';
+import { Eye, Edit, Loader2, Users, UserX, UserCheck, Search as SearchIcon, Phone, Mail, MapPin, CalendarDays, CalendarX2, CalendarCheck, CalendarClock, View } from 'lucide-react';
 import { getAllStudents, getAllAttendanceRecords } from '@/services/student-service';
 import type { Student as StudentData } from '@/types/student';
 import { cn } from '@/lib/utils';
@@ -36,6 +37,7 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 
 
 type StudentWithAttendance = StudentData & {
@@ -68,10 +70,28 @@ const StudentCardItem = ({ student, isLeftTable, getStatusBadge }: { student: St
           <AccordionTrigger className="p-4 hover:no-underline">
             <div className="flex items-start justify-between gap-2 w-full">
               <div className="flex items-center gap-3 min-w-0">
-                  <Avatar className="h-10 w-10 border flex-shrink-0">
-                      <AvatarImage src={student.profilePictureUrl || undefined} alt={student.name} data-ai-hint="profile person"/>
-                      <AvatarFallback>{getInitials(student.name)}</AvatarFallback>
-                  </Avatar>
+                  <Dialog>
+                    <DialogTrigger asChild onClick={(e) => e.stopPropagation()}>
+                        <div className="cursor-pointer relative group flex-shrink-0">
+                          <Avatar className="h-10 w-10 border">
+                              <AvatarImage src={student.profilePictureUrl || undefined} alt={student.name} data-ai-hint="profile person"/>
+                              <AvatarFallback>{getInitials(student.name)}</AvatarFallback>
+                          </Avatar>
+                           <div className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                              <View className="text-white h-5 w-5"/>
+                          </div>
+                        </div>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-md w-auto p-2">
+                        <Image
+                            src={student.profilePictureUrl || "https://placehold.co/400x400.png"}
+                            alt={`${student.name}'s profile picture`}
+                            width={400}
+                            height={400}
+                            className="rounded-md object-contain max-h-[70vh] w-full h-auto"
+                        />
+                    </DialogContent>
+                  </Dialog>
                   <div className="flex-grow min-w-0 text-left">
                     <h4 className="text-md font-semibold break-words">{student.name}</h4>
                     <p className="text-xs text-muted-foreground break-words">ID: {student.studentId}</p>
@@ -251,16 +271,36 @@ export default function StudentListPage() {
                     {studentsToRender.map((student) => (
                       <TableRow key={student.studentId}>
                         <TableCell className="font-medium">
-                          <Link href={`/students/profiles/${student.studentId}`} className="hover:underline text-primary flex items-center gap-3">
-                             <Avatar className="h-9 w-9 border">
-                                <AvatarImage src={student.profilePictureUrl || undefined} alt={student.name} data-ai-hint="profile person"/>
-                                <AvatarFallback>{getInitials(student.name)}</AvatarFallback>
-                            </Avatar>
-                            <div>
-                              {student.name}
-                              <span className="block text-xs text-muted-foreground">{student.studentId}</span>
-                            </div>
-                          </Link>
+                          <div className="flex items-center gap-3">
+                              <Dialog>
+                                <DialogTrigger asChild>
+                                  <div className="cursor-pointer relative group flex-shrink-0">
+                                    <Avatar className="h-9 w-9 border">
+                                        <AvatarImage src={student.profilePictureUrl || undefined} alt={student.name} data-ai-hint="profile person"/>
+                                        <AvatarFallback>{getInitials(student.name)}</AvatarFallback>
+                                    </Avatar>
+                                     <div className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <View className="text-white h-4 w-4"/>
+                                    </div>
+                                  </div>
+                                </DialogTrigger>
+                                <DialogContent className="max-w-md w-auto p-2">
+                                    <Image
+                                        src={student.profilePictureUrl || "https://placehold.co/400x400.png"}
+                                        alt={`${student.name}'s profile picture`}
+                                        width={400}
+                                        height={400}
+                                        className="rounded-md object-contain max-h-[70vh] w-full h-auto"
+                                    />
+                                </DialogContent>
+                              </Dialog>
+                            <Link href={`/students/profiles/${student.studentId}`} className="hover:underline text-primary">
+                              <div>
+                                {student.name}
+                                <span className="block text-xs text-muted-foreground">{student.studentId}</span>
+                              </div>
+                            </Link>
+                          </div>
                         </TableCell>
                         <TableCell>{student.phone}</TableCell>
                         <TableCell className="capitalize">{student.shift}</TableCell>
