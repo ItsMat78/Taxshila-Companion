@@ -31,6 +31,7 @@ import type { Student, Shift, FeeStatus, PaymentRecord, ActivityStatus, Attendan
 import type { FeedbackItem, FeedbackType, FeedbackStatus, AlertItem } from '@/types/communication';
 import { format, parseISO, differenceInDays, isPast, addMonths, startOfDay, isValid, addDays, isAfter, getHours, getMinutes, isWithinInterval, startOfMonth, endOfMonth, parse, differenceInMilliseconds } from 'date-fns';
 import { ALL_SEAT_NUMBERS } from '@/config/seats';
+import { triggerAlertNotification, triggerFeedbackNotification } from './notification-service';
 
 import {
   getAuth,
@@ -792,15 +793,7 @@ export async function submitFeedback(
    };
   
   // Use fetch to call the API route
-  await fetch('/api/send-admin-feedback-notification', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      studentName: feedbackItem.studentName || "Anonymous",
-      messageSnippet: feedbackItem.message.substring(0, 100),
-      feedbackId: feedbackItem.id,
-    }),
-  });
+  await triggerFeedbackNotification(feedbackItem);
   
   return feedbackItem;
 }
@@ -834,11 +827,8 @@ export async function sendGeneralAlert(title: string, message: string, type: Ale
     const alertItem = alertItemFromDoc(newDocSnap);
     
     try {
-      await fetch('/api/send-alert-notification', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(alertItem),
-      });
+      console.log(`[StudentService] Calling API to send general alert ${alertItem.id}`);
+      await triggerAlertNotification(alertItem);
     } catch (error) {
       console.error(`Failed to trigger alert notification for general alert, but alert was saved. Error:`, error);
     }
@@ -872,11 +862,8 @@ export async function sendAlertToStudent(
     const alertItem = alertItemFromDoc(newDocSnap);
     
     try {
-      await fetch('/api/send-alert-notification', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(alertItem),
-      });
+      console.log(`[StudentService] Calling API to send alert ${alertItem.id} to student ${customStudentId}`);
+      await triggerAlertNotification(alertItem);
     } catch (error) {
       console.error(`Failed to trigger alert notification for student ${customStudentId}, but alert was saved. Error:`, error);
     }
@@ -1371,3 +1358,4 @@ declare module '@/types/communication' {
     firestoreId?: string;
   }
 }
+
