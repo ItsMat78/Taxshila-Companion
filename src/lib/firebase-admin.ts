@@ -1,5 +1,4 @@
 
-
 // src/lib/firebase-admin.ts
 import { initializeApp, getApps, cert, App } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
@@ -23,18 +22,19 @@ function getAdminApp(): App {
     return adminApp;
   }
 
-  // Explicitly read server-side environment variables using the NEXT_PUBLIC_ prefix
-  const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
-  const clientEmail = process.env.NEXT_PUBLIC_FIREBASE_CLIENT_EMAIL;
+  // Directly use the environment variable names as they likely exist in the .env file.
+  // The Vercel environment should make these available to serverless functions.
+  const projectId = process.env.FIREBASE_PROJECT_ID;
+  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
   // Crucially, replace \\n with \n for the private key to be parsed correctly.
-  const privateKey = process.env.NEXT_PUBLIC_FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n');
+  const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n');
 
   console.log(`[Firebase Admin] Project ID from env: ${projectId ? 'Loaded' : 'MISSING'}`);
   console.log(`[Firebase Admin] Client Email from env: ${clientEmail ? 'Loaded' : 'MISSING'}`);
   console.log(`[Firebase Admin] Private Key from env: ${privateKey ? 'Loaded' : 'MISSING'}`);
 
   if (!projectId || !clientEmail || !privateKey) {
-    console.error('[Firebase Admin] SDK initialization failed: Required environment variables NEXT_PUBLIC_FIREBASE_PROJECT_ID, NEXT_PUBLIC_FIREBASE_CLIENT_EMAIL, or NEXT_PUBLIC_FIREBASE_PRIVATE_KEY are missing.');
+    console.error('[Firebase Admin] SDK initialization failed: Required environment variables FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, or FIREBASE_PRIVATE_KEY are missing.');
     throw new Error('Firebase Admin SDK is not configured properly. Missing environment variables.');
   }
 
@@ -46,7 +46,7 @@ function getAdminApp(): App {
         clientEmail,
         privateKey,
       }),
-      projectId: projectId, // Explicitly setting projectId
+      projectId: projectId,
     });
     console.log('[Firebase Admin] App initialized successfully.');
     return adminApp;
@@ -78,4 +78,3 @@ export {
   getInitializedAuth as getAuth, 
   getInitializedMessaging as getMessaging 
 };
-
