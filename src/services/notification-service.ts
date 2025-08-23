@@ -126,24 +126,19 @@ async function sendNotificationToAdmins(allAdmins: Admin[], feedback: FeedbackIt
 export async function triggerAlertNotification(alert: AlertItem) {
   console.log(`[Notification Service] Triggered for Alert ID: ${alert.id}, Student ID: ${alert.studentId || 'General'}`);
   const db = getDb();
-  try {
-    if (alert.studentId) {
-      const studentQuery = await db.collection('students').where('studentId', '==', alert.studentId).limit(1).get();
-      if (!studentQuery.empty) {
-        const student = { ...studentQuery.docs[0].data(), firestoreId: studentQuery.docs[0].id } as Student;
-        await sendNotificationToStudent(student, alert);
-      } else {
-        console.warn(`[Notification Service] Student with ID ${alert.studentId} not found in database.`);
-      }
+  
+  if (alert.studentId) {
+    const studentQuery = await db.collection('students').where('studentId', '==', alert.studentId).limit(1).get();
+    if (!studentQuery.empty) {
+      const student = { ...studentQuery.docs[0].data(), firestoreId: studentQuery.docs[0].id } as Student;
+      await sendNotificationToStudent(student, alert);
     } else {
-      const studentsSnapshot = await db.collection('students').get();
-      const allStudents = studentsSnapshot.docs.map(doc => ({ ...doc.data(), firestoreId: doc.id }) as Student);
-      await sendNotificationToAllStudents(allStudents, alert);
+      console.warn(`[Notification Service] Student with ID ${alert.studentId} not found in database.`);
     }
-  } catch (error: any) {
-    console.error(`[Notification Service] Error sending notification for Alert ID ${alert.id}. Code: ${error.code}. Message: ${error.message}`);
-    // Re-throw the error with a more descriptive message to be caught by the calling service
-    throw new Error(error.message || 'An unknown error occurred in the notification service.');
+  } else {
+    const studentsSnapshot = await db.collection('students').get();
+    const allStudents = studentsSnapshot.docs.map(doc => ({ ...doc.data(), firestoreId: doc.id }) as Student);
+    await sendNotificationToAllStudents(allStudents, alert);
   }
 }
 

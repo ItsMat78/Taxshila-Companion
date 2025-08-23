@@ -827,13 +827,22 @@ export async function sendGeneralAlert(title: string, message: string, type: Ale
     const alertItem = alertItemFromDoc(newDocSnap);
     
     try {
-      await fetch('/api/send-alert-notification', {
+      console.log(`[StudentService] Calling API to send general alert ${alertItem.id}`);
+      const response = await fetch('/api/send-alert-notification', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(alertItem),
       });
+      if (!response.ok) {
+        // Log the error response from the server to get more insight
+        const errorResult = await response.json();
+        throw new Error(errorResult.error || `API responded with status ${response.status}`);
+      }
+       console.log(`[StudentService] API call for general alert ${alertItem.id} finished.`);
     } catch (error) {
-      console.error(`Failed to trigger alert notification for general alert, but alert was saved. Error:`, error);
+      console.error(`[StudentService] Failed to trigger notification for general alert, but alert was saved. Error:`, error);
+      // Re-throw or handle as needed, e.g., show a specific toast to the admin.
+      throw new Error("Alert was saved to the database, but the push notification could not be sent. Please check the server logs.");
     }
     
     return alertItem;
@@ -866,14 +875,21 @@ export async function sendAlertToStudent(
     
     try {
       console.log(`[StudentService] Calling API to send alert ${alertItem.id} to student ${customStudentId}`);
-      await fetch('/api/send-alert-notification', {
+      const response = await fetch('/api/send-alert-notification', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(alertItem),
       });
+      if (!response.ok) {
+        // Log the error response from the server to get more insight
+        const errorResult = await response.json();
+        throw new Error(errorResult.error || `API responded with status ${response.status}`);
+      }
       console.log(`[StudentService] API call for alert ${alertItem.id} finished.`);
     } catch (error) {
-      console.error(`Failed to trigger alert notification for student ${customStudentId}, but alert was saved. Error:`, error);
+      console.error(`[StudentService] Failed to trigger notification for student ${customStudentId}, but alert was saved. Error:`, error);
+      // Re-throw or handle as needed, e.g., show a specific toast to the admin.
+      throw new Error("Alert was saved to the database, but the push notification could not be sent. Please check the server logs.");
     }
     
     return alertItem;
