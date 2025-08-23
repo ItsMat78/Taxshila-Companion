@@ -5,21 +5,17 @@ import { triggerAlertNotification } from '@/services/notification-service';
 import type { AlertItem } from '@/types/communication';
 
 export async function POST(request: NextRequest) {
-  console.log('[API Route (send-alert-notification)] Route hit.');
   try {
     const alertData: AlertItem = await request.json();
-    console.log('[API Route (send-alert-notification)] Received alert data:', JSON.stringify(alertData, null, 2));
 
     // Basic validation
     if (!alertData || !alertData.title || !alertData.message) {
-      console.error('[API Route (send-alert-notification)] Invalid alert data received.');
       return NextResponse.json({ success: false, error: "Invalid alert data provided." }, { status: 400 });
     }
 
     // Offload the actual notification logic to the service
     await triggerAlertNotification(alertData);
 
-    console.log('[API Route (send-alert-notification)] Notification triggered successfully.');
     return NextResponse.json({ success: true, message: "Notification triggered successfully." });
     
   } catch (error: any) {
