@@ -10,45 +10,17 @@ import { Button } from '@/components/ui/button';
 import { PanelLeft, Inbox, Bell, Loader2 } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useNotificationCounts } from '@/hooks/use-notification-counts';
 import { NotificationBadge } from '@/components/shared/notification-badge';
 import { cn } from '@/lib/utils';
 import { TopProgressBar } from '@/components/shared/top-progress-bar';
-import { setupPushNotifications } from '@/lib/notification-setup';
 import { useToast } from '@/hooks/use-toast';
 import { useNotificationContext } from '@/contexts/notification-context';
 import { useTheme } from "next-themes";
 
 function NotificationIconArea() {
   const { user } = useAuth();
-  const { count, isLoadingCount } = useNotificationCounts();
-
-  if (!user) return null;
-  if (isLoadingCount) {
-    return <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />;
-  }
-
-  let href = "/";
-  let IconComponent = Inbox;
-
-  if (user.role === 'admin') {
-    href = "/admin/feedback";
-    IconComponent = Inbox;
-  } else if (user.role === 'member') {
-    href = "/member/alerts";
-    IconComponent = Bell;
-  }
-
-  if (count > 0) {
-    return (
-      <Link href={href} passHref legacyBehavior>
-        <Button variant="ghost" size="icon" aria-label={user.role === 'admin' ? 'View Feedback' : 'View Alerts'}>
-          <NotificationBadge icon={IconComponent} count={count} iconClassName="h-5 w-5" />
-        </Button>
-      </Link>
-    );
-  }
-
+  // Since useNotificationCounts is removed, we remove this component's logic
+  // This can be replaced later if a new notification system is built.
   return null;
 }
 
@@ -86,44 +58,6 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       setTheme(user.theme);
     }
   }, [user, theme, setTheme]);
-
-  React.useEffect(() => {
-    if (user && user.firestoreId && user.role) {
-      // Delay setup slightly to ensure all browser services are ready
-      setTimeout(() => {
-        console.log(`AppLayout: Triggering push notification setup for user ${user.firestoreId}`);
-         setupPushNotifications(user.firestoreId, user.role);
-      }, 2000);
-    }
-  }, [user]);
-
-  React.useEffect(() => {
-    const handleNewNotification = () => {
-        // This event is dispatched from `onMessage` in `notification-setup.ts`
-        // It indicates a new foreground notification has arrived.
-        // We can refresh the counts to update the UI badges.
-        refreshNotifications();
-    };
-    
-    window.addEventListener('new-foreground-notification', handleNewNotification);
-    
-    // This listener handles the legacy feedback submission event just in case
-    const handleNewFeedback = (event: Event) => {
-      if (user && user.role === 'admin') {
-        toast({
-          title: "New Feedback Received",
-          description: "A member has submitted new feedback. Please check the feedback section.",
-        });
-        refreshNotifications();
-      }
-    };
-    window.addEventListener('new-feedback-submitted', handleNewFeedback);
-    
-    return () => {
-      window.removeEventListener('new-foreground-notification', handleNewNotification);
-      window.removeEventListener('new-feedback-submitted', handleNewFeedback);
-    };
-  }, [user, toast, refreshNotifications]);
 
   const isPublicPath = pathname.startsWith('/login');
 
@@ -167,7 +101,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                Taxshila Companion
             </Link>
             <div className="ml-auto flex items-center gap-2">
-              <NotificationIconArea />
+              {/* Notification icon area removed */}
             </div>
           </header>
           <main className="flex-1 p-4 sm:p-6 lg:p-8 min-w-0">

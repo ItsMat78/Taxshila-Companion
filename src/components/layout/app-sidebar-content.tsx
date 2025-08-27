@@ -24,7 +24,6 @@ import {
 } from '@/components/ui/sidebar';
 import { useAuth } from '@/contexts/auth-context';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { useNotificationCounts } from '@/hooks/use-notification-counts'; // Import the hook
 import { useFinancialCounts } from '@/hooks/use-financial-counts'; // Import the new hook
 import { ThemeSwitcher } from '@/components/shared/theme-switcher';
 
@@ -38,7 +37,6 @@ function NavListItem({ item }: { item: NavItem }) {
   );
 
   const { user } = useAuth();
-  const { count: notificationCount, isLoadingCount } = useNotificationCounts();
   const { count: financialCount, isLoadingCount: isLoadingFinancialCount } = useFinancialCounts(); // Use the new hook
 
   const closeMobileSidebar = () => {
@@ -55,7 +53,6 @@ function NavListItem({ item }: { item: NavItem }) {
     !subItem.roles || (user && subItem.roles.includes(user.role))
   );
 
-  const displayNotificationCount = notificationCount > 9 ? '9+' : String(notificationCount);
   const displayFinancialCount = financialCount > 9 ? '9+' : String(financialCount);
 
   if (item.external) {
@@ -106,15 +103,6 @@ function NavListItem({ item }: { item: NavItem }) {
         {isSubMenuOpen && (
           <SidebarMenuSub>
             {visibleSubItems.map((subItem) => {
-              const shouldShowNotificationBadge =
-                !isLoadingCount &&
-                notificationCount > 0 &&
-                user &&
-                (
-                  (user.role === 'admin' && subItem.href === '/admin/feedback') ||
-                  (user.role === 'member' && subItem.href === '/member/alerts')
-                );
-
               const shouldShowFinancialBadgeOnSubItem =
                 subItem.href === '/admin/fees/due' &&
                 !isLoadingFinancialCount &&
@@ -132,11 +120,6 @@ function NavListItem({ item }: { item: NavItem }) {
                         {subItem.icon && <subItem.icon className="h-4 w-4" />}
                         <span className="truncate">{subItem.title}</span>
                       </span>
-                      {shouldShowNotificationBadge && (
-                        <span className="ml-auto inline-flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold text-destructive-foreground">
-                          {displayNotificationCount}
-                        </span>
-                      )}
                       {shouldShowFinancialBadgeOnSubItem && (
                          <span className="ml-auto inline-flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold text-destructive-foreground">
                           {displayFinancialCount}
@@ -157,15 +140,6 @@ function NavListItem({ item }: { item: NavItem }) {
      if (item.roles && user && !item.roles.includes(user.role)) {
         return null;
      }
-     const shouldShowTopLevelBadge =
-        !isLoadingCount &&
-        notificationCount > 0 &&
-        user &&
-        (
-          (user.role === 'admin' && item.href === '/admin/feedback') ||
-          (user.role === 'member' && item.href === '/member/alerts')
-        );
-
     return (
       <SidebarMenuItem>
         <Link href={item.href} passHref legacyBehavior>
@@ -178,11 +152,6 @@ function NavListItem({ item }: { item: NavItem }) {
               {item.icon && <item.icon className="h-4 w-4" />}
               <span className="truncate">{item.title}</span>
             </span>
-            {shouldShowTopLevelBadge && (
-              <span className="ml-auto inline-flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold text-destructive-foreground">
-                {displayNotificationCount}
-              </span>
-            )}
           </SidebarMenuButton>
         </Link>
       </SidebarMenuItem>
