@@ -78,6 +78,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     let userRole: UserRole = 'member';
     let emailForAuth: string | undefined = undefined;
 
+    // Clear stale user data from local storage before attempting a new login
+    localStorage.removeItem('taxshilaUser');
+
     if (identifier.includes('@')) {
         const admin = await getAdminByEmail(identifier);
         if (admin) {
@@ -102,6 +105,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     try {
         await signInWithEmailAndPassword(auth, emailForAuth, passwordAttempt);
+        
+        // After successful Firebase Auth sign-in, re-fetch the user data from Firestore
+        // This ensures we have the latest data, including any updated FCM tokens.
+        if (userRole === 'admin') {
+          userRecord = await getAdminByEmail((userRecord as Admin).email);
+        } else {
+          userRecord = await getStudentByIdentifier((userRecord as Student).studentId || (userRecord as Student).phone);
+        }
+
+        if (!userRecord) {
+          throw new Error("Could not re-fetch user data after login.");
+        }
         
         let userData: User;
         if (userRole === 'admin') {
@@ -144,11 +159,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return userData;
 
     } catch (error: any) {
-        console.error("Firebase login error:", error.code);
+        console.error("Firebase login error:", error.code, error.message);
         if (['auth/wrong-password', 'auth/user-not-found', 'auth/invalid-email', 'auth/invalid-credential'].includes(error.code)) {
             toast({ title: "Login Failed", description: "Invalid credentials.", variant: "destructive" });
         } else {
-            toast({ title: "Login Error", description: "An unexpected error occurred.", variant: "destructive" });
+            toast({ title: "Login Error", description: error.message || "An unexpected error occurred.", variant: "destructive" });
         }
     } finally {
         setIsLoading(false);
