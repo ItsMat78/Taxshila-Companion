@@ -17,6 +17,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useNotificationContext } from '@/contexts/notification-context';
 import { useTheme } from "next-themes";
 import { useNotificationCounts } from '@/hooks/use-notification-counts';
+import { setupPushNotifications } from '@/lib/notification-setup';
 
 function NotificationIconArea() {
   const { user } = useAuth();
@@ -81,6 +82,19 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       setTheme(user.theme);
     }
   }, [user, theme, setTheme]);
+  
+  // --- New Robust Notification Setup ---
+  React.useEffect(() => {
+    if (user && user.firestoreId && user.role) {
+      // Check if permission has already been granted but not explicitly denied
+      if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+          console.log("[AppLayout] Notification permission already granted. Setting up push notifications silently.");
+          setupPushNotifications(user.firestoreId, user.role);
+      }
+    }
+  }, [user]);
+  // --- End New Logic ---
+
 
   const isPublicPath = pathname.startsWith('/login');
 
