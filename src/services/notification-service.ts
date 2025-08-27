@@ -33,7 +33,10 @@ async function sendNotificationToStudent(studentId: string, payload: Notificatio
 
   const message = {
     tokens: tokens,
-    notification: payload,
+    notification: {
+      title: payload.title,
+      body: payload.body,
+    },
     webpush: {
       notification: {
         icon: payload.icon || '/logo.png',
@@ -94,7 +97,10 @@ async function sendNotificationToAllAdmins(payload: NotificationPayload): Promis
 
   const message = {
     tokens: uniqueTokens,
-    notification: payload,
+    notification: {
+        title: payload.title,
+        body: payload.body,
+    },
      webpush: {
       notification: {
         icon: payload.icon || '/logo.png',
