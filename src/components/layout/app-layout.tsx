@@ -16,12 +16,35 @@ import { TopProgressBar } from '@/components/shared/top-progress-bar';
 import { useToast } from '@/hooks/use-toast';
 import { useNotificationContext } from '@/contexts/notification-context';
 import { useTheme } from "next-themes";
+import { useNotificationCounts } from '@/hooks/use-notification-counts';
 
 function NotificationIconArea() {
   const { user } = useAuth();
-  // Since useNotificationCounts is removed, we remove this component's logic
-  // This can be replaced later if a new notification system is built.
-  return null;
+  const { count: notificationCount, isLoadingCount } = useNotificationCounts();
+  
+  if (!user) return null;
+
+  const icon = user.role === 'admin' ? Inbox : Bell;
+  const href = user.role === 'admin' ? '/admin/feedback' : '/member/alerts';
+  
+  if(isLoadingCount) {
+    return (
+        <Button size="icon" variant="ghost" className="relative" asChild>
+            <Link href={href}>
+               <Loader2 className="h-5 w-5 animate-spin" />
+            </Link>
+        </Button>
+    )
+  }
+
+  return (
+    <Button size="icon" variant="ghost" className="relative" asChild>
+      <Link href={href}>
+        <NotificationBadge icon={icon} count={notificationCount} />
+        <span className="sr-only">Notifications</span>
+      </Link>
+    </Button>
+  );
 }
 
 
@@ -101,7 +124,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                Taxshila Companion
             </Link>
             <div className="ml-auto flex items-center gap-2">
-              {/* Notification icon area removed */}
+              <NotificationIconArea />
             </div>
           </header>
           <main className="flex-1 p-4 sm:p-6 lg:p-8 min-w-0">

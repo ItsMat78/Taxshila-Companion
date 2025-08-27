@@ -767,6 +767,27 @@ export async function calculateMonthlyStudyHours(customStudentId: string): Promi
 
 
 // --- Communication Service Functions (Feedback & Alerts) ---
+async function triggerNotification(type: 'alert' | 'feedback', payload: any) {
+  console.log(`[StudentService] Calling API to send notification. Type: ${type}`);
+  try {
+    const response = await fetch('/api/send-notification', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type, payload }),
+    });
+
+    if (!response.ok) {
+      const errorResult = await response.json();
+      throw new Error(errorResult.error || 'API call for notification failed.');
+    }
+    console.log(`[StudentService] API call for alert notification finished.`);
+  } catch (error) {
+    console.error(`[StudentService] Failed to trigger alert notification for type ${type}. Alert was saved, but push notification may have failed.`, error);
+    // We don't re-throw here so that the client-side operation can still succeed
+    // The error is logged, and the user won't see a confusing failure message if the primary action (e.g., saving a feedback) was successful.
+  }
+}
+
 export async function submitFeedback(
   studentId: string | undefined,
   studentName: string | undefined,
@@ -783,6 +804,9 @@ export async function submitFeedback(
   };
   const docRef = await addDoc(collection(db, FEEDBACK_COLLECTION), newFeedbackData);
   
+  // Trigger admin notification in the background
+  triggerNotification('feedback', { studentName: studentName || 'Anonymous', feedbackType: type });
+
   const feedbackItem = {
     id: docRef.id,
     ...newFeedbackData,
@@ -819,6 +843,10 @@ export async function sendGeneralAlert(title: string, message: string, type: Ale
     const docRef = await addDoc(collection(db, ALERTS_COLLECTION), newAlertData);
     const newDocSnap = await getDoc(docRef);
     const alertItem = alertItemFromDoc(newDocSnap);
+
+    // This type of alert would need a different mechanism to notify all users (e.g., topics)
+    // For now, we are not triggering individual notifications for general alerts.
+    
     return alertItem;
 }
 
@@ -844,6 +872,10 @@ export async function sendAlertToStudent(
     const docRef = await addDoc(collection(db, ALERTS_COLLECTION), newAlertDataForFirestore);
     const newDocSnap = await getDoc(docRef);
     const alertItem = alertItemFromDoc(newDocSnap);
+    
+    // Trigger the push notification via API route
+    triggerNotification('alert', alertItem);
+
     return alertItem;
 }
 
