@@ -31,7 +31,6 @@ import type { Student, Shift, FeeStatus, PaymentRecord, ActivityStatus, Attendan
 import type { FeedbackItem, FeedbackType, FeedbackStatus, AlertItem } from '@/types/communication';
 import { format, parseISO, differenceInDays, isPast, addMonths, startOfDay, isValid, addDays, isAfter, getHours, getMinutes, isWithinInterval, startOfMonth, endOfMonth, parse, differenceInMilliseconds } from 'date-fns';
 import { ALL_SEAT_NUMBERS } from '@/config/seats';
-import { triggerAlertNotification, triggerFeedbackNotification } from './notification-service';
 
 import {
   getAuth,
@@ -768,6 +767,27 @@ export async function calculateMonthlyStudyHours(customStudentId: string): Promi
 
 
 // --- Communication Service Functions (Feedback & Alerts) ---
+async function triggerNotification(type: 'alert' | 'feedback', payload: any) {
+  console.log(`[StudentService] Calling API to send notification. Type: ${type}`);
+  try {
+    const response = await fetch('/api/send-notification', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type, payload }),
+    });
+
+    if (!response.ok) {
+      const errorResult = await response.json();
+      throw new Error(errorResult.error || 'API call for notification failed.');
+    }
+    console.log(`[StudentService] API call for alert notification finished.`);
+  } catch (error) {
+    console.error(`[StudentService] Failed to trigger alert notification for type ${type}. Alert was saved, but push notification may have failed.`, error);
+    // We don't re-throw here so that the client-side operation can still succeed
+    // The error is logged, and the user won't see a confusing failure message if the primary action (e.g., saving a feedback) was successful.
+  }
+}
+
 export async function submitFeedback(
   studentId: string | undefined,
   studentName: string | undefined,
@@ -784,6 +804,9 @@ export async function submitFeedback(
   };
   const docRef = await addDoc(collection(db, FEEDBACK_COLLECTION), newFeedbackData);
   
+  // Trigger admin notification in the background
+  triggerNotification('feedback', { studentName: studentName || 'Anonymous', feedbackType: type });
+
   const feedbackItem = {
     id: docRef.id,
     ...newFeedbackData,
@@ -791,9 +814,6 @@ export async function submitFeedback(
     studentName: newFeedbackData.studentName === null ? undefined : newFeedbackData.studentName,
     dateSubmitted: newFeedbackData.dateSubmitted.toDate().toISOString(),
    };
-  
-  // Use fetch to call the API route
-  await triggerFeedbackNotification(feedbackItem);
   
   return feedbackItem;
 }
@@ -821,29 +841,11 @@ export async function sendGeneralAlert(title: string, message: string, type: Ale
         studentId: null,
     };
     const docRef = await addDoc(collection(db, ALERTS_COLLECTION), newAlertData);
-
-    // Refetch the document to get the resolved timestamp
     const newDocSnap = await getDoc(docRef);
     const alertItem = alertItemFromDoc(newDocSnap);
-    
-    try {
-      console.log(`[StudentService] Calling API to send general alert ${alertItem.id}`);
-      const response = await fetch('/api/send-alert-notification', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(alertItem),
-      });
-      if (!response.ok) {
-        // Log the error response from the server to get more insight
-        const errorResult = await response.json();
-        throw new Error(errorResult.error || `API responded with status ${response.status}`);
-      }
-       console.log(`[StudentService] API call for general alert ${alertItem.id} finished.`);
-    } catch (error) {
-      console.error(`[StudentService] Failed to trigger notification for general alert, but alert was saved. Error:`, error);
-      // Re-throw or handle as needed, e.g., show a specific toast to the admin.
-      throw new Error("Alert was saved to the database, but the push notification could not be sent. Please check the server logs.");
-    }
+
+    // This type of alert would need a different mechanism to notify all users (e.g., topics)
+    // For now, we are not triggering individual notifications for general alerts.
     
     return alertItem;
 }
@@ -861,37 +863,19 @@ export async function sendAlertToStudent(
         title,
         message,
         type,
-        dateSent: serverTimestamp(), // Use serverTimestamp for consistency
+        dateSent: serverTimestamp(),
         isRead: false,
     };
     if (originalFeedbackId) newAlertDataForFirestore.originalFeedbackId = originalFeedbackId;
     if (originalFeedbackMessageSnippet) newAlertDataForFirestore.originalFeedbackMessageSnippet = originalFeedbackMessageSnippet;
 
     const docRef = await addDoc(collection(db, ALERTS_COLLECTION), newAlertDataForFirestore);
-    
-    // Refetch the document to resolve serverTimestamp before sending to API
     const newDocSnap = await getDoc(docRef);
     const alertItem = alertItemFromDoc(newDocSnap);
     
-    try {
-      console.log(`[StudentService] Calling API to send alert ${alertItem.id} to student ${customStudentId}`);
-      const response = await fetch('/api/send-alert-notification', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(alertItem),
-      });
-      if (!response.ok) {
-        // Log the error response from the server to get more insight
-        const errorResult = await response.json();
-        throw new Error(errorResult.error || `API responded with status ${response.status}`);
-      }
-      console.log(`[StudentService] API call for alert ${alertItem.id} finished.`);
-    } catch (error) {
-      console.error(`[StudentService] Failed to trigger notification for student ${customStudentId}, but alert was saved. Error:`, error);
-      // Re-throw or handle as needed, e.g., show a specific toast to the admin.
-      throw new Error("Alert was saved to the database, but the push notification could not be sent. Please check the server logs.");
-    }
-    
+    // Trigger the push notification via API route
+    triggerNotification('alert', alertItem);
+
     return alertItem;
 }
 
@@ -1162,37 +1146,11 @@ export async function processCheckedInStudentsFromSnapshot(
     return checkedInStudentDetails;
 }
 
-// --- FCM Token Management ---
-export async function saveStudentFCMToken(studentFirestoreId: string, token: string): Promise<void> {
-  if (!studentFirestoreId || !token) return;
-  const studentDocRef = doc(db, STUDENTS_COLLECTION, studentFirestoreId);
-  await updateDoc(studentDocRef, { fcmTokens: arrayUnion(token) });
-}
-
-export async function removeFCMTokenForStudent(studentFirestoreId: string, tokenToRemove: string): Promise<void> {
-  if (!studentFirestoreId || !tokenToRemove) return;
-  const studentDocRef = doc(db, STUDENTS_COLLECTION, studentFirestoreId);
-  await updateDoc(studentDocRef, { fcmTokens: arrayRemove(tokenToRemove) });
-}
-
-// --- Admin FCM Token Management ---
 export async function getAdminByEmail(email: string): Promise<AdminUserFirestore | undefined> {
   const q = query(collection(db, ADMINS_COLLECTION), where("email", "==", email.toLowerCase()));
   const querySnapshot = await getDocs(q);
   if (querySnapshot.empty) return undefined;
   return adminUserFromDoc(querySnapshot.docs[0]);
-}
-
-export async function saveAdminFCMToken(adminFirestoreId: string, token: string): Promise<void> {
-  if (!adminFirestoreId || !token) return;
-  const adminDocRef = doc(db, ADMINS_COLLECTION, adminFirestoreId);
-  await updateDoc(adminDocRef, { fcmTokens: arrayUnion(token) });
-}
-
-export async function removeAdminFCMToken(adminFirestoreId: string, tokenToRemove: string): Promise<void> {
-  if (!adminFirestoreId || !tokenToRemove) return;
-  const adminDocRef = doc(db, ADMINS_COLLECTION, adminFirestoreId);
-  await updateDoc(adminDocRef, { fcmTokens: arrayRemove(tokenToRemove) });
 }
 
 export type MonthlyRevenueData = {

@@ -1,70 +1,47 @@
 
-// src/lib/notification-setup.ts
-import { getMessaging, getToken, isSupported, onMessage } from 'firebase/messaging';
-import { app as firebaseApp } from '@/lib/firebase';
-import { saveStudentFCMToken, saveAdminFCMToken } from '@/services/student-service';
-import { toast } from '@/hooks/use-toast';
+"use client";
 
-/**
- * Sets up push notifications for the current user.
- * Requests permission and saves the FCM token to Firestore.
- */
-export async function setupPushNotifications(firestoreId: string, role: 'admin' | 'member'): Promise<void> {
-    const supported = await isSupported();
-    if (!supported) {
-        console.log("[Notification Setup] Firebase Messaging is not supported in this browser.");
-        return;
-    }
+import { getMessaging, getToken } from "firebase/messaging";
+import { app as firebaseApp, db } from "./firebase";
+import { doc, updateDoc, arrayUnion } from "firebase/firestore";
 
-    const messaging = getMessaging(firebaseApp);
-    
-    // --- Handle Foreground Messages ---
-    onMessage(messaging, (payload) => {
-        // Correctly access title and body from the `data` property
-        toast({
-            title: payload.data?.title,
-            description: payload.data?.body,
-        });
+// This is the public VAPID key from your Firebase project settings
+const VAPID_KEY = process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY;
+
+export const setupPushNotifications = async (firestoreId: string, userRole: 'admin' | 'member'): Promise<void> => {
+  if (typeof window === 'undefined' || !VAPID_KEY) {
+    console.error("VAPID key not found or not in a browser environment.");
+    return;
+  }
+
+  try {
+    const permission = await Notification.requestPermission();
+    if (permission === 'granted') {
+      console.log('Notification permission granted.');
+      
+      const messaging = getMessaging(firebaseApp);
+
+      const currentToken = await getToken(messaging, { vapidKey: VAPID_KEY });
+
+      if (currentToken) {
+        console.log('FCM Token received: ', currentToken);
         
-        // Dispatch a custom event that other components can listen to
-        // For example, to refresh a list of notifications
-        window.dispatchEvent(new CustomEvent('new-foreground-notification'));
-    });
-    
-    try {
-        const permission = await Notification.requestPermission();
+        // Save the token to Firestore
+        const collectionName = userRole === 'admin' ? 'admins' : 'students';
+        const userDocRef = doc(db, collectionName, firestoreId);
 
-        if (permission === 'granted') {
-            const vapidKey = process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY;
-            if (!vapidKey) {
-                console.error("[Notification Setup] VAPID key is missing. Ensure NEXT_PUBLIC_FIREBASE_VAPID_KEY is set in your environment.");
-                return;
-            }
+        await updateDoc(userDocRef, {
+          fcmTokens: arrayUnion(currentToken)
+        });
 
-             // Dynamically build the service worker URL with the config
-            const firebaseConfig = firebaseApp.options;
-            const encodedConfig = encodeURIComponent(JSON.stringify(firebaseConfig));
-            const serviceWorkerUrl = `/firebase-messaging-sw.js?firebaseConfig=${encodedConfig}`;
-            
-            const registration = await navigator.serviceWorker.register(serviceWorkerUrl);
-
-            const currentToken = await getToken(messaging, { 
-                vapidKey,
-                serviceWorkerRegistration: registration, // Use the specific registration
-            });
-
-            if (currentToken) {
-                if (role === 'admin') {
-                    await saveAdminFCMToken(firestoreId, currentToken);
-                } else {
-                    await saveStudentFCMToken(firestoreId, currentToken);
-                }
-            } else {
-                console.log('[Notification Setup] No registration token available. Request permission to generate one.');
-            }
-
-        }
-    } catch (err) {
-        console.error('[Notification Setup] An error occurred while retrieving token. ', err);
+        console.log('Successfully saved FCM token to Firestore.');
+      } else {
+        console.log('No registration token available. Request permission to generate one.');
+      }
+    } else {
+      console.log('Unable to get permission to notify.');
     }
-}
+  } catch (error) {
+    console.error('An error occurred while setting up push notifications.', error);
+  }
+};

@@ -1,212 +1,176 @@
 
-
 "use server";
 
-import { getDb, getMessaging } from '@/lib/firebase-admin';
-import type { AlertItem, FeedbackItem } from '@/types/communication';
-import type { Student } from '@/types/student';
-import type { Admin } from '@/types/auth';
-import { FieldValue } from 'firebase-admin/firestore';
+import { getMessaging } from '@/lib/firebase-admin';
+import type { Student, Admin } from '@/types/student';
+import { getStudentByCustomId, getAdminByEmail } from '@/services/student-service';
+import { getDb } from '@/lib/firebase-admin';
+import type { AlertItem } from '@/types/communication';
 
-const messaging = getMessaging();
+// Define a type for the notification payload for clarity
+interface NotificationPayload {
+  title: string;
+  body: string;
+  icon?: string;
+  click_action?: string;
+}
 
 /**
  * Sends a push notification to a single student.
- * @param student The student object from Firestore.
- * @param alert The alert item to be sent.
+ * @param studentId The custom student ID (e.g., TSMEM0001).
+ * @param payload The notification content.
  */
-async function sendNotificationToStudent(student: Student, alert: AlertItem) {
-    if (!student.fcmTokens || student.fcmTokens.length === 0) {
-        console.log(`[Notification Service] No FCM tokens for student ${student.studentId}. Skipping notification.`);
-        return;
-    }
-    console.log(`[Notification Service] Preparing to send notification to student ${student.studentId} with tokens:`, student.fcmTokens);
-
-    const payload = {
-        notification: {
-            title: alert.title,
-            body: alert.message,
-            icon: "/logo.png",
-        },
-        data: {
-          url: '/member/alerts'
-        }
-    };
-
-    // sendToDevice expects an array of tokens
-    const response = await messaging.sendToDevice(student.fcmTokens, payload);
-    console.log(`[Notification Service] Response from FCM for student ${student.studentId}:`, JSON.stringify(response, null, 2));
-    await cleanupStudentTokens(response, student);
-}
-
-/**
- * Sends a push notification to all active students.
- * @param allStudents A list of all student objects from Firestore.
- * @param alert The alert item to be sent.
- */
-async function sendNotificationToAllStudents(allStudents: Student[], alert: AlertItem) {
-    const activeStudents = allStudents.filter(s => s.activityStatus === 'Active' && s.fcmTokens && s.fcmTokens.length > 0);
-    const allTokens = activeStudents.flatMap(s => s.fcmTokens!);
-    
-    if (allTokens.length === 0) {
-        console.log(`[Notification Service] No FCM tokens found for any active student. Skipping general alert.`);
-        return;
-    }
-    
-    const uniqueTokens = [...new Set(allTokens)];
-    console.log(`[Notification Service] Preparing to send general alert to ${uniqueTokens.length} unique tokens.`);
-    
-    const tokenChunks = [];
-    for (let i = 0; i < uniqueTokens.length; i += 500) {
-        tokenChunks.push(uniqueTokens.slice(i, i + 500));
-    }
-
-    const payload = {
-        notification: {
-            title: alert.title,
-            body: alert.message,
-            icon: "/logo.png",
-        },
-        data: {
-          url: '/member/alerts'
-        }
-    };
-
-    for (const chunk of tokenChunks) {
-        const message = { ...payload, tokens: chunk };
-        const response = await messaging.sendEachForMulticast(message);
-        console.log(`[Notification Service] Response from FCM for general alert multicast: Success ${response.successCount}, Failure ${response.failureCount}`);
-        // Comprehensive token cleanup for multicast is more complex and often handled separately
-    }
-}
-
-/**
- * Sends a push notification to all admins.
- * @param allAdmins A list of all admin objects from Firestore.
- * @param feedback The feedback item that was submitted.
- */
-async function sendNotificationToAdmins(allAdmins: Admin[], feedback: FeedbackItem) {
-    const adminTokens = allAdmins.flatMap(a => a.fcmTokens || []);
-
-    if (adminTokens.length === 0) {
-      console.log("[Notification Service] No admin FCM tokens found. Skipping feedback notification.");
-      return;
-    }
-    
-    const uniqueTokens = [...new Set(adminTokens)];
-    console.log(`[Notification Service] Preparing to send feedback notification to ${uniqueTokens.length} admin tokens.`);
-
-    const messageBody = feedback.studentName 
-        ? `From ${feedback.studentName}: "${feedback.message.substring(0, 100)}..."` 
-        : `An anonymous user submitted feedback: "${feedback.message.substring(0, 100)}..."`;
-    
-    const notificationTitle = `New Feedback: ${feedback.type}`;
-
-    const payload = {
-        notification: {
-            title: notificationTitle,
-            body: messageBody,
-            icon: "/logo.png",
-        },
-        data: {
-          url: '/admin/feedback',
-          title: notificationTitle,
-          body: messageBody,
-          icon: "/logo.png",
-        }
-    };
-
-    const message = { ...payload, tokens: uniqueTokens };
-    const response = await messaging.sendEachForMulticast(message);
-    console.log(`[Notification Service] Response from FCM for admin feedback multicast: Success ${response.successCount}, Failure ${response.failureCount}`);
-    await cleanupAdminTokens(response, allAdmins, uniqueTokens);
-}
-
-
-export async function triggerAlertNotification(alert: AlertItem) {
-  console.log(`[Notification Service] Triggered for Alert ID: ${alert.id}, Student ID: ${alert.studentId || 'General'}`);
-  const db = getDb();
+async function sendNotificationToStudent(studentId: string, payload: NotificationPayload): Promise<void> {
+  console.log(`[Notification Service] Attempting to send notification to student: ${studentId}`);
+  const student = await getStudentByCustomId(studentId);
+  if (!student || !student.fcmTokens || student.fcmTokens.length === 0) {
+    console.warn(`[Notification Service] Student ${studentId} not found or has no FCM tokens.`);
+    return;
+  }
   
-  if (alert.studentId) {
-    const studentQuery = await db.collection('students').where('studentId', '==', alert.studentId).limit(1).get();
-    if (!studentQuery.empty) {
-      const student = { ...studentQuery.docs[0].data(), firestoreId: studentQuery.docs[0].id } as Student;
-      await sendNotificationToStudent(student, alert);
-    } else {
-      console.warn(`[Notification Service] Student with ID ${alert.studentId} not found in database.`);
+  const tokens = student.fcmTokens;
+  console.log(`[Notification Service] Found tokens for student ${studentId}:`, tokens);
+
+  const message = {
+    tokens: tokens,
+    notification: {
+      title: payload.title,
+      body: payload.body,
+    },
+    webpush: {
+      notification: {
+        icon: payload.icon || '/logo.png',
+      },
+      fcmOptions: {
+        link: payload.click_action || '/',
+      },
+    },
+  };
+
+  try {
+    const response = await getMessaging().sendEachForMulticast(message);
+    console.log(`[Notification Service] Successfully sent message to ${response.successCount} tokens for student ${studentId}.`);
+    if (response.failureCount > 0) {
+      const failedTokens: string[] = [];
+      response.responses.forEach((resp, idx) => {
+        if (!resp.success) {
+          failedTokens.push(tokens[idx]);
+          console.error(`[Notification Service] Token failed for student ${studentId}:`, tokens[idx], resp.error);
+        }
+      });
+      // Optional: Add logic here to remove failed tokens from the user's document in Firestore
     }
-  } else {
-    const studentsSnapshot = await db.collection('students').get();
-    const allStudents = studentsSnapshot.docs.map(doc => ({ ...doc.data(), firestoreId: doc.id }) as Student);
-    await sendNotificationToAllStudents(allStudents, alert);
+  } catch (error) {
+    console.error(`[Notification Service] Error sending multicast message to student ${studentId}:`, error);
+    throw new Error('Failed to send push notifications.');
   }
 }
 
-export async function triggerFeedbackNotification(feedback: FeedbackItem) {
-    console.log(`[Notification Service] Triggered for Feedback ID: ${feedback.id}`);
-    const db = getDb();
-    const adminsSnapshot = await db.collection('admins').get();
-    if(adminsSnapshot.empty) {
-        console.warn("[Notification Service] No admins found in the database to send feedback notification to.");
-        return;
+/**
+ * Sends a push notification to all admin users.
+ */
+async function sendNotificationToAllAdmins(payload: NotificationPayload): Promise<void> {
+  console.log('[Notification Service] Attempting to send notification to all admins.');
+  const db = getDb();
+  const adminsSnapshot = await db.collection('admins').get();
+  
+  if (adminsSnapshot.empty) {
+    console.warn('[Notification Service] No admin users found to send notification.');
+    return;
+  }
+
+  const allAdminTokens: string[] = [];
+  adminsSnapshot.forEach(doc => {
+    const admin = doc.data() as Admin;
+    if (admin.fcmTokens && admin.fcmTokens.length > 0) {
+      allAdminTokens.push(...admin.fcmTokens);
     }
-    const allAdmins = adminsSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }) as Admin & {id: string});
-    await sendNotificationToAdmins(allAdmins, feedback);
+  });
+
+  if (allAdminTokens.length === 0) {
+    console.warn('[Notification Service] No admin users have FCM tokens.');
+    return;
+  }
+  
+  const uniqueTokens = [...new Set(allAdminTokens)];
+  console.log(`[Notification Service] Found ${uniqueTokens.length} unique admin tokens.`);
+
+  const message = {
+    tokens: uniqueTokens,
+    notification: {
+        title: payload.title,
+        body: payload.body,
+    },
+     webpush: {
+      notification: {
+        icon: payload.icon || '/logo.png',
+      },
+      fcmOptions: {
+        link: payload.click_action || '/',
+      },
+    },
+  };
+
+  try {
+    const response = await getMessaging().sendEachForMulticast(message);
+    console.log(`[Notification Service] Successfully sent message to ${response.successCount} admin tokens.`);
+  } catch (error) {
+    console.error('[Notification Service] Error sending multicast message to admins:', error);
+    throw new Error('Failed to send push notifications to admins.');
+  }
 }
 
+/**
+ * Triggers a notification based on a newly created alert item.
+ * This function will be called from an API route.
+ * @param alert The alert item that was just created.
+ */
+export async function triggerAlertNotification(alert: AlertItem): Promise<void> {
+  console.log(`[Notification Service] Triggered for Alert ID: ${alert.id}, Student ID: ${alert.studentId}`);
+  
+  const payload: NotificationPayload = {
+    title: alert.title,
+    body: alert.message,
+    icon: '/logo.png',
+    click_action: alert.studentId ? '/member/alerts' : '/admin/alerts/history',
+  };
 
-// --- Helper functions for cleaning up invalid tokens ---
-
-async function cleanupStudentTokens(response: any, student: Student) {
-    const db = getDb();
-    const tokensToRemove: string[] = [];
-    response.results.forEach((result: any, index: number) => {
-        const error = result.error;
-        if (error) {
-            const tokenInError = student.fcmTokens![index];
-            console.log(`[Notification Service] FCM error for token ${tokenInError}: ${error.code}`);
-            if (error.code === 'messaging/invalid-registration-token' ||
-                error.code === 'messaging/registration-token-not-registered') {
-                tokensToRemove.push(tokenInError);
-            }
-        }
-    });
-
-    if (tokensToRemove.length > 0 && student.firestoreId) {
-        console.log(`[Notification Service] Removing ${tokensToRemove.length} invalid tokens for student ${student.studentId}`);
-        const studentRef = db.collection('students').doc(student.firestoreId);
-        await studentRef.update({
-            fcmTokens: FieldValue.arrayRemove(...tokensToRemove)
-        });
+  try {
+    if (alert.studentId) {
+      // It's a targeted alert for a student
+      await sendNotificationToStudent(alert.studentId, payload);
+    } else {
+      // It's a general alert. Send to all students.
+      // This is a placeholder for future implementation as sending to all students
+      // at once can be complex. For now, we assume general alerts are seen in-app.
+      // A better approach would be to send to topics or handle this via a backend loop.
+      console.log(`[Notification Service] General alert created (ID: ${alert.id}). Notification sending to all students is not yet implemented via this function.`);
     }
+  } catch (error) {
+      console.error(`[Notification Service] Failed to trigger alert notification for alert ${alert.id}. Error:`, error);
+      // Re-throw the error so the API route can catch it and return a 500 status.
+      throw error;
+  }
 }
 
-async function cleanupAdminTokens(response: any, allAdmins: Admin[], sentTokens: string[]) {
-    const db = getDb();
-    const tokensToRemove: string[] = [];
-    response.responses.forEach((result: any, index: number) => {
-        const error = result.error;
-        if (error) {
-            const invalidToken = sentTokens[index];
-             console.log(`[Notification Service] FCM error for admin token ${invalidToken}: ${error.code}`);
-            if (error.code === 'messaging/invalid-registration-token' ||
-                error.code === 'messaging/registration-token-not-registered') {
-                tokensToRemove.push(invalidToken);
-            }
-        }
-    });
+/**
+ * Triggers a notification to all admins about a new feedback submission.
+ * @param studentName The name of the student who submitted feedback.
+ * @param feedbackType The type of feedback submitted.
+ */
+export async function triggerAdminFeedbackNotification(studentName: string, feedbackType: string): Promise<void> {
+    console.log(`[Notification Service] Triggered for new feedback from: ${studentName}`);
+    const payload: NotificationPayload = {
+        title: 'New Feedback Submitted',
+        body: `${studentName} has submitted a new piece of feedback (${feedbackType}).`,
+        icon: '/logo.png',
+        click_action: '/admin/feedback',
+    };
 
-    if (tokensToRemove.length > 0) {
-        console.log(`[Notification Service] Removing ${tokensToRemove.length} invalid admin tokens.`);
-        const batch = db.batch();
-        const adminsToUpdate = allAdmins.filter(admin => admin.fcmTokens?.some(token => tokensToRemove.includes(token)));
-
-        adminsToUpdate.forEach(admin => {
-            if (admin.firestoreId) {
-                const adminRef = db.collection('admins').doc(admin.firestoreId);
-                batch.update(adminRef, { fcmTokens: FieldValue.arrayRemove(...tokensToRemove) });
-            }
-        });
-        await batch.commit();
+    try {
+        await sendNotificationToAllAdmins(payload);
+    } catch (error) {
+        console.error(`[Notification Service] Failed to trigger admin feedback notification. Error:`, error);
+        throw error;
     }
 }

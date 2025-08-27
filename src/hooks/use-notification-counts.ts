@@ -3,16 +3,15 @@
 
 import * as React from 'react';
 import { useAuth } from '@/contexts/auth-context';
-import { getAllFeedback, getAlertsForStudent } from '@/services/student-service';
+import { getAlertsForStudent, getStudentByEmail, getStudentByCustomId, getAllFeedback } from '@/services/student-service';
 import type { FeedbackItem } from '@/types/communication';
-import type { AlertItem } from '@/types/communication';
-import { useNotificationContext } from '@/contexts/notification-context'; // Import context hook
+import { useNotificationContext } from '@/contexts/notification-context';
 
 export function useNotificationCounts() {
   const { user } = useAuth();
-  const { refreshKey } = useNotificationContext(); // Consume refreshKey from context
+  const { refreshKey } = useNotificationContext();
   const [count, setCount] = React.useState(0);
-  const [isLoadingCount, setIsLoadingCount] = React.useState(true); // Default to true
+  const [isLoadingCount, setIsLoadingCount] = React.useState(true);
 
   const fetchCounts = React.useCallback(async () => {
     if (!user) {
@@ -24,20 +23,27 @@ export function useNotificationCounts() {
     setIsLoadingCount(true);
     try {
       if (user.role === 'admin') {
-        const feedbackItems: FeedbackItem[] = await getAllFeedback();
-        const openFeedbackCount = feedbackItems.filter(item => item.status === "Open").length;
+        const allFeedback = await getAllFeedback();
+        const openFeedbackCount = allFeedback.filter((item: FeedbackItem) => item.status === 'Open').length;
         setCount(openFeedbackCount);
-      } else if (user.role === 'member' && user.studentId) {
-        // Directly use studentId from the authenticated user context
-        const alerts: AlertItem[] = await getAlertsForStudent(user.studentId);
-        const unreadAlertsCount = alerts.filter(alert => !alert.isRead).length;
-        setCount(unreadAlertsCount);
-      } else {
-        setCount(0);
+      } else if (user.role === 'member') {
+        let studentId = user.studentId;
+        if (!studentId) {
+            const student = await getStudentByEmail(user.email!);
+            if(student) studentId = student.studentId;
+        }
+        
+        if (studentId) {
+            const alerts = await getAlertsForStudent(studentId);
+            const unreadCount = alerts.filter(alert => !alert.isRead).length;
+            setCount(unreadCount);
+        } else {
+            setCount(0);
+        }
       }
     } catch (error) {
       console.error("Error fetching notification counts:", error);
-      setCount(0);
+      setCount(0); // Reset count on error
     } finally {
       setIsLoadingCount(false);
     }
@@ -45,7 +51,7 @@ export function useNotificationCounts() {
 
   React.useEffect(() => {
     fetchCounts();
-  }, [fetchCounts, refreshKey]); // Add refreshKey as a dependency
+  }, [fetchCounts, refreshKey]);
 
   return { count, isLoadingCount };
 }

@@ -24,9 +24,10 @@ import {
 } from '@/components/ui/sidebar';
 import { useAuth } from '@/contexts/auth-context';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { useNotificationCounts } from '@/hooks/use-notification-counts'; // Import the hook
 import { useFinancialCounts } from '@/hooks/use-financial-counts'; // Import the new hook
 import { ThemeSwitcher } from '@/components/shared/theme-switcher';
+import { useNotificationCounts } from '@/hooks/use-notification-counts'; // Import notification hook
+
 
 const ACTUAL_LOGO_URL = '/logo.png'; // Use the actual logo path
 
@@ -38,8 +39,8 @@ function NavListItem({ item }: { item: NavItem }) {
   );
 
   const { user } = useAuth();
-  const { count: notificationCount, isLoadingCount } = useNotificationCounts();
-  const { count: financialCount, isLoadingCount: isLoadingFinancialCount } = useFinancialCounts(); // Use the new hook
+  const { count: financialCount, isLoadingCount: isLoadingFinancialCount } = useFinancialCounts();
+  const { count: notificationCount, isLoadingCount: isLoadingNotificationCount } = useNotificationCounts();
 
   const closeMobileSidebar = () => {
     if (isMobile) {
@@ -55,8 +56,9 @@ function NavListItem({ item }: { item: NavItem }) {
     !subItem.roles || (user && subItem.roles.includes(user.role))
   );
 
-  const displayNotificationCount = notificationCount > 9 ? '9+' : String(notificationCount);
   const displayFinancialCount = financialCount > 9 ? '9+' : String(financialCount);
+  const displayNotificationCount = notificationCount > 9 ? '9+' : String(notificationCount);
+
 
   if (item.external) {
     return (
@@ -79,7 +81,17 @@ function NavListItem({ item }: { item: NavItem }) {
   }
 
   if (visibleSubItems && visibleSubItems.length > 0) {
-    const shouldShowFinancialBadgeOnParent = item.title === 'Financials' && !isLoadingFinancialCount && financialCount > 0;
+    let parentHasBadge = false;
+    let badgeCount = '';
+    
+    if (item.title === 'Financials' && !isLoadingFinancialCount && financialCount > 0) {
+      parentHasBadge = true;
+      badgeCount = displayFinancialCount;
+    } else if (item.title === 'Communication' && !isLoadingNotificationCount && notificationCount > 0 && user?.role === 'admin') {
+      parentHasBadge = true;
+      badgeCount = displayNotificationCount;
+    }
+
     return (
       <SidebarMenuItem>
         <SidebarMenuButton
@@ -90,9 +102,9 @@ function NavListItem({ item }: { item: NavItem }) {
           <span className="flex items-center gap-2">
             {item.icon && <item.icon className="h-4 w-4" />}
             <span className="truncate">{item.title}</span>
-             {shouldShowFinancialBadgeOnParent && (
+             {parentHasBadge && (
               <span className="ml-2 inline-flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold text-destructive-foreground">
-                {displayFinancialCount}
+                {badgeCount}
               </span>
             )}
           </span>
@@ -106,19 +118,16 @@ function NavListItem({ item }: { item: NavItem }) {
         {isSubMenuOpen && (
           <SidebarMenuSub>
             {visibleSubItems.map((subItem) => {
-              const shouldShowNotificationBadge =
-                !isLoadingCount &&
-                notificationCount > 0 &&
-                user &&
-                (
-                  (user.role === 'admin' && subItem.href === '/admin/feedback') ||
-                  (user.role === 'member' && subItem.href === '/member/alerts')
-                );
+              let subItemHasBadge = false;
+              let subItemBadgeCount = '';
 
-              const shouldShowFinancialBadgeOnSubItem =
-                subItem.href === '/admin/fees/due' &&
-                !isLoadingFinancialCount &&
-                financialCount > 0;
+              if (subItem.href === '/admin/fees/due' && !isLoadingFinancialCount && financialCount > 0) {
+                subItemHasBadge = true;
+                subItemBadgeCount = displayFinancialCount;
+              } else if (subItem.href === '/admin/feedback' && !isLoadingNotificationCount && notificationCount > 0) {
+                 subItemHasBadge = true;
+                 subItemBadgeCount = displayNotificationCount;
+              }
 
               return (
                 <SidebarMenuSubItem key={subItem.href}>
@@ -132,14 +141,9 @@ function NavListItem({ item }: { item: NavItem }) {
                         {subItem.icon && <subItem.icon className="h-4 w-4" />}
                         <span className="truncate">{subItem.title}</span>
                       </span>
-                      {shouldShowNotificationBadge && (
-                        <span className="ml-auto inline-flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold text-destructive-foreground">
-                          {displayNotificationCount}
-                        </span>
-                      )}
-                      {shouldShowFinancialBadgeOnSubItem && (
+                      {subItemHasBadge && (
                          <span className="ml-auto inline-flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold text-destructive-foreground">
-                          {displayFinancialCount}
+                          {subItemBadgeCount}
                         </span>
                       )}
                     </SidebarMenuSubButton>
@@ -157,14 +161,13 @@ function NavListItem({ item }: { item: NavItem }) {
      if (item.roles && user && !item.roles.includes(user.role)) {
         return null;
      }
-     const shouldShowTopLevelBadge =
-        !isLoadingCount &&
-        notificationCount > 0 &&
-        user &&
-        (
-          (user.role === 'admin' && item.href === '/admin/feedback') ||
-          (user.role === 'member' && item.href === '/member/alerts')
-        );
+
+     let hasBadge = false;
+     let badgeCount = '';
+     if (item.href === '/member/alerts' && !isLoadingNotificationCount && notificationCount > 0) {
+        hasBadge = true;
+        badgeCount = displayNotificationCount;
+     }
 
     return (
       <SidebarMenuItem>
@@ -178,9 +181,9 @@ function NavListItem({ item }: { item: NavItem }) {
               {item.icon && <item.icon className="h-4 w-4" />}
               <span className="truncate">{item.title}</span>
             </span>
-            {shouldShowTopLevelBadge && (
+             {hasBadge && (
               <span className="ml-auto inline-flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold text-destructive-foreground">
-                {displayNotificationCount}
+                {badgeCount}
               </span>
             )}
           </SidebarMenuButton>
