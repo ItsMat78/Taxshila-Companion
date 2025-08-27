@@ -16,7 +16,14 @@ function getAdminApp(): App {
   }
 
   if (getApps().length > 0) {
-    console.log('[Firebase Admin] Returning app from getApps().');
+    const existingApp = getApps().find(app => app.name === '[DEFAULT]');
+    if(existingApp) {
+      console.log('[Firebase Admin] Returning default app from getApps().');
+      adminApp = existingApp;
+      return adminApp;
+    }
+    // If a default app doesn't exist but others do, this might need more specific handling
+    // For this project, assuming a single default app is sufficient.
     adminApp = getApps()[0]!;
     return adminApp;
   }
@@ -55,19 +62,19 @@ function getAdminApp(): App {
 
 // Export functions that ensure the app is initialized before returning the service
 function getInitializedFirestore() {
-  getAdminApp(); // Ensure app is initialized
-  return getFirestore();
+  const app = getAdminApp(); // Ensure app is initialized
+  return getFirestore(app);
 }
 
 function getInitializedAuth() {
-  getAdminApp(); // Ensure app is initialized
-  return getAuth();
+  const app = getAdminApp(); // Ensure app is initialized
+  return getAuth(app);
 }
 
 function getInitializedMessaging() {
   console.log('[Firebase Admin] getInitializedMessaging() called.');
-  getAdminApp(); // Ensure app is initialized
-  return getMessaging();
+  const app = getAdminApp(); // Ensure app is initialized
+  return getMessaging(app);
 }
 
 export { 
