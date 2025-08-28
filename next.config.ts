@@ -1,6 +1,10 @@
 
 require('dotenv').config();
 import type {NextConfig} from 'next';
+import path from 'path';
+import {
+  WebpackInjectPlugin,
+} from 'webpack-inject-plugin';
 
 const nextConfig: NextConfig = {
   /* config options here */
@@ -31,6 +35,32 @@ const nextConfig: NextConfig = {
         pathname: "/**",
       },
     ],
+  },
+  webpack: (config, { isServer, dev }) => {
+    if (!isServer) {
+        config.plugins.push(
+            new WebpackInjectPlugin({
+                "process.env.FIREBASE_API_KEY": `"${process.env.NEXT_PUBLIC_FIREBASE_API_KEY}"`,
+                "self.FIREBASE_API_KEY": `"${process.env.NEXT_PUBLIC_FIREBASE_API_KEY}"`,
+                "process.env.FIREBASE_AUTH_DOMAIN": `"${process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN}"`,
+                "self.FIREBASE_AUTH_DOMAIN": `"${process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN}"`,
+                "process.env.FIREBASE_PROJECT_ID": `"${process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID}"`,
+                "self.FIREBASE_PROJECT_ID": `"${process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID}"`,
+                "process.env.FIREBASE_STORAGE_BUCKET": `"${process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID}.appspot.com"`,
+                "self.FIREBASE_STORAGE_BUCKET": `"${process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID}.appspot.com"`,
+                "process.env.FIREBASE_MESSAGING_SENDER_ID": `"${process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID}"`,
+                "self.FIREBASE_MESSAGING_SENDER_ID": `"${process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID}"`,
+                "process.env.FIREBASE_APP_ID": `"${process.env.NEXT_PUBLIC_FIREBASE_APP_ID}"`,
+                "self.FIREBASE_APP_ID": `"${process.env.NEXT_PUBLIC_FIREBASE_APP_ID}"`,
+                "process.env.FIREBASE_MEASUREMENT_ID": `"${process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID}"`,
+                "self.FIREBASE_MEASUREMENT_ID": `"${process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID}"`,
+            },
+            {
+                entry: [path.resolve(__dirname, "public", "firebase-messaging-sw.js")],
+            })
+        )
+    }
+    return config
   },
   // Allow cross-origin requests from the Firebase Studio preview environment
   // for a smoother development experience.

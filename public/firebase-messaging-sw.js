@@ -1,86 +1,34 @@
-// DO NOT USE import/export
-// This file is a service worker and runs in a different context.
 
-// Import the Firebase app and messaging libraries using the UMD build
-self.importScripts('https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js');
-self.importScripts('https://www.gstatic.com/firebasejs/9.6.1/firebase-messaging-compat.js');
+// Import the Firebase app and messaging services
+import { initializeApp } from 'firebase/app';
+import { getMessaging, onBackgroundMessage } from 'firebase/messaging/sw';
 
-// --- Get Firebase Config from URL ---
-// The service worker is loaded with a URL like:
-// /firebase-messaging-sw.js?firebaseConfig=...
-// This code extracts that config object.
-const urlParams = new URL(location).searchParams;
-const firebaseConfigParam = urlParams.get('firebaseConfig');
+// Your web app's Firebase configuration
+// This needs to be present in the service worker file as well.
+const firebaseConfig = {
+  apiKey: self.FIREBASE_API_KEY,
+  authDomain: self.FIREBASE_AUTH_DOMAIN,
+  projectId: self.FIREBASE_PROJECT_ID,
+  storageBucket: self.FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: self.FIREBASE_MESSAGING_SENDER_ID,
+  appId: self.FIREBASE_APP_ID,
+  measurementId: self.FIREBASE_MEASUREMENT_ID,
+};
 
-if (!firebaseConfigParam) {
-  console.error("Firebase config not found in service worker. Notifications will not work.");
-} else {
-  try {
-    const firebaseConfig = JSON.parse(decodeURIComponent(firebaseConfigParam));
-    
-    // Initialize the Firebase app in the service worker with the retrieved config
-    firebase.initializeApp(firebaseConfig);
+// Initialize the Firebase app in the service worker
+const app = initializeApp(firebaseConfig);
+const messaging = getMessaging(app);
 
-    // Get an instance of Firebase Messaging
-    const messaging = firebase.messaging();
-    console.log("Firebase Messaging service worker is initialized successfully.");
+// Set up the background message handler
+onBackgroundMessage(messaging, (payload) => {
+  console.log('[firebase-messaging-sw.js] Received background message ', payload);
 
-    // --- Standard 'push' event listener ---
-    // This is the most reliable way to handle incoming notifications.
-    self.addEventListener('push', (event) => {
-      console.log('[Service Worker] Push Received.');
-      
-      // The data can be in different places depending on how it was sent.
-      // We check both `event.data.json().notification` (standard) and `event.data.json().data` (FCM specific)
-      const payload = event.data ? event.data.json() : {};
-      
-      const notificationData = payload.notification || payload.data;
-      
-      if (!notificationData) {
-        console.warn('[Service Worker] Push event received, but no notification data found.');
-        return;
-      }
+  // Customize the notification here
+  const notificationTitle = payload.notification.title;
+  const notificationOptions = {
+    body: payload.notification.body,
+    icon: payload.notification.icon || '/logo.png',
+  };
 
-      const title = notificationData.title || 'New Notification';
-      const options = {
-        body: notificationData.body || '',
-        icon: notificationData.icon || '/logo.png',
-        data: {
-          url: notificationData.url || '/' // URL to open on click
-        }
-      };
-
-      // Use waitUntil to keep the service worker alive until the notification is shown
-      event.waitUntil(self.registration.showNotification(title, options));
-    });
-
-    // --- Optional: Handle notification click ---
-    self.addEventListener('notificationclick', (event) => {
-      console.log('[Service Worker] Notification click Received.');
-
-      event.notification.close();
-
-      const urlToOpen = event.notification.data.url || '/';
-      
-      // This looks for an existing window and focuses it, or opens a new one
-      event.waitUntil(
-        clients.matchAll({
-          type: "window"
-        }).then((clientList) => {
-          for (let i = 0; i < clientList.length; i++) {
-            const client = clientList[i];
-            if (client.url === urlToOpen && 'focus' in client) {
-              return client.focus();
-            }
-          }
-          if (clients.openWindow) {
-            return clients.openWindow(urlToOpen);
-          }
-        })
-      );
-    });
-
-  } catch (error) {
-    console.error("Error initializing Firebase in service worker:", error);
-  }
-}
+  self.registration.showNotification(notificationTitle, notificationOptions);
+});
