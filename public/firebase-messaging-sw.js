@@ -1,86 +1,107 @@
-// DO NOT USE import/export
-// This file is a service worker and runs in a different context.
+// public/firebase-messaging-sw.js
 
-// Import the Firebase app and messaging libraries using the UMD build
-self.importScripts('https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js');
-self.importScripts('https://www.gstatic.com/firebasejs/9.6.1/firebase-messaging-compat.js');
+// This file must be in the public folder.
 
-// --- Get Firebase Config from URL ---
-// The service worker is loaded with a URL like:
-// /firebase-messaging-sw.js?firebaseConfig=...
-// This code extracts that config object.
-const urlParams = new URL(location).searchParams;
-const firebaseConfigParam = urlParams.get('firebaseConfig');
+// The service worker needs to import the Firebase app and messaging libraries.
+// It uses `importScripts` because it runs in a different context than the main application.
+importScripts('https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js');
+importScripts('https://www.gstatic.com/firebasejs/9.23.0/firebase-messaging-compat.js');
 
-if (!firebaseConfigParam) {
-  console.error("Firebase config not found in service worker. Notifications will not work.");
-} else {
-  try {
-    const firebaseConfig = JSON.parse(decodeURIComponent(firebaseConfigParam));
-    
-    // Initialize the Firebase app in the service worker with the retrieved config
-    firebase.initializeApp(firebaseConfig);
+// We hold the fetch promise for the config so we don't fetch it multiple times.
+const firebaseConfigPromise = fetch('/api/firebase-config')
+  .then(response => {
+    if (!response.ok) {
+      throw new Error('Failed to fetch Firebase config');
+    }
+    return response.json();
+  })
+  .then(config => {
+    if (!config || !config.apiKey) {
+      throw new Error('Fetched Firebase config is invalid');
+    }
+    console.log('Service Worker: Successfully fetched Firebase config.');
+    return config;
+  })
+  .catch(error => {
+    console.error('Service Worker: Error fetching or parsing Firebase config:', error);
+    return null; // Return null on failure
+  });
 
-    // Get an instance of Firebase Messaging
-    const messaging = firebase.messaging();
-    console.log("Firebase Messaging service worker is initialized successfully.");
-
-    // --- Standard 'push' event listener ---
-    // This is the most reliable way to handle incoming notifications.
-    self.addEventListener('push', (event) => {
-      console.log('[Service Worker] Push Received.');
-      
-      // The data can be in different places depending on how it was sent.
-      // We check both `event.data.json().notification` (standard) and `event.data.json().data` (FCM specific)
-      const payload = event.data ? event.data.json() : {};
-      
-      const notificationData = payload.notification || payload.data;
-      
-      if (!notificationData) {
-        console.warn('[Service Worker] Push event received, but no notification data found.');
-        return;
-      }
-
-      const title = notificationData.title || 'New Notification';
-      const options = {
-        body: notificationData.body || '',
-        icon: notificationData.icon || '/logo.png',
-        data: {
-          url: notificationData.url || '/' // URL to open on click
-        }
-      };
-
-      // Use waitUntil to keep the service worker alive until the notification is shown
-      event.waitUntil(self.registration.showNotification(title, options));
-    });
-
-    // --- Optional: Handle notification click ---
-    self.addEventListener('notificationclick', (event) => {
-      console.log('[Service Worker] Notification click Received.');
-
-      event.notification.close();
-
-      const urlToOpen = event.notification.data.url || '/';
-      
-      // This looks for an existing window and focuses it, or opens a new one
-      event.waitUntil(
-        clients.matchAll({
-          type: "window"
-        }).then((clientList) => {
-          for (let i = 0; i < clientList.length; i++) {
-            const client = clientList[i];
-            if (client.url === urlToOpen && 'focus' in client) {
-              return client.focus();
-            }
-          }
-          if (clients.openWindow) {
-            return clients.openWindow(urlToOpen);
-          }
-        })
-      );
-    });
-
-  } catch (error) {
-    console.error("Error initializing Firebase in service worker:", error);
+// Initialize the Firebase app with the fetched config
+const appPromise = firebaseConfigPromise.then(firebaseConfig => {
+  if (firebaseConfig && firebase.apps.length === 0) {
+    console.log('Service Worker: Initializing Firebase App...');
+    return firebase.initializeApp(firebaseConfig);
+  } else if (firebase.apps.length > 0) {
+    console.log('Service Worker: Firebase App already initialized.');
+    return firebase.app();
   }
-}
+  return null; // Return null if config failed to load
+});
+
+
+// This is the correct event listener for incoming push notifications.
+self.addEventListener('push', function(event) {
+  console.log('[Service Worker] Push Received.');
+
+  // The event.data can be JSON, text, etc. We expect JSON from FCM.
+  let notificationData = {};
+  try {
+    notificationData = event.data.json();
+  } catch (e) {
+    console.error('[Service Worker] Failed to parse push data as JSON.', e);
+    // Create a fallback notification if data is not as expected
+    notificationData = {
+      notification: {
+        title: 'New Notification',
+        body: 'You have a new message.',
+        icon: '/logo.png'
+      }
+    };
+  }
+
+  const { title, body, icon, click_action } = notificationData.notification || {};
+  
+  const notificationTitle = title || 'Taxshila Companion';
+  const notificationOptions = {
+    body: body || 'You have a new message.',
+    icon: icon || '/logo.png',
+    data: {
+      url: click_action || '/' // Pass the URL to the click event
+    }
+  };
+
+  // We must wrap the showNotification call in event.waitUntil to ensure
+  // the service worker stays active until the notification is displayed.
+  event.waitUntil(
+    self.registration.showNotification(notificationTitle, notificationOptions)
+  );
+});
+
+// This handles what happens when a user clicks the notification.
+self.addEventListener('notificationclick', function(event) {
+  console.log('[Service Worker] Notification click Received.');
+
+  // Close the notification
+  event.notification.close();
+
+  const urlToOpen = event.notification.data.url || '/';
+
+  // This looks at all open tabs/windows and focuses one if it's already open.
+  // Otherwise, it opens a new tab.
+  event.waitUntil(
+    clients.matchAll({
+      type: "window"
+    }).then(function(clientList) {
+      for (let i = 0; i < clientList.length; i++) {
+        const client = clientList[i];
+        if (client.url === urlToOpen && 'focus' in client) {
+          return client.focus();
+        }
+      }
+      if (clients.openWindow) {
+        return clients.openWindow(urlToOpen);
+      }
+    })
+  );
+});
