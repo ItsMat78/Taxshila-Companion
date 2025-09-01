@@ -680,10 +680,12 @@ export async function recordStudentPayment(
   };
 
   let baseDateForCalculation: Date;
-  if (studentToUpdate.nextDueDate && isValid(parseISO(studentToUpdate.nextDueDate)) && isAfter(parseISO(studentToUpdate.nextDueDate), today)) {
-    baseDateForCalculation = parseISO(studentToUpdate.nextDueDate);
+  // **FIXED LOGIC**: Always calculate from the previous due date if it exists.
+  if (studentToUpdate.nextDueDate && isValid(parseISO(studentToUpdate.nextDueDate))) {
+      baseDateForCalculation = parseISO(studentToUpdate.nextDueDate);
   } else {
-    baseDateForCalculation = today;
+      // Fallback to today only if no valid due date exists (e.g., brand new student)
+      baseDateForCalculation = today;
   }
   const newNextDueDate = addMonths(baseDateForCalculation, numberOfMonthsPaid);
 
