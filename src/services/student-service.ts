@@ -367,28 +367,29 @@ export async function updateStudent(customStudentId: string, studentUpdateData: 
 
   const newShift = payload.shift;
   
-  if (newShift && newShift !== studentToUpdate.shift && studentToUpdate.lastPaymentDate && studentToUpdate.nextDueDate) {
-    const fees = await getFeeStructure();
-    const oldShiftFee = studentToUpdate.shift === 'morning' ? fees.morningFee : studentToUpdate.shift === 'evening' ? fees.eveningFee : fees.fullDayFee;
-    const newShiftFee = newShift === 'morning' ? fees.morningFee : newShift === 'evening' ? fees.eveningFee : fees.fullDayFee;
-
-    const lastPaymentDate = parseISO(studentToUpdate.lastPaymentDate);
-    const originalNextDueDate = parseISO(studentToUpdate.nextDueDate);
-
-    const today = new Date();
-    if (isAfter(today, originalNextDueDate)) {
-      payload.amountDue = `Rs. ${newShiftFee}`;
-    } else {
-      const totalPaidDays = differenceInDays(originalNextDueDate, lastPaymentDate);
-      const dailyRateOld = totalPaidDays > 0 ? oldShiftFee / totalPaidDays : 0;
+  if (newShift && newShift !== studentToUpdate.shift && studentToUpdate.feeStatus === 'Paid' && studentToUpdate.nextDueDate && isValid(parseISO(studentToUpdate.nextDueDate)) && isAfter(parseISO(studentToUpdate.nextDueDate), new Date())) {
+      const fees = await getFeeStructure();
+      const oldShiftFee = studentToUpdate.shift === 'morning' ? fees.morningFee : studentToUpdate.shift === 'evening' ? fees.eveningFee : fees.fullDayFee;
+      const newShiftFee = newShift === 'morning' ? fees.morningFee : newShift === 'evening' ? fees.eveningFee : fees.fullDayFee;
+      
+      const lastPaymentDate = studentToUpdate.lastPaymentDate ? parseISO(studentToUpdate.lastPaymentDate) : startOfMonth(parseISO(studentToUpdate.nextDueDate)); // Fallback if last payment date isn't there
+      const originalNextDueDate = parseISO(studentToUpdate.nextDueDate);
+      
+      const today = new Date();
       const remainingDays = differenceInDays(originalNextDueDate, today);
-      const remainingValue = remainingDays > 0 ? remainingDays * dailyRateOld : 0;
-      const dailyRateNew = newShiftFee > 0 ? newShiftFee / 30 : 0; // Approx 30 days
-      const additionalDays = dailyRateNew > 0 ? Math.floor(remainingValue / dailyRateNew) : 0;
-      const newNextDueDate = addDays(today, additionalDays);
-      payload.nextDueDate = format(newNextDueDate, 'yyyy-MM-dd');
-      payload.amountDue = "Rs. 0";
-    }
+      
+      if (remainingDays > 0) {
+          // Assume a 30 day cycle for simplicity and fairness
+          const dailyRateOld = oldShiftFee / 30;
+          const remainingValue = remainingDays * dailyRateOld;
+          
+          const dailyRateNew = newShiftFee / 30;
+          const additionalDays = dailyRateNew > 0 ? Math.floor(remainingValue / dailyRateNew) : 0;
+          
+          const newNextDueDate = addDays(today, additionalDays);
+          payload.nextDueDate = format(newNextDueDate, 'yyyy-MM-dd');
+          payload.amountDue = "Rs. 0"; // Since value is carried over
+      }
   }
 
 
@@ -436,7 +437,7 @@ export async function updateStudent(customStudentId: string, studentUpdateData: 
           } else {
               payload.feeStatus = 'Due';
           }
-          if (payload.amountDue === undefined || payload.amountDue === 'Rs. 0') {
+          if (payload.amountDue === undefined || payload.amountDue === 'Rs. 0' || payload.amountDue === 'N/A') {
               const fees = await getFeeStructure();
               const currentShift = payload.shift || studentToUpdate.shift;
               let amountDueForShift: string;
@@ -680,7 +681,8 @@ export async function recordStudentPayment(
   };
 
   let baseDateForCalculation: Date;
-  // **FIXED LOGIC**: Always calculate from the previous due date if it exists.
+  // **FIXED LOGIC**: Always calculate from the previous due date if it exists and is in the past.
+  // If the due date is in the future, it means they are paying early, so we extend from that future date.
   if (studentToUpdate.nextDueDate && isValid(parseISO(studentToUpdate.nextDueDate))) {
       baseDateForCalculation = parseISO(studentToUpdate.nextDueDate);
   } else {
@@ -1342,3 +1344,4 @@ declare module '@/types/communication' {
     firestoreId?: string;
   }
 }
+
