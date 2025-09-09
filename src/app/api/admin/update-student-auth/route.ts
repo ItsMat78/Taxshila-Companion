@@ -12,7 +12,7 @@ const isValidIndianPhoneNumber = (phone: string): boolean => {
 
 export async function POST(request: Request) {
   try {
-    const { uid, email, phone, password } = await request.json();
+    const { uid, email, phone, password, disabled } = await request.json();
 
     if (!uid) {
         return NextResponse.json({ success: false, error: "User UID is required." }, { status: 400 });
@@ -65,6 +65,11 @@ export async function POST(request: Request) {
         updatePayload.password = password;
     }
     
+    // Add disabled status to payload if provided
+    if (typeof disabled === 'boolean') {
+      updatePayload.disabled = disabled;
+    }
+
     // If there's nothing to update, return early.
     if (Object.keys(updatePayload).length === 0) {
         return NextResponse.json({ success: true, message: "No authentication details needed to be updated." });
