@@ -325,7 +325,7 @@ export async function updateStudent(customStudentId: string, studentUpdateData: 
   const studentDocRef = doc(db, STUDENTS_COLLECTION, studentToUpdate.firestoreId);
 
   // --- Firebase Auth Update ---
-  const authUpdatePayload: { uid: string; email?: string; phone?: string; password?: string } = { uid: studentToUpdate.uid };
+  const authUpdatePayload: { uid: string; email?: string; phone?: string; password?: string, disabled?: boolean } = { uid: studentToUpdate.uid };
   let authNeedsUpdate = false;
 
   if (studentUpdateData.email && studentUpdateData.email !== studentToUpdate.email) {
@@ -340,6 +340,15 @@ export async function updateStudent(customStudentId: string, studentUpdateData: 
       authUpdatePayload.password = studentUpdateData.password;
       authNeedsUpdate = true;
   }
+  
+  if (studentUpdateData.activityStatus === 'Left' && studentToUpdate.activityStatus === 'Active') {
+      authUpdatePayload.disabled = true;
+      authNeedsUpdate = true;
+  } else if (studentUpdateData.activityStatus === 'Active' && studentToUpdate.activityStatus === 'Left') {
+      authUpdatePayload.disabled = false;
+      authNeedsUpdate = true;
+  }
+
 
   if (authNeedsUpdate) {
       const authResponse = await fetch('/api/admin/update-student-auth', {
