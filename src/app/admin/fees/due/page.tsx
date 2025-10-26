@@ -23,12 +23,21 @@ import {
   Dialog,
   DialogContent,
   DialogTrigger,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Badge } from '@/components/ui/badge';
-import { AlertTriangle, CalendarClock, CheckCircle2, Loader2, User, IndianRupee, Edit, UserCheck, Eye, UserX, RefreshCw, Info, Calendar as CalendarIcon, WalletMinimal, Armchair } from 'lucide-react';
+import { AlertTriangle, CalendarClock, CheckCircle2, Loader2, User, IndianRupee, Edit, UserCheck, Eye, UserX, RefreshCw, Info, Calendar as CalendarIcon, WalletMinimal, Armchair, HelpCircle } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { getAllStudents, getAllAttendanceRecords, refreshAllStudentFeeStatuses } from '@/services/student-service';
 import type { Student, Shift } from '@/types/student';
@@ -84,77 +93,83 @@ const getFeeStatusBadge = (student: Student, type: "icon-only" | "full" = "full"
 const FeeDueCardItem = ({ student }: { student: StudentWithLastAttended }) => {
   return (
     <Card className={cn("w-full shadow-md", student.feeStatus === "Overdue" ? "bg-destructive/5 border-destructive/30" : "")}>
-      <CardHeader className="pb-3">
-        <div className="flex justify-between items-start gap-2">
-            <div className="flex items-center gap-3">
-              <Dialog>
-                <DialogTrigger asChild>
-                    <div className="cursor-pointer relative group flex-shrink-0">
-                        <Avatar className="h-12 w-12 border-2 border-primary/50 shadow-sm">
-                            <AvatarImage src={student.profilePictureUrl || undefined} alt={student.name} data-ai-hint="profile person"/>
-                            <AvatarFallback className="text-xl">{getInitials(student.name)}</AvatarFallback>
-                        </Avatar>
-                        <div className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                            <Eye className="text-white h-6 w-6"/>
+        <Accordion type="single" collapsible className="w-full">
+            <AccordionItem value={student.studentId} className="border-b-0">
+                <AccordionTrigger className="p-3 hover:no-underline">
+                    <div className="flex justify-between items-start gap-2 w-full">
+                        <div className="flex items-center gap-3 min-w-0">
+                            <Dialog>
+                                <DialogTrigger asChild onClick={(e) => e.stopPropagation()}>
+                                    <div className="cursor-pointer relative group flex-shrink-0">
+                                        <Avatar className="h-12 w-12 border-2 border-primary/50 shadow-sm">
+                                            <AvatarImage src={student.profilePictureUrl || undefined} alt={student.name} data-ai-hint="profile person"/>
+                                            <AvatarFallback className="text-xl">{getInitials(student.name)}</AvatarFallback>
+                                        </Avatar>
+                                        <div className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <Eye className="text-white h-6 w-6"/>
+                                        </div>
+                                    </div>
+                                </DialogTrigger>
+                                <DialogContent className="max-w-md w-auto p-2">
+                                    <Image
+                                        src={student.profilePictureUrl || "https://placehold.co/400x400.png"}
+                                        alt={`${student.name}'s profile picture`}
+                                        width={400}
+                                        height={400}
+                                        className="rounded-md object-contain max-h-[70vh] w-full h-auto"
+                                    />
+                                </DialogContent>
+                            </Dialog>
+                            <div className="min-w-0 text-left">
+                                <h4 className="text-md font-semibold break-words">{student.name}</h4>
+                                <CardDescription className="text-xs break-words pt-1">{getFeeStatusBadge(student, 'icon-only')}</CardDescription>
+                            </div>
+                        </div>
+                        {student.seatNumber && (
+                          <div
+                            className={cn(
+                              'h-7 w-7 flex items-center justify-center rounded-md border text-xs font-bold flex-shrink-0',
+                              getShiftColorClass(student.shift)
+                            )}
+                            title={`${student.shift.charAt(0).toUpperCase() + student.shift.slice(1)} Shift, Seat ${student.seatNumber}`}
+                          >
+                            {student.seatNumber}
+                          </div>
+                        )}
+                    </div>
+                </AccordionTrigger>
+                 <AccordionContent>
+                    <div className="px-4 pb-4">
+                        <div className="text-xs space-y-2 pb-3 mb-3 border-t pt-3">
+                           <div className="flex items-center gap-2">
+                                <WalletMinimal className="h-4 w-4 text-muted-foreground" />
+                                <p><span className="font-medium">Last Paid:</span> {student.lastPaymentDate && isValid(parseISO(student.lastPaymentDate)) ? format(parseISO(student.lastPaymentDate), 'MMM d, yyyy') : 'N/A'}</p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <CalendarIcon className="h-4 w-4 text-muted-foreground" />
+                                <p><span className="font-medium">Next Due:</span> {student.nextDueDate && isValid(parseISO(student.nextDueDate)) ? format(parseISO(student.nextDueDate), 'PP') : 'N/A'}</p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <UserCheck className="h-4 w-4 text-muted-foreground" />
+                                <p><span className="font-medium">Last Attended:</span> {student.lastAttended && isValid(parseISO(student.lastAttended)) ? format(parseISO(student.lastAttended), 'PP') : 'Never'}</p>
+                            </div>
+                        </div>
+                        <div className="pt-3 border-t flex justify-end gap-2">
+                            <Link href={`/students/profiles/${student.studentId}`} passHref legacyBehavior>
+                                <Button variant="outline" size="sm" className="flex-1">
+                                    <Eye className="mr-2 h-3 w-3" /> View
+                                </Button>
+                            </Link>
+                            <Link href={`/admin/students/edit/${student.studentId}`} passHref legacyBehavior>
+                                <Button variant="outline" size="sm" className="flex-1">
+                                    <Edit className="mr-2 h-3 w-3" /> Edit
+                                </Button>
+                            </Link>
                         </div>
                     </div>
-                </DialogTrigger>
-                <DialogContent className="max-w-md w-auto p-2">
-                    <Image
-                        src={student.profilePictureUrl || "https://placehold.co/400x400.png"}
-                        alt={`${student.name}'s profile picture`}
-                        width={400}
-                        height={400}
-                        className="rounded-md object-contain max-h-[70vh] w-full h-auto"
-                    />
-                </DialogContent>
-              </Dialog>
-              <div className="min-w-0">
-                <CardTitle className="text-md break-words">{student.name}</CardTitle>
-                <CardDescription className="text-xs break-words pt-1">{getFeeStatusBadge(student, 'icon-only')}</CardDescription>
-              </div>
-            </div>
-          <div className="flex flex-col items-end gap-1">
-            {student.seatNumber && (
-              <div
-                className={cn(
-                  'h-7 w-7 flex items-center justify-center rounded-md border text-xs font-bold',
-                  getShiftColorClass(student.shift)
-                )}
-                title={`${student.shift.charAt(0).toUpperCase() + student.shift.slice(1)} Shift, Seat ${student.seatNumber}`}
-              >
-                {student.seatNumber}
-              </div>
-            )}
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent className="text-xs space-y-2 pb-3">
-        <div className="flex items-center gap-2">
-            <WalletMinimal className="h-4 w-4 text-muted-foreground" />
-            <p><span className="font-medium">Last Paid:</span> {student.lastPaymentDate && isValid(parseISO(student.lastPaymentDate)) ? format(parseISO(student.lastPaymentDate), 'MMM d, yyyy') : 'N/A'}</p>
-        </div>
-        <div className="flex items-center gap-2">
-            <CalendarIcon className="h-4 w-4 text-muted-foreground" />
-            <p><span className="font-medium">Next Due:</span> {student.nextDueDate && isValid(parseISO(student.nextDueDate)) ? format(parseISO(student.nextDueDate), 'PP') : 'N/A'}</p>
-        </div>
-        <div className="flex items-center gap-2">
-            <UserCheck className="h-4 w-4 text-muted-foreground" />
-            <p><span className="font-medium">Last Attended:</span> {student.lastAttended && isValid(parseISO(student.lastAttended)) ? format(parseISO(student.lastAttended), 'PP') : 'Never'}</p>
-        </div>
-      </CardContent>
-      <CardFooter className="py-3 border-t flex justify-end gap-2">
-         <Link href={`/students/profiles/${student.studentId}`} passHref legacyBehavior>
-            <Button variant="outline" size="sm" className="flex-1">
-                <Eye className="mr-2 h-3 w-3" /> View
-            </Button>
-        </Link>
-        <Link href={`/admin/students/edit/${student.studentId}`} passHref legacyBehavior>
-            <Button variant="outline" size="sm" className="flex-1">
-                <Edit className="mr-2 h-3 w-3" /> Edit
-            </Button>
-        </Link>
-      </CardFooter>
+                </AccordionContent>
+            </AccordionItem>
+        </Accordion>
     </Card>
   );
 };
@@ -236,37 +251,66 @@ export default function FeesDuePage() {
   React.useEffect(() => {
     fetchFeesDue();
   }, [fetchFeesDue]);
+  
+  const overdueCount = feesDueStudents.filter(s => s.feeStatus === 'Overdue').length;
+  const dueCount = feesDueStudents.filter(s => s.feeStatus === 'Due').length;
 
   return (
     <>
       <PageTitle title="Student Fees Due">
+        <Dialog>
+            <DialogTrigger asChild>
+                <Button variant="outline"><HelpCircle className="mr-2 h-4 w-4" />Fee Guide</Button>
+            </DialogTrigger>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Fee Status Guide</DialogTitle>
+                    <DialogDescription>A simple guide to understanding the fee statuses.</DialogDescription>
+                </DialogHeader>
+                 <ul className="space-y-4 pt-2 text-sm">
+                    <li className="flex items-start gap-3">
+                      <Badge style={{ backgroundColor: 'hsl(var(--status-paid-bg))', color: 'hsl(var(--status-paid-text))' }} className="border-transparent mt-1">Paid</Badge>
+                      <span>Fees are up to date. No action needed.</span>
+                    </li>
+                    <li className="flex items-start gap-3">
+                      <Badge style={{ backgroundColor: 'hsl(var(--status-due-bg))', color: 'hsl(var(--status-due-text))' }} className="border-transparent mt-1">Due</Badge>
+                      <span>Your payment is due soon or has recently passed. Please pay at the desk.</span>
+                    </li>
+                    <li className="flex items-start gap-3">
+                      <Badge variant="destructive" className="mt-1">Overdue</Badge>
+                      <span>Your payment is more than 5 days late. Your ability to check-in is suspended until payment is made.</span>
+                    </li>
+                </ul>
+            </DialogContent>
+        </Dialog>
          <Button onClick={handleManualRefresh} variant="outline" disabled={isRefreshing || isLoading}>
           {isRefreshing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
-          Refresh Manually
+          Refresh
         </Button>
       </PageTitle>
 
-      <Alert className="mb-6">
-        <Info className="h-4 w-4" />
-        <AlertTitle>Fee Status Guide</AlertTitle>
-        <AlertDescription>
-          <ul className="list-disc list-inside text-xs space-y-2 pt-1">
-            <li className="flex items-center gap-2">
-              <Badge style={{ backgroundColor: 'hsl(var(--status-paid-bg))', color: 'hsl(var(--status-paid-text))' }} className="border-transparent">Paid</Badge>
-              - Fees are up to date.
-            </li>
-            <li className="flex items-center gap-2">
-              <Badge style={{ backgroundColor: 'hsl(var(--status-due-bg))', color: 'hsl(var(--status-due-text))' }} className="border-transparent">Due</Badge>
-              - Fee payment is due within the next 5 days or has recently passed.
-            </li>
-            <li className="flex items-center gap-2">
-              <Badge variant="destructive">Overdue</Badge>
-              - Fee has not been paid for more than 5 days past the due date. Attendance is revoked.
-            </li>
-          </ul>
-        </AlertDescription>
-      </Alert>
-
+      <div className="grid grid-cols-2 gap-4 mb-6">
+        <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Overdue</CardTitle>
+                <AlertTriangle className="h-4 w-4 text-destructive"/>
+            </CardHeader>
+            <CardContent>
+                <div className="text-2xl font-bold text-destructive">{overdueCount}</div>
+                <p className="text-xs text-muted-foreground">students with overdue fees</p>
+            </CardContent>
+        </Card>
+         <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Due</CardTitle>
+                <CalendarClock className="h-4 w-4 text-yellow-500"/>
+            </CardHeader>
+            <CardContent>
+                <div className="text-2xl font-bold text-yellow-600">{dueCount}</div>
+                <p className="text-xs text-muted-foreground">students with fees due soon</p>
+            </CardContent>
+        </Card>
+      </div>
 
       <Card className="mb-6 shadow-md border-border bg-card hover:shadow-lg hover:border-primary/30 transition-shadow">
         <Link href="/admin/students/potential-left" className="block no-underline">
@@ -289,7 +333,7 @@ export default function FeesDuePage() {
       <Card className="shadow-lg w-full">
         <CardHeader>
           <CardTitle className="flex items-center">
-            <AlertTriangle className="mr-2 h-5 w-5 text-destructive" />
+            <IndianRupee className="mr-2 h-5 w-5 text-primary" />
             Fees Due List ({feesDueStudents.length})
           </CardTitle>
           <CardDescription>Students are ordered by overdue status, then by due date.</CardDescription>
@@ -303,7 +347,7 @@ export default function FeesDuePage() {
           ) : (
             <>
               {/* Mobile Card View */}
-              <div className="md:hidden grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="md:hidden grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {feesDueStudents.length === 0 ? (
                   <div className="text-center text-muted-foreground py-6 sm:col-span-2">
                      <CheckCircle2 className="mx-auto mb-2 h-10 w-10 text-green-500" />
@@ -388,7 +432,7 @@ export default function FeesDuePage() {
                             </Link>
                             <Link href={`/admin/students/edit/${student.studentId}`} passHref legacyBehavior>
                                 <Button variant="outline" size="sm">
-                                    <Edit className="mr-1 h-3 w-3" /> Manage
+                                    <Edit className="mr-1 h-3 w-3" /> Edit
                                 </Button>
                             </Link>
                         </TableCell>
@@ -412,5 +456,3 @@ export default function FeesDuePage() {
     </>
   );
 }
-
-    
