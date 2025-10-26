@@ -69,6 +69,28 @@ const PaymentHistoryCardItem = ({ payment }: { payment: PaymentRecord }) => (
   </div>
 );
 
+const DateBox = ({ date, label }: { date?: string; label: string }) => {
+  const parsedDate = date && isValid(parseISO(date)) ? parseISO(date) : null;
+  
+  if (!parsedDate) {
+    return (
+      <div className="flex-1 text-center p-2 rounded-md bg-muted/50 min-w-[70px]">
+        <div className="text-xs text-muted-foreground">{label}</div>
+        <div className="text-lg font-bold">N/A</div>
+      </div>
+    );
+  }
+  
+  return (
+    <div className="flex-1 text-center p-2 rounded-md bg-muted/50 min-w-[70px]">
+      <div className="text-xs text-muted-foreground">{label}</div>
+      <div className="text-lg font-bold">{format(parsedDate, 'd')}</div>
+      <div className="text-xs font-medium text-primary">{format(parsedDate, 'MMM')}</div>
+    </div>
+  );
+};
+
+
 
 export default function StudentDetailPage() {
   const paramsHook = useParams();
@@ -321,13 +343,6 @@ export default function StudentDetailPage() {
                   </div>
                 </div>
                 <div className="flex items-start">
-                  <CalendarDays className="mr-3 h-4 w-4 text-muted-foreground flex-shrink-0 mt-0.5" />
-                  <div className="min-w-0">
-                    <p className="text-xs text-muted-foreground">Next Due Date</p>
-                    <p className="font-medium">{student.activityStatus === 'Left' ? 'N/A' : (student.nextDueDate && isValid(parseISO(student.nextDueDate)) ? format(parseISO(student.nextDueDate), 'PP') : 'N/A')}</p>
-                  </div>
-                </div>
-                 <div className="flex items-start">
                   <UserCircle className="mr-3 h-4 w-4 text-muted-foreground flex-shrink-0 mt-0.5" />
                   <div className="min-w-0">
                     <p className="text-xs text-muted-foreground">Activity Status</p>
@@ -338,6 +353,15 @@ export default function StudentDetailPage() {
                         {student.activityStatus}
                     </Badge>
                   </div>
+                </div>
+                <div className="pt-2 border-t mt-4 flex flex-wrap gap-2">
+                    <DateBox date={student.registrationDate} label="Registered" />
+                    <DateBox date={student.lastPaymentDate} label="Last Paid" />
+                    {student.activityStatus === 'Left' ? (
+                       <DateBox date={student.leftDate} label="Date Left" />
+                    ) : (
+                       <DateBox date={student.nextDueDate} label="Next Due" />
+                    )}
                 </div>
               </CardContent>
             </Card>
