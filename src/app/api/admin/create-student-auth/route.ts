@@ -2,8 +2,8 @@
 
 // src/app/api/admin/create-student-auth/route.ts
 import { NextResponse } from 'next/server';
-import { getAuth } from '@/lib/firebase-admin';
-import type { CreateRequest } from 'firebase-admin/auth';
+import { getAuth, getDb } from '@/lib/firebase-admin'; // Import getDb
+import type { CreateRequest, UserRecord } from 'firebase-admin/auth';
 
 const isValidIndianPhoneNumber = (phone: string): boolean => {
     const regex = /^[6-9]\d{9}$/;
@@ -26,31 +26,52 @@ export async function POST(request: Request) {
     }
 
     const auth = getAuth();
+    const db = getDb();
     
-    // Determine the email to be used for authentication
     const emailForAuth = email || `${phone}@taxshila-auth.com`;
+    const phoneNumberForAuth = `+91${phone}`;
+
+    let existingUser: UserRecord | null = null;
     
     // --- Check for existing users ---
     try {
-        await auth.getUserByEmail(emailForAuth);
-        return NextResponse.json({ success: false, error: 'An account with this email already exists.' }, { status: 409 });
-    } catch (error: any) {
-        if (error.code !== 'auth/user-not-found') throw error;
-    }
-    try {
-        await auth.getUserByPhoneNumber(`+91${phone}`);
-        return NextResponse.json({ success: false, error: 'An account with this phone number already exists.' }, { status: 409 });
+        existingUser = await auth.getUserByEmail(emailForAuth);
     } catch (error: any) {
         if (error.code !== 'auth/user-not-found') throw error;
     }
 
-    // --- Create Firebase Auth User ---
+    if (!existingUser) {
+        try {
+            existingUser = await auth.getUserByPhoneNumber(phoneNumberForAuth);
+        } catch (error: any) {
+            if (error.code !== 'auth/user-not-found') throw error;
+        }
+    }
+
+    // --- HEALING LOGIC ---
+    if (existingUser) {
+        // Auth user exists. Now, check if they are already linked in Firestore.
+        const studentsRef = db.collection('students');
+        const studentQuery = await studentsRef.where('uid', '==', existingUser.uid).limit(1).get();
+        
+        if (studentQuery.empty) {
+            // The auth user exists but is NOT in the database (orphaned).
+            // This is a "healing" scenario. We'll return the existing UID to allow the client to create the DB record.
+            return NextResponse.json({ success: true, uid: existingUser.uid, email: existingUser.email || emailForAuth });
+        } else {
+            // The auth user exists AND is in the database. This is a true duplicate.
+            return NextResponse.json({ success: false, error: 'A student with this email or phone number is already fully registered.' }, { status: 409 });
+        }
+    }
+    
+
+    // --- Create New Firebase Auth User ---
     const userPayload: CreateRequest = {
       password: password,
       displayName: name,
       disabled: false,
-      phoneNumber: `+91${phone}`,
-      email: emailForAuth, // Always include an email
+      phoneNumber: phoneNumberForAuth,
+      email: emailForAuth,
     };
     
     const userRecord = await auth.createUser(userPayload);
