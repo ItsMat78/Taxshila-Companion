@@ -58,8 +58,17 @@ const getShiftColorClass = (shift: Shift | undefined) => {
 };
 
 
-const getFeeStatusBadge = (student: Student) => {
+const getFeeStatusBadge = (student: Student, type: "icon-only" | "full" = "full") => {
     const baseClasses = "text-xs px-1.5 py-0.5 border-transparent";
+    if (type === "icon-only") {
+        if(student.feeStatus === "Overdue") {
+            return <CalendarClock className="h-5 w-5 text-destructive" title="Overdue" />;
+        }
+        if(student.feeStatus === "Due") {
+            return <CalendarClock className="h-5 w-5 text-yellow-500" title="Due" />;
+        }
+    }
+    
     switch (student.feeStatus) {
       case 'Overdue':
         return <Badge variant="destructive" className={cn(baseClasses, "capitalize")}><CalendarClock className="mr-1 h-3 w-3" />{student.feeStatus}</Badge>;
@@ -102,11 +111,10 @@ const FeeDueCardItem = ({ student }: { student: StudentWithLastAttended }) => {
               </Dialog>
               <div className="min-w-0">
                 <CardTitle className="text-md break-words">{student.name}</CardTitle>
-                <CardDescription className="text-xs break-words">ID: {student.studentId}</CardDescription>
+                <CardDescription className="text-xs break-words pt-1">{getFeeStatusBadge(student, 'icon-only')}</CardDescription>
               </div>
             </div>
           <div className="flex flex-col items-end gap-1">
-            {getFeeStatusBadge(student)}
             {student.seatNumber && (
               <div
                 className={cn(
@@ -138,12 +146,12 @@ const FeeDueCardItem = ({ student }: { student: StudentWithLastAttended }) => {
       <CardFooter className="py-3 border-t flex justify-end gap-2">
          <Link href={`/students/profiles/${student.studentId}`} passHref legacyBehavior>
             <Button variant="outline" size="sm" className="flex-1">
-                <Eye className="mr-2 h-3 w-3" /> View Profile
+                <Eye className="mr-2 h-3 w-3" /> View
             </Button>
         </Link>
         <Link href={`/admin/students/edit/${student.studentId}`} passHref legacyBehavior>
             <Button variant="outline" size="sm" className="flex-1">
-                <Edit className="mr-2 h-3 w-3" /> Manage Fees
+                <Edit className="mr-2 h-3 w-3" /> Edit
             </Button>
         </Link>
       </CardFooter>
