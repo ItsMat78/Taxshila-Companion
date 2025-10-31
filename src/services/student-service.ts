@@ -319,62 +319,65 @@ export async function addStudent(studentData: AddStudentData): Promise<Student> 
 
 export async function updateStudent(customStudentId: string, studentUpdateData: Partial<Student>): Promise<Student | undefined> {
   const studentToUpdate = await getStudentByCustomId(customStudentId);
-  if (!studentToUpdate || !studentToUpdate.firestoreId || !studentToUpdate.uid) {
-    throw new Error("Student not found or is missing critical data (Firestore ID or Auth UID).");
+  if (!studentToUpdate || !studentToUpdate.firestoreId) {
+    throw new Error("Student not found or is missing critical data (Firestore ID).");
   }
   const studentDocRef = doc(db, STUDENTS_COLLECTION, studentToUpdate.firestoreId);
 
   // --- Firebase Auth Update ---
-  const authUpdatePayload: { uid: string; email?: string; phone?: string; password?: string, disabled?: boolean } = { uid: studentToUpdate.uid };
-  let authNeedsUpdate = false;
+  // Only attempt auth updates if a UID exists
+  if (studentToUpdate.uid) {
+    const authUpdatePayload: { uid: string; email?: string; phone?: string; password?: string, disabled?: boolean } = { uid: studentToUpdate.uid };
+    let authNeedsUpdate = false;
 
-  if (studentUpdateData.email && studentUpdateData.email !== studentToUpdate.email) {
-      authUpdatePayload.email = studentUpdateData.email;
-      authNeedsUpdate = true;
-  }
-  if (studentUpdateData.phone && studentUpdateData.phone !== studentToUpdate.phone) {
-      authUpdatePayload.phone = studentUpdateData.phone;
-      authNeedsUpdate = true;
-  }
-  if (studentUpdateData.password) {
-      authUpdatePayload.password = studentUpdateData.password;
-      authNeedsUpdate = true;
-  }
-  
-  if (studentUpdateData.activityStatus === 'Left' && studentToUpdate.activityStatus === 'Active') {
-      authUpdatePayload.disabled = true;
-      authNeedsUpdate = true;
-  } else if (studentUpdateData.activityStatus === 'Active' && studentToUpdate.activityStatus === 'Left') {
-      authUpdatePayload.disabled = false;
-      authNeedsUpdate = true;
-  }
+    if (studentUpdateData.email && studentUpdateData.email !== studentToUpdate.email) {
+        authUpdatePayload.email = studentUpdateData.email;
+        authNeedsUpdate = true;
+    }
+    if (studentUpdateData.phone && studentUpdateData.phone !== studentToUpdate.phone) {
+        authUpdatePayload.phone = studentUpdateData.phone;
+        authNeedsUpdate = true;
+    }
+    if (studentUpdateData.password) {
+        authUpdatePayload.password = studentUpdateData.password;
+        authNeedsUpdate = true;
+    }
+    
+    if (studentUpdateData.activityStatus === 'Left' && studentToUpdate.activityStatus === 'Active') {
+        authUpdatePayload.disabled = true;
+        authNeedsUpdate = true;
+    } else if (studentUpdateData.activityStatus === 'Active' && studentToUpdate.activityStatus === 'Left') {
+        authUpdatePayload.disabled = false;
+        authNeedsUpdate = true;
+    }
 
+    if (authNeedsUpdate) {
+        try {
+          const authResponse = await fetch('/api/admin/update-student-auth', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(authUpdatePayload),
+          });
 
-  if (authNeedsUpdate) {
-      try {
-        const authResponse = await fetch('/api/admin/update-student-auth', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(authUpdatePayload),
-        });
-
-        if (!authResponse.ok) {
-            const errorResult = await authResponse.json();
-            // Gracefully handle "already disabled/enabled" errors
-            const errorMessage = errorResult.error || 'An unknown error occurred.';
-            if (errorMessage.includes("already disabled") || errorMessage.includes("already enabled")) {
+          if (!authResponse.ok) {
+              const errorResult = await authResponse.json();
+              const errorMessage = errorResult.error || 'An unknown error occurred.';
+              if (errorMessage.includes("already disabled") || errorMessage.includes("already enabled")) {
+                console.warn(`Auth state for ${customStudentId} was already as requested. Proceeding with DB update.`);
+              } else {
+                throw new Error(`Auth Update Failed: ${errorMessage}`);
+              }
+          }
+        } catch(e) {
+           if (e instanceof Error && (e.message.includes("already disabled") || e.message.includes("already enabled"))) {
               console.warn(`Auth state for ${customStudentId} was already as requested. Proceeding with DB update.`);
-            } else {
-              throw new Error(`Auth Update Failed: ${errorMessage}`);
-            }
+           } else {
+              throw e; // Re-throw other errors
+           }
         }
-      } catch(e) {
-         if (e instanceof Error && (e.message.includes("already disabled") || e.message.includes("already enabled"))) {
-            console.warn(`Auth state for ${customStudentId} was already as requested. Proceeding with DB update.`);
-         } else {
-            throw e; // Re-throw other errors
-         }
-      }
+    }
+  } else {
+      console.warn(`Skipping auth update for student ${customStudentId} because they have no UID.`);
   }
 
 
