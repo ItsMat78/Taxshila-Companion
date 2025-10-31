@@ -351,15 +351,29 @@ export async function updateStudent(customStudentId: string, studentUpdateData: 
 
 
   if (authNeedsUpdate) {
-      const authResponse = await fetch('/api/admin/update-student-auth', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(authUpdatePayload),
-      });
+      try {
+        const authResponse = await fetch('/api/admin/update-student-auth', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(authUpdatePayload),
+        });
 
-      if (!authResponse.ok) {
-          const errorResult = await authResponse.json();
-          throw new Error(`Auth Update Failed: ${errorResult.error || 'An unknown error occurred.'}`);
+        if (!authResponse.ok) {
+            const errorResult = await authResponse.json();
+            // Gracefully handle "already disabled/enabled" errors
+            const errorMessage = errorResult.error || 'An unknown error occurred.';
+            if (errorMessage.includes("already disabled") || errorMessage.includes("already enabled")) {
+              console.warn(`Auth state for ${customStudentId} was already as requested. Proceeding with DB update.`);
+            } else {
+              throw new Error(`Auth Update Failed: ${errorMessage}`);
+            }
+        }
+      } catch(e) {
+         if (e instanceof Error && (e.message.includes("already disabled") || e.message.includes("already enabled"))) {
+            console.warn(`Auth state for ${customStudentId} was already as requested. Proceeding with DB update.`);
+         } else {
+            throw e; // Re-throw other errors
+         }
       }
   }
 
