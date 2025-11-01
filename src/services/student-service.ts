@@ -216,7 +216,7 @@ export async function getStudentsWithFeesDue(): Promise<Student[]> {
 }
 
 export async function getStudentByCustomId(studentId: string): Promise<Student | undefined> {
-  const q = query(collection(db, STUDENTS_COLLECTION), where("studentId", "==", studentId));
+  const q = query(collection(db, STUDENTS_COLLECTION), where("studentId", "==", studentId), limit(1));
   const querySnapshot = await getDocs(q);
   if (querySnapshot.empty) {
     return undefined;
@@ -335,7 +335,6 @@ export async function updateStudent(customStudentId: string, studentUpdateData: 
   const studentDocRef = doc(db, STUDENTS_COLLECTION, studentToUpdate.firestoreId);
 
   // --- Firebase Auth Update ---
-  // Only attempt auth updates if a UID exists
   if (studentToUpdate.uid) {
     const authUpdatePayload: { uid: string; email?: string; phone?: string; password?: string, disabled?: boolean } = { uid: studentToUpdate.uid };
     let authNeedsUpdate = false;
@@ -386,8 +385,8 @@ export async function updateStudent(customStudentId: string, studentUpdateData: 
            }
         }
     }
-  } else {
-      console.warn(`Skipping auth update for student ${customStudentId} because they have no UID.`);
+  } else if (studentUpdateData.activityStatus) {
+    console.warn(`Skipping auth update for student ${customStudentId} because they have no UID.`);
   }
 
 
@@ -590,7 +589,7 @@ export async function getActiveCheckIn(studentId: string): Promise<AttendanceRec
 
 export async function addCheckIn(studentId: string): Promise<AttendanceRecord> {
   const student = await getStudentByCustomId(studentId);
-  if (!student) {
+  if (!student || !student.firestoreId) {
     throw new Error("Student not found for check-in.");
   }
   
@@ -609,10 +608,8 @@ export async function addCheckIn(studentId: string): Promise<AttendanceRecord> {
   };
   const docRef = await addDoc(collection(db, ATTENDANCE_COLLECTION), newRecordData);
   
-  if (student.firestoreId) {
-      const studentDocRef = doc(db, STUDENTS_COLLECTION, student.firestoreId);
-      await updateDoc(studentDocRef, { lastAttendanceDate: Timestamp.fromDate(now) });
-  }
+  const studentDocRef = doc(db, STUDENTS_COLLECTION, student.firestoreId);
+  await updateDoc(studentDocRef, { lastAttendanceDate: Timestamp.fromDate(now) });
 
   return {
     recordId: docRef.id,
@@ -644,6 +641,20 @@ export async function getAttendanceForDate(studentId: string, date: string): Pro
   records.sort((a, b) => parseISO(a.checkInTime).getTime() - parseISO(b.checkInTime).getTime());
   return records;
 }
+
+export async function getAttendanceForDateRange(studentId: string, startDate: string, endDate: string): Promise<AttendanceRecord[]> {
+    const q = query(
+        collection(db, ATTENDANCE_COLLECTION),
+        where("studentId", "==", studentId),
+        where("date", ">=", startDate),
+        where("date", "<=", endDate)
+    );
+    const querySnapshot = await getDocs(q);
+    const records = querySnapshot.docs.map(doc => attendanceRecordFromDoc(doc));
+    records.sort((a, b) => parseISO(a.checkInTime).getTime() - parseISO(b.checkInTime).getTime());
+    return records;
+}
+
 
 export async function getAllAttendanceRecords(): Promise<AttendanceRecord[]> {
     const q = query(collection(db, ATTENDANCE_COLLECTION));
@@ -1382,3 +1393,6 @@ declare module '@/types/communication' {
 }
 
 
+
+
+    
