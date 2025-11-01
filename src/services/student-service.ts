@@ -205,6 +205,16 @@ export async function getAllStudents(): Promise<Student[]> {
   return querySnapshot.docs.map(studentFromDoc);
 }
 
+export async function getStudentsWithFeesDue(): Promise<Student[]> {
+  const q = query(
+    collection(db, STUDENTS_COLLECTION),
+    where("activityStatus", "==", "Active"),
+    where("feeStatus", "in", ["Due", "Overdue"])
+  );
+  const querySnapshot = await getDocs(q);
+  return querySnapshot.docs.map(studentFromDoc);
+}
+
 export async function getStudentByCustomId(studentId: string): Promise<Student | undefined> {
   const q = query(collection(db, STUDENTS_COLLECTION), where("studentId", "==", studentId));
   const querySnapshot = await getDocs(q);
@@ -1370,4 +1380,5 @@ declare module '@/types/communication' {
     firestoreId?: string;
   }
 }
+
 

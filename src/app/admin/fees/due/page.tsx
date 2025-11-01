@@ -33,7 +33,7 @@ import Image from 'next/image';
 import { Badge } from '@/components/ui/badge';
 import { AlertTriangle, CalendarClock, CheckCircle2, Loader2, User, IndianRupee, Edit, UserCheck, Eye, UserX, RefreshCw, Info, Calendar as CalendarIcon, WalletMinimal, Armchair, HelpCircle } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { getAllStudents, getAllAttendanceRecords, refreshAllStudentFeeStatuses } from '@/services/student-service';
+import { getStudentsWithFeesDue, getAllAttendanceRecords, refreshAllStudentFeeStatuses } from '@/services/student-service';
 import type { Student, Shift } from '@/types/student';
 import { useToast } from '@/hooks/use-toast';
 import { format, parseISO, isValid } from 'date-fns';
@@ -210,8 +210,8 @@ export default function FeesDuePage() {
   const fetchFeesDue = React.useCallback(async () => {
     setIsLoading(true);
     try {
-      const [allStudents, allAttendance] = await Promise.all([
-        getAllStudents(),
+      const [dueStudentsData, allAttendance] = await Promise.all([
+        getStudentsWithFeesDue(),
         getAllAttendanceRecords(),
       ]);
 
@@ -223,11 +223,7 @@ export default function FeesDuePage() {
         }
       });
 
-      const dueStudents = allStudents
-        .filter(student =>
-          student.activityStatus === "Active" &&
-          (student.feeStatus === "Due" || student.feeStatus === "Overdue")
-        )
+      const dueStudents = dueStudentsData
         .map(student => ({
           ...student,
           lastAttended: lastAttendedMap.get(student.studentId)
