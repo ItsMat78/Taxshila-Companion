@@ -20,7 +20,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Receipt, History, Download, IndianRupee, Loader2, Briefcase, CalendarClock, AlertTriangle, CheckCircle } from 'lucide-react';
+import { Receipt, History, Download, IndianRupee, Loader2, Briefcase, CalendarClock, AlertTriangle, CheckCircle, CreditCard } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
 import { getStudentByEmail, getFeeStructure, getStudentByCustomId } from '@/services/student-service';
 import type { Student, PaymentRecord, FeeStructure as FeeStructureType } from '@/types/student';
@@ -45,6 +45,28 @@ const StatBox = ({ title, value, icon, badge }: { title: string, value: string |
         </div>
     );
 };
+
+// Mobile Card Item for Payment History
+const PaymentHistoryCardItem = ({ payment }: { payment: PaymentRecord }) => (
+  <div className="p-3 border rounded-md bg-muted/30 shadow-sm">
+    <div className="flex justify-between items-start mb-1">
+      <div className="font-medium text-sm">{payment.amount}</div>
+      <Badge variant="outline" className="text-xs capitalize">
+        <CreditCard className="mr-1 h-3 w-3"/>
+        {payment.method}
+      </Badge>
+    </div>
+    <div className="text-xs text-muted-foreground space-y-1">
+      <p>Date: {payment.date && isValid(parseISO(payment.date)) ? format(parseISO(payment.date), 'dd-MMM-yy') : 'N/A'}</p>
+      <p>Transaction ID: {payment.transactionId}</p>
+    </div>
+    <div className="mt-2">
+      <Button variant="outline" size="sm" disabled className="w-full">
+        <Download className="mr-1 h-3 w-3" /> Invoice
+      </Button>
+    </div>
+  </div>
+);
 
 
 export default function MemberFeesPage() {
@@ -180,34 +202,41 @@ export default function MemberFeesPage() {
                 </div>
             ) : (
                 paymentHistory.length > 0 ? (
-                  <div className="overflow-auto max-h-80">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Date</TableHead>
-                          <TableHead>Amount</TableHead>
-                          <TableHead>Method</TableHead>
-                          <TableHead>Transaction ID</TableHead>
-                          <TableHead>Action</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {paymentHistory.slice().reverse().map((payment: PaymentRecord) => ( 
-                          <TableRow key={payment.paymentId}>
-                            <TableCell className="whitespace-nowrap">{payment.date && isValid(parseISO(payment.date)) ? format(parseISO(payment.date), 'dd-MMM-yy') : 'N/A'}</TableCell>
-                            <TableCell className="whitespace-nowrap">{payment.amount}</TableCell>
-                            <TableCell className="capitalize whitespace-nowrap">{payment.method}</TableCell>
-                            <TableCell className="whitespace-nowrap">{payment.transactionId}</TableCell>
-                             <TableCell className="whitespace-nowrap">
-                              <Button variant="outline" size="sm" disabled>
-                                <Download className="mr-1 h-3 w-3" /> Invoice
-                              </Button>
-                            </TableCell>
+                  <>
+                    <div className="md:hidden space-y-3 max-h-80 overflow-y-auto">
+                      {paymentHistory.slice().reverse().map((payment: PaymentRecord) => (
+                        <PaymentHistoryCardItem key={payment.paymentId} payment={payment} />
+                      ))}
+                    </div>
+                    <div className="hidden md:block max-h-80 w-full overflow-y-auto overflow-x-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Date</TableHead>
+                            <TableHead>Amount</TableHead>
+                            <TableHead>Method</TableHead>
+                            <TableHead>Transaction ID</TableHead>
+                            <TableHead>Action</TableHead>
                           </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
+                        </TableHeader>
+                        <TableBody>
+                          {paymentHistory.slice().reverse().map((payment: PaymentRecord) => ( 
+                            <TableRow key={payment.paymentId}>
+                              <TableCell className="whitespace-nowrap">{payment.date && isValid(parseISO(payment.date)) ? format(parseISO(payment.date), 'dd-MMM-yy') : 'N/A'}</TableCell>
+                              <TableCell className="whitespace-nowrap">{payment.amount}</TableCell>
+                              <TableCell className="capitalize whitespace-nowrap">{payment.method}</TableCell>
+                              <TableCell className="whitespace-nowrap">{payment.transactionId}</TableCell>
+                               <TableCell className="whitespace-nowrap">
+                                <Button variant="outline" size="sm" disabled>
+                                  <Download className="mr-1 h-3 w-3" /> Invoice
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </>
                 ) : (
                   <p className="text-muted-foreground text-center py-4">No payment history available.</p>
                 )
@@ -217,4 +246,3 @@ export default function MemberFeesPage() {
     </>
   );
 }
-
