@@ -684,7 +684,11 @@ export default function MemberDashboardPage() {
              <Button
                 onClick={handleDashboardCheckOut}
                 disabled={isProcessingCheckout}
-                className="w-full rounded-t-none h-12 text-base bg-green-600 hover:bg-green-700 text-white"
+                className={cn(
+                  "w-full rounded-t-none h-12 text-base text-white relative overflow-hidden",
+                  "bg-green-600 hover:bg-green-700",
+                  !isProcessingCheckout && "animate-gradient-sweep"
+                )}
              >
                 {isProcessingCheckout ? (
                     <Loader2 className="mr-2 h-5 w-5 animate-spin" />
