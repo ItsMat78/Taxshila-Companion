@@ -25,12 +25,12 @@ import {
 import { Alert, AlertDescription, AlertTitle as ShadcnAlertTitle } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/auth-context';
-import { Camera, QrCode, Receipt, IndianRupee, MessageSquare, Bell, ScrollText, Star, Loader2, XCircle, Home, BarChart3, PlayCircle, CheckCircle, Hourglass, ScanLine, LogOut, AlertCircle, X, Eye } from 'lucide-react';
+import { Camera, QrCode, Receipt, IndianRupee, MessageSquare, Bell, ScrollText, Star, Loader2, XCircle, Home, BarChart3, PlayCircle, CheckCircle, Hourglass, ScanLine, LogOut, AlertCircle, X, Eye, RefreshCw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getStudentByEmail, getAlertsForStudent, addCheckIn, addCheckOut, getActiveCheckIn, getAttendanceForDate, getStudentByCustomId } from '@/services/student-service';
 import type { AlertItem } from '@/types/communication';
 import type { Student, AttendanceRecord, FeeStatus } from '@/types/student';
-import { format, parseISO, differenceInMilliseconds, isValid } from 'date-fns';
+import { format, parseISO, differenceInMilliseconds, isValid, differenceInMinutes, differenceInHours } from 'date-fns';
 import { Html5QrcodeScanner, Html5QrcodeSupportedFormats, Html5QrcodeScanType } from 'html5-qrcode';
 import { setupPushNotifications } from '@/lib/notification-setup';
 
@@ -209,6 +209,7 @@ export default function MemberDashboardPage() {
   const [isOverdueDialogOpen, setIsOverdueDialogOpen] = React.useState(false);
   const [elapsedTime, setElapsedTime] = React.useState<string | null>(null);
   const [showNotificationPrompt, setShowNotificationPrompt] = React.useState(false);
+  const [isRefreshing, setIsRefreshing] = React.useState(false);
 
   React.useEffect(() => {
     if (typeof window !== 'undefined' && 'Notification' in window) {
@@ -225,42 +226,10 @@ export default function MemberDashboardPage() {
   };
 
 
-  React.useEffect(() => {
-    let intervalId: NodeJS.Timeout | null = null;
-
-    if (activeCheckInRecord?.checkInTime && isValid(parseISO(activeCheckInRecord.checkInTime))) {
-      const checkInTime = parseISO(activeCheckInRecord.checkInTime);
-      
-      const updateTimer = () => {
-        const now = new Date();
-        const diff = now.getTime() - checkInTime.getTime();
-
-        if (diff < 0) return;
-
-        const hours = Math.floor(diff / 3600000);
-        const minutes = Math.floor((diff % 3600000) / 60000);
-        
-        setElapsedTime(
-          `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`
-        );
-      };
-
-      updateTimer(); // Initial call
-      intervalId = setInterval(updateTimer, 30000); // Update every 30 seconds
-    } else {
-      setElapsedTime(null);
-    }
-
-    return () => {
-      if (intervalId) {
-        clearInterval(intervalId);
-      }
-    };
-  }, [activeCheckInRecord]);
-
-
-  const fetchAllDashboardData = React.useCallback(async () => {
+  const fetchAllDashboardData = React.useCallback(async (isManualRefresh = false) => {
     if (user?.studentId || user?.email) {
+        if (isManualRefresh) setIsRefreshing(true);
+
         setIsLoadingStudentData(true);
         setIsLoadingCurrentSession(true);
 
@@ -299,6 +268,16 @@ export default function MemberDashboardPage() {
           setHasUnreadAlerts(alerts.some(alert => !alert.isRead));
           setActiveCheckInRecord(activeCheckInData || null);
 
+          if (activeCheckInData?.checkInTime && isValid(parseISO(activeCheckInData.checkInTime))) {
+              const now = new Date();
+              const checkInTime = parseISO(activeCheckInData.checkInTime);
+              const hours = differenceInHours(now, checkInTime);
+              const minutes = differenceInMinutes(now, checkInTime) % 60;
+              setElapsedTime(`${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`);
+          } else {
+              setElapsedTime(null);
+          }
+
         } else {
             toast({ title: "Error", description: "Could not find your student record.", variant: "destructive" });
         }
@@ -308,6 +287,7 @@ export default function MemberDashboardPage() {
       } finally {
         setIsLoadingStudentData(false);
         setIsLoadingCurrentSession(false);
+        if (isManualRefresh) setIsRefreshing(false);
         if (!studentDetailsFetchedSuccessfully) {
             setStudentFirstName(null); setStudentId(null);
             setHasUnreadAlerts(false); setActiveCheckInRecord(null); setHoursStudiedToday(null);
@@ -325,9 +305,10 @@ export default function MemberDashboardPage() {
 
   React.useEffect(() => {
     fetchAllDashboardData();
-    const intervalId = setInterval(fetchAllDashboardData, 300000);
+    const intervalId = setInterval(fetchAllDashboardData, 300000); // 5 minutes
     return () => clearInterval(intervalId);
-  }, [fetchAllDashboardData]);
+  }, [user]); // Rerun only when user object changes, not the function itself
+
 
   const handleCloseScanner = React.useCallback(async () => {
     if (html5QrcodeScannerRef.current && typeof html5QrcodeScannerRef.current.clear === 'function') {
@@ -643,7 +624,12 @@ export default function MemberDashboardPage() {
 
   return (
     <>
-      <PageTitle title={pageTitleText} description="Your Taxshila Companion dashboard." />
+      <PageTitle title={pageTitleText} description="Your Taxshila Companion dashboard.">
+         <Button variant="outline" size="sm" onClick={() => fetchAllDashboardData(true)} disabled={isRefreshing}>
+          {isRefreshing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+          Refresh
+        </Button>
+      </PageTitle>
 
       {showNotificationPrompt && <NotificationPrompt onDismiss={handleDismissPrompt} />}
 
