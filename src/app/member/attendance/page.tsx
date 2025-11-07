@@ -15,9 +15,9 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, BarChart3, Clock, LogIn, LogOut, TrendingUp, ChevronLeft, ChevronRight, Calendar as CalendarIcon } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
-import { getStudentByEmail, calculateMonthlyStudyHours, getAttendanceForDate, getAttendanceForDateRange, getStudentByCustomId } from '@/services/student-service';
+import { getStudentByEmail, calculateMonthlyStudyHours, getAttendanceForDate, getAttendanceRecordsByStudentId, getStudentByCustomId } from '@/services/student-service';
 import type { Student, AttendanceRecord } from '@/types/student';
-import { format, parseISO, isValid, differenceInMilliseconds, startOfMonth, endOfMonth, eachDayOfInterval, addMonths, subMonths } from 'date-fns';
+import { format, parseISO, isValid, differenceInMilliseconds, startOfMonth, endOfMonth, eachDayOfInterval, addMonths, subMonths, isWithinInterval, isAfter } from 'date-fns';
 import { BarChart, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Bar } from 'recharts';
 
 
@@ -171,36 +171,44 @@ export default function MemberAttendancePage() {
   }, [fetchStudentData]);
 
     const getDailyStudyDataForMonth = React.useCallback(async (studentId: string, month: Date) => {
-        setIsLoadingMonthlyStudyData(true);
-        try {
-            const startDate = startOfMonth(month);
-            const endDate = endOfMonth(month);
-            const allDays = eachDayOfInterval({ start: startDate, end: endDate });
-            const recordsForMonth = await getAttendanceForDateRange(studentId, format(startDate, 'yyyy-MM-dd'), format(endDate, 'yyyy-MM-dd'));
-            const recordsByDate = new Map<string, AttendanceRecord[]>();
+      setIsLoadingMonthlyStudyData(true);
+      try {
+          const startDate = startOfMonth(month);
+          const endDate = endOfMonth(month);
+          const allDays = eachDayOfInterval({ start: startDate, end: endDate });
 
-            recordsForMonth.forEach(rec => {
-                const dateKey = format(parseISO(rec.checkInTime), 'yyyy-MM-dd');
-                const dayRecords = recordsByDate.get(dateKey) || [];
-                dayRecords.push(rec);
-                recordsByDate.set(dateKey, dayRecords);
-            });
+          // Fetch all records for the student once
+          const allRecordsForStudent = await getAttendanceRecordsByStudentId(studentId);
 
-            const studyData: { date: string; hours: number }[] = allDays.map(day => {
-                const dateString = format(day, 'yyyy-MM-dd');
-                const records = recordsByDate.get(dateString) || [];
-                const dailyHours = calculateDailyStudyTime(records).totalHours;
-                return { date: dateString, hours: dailyHours };
-            });
+          const recordsForMonth = allRecordsForStudent.filter(rec => {
+              const recDate = parseISO(rec.date);
+              return isWithinInterval(recDate, { start: startDate, end: endDate });
+          });
 
-            setMonthlyStudyData(studyData);
-        } catch (error) {
-            console.error("Error fetching daily study data:", error);
-            setMonthlyStudyData([]);
-        } finally {
-            setIsLoadingMonthlyStudyData(false);
-        }
-    }, []);
+          const recordsByDate = new Map<string, AttendanceRecord[]>();
+
+          recordsForMonth.forEach(rec => {
+              const dateKey = format(parseISO(rec.checkInTime), 'yyyy-MM-dd');
+              const dayRecords = recordsByDate.get(dateKey) || [];
+              dayRecords.push(rec);
+              recordsByDate.set(dateKey, dayRecords);
+          });
+
+          const studyData: { date: string; hours: number }[] = allDays.map(day => {
+              const dateString = format(day, 'yyyy-MM-dd');
+              const records = recordsByDate.get(dateString) || [];
+              const dailyHours = calculateDailyStudyTime(records).totalHours;
+              return { date: dateString, hours: dailyHours };
+          });
+
+          setMonthlyStudyData(studyData);
+      } catch (error) {
+          console.error("Error fetching daily study data:", error);
+          setMonthlyStudyData([]);
+      } finally {
+          setIsLoadingMonthlyStudyData(false);
+      }
+  }, []);
 
   React.useEffect(() => {
     if (currentStudent?.studentId && showMonthlyStudyTime) {
@@ -439,5 +447,3 @@ export default function MemberAttendancePage() {
     </>
   );
 }
-
-    
