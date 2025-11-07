@@ -15,9 +15,9 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, BarChart3, Clock, LogIn, LogOut, TrendingUp, ChevronLeft, ChevronRight, Calendar as CalendarIcon } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
-import { getStudentByEmail, calculateMonthlyStudyHours, getAttendanceForDate, getAttendanceRecordsByStudentId, getStudentByCustomId } from '@/services/student-service';
+import { getStudentByEmail, calculateMonthlyStudyHours, getAttendanceForDate, getAttendanceForDateRange, getStudentByCustomId } from '@/services/student-service';
 import type { Student, AttendanceRecord } from '@/types/student';
-import { format, parseISO, isValid, differenceInMilliseconds, startOfMonth, endOfMonth, eachDayOfInterval, addMonths, subMonths, isWithinInterval, isAfter } from 'date-fns';
+import { format, parseISO, isValid, differenceInMilliseconds, startOfMonth, endOfMonth, eachDayOfInterval, addMonths, subMonths, isAfter } from 'date-fns';
 import { BarChart, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Bar } from 'recharts';
 
 
@@ -38,44 +38,6 @@ const ChartTooltipContent = ({ active, payload, label }: any) => {
   return null;
 };
 
-// New component for the animated number
-const AnimatedNumber = ({ value }: { value: number | null }) => {
-  const [displayValue, setDisplayValue] = React.useState(0);
-
-  React.useEffect(() => {
-    // If the incoming value is null or undefined, treat it as 0.
-    const targetValue = value ?? 0;
-    
-    let start = displayValue;
-    const end = targetValue;
-    const duration = 1000; // 1 second animation
-    const range = end - start;
-    let startTime: number | null = null;
-    let animationFrameId: number;
-
-    const step = (timestamp: number) => {
-      if (!startTime) startTime = timestamp;
-      const progress = Math.min((timestamp - startTime) / duration, 1);
-      const easedProgress = 1 - Math.pow(1 - progress, 3); // Ease-out cubic
-      const current = start + easedProgress * range;
-      setDisplayValue(current);
-      if (progress < 1) {
-        animationFrameId = requestAnimationFrame(step);
-      }
-    };
-    
-    animationFrameId = requestAnimationFrame(step);
-
-    return () => cancelAnimationFrame(animationFrameId);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [value]);
-
-  const hours = Math.floor(displayValue);
-  const decimals = (value ?? 0) % 1 !== 0 ? Math.max(0, Math.min(2, ((value ?? 0).toString().split('.')[1] || '').length)) : 0;
-  
-  return <span className="text-4xl font-bold">{displayValue.toFixed(decimals)}</span>;
-};
-
 
 export default function MemberAttendancePage() {
   const { user } = useAuth();
@@ -85,8 +47,6 @@ export default function MemberAttendancePage() {
   const [currentStudent, setCurrentStudent] = React.useState<Student | null>(null);
   const [attendanceForDay, setAttendanceForDay] = React.useState<AttendanceRecord[]>([]);
   const [isLoadingDetails, setIsLoadingDetails] = React.useState(false);
-  const [monthlyStudyHours, setMonthlyStudyHours] = React.useState<number | null>(null);
-  const [isLoadingStudyHours, setIsLoadingStudyHours] = React.useState(true);
   const [isLoadingActiveCheckIn, setIsLoadingActiveCheckIn] = React.useState(true);
   const [monthlyStudyData, setMonthlyStudyData] = React.useState<{ date: string; hours: number }[]>([]);
   const [isLoadingMonthlyStudyData, setIsLoadingMonthlyStudyData] = React.useState(true);
@@ -139,87 +99,40 @@ export default function MemberAttendancePage() {
     return null;
   }, [user, toast]);
   
- const handleShowMonthlyStudyTime = React.useCallback(async () => {
-    setShowMonthlyStudyTime(true);
-    setIsLoadingStudyHours(true);
-    
-    // Use a temporary variable for the student to ensure the latest data is used.
-    let studentForCalc = currentStudent;
-
-    // If student data isn't loaded yet, fetch it first.
-    if (!studentForCalc) {
-        studentForCalc = await fetchStudentData();
-    }
-    
-    // Now check if we have the student data needed for the calculation.
-    if (!studentForCalc || !studentForCalc.studentId) {
-        toast({ title: "Error", description: "Cannot calculate hours without student data.", variant: "destructive" });
-        setIsLoadingStudyHours(false);
-        setMonthlyStudyHours(0); // Set to 0 on failure
-        return;
-    }
-
-    try {
-        // Perform the calculation with the guaranteed student ID.
-        const hours = await calculateMonthlyStudyHours(studentForCalc.studentId);
-        setMonthlyStudyHours(hours);
-    } catch (error: any) {
-        toast({ title: "Error Calculating Hours", description: error.message, variant: "destructive" });
-        setMonthlyStudyHours(0); // Set to 0 on error
-    } finally {
-        setIsLoadingStudyHours(false);
-    }
-}, [currentStudent, fetchStudentData, toast]);
-
 
   React.useEffect(() => {
     fetchStudentData().finally(() => {
-        setIsLoadingStudyHours(false);
         setIsLoadingActiveCheckIn(false);
     });
   }, [fetchStudentData]);
 
     const getDailyStudyDataForMonth = React.useCallback(async (studentId: string, month: Date) => {
-      setIsLoadingMonthlyStudyData(true);
-      try {
-          const startDate = startOfMonth(month);
-          const endDate = endOfMonth(month);
+        setIsLoadingMonthlyStudyData(true);
+        try {
+            const startDate = startOfMonth(month);
+            const endDate = endOfMonth(month);
+            const allDays = eachDayOfInterval({ start: startDate, end: endDate });
+            const studyData: { date: string; hours: number }[] = [];
 
-          // Fetch all records for the student once
-          const allRecordsForStudent = await getAttendanceRecordsByStudentId(studentId);
-
-          const recordsForMonth = allRecordsForStudent.filter(rec => {
-              if(!rec.date || !isValid(parseISO(rec.date))) return false;
-              const recDate = parseISO(rec.date);
-              return isWithinInterval(recDate, { start: startDate, end: endDate });
-          });
-
-          const recordsByDate = new Map<string, AttendanceRecord[]>();
-
-          recordsForMonth.forEach(rec => {
-              const dateKey = format(parseISO(rec.checkInTime), 'yyyy-MM-dd');
-              const dayRecords = recordsByDate.get(dateKey) || [];
-              dayRecords.push(rec);
-              recordsByDate.set(dateKey, dayRecords);
-          });
-          
-          const allDays = eachDayOfInterval({ start: startDate, end: endDate });
-
-          const studyData: { date: string; hours: number }[] = allDays.map(day => {
-              const dateString = format(day, 'yyyy-MM-dd');
-              const records = recordsByDate.get(dateString) || [];
-              const dailyHours = calculateDailyStudyTime(records).totalHours;
-              return { date: dateString, hours: dailyHours };
-          });
-
-          setMonthlyStudyData(studyData);
-      } catch (error) {
-          console.error("Error fetching daily study data:", error);
-          setMonthlyStudyData([]);
-      } finally {
-          setIsLoadingMonthlyStudyData(false);
-      }
-  }, []);
+            for (const day of allDays) {
+                const dateString = format(day, 'yyyy-MM-dd');
+                const records = await getAttendanceForDate(studentId, dateString);
+                let totalMilliseconds = 0;
+                records.forEach(record => {
+                    if (record.checkInTime && record.checkOutTime && isValid(parseISO(record.checkInTime)) && isValid(parseISO(record.checkOutTime))) {
+                        totalMilliseconds += differenceInMilliseconds(parseISO(record.checkOutTime), parseISO(record.checkInTime));
+                    }
+                });
+                const totalHours = totalMilliseconds / (1000 * 60 * 60);
+                studyData.push({ date: dateString, hours: totalHours });
+            }
+            setMonthlyStudyData(studyData);
+        } catch (error) {
+            console.error("Error fetching daily study data:", error);
+        } finally {
+            setIsLoadingMonthlyStudyData(false);
+        }
+    }, []);
 
   React.useEffect(() => {
     if (currentStudent?.studentId && showMonthlyStudyTime) {
@@ -229,27 +142,9 @@ export default function MemberAttendancePage() {
 
   const calculateDailyStudyTime = (records: AttendanceRecord[]) => {
     let totalMilliseconds = 0;
-    const now = new Date();
     records.forEach(record => {
-      if (record.checkInTime && isValid(parseISO(record.checkInTime))) {
-        const checkInTime = parseISO(record.checkInTime);
-        let sessionEndTime;
-
-        if (record.checkOutTime && isValid(parseISO(record.checkOutTime))) {
-            sessionEndTime = parseISO(record.checkOutTime);
-        } else {
-            const isTodayRecord = format(checkInTime, 'yyyy-MM-dd') === format(now, 'yyyy-MM-dd');
-            if (isTodayRecord) {
-                sessionEndTime = now;
-            } else {
-                sessionEndTime = new Date(checkInTime);
-                sessionEndTime.setHours(21, 30, 0, 0); // Cap at 9:30 PM for past days
-            }
-        }
-        
-        if (isAfter(sessionEndTime, checkInTime)) {
-          totalMilliseconds += differenceInMilliseconds(sessionEndTime, checkInTime);
-        }
+      if (record.checkInTime && record.checkOutTime && isValid(parseISO(record.checkInTime)) && isValid(parseISO(record.checkOutTime))) {
+        totalMilliseconds += differenceInMilliseconds(parseISO(record.checkOutTime), parseISO(record.checkInTime));
       }
     });
 
@@ -290,33 +185,6 @@ export default function MemberAttendancePage() {
         title="My Attendance"
         description="View your calendar and track your study hours"
       />
-
-        <Card className="shadow-lg">
-          <CardHeader>
-            <CardTitle className="flex items-center text-base sm:text-lg">
-              <Clock className="mr-2 h-5 w-5" />
-              Total Hours this month
-            </CardTitle>
-            <CardDescription>Your total study performance for the current month.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {!showMonthlyStudyTime ? (
-                 <Button onClick={handleShowMonthlyStudyTime}>
-                    <TrendingUp className="mr-2 h-4 w-4" />
-                    Show
-                </Button>
-            ) : isLoadingStudyHours ? (
-                <div className="flex items-center justify-center">
-                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                </div>
-            ) : (
-              <div className="flex items-end gap-2">
-                <AnimatedNumber value={monthlyStudyHours} />
-                <span className="text-lg font-normal text-muted-foreground pb-1"> hours</span>
-              </div>
-            )}
-          </CardContent>
-        </Card>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
         <Card className="shadow-lg w-full overflow-hidden">
@@ -458,3 +326,5 @@ export default function MemberAttendancePage() {
     </>
   );
 }
+
+    
