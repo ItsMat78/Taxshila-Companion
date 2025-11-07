@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from 'react';
@@ -20,12 +21,12 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Receipt, History, Download, IndianRupee, Loader2 } from 'lucide-react';
-import Link from 'next/link';
 import { useAuth } from '@/contexts/auth-context';
-import { getStudentByEmail, getFeeStructure, getStudentByCustomId } from '@/services/student-service'; // Added getFeeStructure
-import type { Student, PaymentRecord, FeeStructure as FeeStructureType } from '@/types/student'; // Added FeeStructureType
+import { getStudentByEmail, getFeeStructure, getStudentByCustomId } from '@/services/student-service';
+import type { Student, PaymentRecord, FeeStructure as FeeStructureType } from '@/types/student';
 import { useToast } from '@/hooks/use-toast';
-import { format, parseISO, isValid } from 'date-fns'; // Ensure format, parseISO, isValid are imported
+import { format, parseISO, isValid } from 'date-fns';
+import { cn } from '@/lib/utils';
 
 export default function MemberFeesPage() {
   const { user } = useAuth();
@@ -81,25 +82,17 @@ export default function MemberFeesPage() {
     }
   };
   
-  const getFeeStatusBadgeVariant = (status?: Student['feeStatus'], activityStatus?: Student['activityStatus']) => {
-    if (activityStatus === 'Left') return "secondary";
+  const getFeeStatusBadge = (status?: Student['feeStatus'], activityStatus?: Student['activityStatus']) => {
+    if (activityStatus === 'Left') {
+      return <Badge className="capitalize bg-status-left-bg text-status-left-text border-transparent">N/A (Left)</Badge>;
+    }
     switch (status) {
-      case "Paid": return "default"; 
-      case "Due": return "default"; 
-      case "Overdue": return "destructive";
-      default: return "outline";
+      case "Paid": return <Badge className="capitalize bg-status-paid-bg text-status-paid-text border-transparent">Paid</Badge>; 
+      case "Due": return <Badge className="capitalize bg-status-due-bg text-status-due-text border-transparent">Due</Badge>; 
+      case "Overdue": return <Badge variant="destructive" className="capitalize">Overdue</Badge>;
+      default: return <Badge variant="outline" className="capitalize">{status || 'N/A'}</Badge>;
     }
   };
-
-  const getFeeStatusBadgeClasses = (status?: Student['feeStatus'], activityStatus?: Student['activityStatus']) => {
-     if (activityStatus === 'Left') return "bg-gray-100 text-gray-700";
-     switch (status) {
-      case "Paid": return "bg-green-100 text-green-700";
-      case "Due": return "bg-yellow-100 text-yellow-700";
-      case "Overdue": return "bg-red-100 text-red-700"; 
-      default: return "";
-    }
-  }
 
 
   if (isLoading) {
@@ -154,12 +147,7 @@ export default function MemberFeesPage() {
             </div>
             <div className="flex justify-between items-center">
               <span className="text-muted-foreground">Status:</span>
-              <Badge 
-                variant={getFeeStatusBadgeVariant(studentData.feeStatus, studentData.activityStatus)} 
-                className={`capitalize px-2 py-1 text-xs ${getFeeStatusBadgeClasses(studentData.feeStatus, studentData.activityStatus)}`}
-              >
-                {studentData.activityStatus === 'Left' ? 'N/A (Left)' : studentData.feeStatus}
-              </Badge>
+              {getFeeStatusBadge(studentData.feeStatus, studentData.activityStatus)}
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Amount Due:</span>
@@ -169,14 +157,10 @@ export default function MemberFeesPage() {
               <span className="text-muted-foreground">Next Due Date:</span>
               <span className="font-medium">{studentData.activityStatus === 'Left' ? 'N/A' : (studentData.nextDueDate && isValid(parseISO(studentData.nextDueDate)) ? format(parseISO(studentData.nextDueDate), 'PP') : "N/A")}</span>
             </div>
-            {studentData.activityStatus === 'Active' && studentData.feeStatus !== 'Paid' && (
-                <Link href="/member/pay" passHref legacyBehavior>
-                  <Button className="w-full mt-4">
-                     <Receipt className="mr-2 h-4 w-4" /> Proceed to Pay Fees
-                  </Button>
-                </Link>
-            )}
           </CardContent>
+           <CardFooter>
+            <p className="text-xs text-muted-foreground">Please pay your fees at the desk. Online payments are coming soon.</p>
+           </CardFooter>
         </Card>
 
         <Card className="shadow-lg">
@@ -224,5 +208,3 @@ export default function MemberFeesPage() {
     </>
   );
 }
-
-    

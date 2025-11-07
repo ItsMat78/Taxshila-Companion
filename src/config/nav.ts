@@ -187,7 +187,7 @@ export const mainNav: NavItem[] = [
     roles: ['member'],
   },
   {
-    title: 'Pay Fees',
+    title: 'My Payments',
     href: '/member/fees',
     icon: BadgeIndianRupee,
     roles: ['member'],
