@@ -720,16 +720,9 @@ export async function recordStudentPayment(
     case "fullday": expectedMonthlyFee = fees.fullDayFee; break;
     default: throw new Error("Invalid shift for fee calculation.");
   }
-
-  let amountToPayNumeric: number;
-  if (totalAmountPaidString === "Rs. 0" || totalAmountPaidString === "N/A" || !totalAmountPaidString.startsWith("Rs.")) {
-    amountToPayNumeric = expectedMonthlyFee * numberOfMonthsPaid;
-  } else {
-    amountToPayNumeric = parseInt(totalAmountPaidString.replace('Rs. ', '').trim(), 10);
-    if (isNaN(amountToPayNumeric) || amountToPayNumeric <= 0) {
-        throw new Error("Invalid payment amount provided in string.");
-    }
-  }
+  
+  // This is the key change: always use the fee from the settings, ignore `totalAmountPaidString` from the UI.
+  const amountToPayNumeric = expectedMonthlyFee * numberOfMonthsPaid;
 
   const studentDocRef = doc(db, STUDENTS_COLLECTION, studentToUpdate.firestoreId);
   const today = new Date(); // Actual payment date
