@@ -120,6 +120,7 @@ export default function MemberAttendancePage() {
 
         if (student) {
           setCurrentStudent(student);
+          return student; // Return the fetched student
         } else {
           toast({
             title: "Student Record Not Found",
@@ -127,6 +128,7 @@ export default function MemberAttendancePage() {
             variant: "destructive",
           });
           setCurrentStudent(null);
+          return null;
         }
       } catch (error: any) {
         console.error("Error fetching student data (Attendance Page):", error);
@@ -136,6 +138,7 @@ export default function MemberAttendancePage() {
           variant: "destructive",
         });
         setCurrentStudent(null);
+        return null;
       } finally {
         setIsLoadingStudyHours(false);
         setIsLoadingActiveCheckIn(false);
@@ -144,19 +147,29 @@ export default function MemberAttendancePage() {
       setIsLoadingStudyHours(false);
       setIsLoadingActiveCheckIn(false);
       setCurrentStudent(null);
+      return null;
     }
   }, [user, toast]);
   
   const handleShowMonthlyStudyTime = React.useCallback(async () => {
-    if (!currentStudent?.studentId) {
-        if (!user) await fetchStudentData();
-        if (!currentStudent) return;
-    };
-
     setShowMonthlyStudyTime(true);
     setIsLoadingStudyHours(true);
+
+    // Ensure we have the student data before proceeding
+    let student = currentStudent;
+    if (!student) {
+        student = await fetchStudentData();
+    }
+    
+    if (!student?.studentId) {
+        toast({ title: "Error", description: "Cannot calculate hours without student data.", variant: "destructive" });
+        setIsLoadingStudyHours(false);
+        setMonthlyStudyHours(0);
+        return;
+    }
+
     try {
-        const hours = await calculateMonthlyStudyHours(currentStudent.studentId);
+        const hours = await calculateMonthlyStudyHours(student.studentId);
         setMonthlyStudyHours(hours);
     } catch (error: any) {
         toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -164,7 +177,8 @@ export default function MemberAttendancePage() {
     } finally {
         setIsLoadingStudyHours(false);
     }
-  }, [currentStudent, toast, user, fetchStudentData]);
+}, [currentStudent, fetchStudentData, toast]);
+
 
   React.useEffect(() => {
     fetchStudentData();
