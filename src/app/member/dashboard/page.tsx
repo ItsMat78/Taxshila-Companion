@@ -75,6 +75,7 @@ const DashboardTile: React.FC<DashboardTileProps> = ({
       disabled ? 'opacity-60 cursor-not-allowed bg-muted/50' : (isPrimaryAction ? 'hover:bg-primary/90' : 'hover:bg-muted/50 hover:shadow-xl transition-shadow'),
       {
         'border-destructive ring-1 ring-destructive/30': (isUrgent) && !isPrimaryAction,
+        'animate-breathing-stroke': hasNew,
       },
       className
     )}>
@@ -525,7 +526,7 @@ export default function MemberDashboardPage() {
 
     return [
       {
-        title: "View Alerts",
+        title: "Alerts!",
         description: "Catch up on announcements.",
         icon: Bell,
         href: "/member/alerts",
@@ -617,7 +618,7 @@ export default function MemberDashboardPage() {
                 </div>
                 <Button variant="link" size="sm" onClick={() => fetchAllDashboardData(true)} className="h-auto p-0 text-xs" disabled={isRefreshing}>
                     {isRefreshing ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <RefreshCw className="mr-1 h-3 w-3"/>}
-                    {isRefreshing ? 'Refreshing...' : 'Refresh Status'}
+                    {isRefreshing ? 'Refreshing...' : 'Refresh'}
                 </Button>
             </div>
           </CardContent>
@@ -626,8 +627,8 @@ export default function MemberDashboardPage() {
                 onClick={handleDashboardCheckOut}
                 disabled={isProcessingCheckout}
                 className={cn(
-                  "w-full rounded-t-none h-12 text-base text-white relative overflow-hidden",
-                  "bg-green-600 hover:bg-green-700",
+                  "w-full rounded-t-none h-12 text-base text-destructive-foreground",
+                  "bg-green-700 hover:bg-green-800",
                   !isProcessingCheckout && "animate-gradient-sweep"
                 )}
              >
