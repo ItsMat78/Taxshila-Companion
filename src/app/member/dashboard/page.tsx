@@ -612,12 +612,12 @@ export default function MemberDashboardPage() {
         disabled: !studentId,
       },
       {
-        title: "Pay Fees",
+        title: "My Payments",
         description: payFeesTileDesc,
         statistic: payFeesTileStatistic,
         isLoadingStatistic: isLoadingStudentData,
         icon: IndianRupee,
-        href: "/member/pay",
+        href: "/member/fees",
         isUrgent: payFeesTileIsUrgent,
         disabled: !studentId,
       },
@@ -834,3 +834,5 @@ export default function MemberDashboardPage() {
     </>
   );
 }
+
+    
