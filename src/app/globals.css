@@ -531,10 +531,11 @@
   background-image: linear-gradient(
     to right,
     hsl(var(--primary)) 0%,
-    hsl(var(--primary) / 0.8) 30%,
-    hsl(var(--primary) / 0.6) 50%,
-    hsl(var(--primary) / 0.8) 70%,
-    hsl(var(--primary)) 100%
+    hsl(var(--primary) / 0.8) 20%,
+    hsl(var(--primary) / 0.6) 40%,
+    hsl(var(--primary)) 60%,
+    hsl(var(--primary) / 0.6) 80%,
+    hsl(var(--primary) / 0.8) 100%
   );
 }
 
@@ -543,28 +544,32 @@
   animation: gradient-sweep 3.5s linear infinite;
   background-image: linear-gradient(
     to right,
-    #16a34a 0%, /* green-600 */
-    #15803d 30%, /* green-700 */
-    #166534 50%, /* green-800 */
-    #15803d 70%,
-    #16a34a 100%
+    #14532d 0%, /* green-900 */
+    #16a34a 50%, /* green-600 */
+    #14532d 100%
   );
 }
 
 
 @keyframes breathing-stroke {
-  0%, 100% {
+  0% {
+    background-color: hsl(var(--destructive) / 0.2);
     border-color: hsl(var(--destructive) / 0.5);
-    border-width: 1px;
   }
   50% {
+    background-color: hsl(var(--destructive) / 0.1);
     border-color: hsl(var(--destructive));
-    border-width: 2px;
+  }
+  100% {
+    background-color: hsl(var(--destructive) / 0.2);
+    border-color: hsl(var(--destructive) / 0.5);
   }
 }
 
 .animate-breathing-stroke {
   animation: breathing-stroke 2s ease-in-out infinite;
 }
+
+    
 
     

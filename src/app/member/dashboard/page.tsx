@@ -72,10 +72,9 @@ const DashboardTile: React.FC<DashboardTileProps> = ({
     <Card className={cn(
       "shadow-lg h-full flex flex-col",
       isPrimaryAction ? 'text-primary-foreground' : '',
-      isPrimaryAction && !disabled ? "animate-gradient-sweep" : (isPrimaryAction ? 'bg-primary' : ''),
       disabled ? 'opacity-60 cursor-not-allowed bg-muted/50' : (isPrimaryAction ? 'hover:opacity-90' : 'hover:bg-muted/50 hover:shadow-xl transition-shadow'),
       {
-        'animate-breathing-stroke bg-destructive/20': hasNew,
+        'animate-breathing-stroke': hasNew,
       },
       className
     )}>
@@ -531,7 +530,7 @@ export default function MemberDashboardPage() {
         case "Due":
           payFeesIsUrgent = true;
           payFeesTileDesc = `Status: Due. Next payment due: ${studentNextDueDate && isValid(parseISO(studentNextDueDate)) ? format(parseISO(studentNextDueDate), 'PP') : 'N/A'}.`;
-          payFeesClass = "bg-status-due-bg text-status-due-text border-yellow-500/50";
+          payFeesClass = "bg-yellow-100 text-yellow-700 border-yellow-300";
           break;
         case "Overdue":
           payFeesIsUrgent = true;
@@ -556,7 +555,7 @@ export default function MemberDashboardPage() {
         href: "/member/alerts",
         hasNew: !isLoadingStudentData && hasUnreadAlerts,
         disabled: !studentId,
-        className: hasUnreadAlerts ? 'bg-destructive/20' : '',
+        className: hasUnreadAlerts ? 'animate-breathing-stroke' : '',
       },
       {
         title: "Activity Summary",
@@ -687,13 +686,14 @@ export default function MemberDashboardPage() {
        {!activeCheckInRecord && (
          <div className="mb-6">
             <DashboardTile
-            title={primaryAttendanceTitle}
-            description="Scan the library QR code for attendance."
-            icon={primaryAttendanceIcon}
-            action={primaryAttendanceAction}
-            isPrimaryAction={!primaryAttendanceDisabled}
-            isLoadingStatistic={isLoadingCurrentSession && primaryAttendanceIcon === Loader2}
-            disabled={primaryAttendanceDisabled}
+              title={primaryAttendanceTitle}
+              description="Scan the library QR code for attendance."
+              icon={primaryAttendanceIcon}
+              action={primaryAttendanceAction}
+              isPrimaryAction={!primaryAttendanceDisabled}
+              isLoadingStatistic={isLoadingCurrentSession && primaryAttendanceIcon === Loader2}
+              disabled={primaryAttendanceDisabled}
+              className={cn(!primaryAttendanceDisabled && "animate-gradient-sweep")}
             />
         </div>
        )}
@@ -767,7 +767,5 @@ export default function MemberDashboardPage() {
     </>
   );
 }
-
-    
 
     
