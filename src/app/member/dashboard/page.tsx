@@ -685,45 +685,42 @@ export default function MemberDashboardPage() {
         </AlertDialogContent>
       </AlertDialog>
 
-       <div className="mt-1 mb-4 text-xs text-center text-muted-foreground">
+       {isLoadingCurrentSession ? (
+         <div className="mt-1 mb-4 text-xs text-center text-muted-foreground">
+          <div className="flex items-center justify-center">
+            <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+            <span>Loading session...</span>
+          </div>
+        </div>
+       ) : activeCheckInRecord ? (
+        <div className="mt-1 mb-4 text-xs text-center text-muted-foreground">
           <div className="flex flex-col sm:flex-row items-center justify-center gap-x-3 gap-y-1">
-            {isLoadingCurrentSession ? (
-              <div className="flex items-center justify-center">
-                <Loader2 className="mr-1 h-3 w-3 animate-spin" />
-                <span>Loading session...</span>
-              </div>
-            ) : activeCheckInRecord ? (
               <div className="flex items-center">
                 <PlayCircle className="mr-1 h-3 w-3 text-green-600" />
                 <span>Checked In (since {activeCheckInRecord.checkInTime && isValid(parseISO(activeCheckInRecord.checkInTime)) ? format(parseISO(activeCheckInRecord.checkInTime), 'p') : 'N/A'})</span>
               </div>
-            ) : (
+            {isLoadingHoursToday ? (
+              <Button variant="link" size="sm" className="h-auto p-0 text-xs" disabled>
+                <Loader2 className="mr-1 h-3 w-3 animate-spin" /> Loading...
+              </Button>
+            ) : hoursStudiedToday !== null ? (
               <div className="flex items-center">
-                <CheckCircle className="mr-1 h-3 w-3 text-gray-500" />
-                <span>Not Currently Checked In</span>
+                <Hourglass className="mr-1 h-3 w-3 text-blue-500" />
+                <span>
+                  Today: {Math.floor(hoursStudiedToday)} hr{" "}
+                  {Math.round((hoursStudiedToday % 1) * 60)} min
+                </span>
               </div>
+            ) : (
+              <Button variant="link" size="sm" onClick={handleShowHoursToday} className="h-auto p-0 text-xs" disabled={isLoadingCurrentSession}>
+                  <Eye className="mr-1 h-3 w-3"/> Show Today's Hours
+              </Button>
             )}
-             {
-              isLoadingHoursToday ? (
-                <Button variant="link" size="sm" className="h-auto p-0 text-xs" disabled>
-                  <Loader2 className="mr-1 h-3 w-3 animate-spin" /> Loading...
-                </Button>
-              ) : hoursStudiedToday !== null ? (
-                <div className="flex items-center">
-                  <Hourglass className="mr-1 h-3 w-3 text-blue-500" />
-                  <span>
-                    Today: {Math.floor(hoursStudiedToday)} hr{" "}
-                    {Math.round((hoursStudiedToday % 1) * 60)} min
-                  </span>
-                </div>
-              ) : (
-                <Button variant="link" size="sm" onClick={handleShowHoursToday} className="h-auto p-0 text-xs" disabled={isLoadingCurrentSession}>
-                   <Eye className="mr-1 h-3 w-3"/> Show Today's Hours
-                </Button>
-              )
-            }
           </div>
         </div>
+       ) : (
+        <div className="mt-1 mb-4 h-[18px]"></div> // Placeholder to prevent layout shift
+       )}
 
 
       <div className="mb-6">
