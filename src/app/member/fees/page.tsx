@@ -35,7 +35,7 @@ const ShiftDisplayCard = ({ shift }: { shift: Shift }) => {
       name: 'Morning Shift',
       timing: '7 AM - 2 PM',
       icon: (
-        <svg viewBox="0 0 100 60" className="w-full h-full object-cover" preserveAspectRatio="xMidYMid slice">
+        <svg viewBox="0 0 100 60" className="absolute inset-0 z-0 w-full h-full object-cover" preserveAspectRatio="xMidYMid slice">
           <path d="M-5,65 l25,-20 l15,10 l25,-20 l15,10 l25,-20 v25 h-105 z" fill="#855a3a" />
           <path d="M-5,65 l30,-25 l15,10 l20,-15 l15,10 l25,-20 v25 h-105 z" fill="#6b482f" />
           <circle cx="80" cy="15" r="8" fill="hsl(25, 95%, 60%)" />
@@ -49,7 +49,7 @@ const ShiftDisplayCard = ({ shift }: { shift: Shift }) => {
       name: 'Evening Shift',
       timing: '2 PM - 9:30 PM',
        icon: (
-        <svg viewBox="0 0 100 60" className="w-full h-full object-cover" preserveAspectRatio="xMidYMid slice">
+        <svg viewBox="0 0 100 60" className="absolute inset-0 z-0 w-full h-full object-cover" preserveAspectRatio="xMidYMid slice">
           <path d="M-5,65 l15,-40 l15,40 z" fill="hsl(120, 60%, 15%)" />
           <path d="M15,65 l15,-35 l15,35 z" fill="hsl(120, 60%, 20%)" />
           <path d="M35,65 l15,-45 l15,45 z" fill="hsl(120, 60%, 15%)" />
@@ -68,7 +68,7 @@ const ShiftDisplayCard = ({ shift }: { shift: Shift }) => {
       name: 'Full Day',
       timing: '7 AM - 9:30 PM',
       icon: (
-        <svg viewBox="0 0 100 60" className="w-full h-full object-cover" preserveAspectRatio="xMidYMid slice">
+        <svg viewBox="0 0 100 60" className="absolute inset-0 z-0 w-full h-full object-cover" preserveAspectRatio="xMidYMid slice">
           <path d="M-5,35 C30,50 70,50 105,35 V65 H-5 z" fill="hsl(200, 70%, 50%)" />
           <path d="M-5,40 C30,55 70,55 105,40 V65 H-5 z" fill="hsl(200, 70%, 60%)" />
           <path d="M-5,45 C30,60 70,60 105,45 V65 H-5 z" fill="hsl(40, 80%, 70%)" />
@@ -85,12 +85,11 @@ const ShiftDisplayCard = ({ shift }: { shift: Shift }) => {
 
   return (
     <div className={cn(
-      "p-4 rounded-lg",
-      "relative min-h-[120px] overflow-hidden flex flex-col justify-end items-start col-span-2 md:col-span-3 bg-card"
+      "p-4 rounded-lg bg-gradient-to-br",
+      "relative min-h-[120px] overflow-hidden flex flex-col justify-end items-start col-span-2 md:col-span-3",
+      currentShift.gradient
     )}>
-        <div className="absolute inset-0 z-0">
-            {currentShift.icon}
-        </div>
+        {currentShift.icon}
         <div className="relative z-10 bg-black/20 backdrop-blur-sm p-2 rounded-md">
             <p className="font-semibold text-xl text-white drop-shadow-sm">{currentShift.name}</p>
             <p className="text-sm text-white/90 font-medium drop-shadow-sm">{currentShift.timing}</p>
@@ -319,5 +318,3 @@ export default function MemberFeesPage() {
     </>
   );
 }
-
-    
