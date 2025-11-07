@@ -686,7 +686,7 @@ export default function MemberDashboardPage() {
                 disabled={isProcessingCheckout}
                 className={cn(
                   "w-full rounded-t-none h-12 text-base text-white relative overflow-hidden",
-                  "bg-green-600 hover:bg-green-700",
+                  "bg-green-700 hover:bg-green-800",
                   !isProcessingCheckout && "animate-gradient-sweep"
                 )}
              >

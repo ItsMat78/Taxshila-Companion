@@ -529,9 +529,9 @@
   background-size: 200% auto;
   background-image: linear-gradient(
     to right,
-    hsl(142 71% 45%) 0%, /* Adjusted from green-600 */
-    hsl(142 80% 65%) 50%,
-    hsl(142 71% 45%) 100%
+    hsl(142 76% 36%) 0%,
+    hsl(142 71% 45%) 50%,
+    hsl(142 76% 36%) 100%
   );
-  animation: gradient-sweep 2.5s linear infinite;
+  animation: gradient-sweep 3.5s linear infinite;
 }
