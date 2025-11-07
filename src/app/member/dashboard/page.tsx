@@ -230,8 +230,8 @@ export default function MemberDashboardPage() {
 
     if (activeCheckInRecord?.checkInTime && isValid(parseISO(activeCheckInRecord.checkInTime))) {
       const checkInTime = parseISO(activeCheckInRecord.checkInTime);
-
-      intervalId = setInterval(() => {
+      
+      const updateTimer = () => {
         const now = new Date();
         const diff = now.getTime() - checkInTime.getTime();
 
@@ -239,12 +239,14 @@ export default function MemberDashboardPage() {
 
         const hours = Math.floor(diff / 3600000);
         const minutes = Math.floor((diff % 3600000) / 60000);
-        const seconds = Math.floor((diff % 60000) / 1000);
-
+        
         setElapsedTime(
-          `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+          `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`
         );
-      }, 1000);
+      };
+
+      updateTimer(); // Initial call
+      intervalId = setInterval(updateTimer, 30000); // Update every 30 seconds
     } else {
       setElapsedTime(null);
     }
@@ -809,5 +811,3 @@ export default function MemberDashboardPage() {
     </>
   );
 }
-
-    
