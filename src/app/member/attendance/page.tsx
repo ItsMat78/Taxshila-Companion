@@ -3,7 +3,7 @@
 
 import * as React from 'react';
 import { PageTitle } from '@/components/shared/page-title';
-import { Calendar as CalendarIconComponent } from "@/components/ui/calendar"; // Renamed to avoid conflict
+import { Calendar as CalendarIconComponent } from "@/components/ui/calendar";
 import {
   Card,
   CardContent,
@@ -36,6 +36,47 @@ const ChartTooltipContent = ({ active, payload, label }: any) => {
   }
 
   return null;
+};
+
+// New component for the animated number
+const AnimatedNumber = ({ value }: { value: number | null }) => {
+  const [displayValue, setDisplayValue] = React.useState(0);
+
+  React.useEffect(() => {
+    if (value === null) {
+      setDisplayValue(0);
+      return;
+    }
+    
+    let start = 0;
+    const end = value;
+    const duration = 1000; // 1 second animation
+    const range = end - start;
+    let startTime: number | null = null;
+    let animationFrameId: number;
+
+    const step = (timestamp: number) => {
+      if (!startTime) startTime = timestamp;
+      const progress = Math.min((timestamp - startTime) / duration, 1);
+      const easedProgress = 1 - Math.pow(1 - progress, 3); // Ease-out cubic
+      const current = start + easedProgress * range;
+      setDisplayValue(current);
+      if (progress < 1) {
+        animationFrameId = requestAnimationFrame(step);
+      }
+    };
+    
+    animationFrameId = requestAnimationFrame(step);
+
+    return () => cancelAnimationFrame(animationFrameId);
+  }, [value]);
+
+  if (value === null) return <span className="text-4xl font-bold">N/A</span>;
+
+  const hours = Math.floor(displayValue);
+  const decimals = value % 1 !== 0 ? Math.max(0, Math.min(2, (value.toString().split('.')[1] || '').length)) : 0;
+  
+  return <span className="text-4xl font-bold">{displayValue.toFixed(decimals)}</span>;
 };
 
 
@@ -231,71 +272,64 @@ export default function MemberAttendancePage() {
           <CardHeader>
             <CardTitle className="flex items-center text-base sm:text-lg">
               <Clock className="mr-2 h-5 w-5" />
-              Activity Summary
+              Total Hours this month
             </CardTitle>
-            <CardDescription>Your study performance this month.</CardDescription>
+            <CardDescription>Your total study performance for the current month.</CardDescription>
           </CardHeader>
           <CardContent>
             {!showMonthlyStudyTime ? (
-                 <Button onClick={handleShowMonthlyStudyTime} className="w-full">
+                 <Button onClick={handleShowMonthlyStudyTime}>
                     <TrendingUp className="mr-2 h-4 w-4" />
-                    Show Monthly Hours
+                    Show
                 </Button>
             ) : isLoadingStudyHours ? (
                 <div className="flex items-center justify-center">
                     <Loader2 className="h-8 w-8 animate-spin text-primary" />
                 </div>
             ) : (
-                <div className="text-4xl font-bold">
-                    {monthlyStudyHours !== null ? monthlyStudyHours : 'N/A'}
-                    <span className="text-lg font-normal text-muted-foreground"> hours</span>
-                </div>
-            )}
-            {showMonthlyStudyTime && !isLoadingStudyHours && (
-                <p className="text-sm text-muted-foreground mt-1">
-                    Total hours studied this month.
-                </p>
+              <div className="flex items-end gap-2">
+                <AnimatedNumber value={monthlyStudyHours} />
+                <span className="text-lg font-normal text-muted-foreground pb-1"> hours</span>
+              </div>
             )}
           </CardContent>
         </Card>
 
-        <Card className="mt-6 shadow-lg w-full overflow-x-auto">
+      <div className="grid grid-cols-2 gap-4 mt-6">
+        <Card className="shadow-lg w-full overflow-hidden">
             <CardHeader>
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between w-full gap-2">
-                    <div className="flex-grow">
-                        <CardTitle className="flex items-center text-base sm:text-lg">
-                            <TrendingUp className="mr-2 h-5 w-5" />
-                            Monthly Study Time
-                        </CardTitle>
-                        <CardDescription className="mt-1">Hours studied per day for the selected month.</CardDescription>
-                    </div>
-                    {showMonthlyStudyTime && (
-                        <div className="flex items-center space-x-2 self-end sm:self-center">
-                            <Button variant="outline" size="icon" onClick={handlePrevMonth} disabled={isLoadingMonthlyStudyData}>
-                                <ChevronLeft className="h-4 w-4" />
-                            </Button>
-                            <span className="text-sm font-medium w-32 text-center">{format(viewedMonth, 'MMMM yyyy')}</span>
-                            <Button variant="outline" size="icon" onClick={handleNextMonth} disabled={isLoadingMonthlyStudyData}>
-                                <ChevronRight className="h-4 w-4" />
-                            </Button>
-                        </div>
-                    )}
-                </div>
+                <CardTitle className="flex items-center text-base sm:text-lg">
+                    <TrendingUp className="mr-2 h-5 w-5" />
+                    Hours every day
+                </CardTitle>
+                <CardDescription className="mt-1 text-xs">Hours studied per day for the selected month.</CardDescription>
             </CardHeader>
             <CardContent>
                 {!showMonthlyStudyTime ? (
-                    <div className="text-center py-10">
-                        <Button onClick={() => setShowMonthlyStudyTime(true)} className="h-24 w-full text-lg">
-                             <BarChart3 className="h-8 w-8 mr-4" />
-                            Show Monthly Study Chart
-                        </Button>
-                    </div>
+                    <Button
+                        onClick={() => setShowMonthlyStudyTime(true)}
+                        className="h-24 w-full text-lg flex flex-col gap-2"
+                        variant="outline"
+                    >
+                        <BarChart3 className="h-8 w-8" />
+                        <span className="text-sm font-medium">Show Chart</span>
+                    </Button>
                 ) : isLoadingMonthlyStudyData ? (
                     <div className="flex items-center justify-center h-[300px]">
                         <Loader2 className="h-8 w-8 animate-spin text-primary"/>
                     </div>
                 ) : (
-                    monthlyStudyData.length > 0 ? (
+                  <div className="w-full">
+                    <div className="flex items-center space-x-2 justify-center mb-4">
+                        <Button variant="outline" size="icon" onClick={handlePrevMonth} disabled={isLoadingMonthlyStudyData}>
+                            <ChevronLeft className="h-4 w-4" />
+                        </Button>
+                        <span className="text-sm font-medium w-32 text-center">{format(viewedMonth, 'MMMM yyyy')}</span>
+                        <Button variant="outline" size="icon" onClick={handleNextMonth} disabled={isLoadingMonthlyStudyData}>
+                            <ChevronRight className="h-4 w-4" />
+                        </Button>
+                    </div>
+                    {monthlyStudyData.length > 0 && monthlyStudyData.some(d => d.hours > 0) ? (
                         <div className="min-h-[300px] w-full">
                             <ResponsiveContainer width="100%" height={300}>
                                 <BarChart data={monthlyStudyData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
@@ -318,84 +352,86 @@ export default function MemberAttendancePage() {
                         </div>
                     ) : (
                         <p className="text-center text-muted-foreground py-10 h-[300px] flex items-center justify-center">No study history data available for this month.</p>
-                    )
+                    )}
+                  </div>
                 )}
             </CardContent>
         </Card>
       
-
-      <Card className="mt-6 shadow-lg">
-      <CardHeader>
-        <CardTitle className="flex items-center text-base sm:text-lg">
-          <BarChart3 className="mr-2 h-5 w-5" />
-          Daily Log
-        </CardTitle>
-        <CardDescription>Select a date on the calendar to view your check-in and check-out times for that day.</CardDescription>
-      </CardHeader>
-      <CardContent>
-        {!showAttendanceOverview ? (
-             <div className="text-center py-10">
-                <Button onClick={() => setShowAttendanceOverview(true)} className="h-24 w-full text-lg">
-                    <CalendarIcon className="h-8 w-8 mr-4" />
-                    Show Attendance Calendar
-                </Button>
-            </div>
-        ) : (
-            <div className="flex flex-col md:flex-row items-center md:items-start gap-6">
-                <div className="w-full md:w-auto flex justify-center">
-                    <CalendarIconComponent
-                        mode="single"
-                        selected={date}
-                        onSelect={setDate}
-                        className="rounded-md border shadow-inner"
-                        modifiers={{ today: new Date() }}
-                        modifiersStyles={{ today: { color: 'hsl(var(--accent-foreground))', backgroundColor: 'hsl(var(--accent))' } }}
-                        disabled={!currentStudent?.studentId}
-                    />
-                </div>
-                <div className="w-full md:flex-1">
-                    <h4 className="text-md font-semibold mb-2">Details for {date ? format(date, 'PPP') : 'selected date'}:</h4>
-                    {isLoadingDetails ? (
-                    <div className="flex items-center justify-center text-muted-foreground"><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading details...</div>
-                    ) : (
-                    <>
-                        <div className="mb-4 text-lg font-semibold text-primary">
-                        Total study time: {(() => { const { hours, minutes } = calculateDailyStudyTime(attendanceForDay); return `${hours} hr ${minutes} min`; })()}
+        <Card className="shadow-lg">
+            <CardHeader>
+                <CardTitle className="flex items-center text-base sm:text-lg">
+                <BarChart3 className="mr-2 h-5 w-5" />
+                Daily Check-in/out time
+                </CardTitle>
+                <CardDescription className="text-xs">Select a date on the calendar to view your check-in and check-out times for that day.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                {!showAttendanceOverview ? (
+                    <Button
+                        onClick={() => setShowAttendanceOverview(true)}
+                        className="h-24 w-full text-lg flex flex-col gap-2"
+                        variant="outline"
+                    >
+                        <CalendarIcon className="h-8 w-8" />
+                        <span className="text-sm font-medium">Show Calendar</span>
+                    </Button>
+                ) : (
+                    <div className="flex flex-col md:flex-row items-center md:items-start gap-6">
+                        <div className="w-full md:w-auto flex justify-center">
+                            <CalendarIconComponent
+                                mode="single"
+                                selected={date}
+                                onSelect={setDate}
+                                className="rounded-md border shadow-inner"
+                                modifiers={{ today: new Date() }}
+                                modifiersStyles={{ today: { color: 'hsl(var(--accent-foreground))', backgroundColor: 'hsl(var(--accent))' } }}
+                                disabled={!currentStudent?.studentId}
+                            />
                         </div>
+                        <div className="w-full md:flex-1">
+                            <h4 className="text-md font-semibold mb-2">Details for {date ? format(date, 'PPP') : 'selected date'}:</h4>
+                            {isLoadingDetails ? (
+                            <div className="flex items-center justify-center text-muted-foreground"><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading details...</div>
+                            ) : (
+                            <>
+                                <div className="mb-4 text-lg font-semibold text-primary">
+                                Total study time: {(() => { const { hours, minutes } = calculateDailyStudyTime(attendanceForDay); return `${hours} hr ${minutes} min`; })()}
+                                </div>
 
-                        {attendanceForDay.length === 0 ? (
-                        <p className="text-muted-foreground">No attendance records found for this day.</p>
-                        ) : (
-                        <ul className="space-y-3">
-                            {attendanceForDay.map(record => (
-                            <li key={record.recordId} className="p-3 border rounded-md bg-muted/30">
-                                <div className="flex items-center justify-between">
-                                <div className="flex items-center"><LogIn className="mr-2 h-4 w-4 text-green-600" /><span className="font-medium">Checked In:</span></div>
-                                <span className="text-sm">{record.checkInTime && isValid(parseISO(record.checkInTime)) ? format(parseISO(record.checkInTime), 'p') : 'N/A'}</span>
-                                </div>
-                                {record.checkOutTime && isValid(parseISO(record.checkOutTime)) ? (
-                                <div className="flex items-center justify-between mt-1">
-                                    <div className="flex items-center"><LogOut className="mr-2 h-4 w-4 text-red-600" /><span className="font-medium">Checked Out:</span></div>
-                                    <span className="text-sm">{format(parseISO(record.checkOutTime), 'p')}</span>
-                                </div>
+                                {attendanceForDay.length === 0 ? (
+                                <p className="text-muted-foreground">No attendance records found for this day.</p>
                                 ) : (
-                                <div className="flex items-center justify-between mt-1">
-                                    <div className="flex items-center"><Clock className="mr-2 h-4 w-4 text-yellow-500" /><span className="font-medium">Status:</span></div>
-                                    <span className="text-sm text-yellow-600">Currently Checked In</span>
-                                </div>
+                                <ul className="space-y-3">
+                                    {attendanceForDay.map(record => (
+                                    <li key={record.recordId} className="p-3 border rounded-md bg-muted/30">
+                                        <div className="flex items-center justify-between">
+                                        <div className="flex items-center"><LogIn className="mr-2 h-4 w-4 text-green-600" /><span className="font-medium">Checked In:</span></div>
+                                        <span className="text-sm">{record.checkInTime && isValid(parseISO(record.checkInTime)) ? format(parseISO(record.checkInTime), 'p') : 'N/A'}</span>
+                                        </div>
+                                        {record.checkOutTime && isValid(parseISO(record.checkOutTime)) ? (
+                                        <div className="flex items-center justify-between mt-1">
+                                            <div className="flex items-center"><LogOut className="mr-2 h-4 w-4 text-red-600" /><span className="font-medium">Checked Out:</span></div>
+                                            <span className="text-sm">{format(parseISO(record.checkOutTime), 'p')}</span>
+                                        </div>
+                                        ) : (
+                                        <div className="flex items-center justify-between mt-1">
+                                            <div className="flex items-center"><Clock className="mr-2 h-4 w-4 text-yellow-500" /><span className="font-medium">Status:</span></div>
+                                            <span className="text-sm text-yellow-600">Currently Checked In</span>
+                                        </div>
+                                        )}
+                                    </li>
+                                    ))}
+                                </ul>
                                 )}
-                            </li>
-                            ))}
-                        </ul>
-                        )}
-                    </>
-                    )}
-                </div>
-            </div>
-        )}
-        </CardContent>
-      </Card>
+                            </>
+                            )}
+                        </div>
+                    </div>
+                )}
+            </CardContent>
+        </Card>
+      </div>
     </>
   );
 }
-
