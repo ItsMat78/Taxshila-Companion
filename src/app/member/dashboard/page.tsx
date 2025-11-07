@@ -557,6 +557,7 @@ export default function MemberDashboardPage() {
         href: "/member/alerts",
         hasNew: !isLoadingStudentData && hasUnreadAlerts,
         disabled: !studentId,
+        className: hasUnreadAlerts ? 'bg-destructive/20' : '',
       },
       {
         title: "Activity Summary",
@@ -653,8 +654,7 @@ export default function MemberDashboardPage() {
                 disabled={isProcessingCheckout}
                 className={cn(
                   "w-full rounded-t-none h-12 text-base text-primary-foreground",
-                  "bg-green-600 hover:bg-green-700",
-                  !isProcessingCheckout && "animate-gradient-sweep"
+                  !isProcessingCheckout && "animate-gradient-sweep-green"
                 )}
              >
                 {isProcessingCheckout ? (

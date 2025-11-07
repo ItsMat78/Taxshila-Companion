@@ -528,10 +528,7 @@
 .animate-gradient-sweep {
   background-size: 200% auto;
   animation: gradient-sweep 3.5s linear infinite;
-}
-
-.animate-gradient-sweep.bg-primary {
-    background-image: linear-gradient(
+  background-image: linear-gradient(
     to right,
     hsl(var(--primary)) 0%,
     hsl(var(--primary) / 0.8) 30%,
@@ -541,8 +538,10 @@
   );
 }
 
-.animate-gradient-sweep.bg-green-600 {
-    background-image: linear-gradient(
+.animate-gradient-sweep-green {
+  background-size: 200% auto;
+  animation: gradient-sweep 3.5s linear infinite;
+  background-image: linear-gradient(
     to right,
     #16a34a 0%, /* green-600 */
     #15803d 30%, /* green-700 */
