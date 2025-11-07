@@ -35,12 +35,12 @@ const ShiftDisplayCard = ({ shift }: { shift: Shift }) => {
       name: 'Morning Shift',
       timing: '7 AM - 2 PM',
       icon: (
-        <svg viewBox="0 0 100 60" className="w-24 h-auto">
-          <path d="M-5,65 l25,-20 l15,10 l25,-20 l15,10 l25,-20 v25 h-105 z" fill="hsl(var(--primary)/0.4)" />
-          <path d="M-5,65 l30,-25 l15,10 l20,-15 l15,10 l25,-20 v25 h-105 z" fill="hsl(var(--primary)/0.6)" />
+        <svg viewBox="0 0 100 60" className="w-full h-full object-cover" preserveAspectRatio="xMidYMid slice">
+          <path d="M-5,65 l25,-20 l15,10 l25,-20 l15,10 l25,-20 v25 h-105 z" fill="hsl(var(--primary)/0.1)" />
+          <path d="M-5,65 l30,-25 l15,10 l20,-15 l15,10 l25,-20 v25 h-105 z" fill="hsl(var(--primary)/0.2)" />
           <circle cx="80" cy="15" r="8" fill="hsl(25, 95%, 60%)" />
-          <circle cx="20" cy="20" r="5" fill="hsl(var(--background)/0.7)" />
-          <circle cx="45" cy="15" r="7" fill="hsl(var(--background)/0.7)" />
+          <circle cx="20" cy="20" r="5" fill="hsl(var(--background)/0.4)" />
+          <circle cx="45" cy="15" r="7" fill="hsl(var(--background)/0.4)" />
         </svg>
       ),
       gradient: 'from-orange-100 to-sky-200 dark:from-orange-900/30 dark:to-sky-900/40',
@@ -49,12 +49,12 @@ const ShiftDisplayCard = ({ shift }: { shift: Shift }) => {
       name: 'Evening Shift',
       timing: '2 PM - 9:30 PM',
        icon: (
-        <svg viewBox="0 0 100 60" className="w-24 h-auto">
-          <path d="M-5,65 l15-40 l15,40 z" fill="hsl(120, 60%, 25%)" />
-          <path d="M15,65 l15-35 l15,35 z" fill="hsl(120, 60%, 30%)" />
-          <path d="M35,65 l15-45 l15,45 z" fill="hsl(120, 60%, 25%)" />
-          <path d="M55,65 l15-38 l15,38 z" fill="hsl(120, 60%, 30%)" />
-          <path d="M75,65 l15-42 l15,42 z" fill="hsl(120, 60%, 25%)" />
+        <svg viewBox="0 0 100 60" className="w-full h-full object-cover" preserveAspectRatio="xMidYMid slice">
+          <path d="M-5,65 l15-40 l15,40 z" fill="hsl(120, 60%, 15%)" />
+          <path d="M15,65 l15-35 l15,35 z" fill="hsl(120, 60%, 20%)" />
+          <path d="M35,65 l15-45 l15,45 z" fill="hsl(120, 60%, 15%)" />
+          <path d="M55,65 l15-38 l15,38 z" fill="hsl(120, 60%, 20%)" />
+          <path d="M75,65 l15-42 l15,42 z" fill="hsl(120, 60%, 15%)" />
           <circle cx="85" cy="15" r="8" fill="hsl(60, 80%, 90%)" />
           <circle cx="90" cy="18" r="8" fill="hsl(var(--background))" />
           <circle cx="20" cy="10" r="1.5" fill="hsl(60, 80%, 90%)" />
@@ -62,16 +62,16 @@ const ShiftDisplayCard = ({ shift }: { shift: Shift }) => {
           <circle cx="65" cy="12" r="1.5" fill="hsl(60, 80%, 90%)" />
         </svg>
       ),
-      gradient: 'from-indigo-300 to-slate-400 dark:from-indigo-900/40 dark:to-slate-800/50',
+      gradient: 'from-indigo-300 to-slate-800 dark:from-indigo-900/40 dark:to-slate-900/50',
     },
     fullday: {
       name: 'Full Day',
       timing: '7 AM - 9:30 PM',
       icon: (
-        <svg viewBox="0 0 100 60" className="w-24 h-auto">
-          <path d="M-5,35 C30,50 70,50 105,35 V65 H-5 z" fill="hsl(200, 70%, 60%)" />
-          <path d="M-5,40 C30,55 70,55 105,40 V65 H-5 z" fill="hsl(200, 70%, 70%)" />
-          <path d="M-5,45 C30,60 70,60 105,45 V65 H-5 z" fill="hsl(40, 80%, 80%)" />
+        <svg viewBox="0 0 100 60" className="w-full h-full object-cover" preserveAspectRatio="xMidYMid slice">
+          <path d="M-5,35 C30,50 70,50 105,35 V65 H-5 z" fill="hsl(200, 70%, 50%)" />
+          <path d="M-5,40 C30,55 70,55 105,40 V65 H-5 z" fill="hsl(200, 70%, 60%)" />
+          <path d="M-5,45 C30,60 70,60 105,45 V65 H-5 z" fill="hsl(40, 80%, 70%)" />
           <circle cx="20" cy="20" r="10" fill="hsl(50, 100%, 60%)">
              <animate attributeName="cy" values="20;18;20" dur="3s" repeatCount="indefinite" />
           </circle>
@@ -84,13 +84,17 @@ const ShiftDisplayCard = ({ shift }: { shift: Shift }) => {
   const currentShift = shiftDetails[shift];
 
   return (
-    <div className={cn("p-4 rounded-lg flex items-center justify-between text-center bg-gradient-to-br col-span-2 md:col-span-3", currentShift.gradient)}>
-        <div className="flex-grow flex flex-col items-start text-left">
-            <p className="font-semibold text-xl text-foreground">{currentShift.name}</p>
-            <p className="text-sm text-muted-foreground">{currentShift.timing}</p>
-        </div>
-        <div className="flex-shrink-0">
+    <div className={cn(
+      "p-4 rounded-lg text-center bg-gradient-to-br col-span-2 md:col-span-3",
+      "relative min-h-[120px] overflow-hidden flex flex-col justify-end items-start",
+      currentShift.gradient
+    )}>
+        <div className="absolute inset-0 z-0">
             {currentShift.icon}
+        </div>
+        <div className="relative z-10 text-left">
+            <p className="font-semibold text-xl text-foreground drop-shadow-sm">{currentShift.name}</p>
+            <p className="text-sm text-foreground/80 font-medium drop-shadow-sm">{currentShift.timing}</p>
         </div>
     </div>
   );
@@ -316,3 +320,5 @@ export default function MemberFeesPage() {
     </>
   );
 }
+
+    
