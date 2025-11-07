@@ -73,6 +73,7 @@ const DashboardTile: React.FC<DashboardTileProps> = ({
       "shadow-lg h-full flex flex-col",
       isPrimaryAction ? 'bg-primary text-primary-foreground' : '',
       disabled ? 'opacity-60 cursor-not-allowed bg-muted/50' : (isPrimaryAction ? 'hover:bg-primary/90' : 'hover:bg-muted/50 hover:shadow-xl transition-shadow'),
+      isPrimaryAction && !disabled && "animate-gradient-sweep", // Apply animation to primary action button
       {
         'border-destructive ring-1 ring-destructive/30': (isUrgent) && !isPrimaryAction,
         'animate-breathing-stroke': hasNew,
@@ -266,16 +267,6 @@ export default function MemberDashboardPage() {
           setHasUnreadAlerts(alerts.some(alert => !alert.isRead));
           setActiveCheckInRecord(activeCheckInData || null);
 
-          if (activeCheckInData?.checkInTime && isValid(parseISO(activeCheckInData.checkInTime))) {
-              const now = new Date();
-              const checkInTime = parseISO(activeCheckInData.checkInTime);
-              const hours = differenceInHours(now, checkInTime);
-              const minutes = differenceInMinutes(now, checkInTime) % 60;
-              setElapsedTime(`${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`);
-          } else {
-              setElapsedTime(null);
-          }
-
         } else {
             toast({ title: "Error", description: "Could not find your student record.", variant: "destructive" });
         }
@@ -306,6 +297,31 @@ export default function MemberDashboardPage() {
     const intervalId = setInterval(() => fetchAllDashboardData(true), 300000); // Refresh every 5 minutes
     return () => clearInterval(intervalId);
   }, [user]); // Re-run only when user object changes
+
+  // This effect updates the displayed time string
+   React.useEffect(() => {
+    let timerId: NodeJS.Timeout | null = null;
+    if (activeCheckInRecord?.checkInTime && isValid(parseISO(activeCheckInRecord.checkInTime))) {
+      const updateElapsedTime = () => {
+        const now = new Date();
+        const checkInTime = parseISO(activeCheckInRecord.checkInTime);
+        const hours = differenceInHours(now, checkInTime);
+        const minutes = differenceInMinutes(now, checkInTime) % 60;
+        setElapsedTime(`${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`);
+      };
+      
+      updateElapsedTime(); // Update immediately
+      timerId = setInterval(updateElapsedTime, 30000); // And then every 30 seconds
+    } else {
+      setElapsedTime(null);
+    }
+
+    return () => {
+      if (timerId) {
+        clearInterval(timerId);
+      }
+    };
+  }, [activeCheckInRecord]);
 
 
   const handleCloseScanner = React.useCallback(async () => {
@@ -627,7 +643,7 @@ export default function MemberDashboardPage() {
                 onClick={handleDashboardCheckOut}
                 disabled={isProcessingCheckout}
                 className={cn(
-                  "w-full rounded-t-none h-12 text-base text-destructive-foreground",
+                  "w-full rounded-t-none h-12 text-base text-white", // Changed text color to white for contrast
                   "bg-green-700 hover:bg-green-800",
                   !isProcessingCheckout && "animate-gradient-sweep"
                 )}
