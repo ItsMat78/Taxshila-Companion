@@ -9,7 +9,6 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-  CardFooter,
 } from "@/components/ui/card";
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -21,7 +20,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Receipt, History, Download, IndianRupee, Loader2 } from 'lucide-react';
+import { Receipt, History, Download, IndianRupee, Loader2, Briefcase, CalendarClock, AlertTriangle, CheckCircle } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
 import { getStudentByEmail, getFeeStructure, getStudentByCustomId } from '@/services/student-service';
 import type { Student, PaymentRecord, FeeStructure as FeeStructureType } from '@/types/student';
@@ -29,12 +28,32 @@ import { useToast } from '@/hooks/use-toast';
 import { format, parseISO, isValid } from 'date-fns';
 import { cn } from '@/lib/utils';
 
+// A new component for individual stat boxes
+const StatBox = ({ title, value, icon, badge }: { title: string, value: string | React.ReactNode, icon?: React.ElementType, badge?: React.ReactNode }) => {
+    const Icon = icon;
+    return (
+        <div className="p-4 rounded-lg bg-muted/50 flex flex-col items-center justify-center text-center">
+            <div className="flex items-center gap-2 mb-1 text-muted-foreground">
+                {Icon && <Icon className="h-4 w-4" />}
+                <p className="text-sm font-medium">{title}</p>
+            </div>
+            {badge ? (
+                <div className="mt-1">{badge}</div>
+            ) : (
+                <p className="text-2xl font-bold break-words">{value}</p>
+            )}
+        </div>
+    );
+};
+
+
 export default function MemberFeesPage() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [studentData, setStudentData] = React.useState<Student | null>(null);
   const [feeStructure, setFeeStructure] = React.useState<FeeStructureType | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
+  const [showHistory, setShowHistory] = React.useState(false);
 
   React.useEffect(() => {
     setIsLoading(true);
@@ -84,18 +103,17 @@ export default function MemberFeesPage() {
   };
   
   const getFeeStatusBadge = (status?: Student['feeStatus'], activityStatus?: Student['activityStatus']) => {
-    const baseClasses = "capitalize border-transparent";
+    const baseClasses = "text-base capitalize border-transparent";
     if (activityStatus === 'Left') {
       return <Badge className={cn(baseClasses, "bg-status-left-bg text-status-left-text")}>N/A (Left)</Badge>;
     }
     switch (status) {
-      case "Paid": return <Badge className={cn(baseClasses, "bg-status-paid-bg text-status-paid-text")}>Paid</Badge>; 
-      case "Due": return <Badge className={cn(baseClasses, "bg-status-due-bg text-status-due-text")}>Due</Badge>; 
-      case "Overdue": return <Badge variant="destructive" className="capitalize">Overdue</Badge>;
-      default: return <Badge variant="outline" className="capitalize">{status || 'N/A'}</Badge>;
+      case "Paid": return <Badge className={cn(baseClasses, "bg-status-paid-bg text-status-paid-text")}><CheckCircle className="mr-1 h-3 w-3" /> Paid</Badge>; 
+      case "Due": return <Badge className={cn(baseClasses, "bg-status-due-bg text-status-due-text")}><CalendarClock className="mr-1 h-3 w-3" />Due</Badge>; 
+      case "Overdue": return <Badge variant="destructive" className="text-base capitalize"><AlertTriangle className="mr-1 h-3 w-3" />Overdue</Badge>;
+      default: return <Badge variant="outline" className="capitalize text-base">{status || 'N/A'}</Badge>;
     }
   };
-
 
   if (isLoading) {
     return (
@@ -129,84 +147,74 @@ export default function MemberFeesPage() {
     <>
       <PageTitle title="My Fee Details" description="View your current fee status and payment history." />
 
-      <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-2">
-        <Card className="shadow-lg">
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <IndianRupee className="mr-2 h-5 w-5" />
-              Current Plan & Status
-            </CardTitle>
-            <CardDescription>Overview of your current subscription.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="flex justify-between items-center">
-              <span className="text-muted-foreground">Plan Type:</span>
-              <span className="font-medium capitalize">{studentData.shift} Shift</span>
+      <Card className="shadow-lg">
+        <CardHeader>
+          <CardTitle>Fee Overview</CardTitle>
+          <CardDescription>Your current subscription details.</CardDescription>
+        </CardHeader>
+        <CardContent className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            <StatBox title="Plan Type" value={studentData.shift} icon={Briefcase} />
+            <StatBox title="Monthly Fee" value={getMonthlyFeeDisplay(studentData.shift, feeStructure)} icon={IndianRupee} />
+            <StatBox title="Fee Status" value="" badge={getFeeStatusBadge(studentData.feeStatus, studentData.activityStatus)} />
+            <StatBox title="Amount Due" value={studentData.activityStatus === 'Left' ? 'N/A' : (studentData.amountDue && studentData.amountDue !== "Rs. 0" ? studentData.amountDue : getMonthlyFeeDisplay(studentData.shift, feeStructure))} icon={IndianRupee} />
+            <StatBox title="Next Due Date" value={studentData.activityStatus === 'Left' ? 'N/A' : (studentData.nextDueDate && isValid(parseISO(studentData.nextDueDate)) ? format(parseISO(studentData.nextDueDate), 'PP') : "N/A")} icon={CalendarClock} />
+             <div className="p-4 rounded-lg bg-primary/5 border-primary/20 border flex flex-col items-center justify-center text-center col-span-2 md:col-span-1">
+                <p className="text-sm font-medium text-primary">Need to Pay?</p>
+                <p className="text-xs text-muted-foreground mt-1 mb-2">Please pay your fees at the library reception desk.</p>
+                <p className="text-xs text-muted-foreground">Online payments are coming soon.</p>
             </div>
-            <div className="flex justify-between items-center">
-              <span className="text-muted-foreground">Monthly Fee:</span>
-              <span className="font-medium">{getMonthlyFeeDisplay(studentData.shift, feeStructure)}</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-muted-foreground">Status:</span>
-              {getFeeStatusBadge(studentData.feeStatus, studentData.activityStatus)}
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-muted-foreground">Amount Due:</span>
-              <span className="font-medium">{studentData.activityStatus === 'Left' ? 'N/A' : (studentData.amountDue && studentData.amountDue !== "Rs. 0" ? studentData.amountDue : getMonthlyFeeDisplay(studentData.shift, feeStructure))}</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-muted-foreground">Next Due Date:</span>
-              <span className="font-medium">{studentData.activityStatus === 'Left' ? 'N/A' : (studentData.nextDueDate && isValid(parseISO(studentData.nextDueDate)) ? format(parseISO(studentData.nextDueDate), 'PP') : "N/A")}</span>
-            </div>
-          </CardContent>
-           <CardFooter>
-            <p className="text-xs text-muted-foreground">Please pay your fees at the desk. Online payments are coming soon.</p>
-           </CardFooter>
-        </Card>
-
-        <Card className="shadow-lg">
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <History className="mr-2 h-5 w-5" />
-              Payment History
-            </CardTitle>
-            <CardDescription>Your past transactions.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {paymentHistory.length > 0 ? (
-              <div className="overflow-auto max-h-80">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Amount</TableHead>
-                      <TableHead>Method</TableHead>
-                      <TableHead>Action</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {paymentHistory.slice().reverse().map((payment: PaymentRecord) => ( 
-                      <TableRow key={payment.paymentId}>
-                        <TableCell className="whitespace-nowrap">{payment.date && isValid(parseISO(payment.date)) ? format(parseISO(payment.date), 'dd-MMM-yy') : 'N/A'}</TableCell>
-                        <TableCell className="whitespace-nowrap">{payment.amount}</TableCell>
-                        <TableCell className="capitalize whitespace-nowrap">{payment.method}</TableCell>
-                         <TableCell className="whitespace-nowrap">
-                          <Button variant="outline" size="sm" disabled>
-                            <Download className="mr-1 h-3 w-3" /> Invoice
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
+        </CardContent>
+      </Card>
+      
+      <Card className="mt-6 shadow-lg">
+        <CardHeader>
+            <CardTitle>Payment History</CardTitle>
+            <CardDescription>Your recorded past transactions.</CardDescription>
+        </CardHeader>
+        <CardContent>
+            {!showHistory ? (
+                <div className="text-center">
+                    <Button onClick={() => setShowHistory(true)}>
+                        <History className="mr-2 h-4 w-4"/> View Payment History
+                    </Button>
+                </div>
             ) : (
-              <p className="text-muted-foreground text-center py-4">No payment history available.</p>
+                paymentHistory.length > 0 ? (
+                  <div className="overflow-auto max-h-80">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Date</TableHead>
+                          <TableHead>Amount</TableHead>
+                          <TableHead>Method</TableHead>
+                          <TableHead>Transaction ID</TableHead>
+                          <TableHead>Action</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {paymentHistory.slice().reverse().map((payment: PaymentRecord) => ( 
+                          <TableRow key={payment.paymentId}>
+                            <TableCell className="whitespace-nowrap">{payment.date && isValid(parseISO(payment.date)) ? format(parseISO(payment.date), 'dd-MMM-yy') : 'N/A'}</TableCell>
+                            <TableCell className="whitespace-nowrap">{payment.amount}</TableCell>
+                            <TableCell className="capitalize whitespace-nowrap">{payment.method}</TableCell>
+                            <TableCell className="whitespace-nowrap">{payment.transactionId}</TableCell>
+                             <TableCell className="whitespace-nowrap">
+                              <Button variant="outline" size="sm" disabled>
+                                <Download className="mr-1 h-3 w-3" /> Invoice
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                ) : (
+                  <p className="text-muted-foreground text-center py-4">No payment history available.</p>
+                )
             )}
-          </CardContent>
-        </Card>
-      </div>
+        </CardContent>
+      </Card>
     </>
   );
 }
+
