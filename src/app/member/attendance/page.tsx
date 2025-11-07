@@ -15,7 +15,7 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, BarChart3, Clock, LogIn, LogOut, TrendingUp, ChevronLeft, ChevronRight, Calendar as CalendarIcon } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
-import { getStudentByEmail, calculateMonthlyStudyHours, getAttendanceForDate, getStudentByCustomId } from '@/services/student-service';
+import { getStudentByEmail, calculateMonthlyStudyHours, getAttendanceForDate, getAttendanceForDateRange, getStudentByCustomId } from '@/services/student-service';
 import type { Student, AttendanceRecord } from '@/types/student';
 import { format, parseISO, isValid, differenceInMilliseconds, startOfMonth, endOfMonth, eachDayOfInterval, addMonths, subMonths } from 'date-fns';
 import { BarChart, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Bar } from 'recharts';
@@ -176,32 +176,27 @@ export default function MemberAttendancePage() {
             const startDate = startOfMonth(month);
             const endDate = endOfMonth(month);
             const allDays = eachDayOfInterval({ start: startDate, end: endDate });
-            const studyData: { date: string; hours: number }[] = [];
+            const recordsForMonth = await getAttendanceForDateRange(studentId, format(startDate, 'yyyy-MM-dd'), format(endDate, 'yyyy-MM-dd'));
+            const recordsByDate = new Map<string, AttendanceRecord[]>();
 
-            for (const day of allDays) {
+            recordsForMonth.forEach(rec => {
+                const dateKey = format(parseISO(rec.checkInTime), 'yyyy-MM-dd');
+                const dayRecords = recordsByDate.get(dateKey) || [];
+                dayRecords.push(rec);
+                recordsByDate.set(dateKey, dayRecords);
+            });
+
+            const studyData: { date: string; hours: number }[] = allDays.map(day => {
                 const dateString = format(day, 'yyyy-MM-dd');
-                const records = await getAttendanceForDate(studentId, dateString);
-                let totalMilliseconds = 0;
-                records.forEach(record => {
-                    if (record.checkInTime && record.checkOutTime && isValid(parseISO(record.checkInTime)) && isValid(parseISO(record.checkOutTime))) {
-                        totalMilliseconds += differenceInMilliseconds(parseISO(record.checkOutTime), parseISO(record.checkInTime));
-                    } else if (record.checkInTime && !record.checkOutTime && isValid(parseISO(record.checkInTime))) {
-                        const checkInTime = parseISO(record.checkInTime);
-                        const endTime = new Date(checkInTime);
-                        endTime.setHours(21, 30, 0, 0);
+                const records = recordsByDate.get(dateString) || [];
+                const dailyHours = calculateDailyStudyTime(records).totalHours;
+                return { date: dateString, hours: dailyHours };
+            });
 
-                        const now = new Date();
-                        const calculationEndTime = endTime > now ? now : endTime;
-
-                        totalMilliseconds += differenceInMilliseconds(calculationEndTime, checkInTime);
-                    }
-                });
-                const totalHours = totalMilliseconds / (1000 * 60 * 60);
-                studyData.push({ date: dateString, hours: totalHours });
-            }
             setMonthlyStudyData(studyData);
         } catch (error) {
             console.error("Error fetching daily study data:", error);
+            setMonthlyStudyData([]);
         } finally {
             setIsLoadingMonthlyStudyData(false);
         }
@@ -215,18 +210,27 @@ export default function MemberAttendancePage() {
 
   const calculateDailyStudyTime = (records: AttendanceRecord[]) => {
     let totalMilliseconds = 0;
+    const now = new Date();
     records.forEach(record => {
-      if (record.checkInTime && record.checkOutTime && isValid(parseISO(record.checkInTime)) && isValid(parseISO(record.checkOutTime))) {
-        totalMilliseconds += differenceInMilliseconds(parseISO(record.checkOutTime), parseISO(record.checkInTime));
-      } else if (record.checkInTime && !record.checkOutTime && isValid(parseISO(record.checkInTime))) {
+      if (record.checkInTime && isValid(parseISO(record.checkInTime))) {
         const checkInTime = parseISO(record.checkInTime);
-        const endTime = new Date(checkInTime);
-        endTime.setHours(21, 30, 0, 0);
+        let sessionEndTime;
 
-        const now = new Date();
-        const calculationEndTime = endTime > now ? now : endTime;
-
-        totalMilliseconds += differenceInMilliseconds(calculationEndTime, checkInTime);
+        if (record.checkOutTime && isValid(parseISO(record.checkOutTime))) {
+            sessionEndTime = parseISO(record.checkOutTime);
+        } else {
+            const isTodayRecord = format(checkInTime, 'yyyy-MM-dd') === format(now, 'yyyy-MM-dd');
+            if (isTodayRecord) {
+                sessionEndTime = now;
+            } else {
+                sessionEndTime = new Date(checkInTime);
+                sessionEndTime.setHours(21, 30, 0, 0); // Cap at 9:30 PM for past days
+            }
+        }
+        
+        if (isAfter(sessionEndTime, checkInTime)) {
+          totalMilliseconds += differenceInMilliseconds(sessionEndTime, checkInTime);
+        }
       }
     });
 
@@ -234,7 +238,7 @@ export default function MemberAttendancePage() {
     const hours = Math.floor(totalHours);
     const minutes = Math.round((totalHours - hours) * 60);
 
-    return { hours, minutes };
+    return { hours, minutes, totalHours };
   };
 
   const fetchAttendanceForSelectedDate = React.useCallback(async () => {
@@ -396,7 +400,7 @@ export default function MemberAttendancePage() {
                             ) : (
                             <>
                                 <div className="mb-4 text-lg font-semibold text-primary">
-                                Total study time: {(() => { const { hours, minutes } = calculateDailyStudyTime(attendanceForDay); return `${hours} hr ${minutes}`; })()}
+                                Total study time: {(() => { const { hours, minutes } = calculateDailyStudyTime(attendanceForDay); return `${hours} hr ${minutes} min`; })()}
                                 </div>
 
                                 {attendanceForDay.length === 0 ? (

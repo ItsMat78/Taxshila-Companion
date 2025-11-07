@@ -779,48 +779,41 @@ export async function recordStudentPayment(
   return updatedStudent;
 }
 
-export async function calculateMonthlyStudyHours(customStudentId: string): Promise<number> {
-    const allRecordsForStudent = await getAttendanceRecordsByStudentId(customStudentId);
-    
-    const now = new Date();
-    const monthStart = startOfMonth(now);
-    const monthEnd = endOfMonth(now);
+export async function calculateMonthlyStudyHours(customStudentId: string, monthDate: Date = new Date()): Promise<number> {
+    const monthStart = startOfMonth(monthDate);
+    const monthEnd = endOfMonth(monthDate);
 
-    const recordsInMonth = allRecordsForStudent.filter(record => {
-        try {
-            const checkInDate = parseISO(record.checkInTime);
-            return isValid(checkInDate) && isWithinInterval(checkInDate, { start: monthStart, end: monthEnd });
-        } catch(e) { return false; }
-    });
+    const recordsInMonth = await getAttendanceForDateRange(
+        customStudentId,
+        format(monthStart, 'yyyy-MM-dd'),
+        format(monthEnd, 'yyyy-MM-dd')
+    );
 
     let totalMilliseconds = 0;
+    const now = new Date();
 
     recordsInMonth.forEach(record => {
-        if (!record) return;
+        if (!record || !record.checkInTime) return;
         try {
             const checkInDate = parseISO(record.checkInTime);
-            
-            if (record.checkOutTime && isValid(parseISO(record.checkOutTime))) {
-                // Case 1: Session is complete (has check-in and check-out)
-                const checkOutDate = parseISO(record.checkOutTime);
-                totalMilliseconds += differenceInMilliseconds(checkOutDate, checkInDate);
-            } else {
-                // Case 2: Session is still active (no check-out)
-                const isTodayRecord = format(checkInDate, 'yyyy-MM-dd') === format(now, 'yyyy-MM-dd');
-                let sessionEndDate: Date;
+            let sessionEndDate: Date;
 
+            if (record.checkOutTime && isValid(parseISO(record.checkOutTime))) {
+                sessionEndDate = parseISO(record.checkOutTime);
+            } else {
+                // Active session
+                const isTodayRecord = format(checkInDate, 'yyyy-MM-dd') === format(now, 'yyyy-MM-dd');
                 if (isTodayRecord) {
-                    // If it's an active session from today, calculate up to now
-                    sessionEndDate = now;
+                    sessionEndDate = now; // Calculate up to now for today's active session
                 } else {
-                    // If it's a "stuck" active session from a previous day, cap it at 9:30 PM of that day
+                    // "Stuck" session from a previous day, cap at 9:30 PM of that day
                     sessionEndDate = new Date(checkInDate);
                     sessionEndDate.setHours(21, 30, 0, 0); 
                 }
-                
-                if (isAfter(sessionEndDate, checkInDate)) {
-                    totalMilliseconds += differenceInMilliseconds(sessionEndDate, checkInDate);
-                }
+            }
+            
+            if (isAfter(sessionEndDate, checkInDate)) {
+                totalMilliseconds += differenceInMilliseconds(sessionEndDate, checkInDate);
             }
         } catch (e) {
             console.error(`Error processing attendance record ${record.recordId} for student ${customStudentId}:`, e);
@@ -828,7 +821,7 @@ export async function calculateMonthlyStudyHours(customStudentId: string): Promi
     });
 
     const totalHours = totalMilliseconds / (1000 * 60 * 60);
-    return Math.round(totalHours * 10) / 10;
+    return Math.round(totalHours * 10) / 10; // Round to one decimal place
 }
 
 
