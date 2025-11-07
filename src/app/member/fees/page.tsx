@@ -56,7 +56,7 @@ const ShiftDisplayCard = ({ shift }: { shift: Shift }) => {
           <path d="M55,65 l15,-38 l15,38 z" fill="hsl(120, 60%, 20%)" />
           <path d="M75,65 l15,-42 l15,42 z" fill="hsl(120, 60%, 15%)" />
           <circle cx="85" cy="15" r="8" fill="hsl(60, 80%, 90%)" />
-          <circle cx="90" cy="18" r="8" fill="hsl(var(--background))" />
+          <circle cx="90" cy="18" r="8" fill="hsl(222 47% 11%)" />
           <circle cx="20" cy="10" r="1.5" fill="hsl(60, 80%, 90%)" />
           <circle cx="45" cy="20" r="1" fill="hsl(60, 80%, 90%)" />
           <circle cx="65" cy="12" r="1.5" fill="hsl(60, 80%, 90%)" />
@@ -90,7 +90,8 @@ const ShiftDisplayCard = ({ shift }: { shift: Shift }) => {
       currentShift.gradient
     )}>
         {currentShift.icon}
-        <div className="relative z-10 bg-black/20 backdrop-blur-sm p-2 rounded-md">
+        <div className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black/50 to-transparent"></div>
+        <div className="relative z-10 p-2">
             <p className="font-semibold text-xl text-white drop-shadow-sm">{currentShift.name}</p>
             <p className="text-sm text-white/90 font-medium drop-shadow-sm">{currentShift.timing}</p>
         </div>
