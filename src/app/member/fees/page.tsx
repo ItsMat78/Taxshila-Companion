@@ -20,13 +20,85 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Receipt, History, Download, IndianRupee, Loader2, Briefcase, CalendarClock, AlertTriangle, CheckCircle, CreditCard } from 'lucide-react';
+import { Receipt, History, Download, IndianRupee, Loader2, Briefcase, CalendarClock, AlertTriangle, CheckCircle, CreditCard, Sun, Moon, Sparkles } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
 import { getStudentByEmail, getFeeStructure, getStudentByCustomId } from '@/services/student-service';
-import type { Student, PaymentRecord, FeeStructure as FeeStructureType } from '@/types/student';
+import type { Student, PaymentRecord, FeeStructure as FeeStructureType, Shift } from '@/types/student';
 import { useToast } from '@/hooks/use-toast';
 import { format, parseISO, isValid } from 'date-fns';
 import { cn } from '@/lib/utils';
+
+// New Shift Display Card Component
+const ShiftDisplayCard = ({ shift }: { shift: Shift }) => {
+  const shiftDetails = {
+    morning: {
+      name: 'Morning Shift',
+      timing: '7 AM - 2 PM',
+      icon: (
+        <svg viewBox="0 0 100 60" className="absolute inset-0 z-0 w-full h-full object-cover" preserveAspectRatio="xMidYMid slice">
+          <path d="M-5,65 l25,-20 l15,10 l25,-20 l15,10 l25,-20 v25 h-105 z" fill="#855a3a" />
+          <path d="M-5,65 l30,-25 l15,10 l20,-15 l15,10 l25,-20 v25 h-105 z" fill="#6b482f" />
+          <circle cx="80" cy="15" r="8" fill="hsl(25, 95%, 60%)" />
+          <circle cx="20" cy="20" r="5" fill="hsl(var(--background)/0.4)" />
+          <circle cx="45" cy="15" r="7" fill="hsl(var(--background)/0.4)" />
+        </svg>
+      ),
+      gradient: 'from-orange-100 to-sky-200 dark:from-orange-900/30 dark:to-sky-900/40',
+    },
+    evening: {
+      name: 'Evening Shift',
+      timing: '2 PM - 9:30 PM',
+       icon: (
+        <svg viewBox="0 0 100 60" className="absolute inset-0 z-0 w-full h-full object-cover" preserveAspectRatio="xMidYMid slice">
+          <path d="M-5,65 l15,-40 l15,40 z" fill="hsl(120, 60%, 15%)" />
+          <path d="M15,65 l15,-35 l15,35 z" fill="hsl(120, 60%, 20%)" />
+          <path d="M35,65 l15,-45 l15,45 z" fill="hsl(120, 60%, 15%)" />
+          <path d="M55,65 l15,-38 l15,38 z" fill="hsl(120, 60%, 20%)" />
+          <path d="M75,65 l15,-42 l15,42 z" fill="hsl(120, 60%, 15%)" />
+          <circle cx="85" cy="15" r="8" fill="hsl(60, 80%, 90%)" />
+          <circle cx="20" cy="10" r="1.5" fill="hsl(60, 80%, 90%)" />
+          <circle cx="45" cy="20" r="1" fill="hsl(60, 80%, 90%)" />
+          <circle cx="65" cy="12" r="1.5" fill="hsl(60, 80%, 90%)" />
+        </svg>
+      ),
+      gradient: 'from-indigo-800 to-slate-800 dark:from-indigo-900/40 dark:to-slate-900/50',
+    },
+    fullday: {
+      name: 'Full Day',
+      timing: '7 AM - 9:30 PM',
+      icon: (
+        <svg viewBox="0 0 100 60" className="absolute inset-0 z-0 w-full h-full object-cover" preserveAspectRatio="xMidYMid slice">
+          <path d="M-5,35 C30,50 70,50 105,35 V65 H-5 z" fill="hsl(200, 70%, 50%)" />
+          <path d="M-5,40 C30,55 70,55 105,40 V65 H-5 z" fill="hsl(200, 70%, 60%)" />
+          <path d="M-5,45 C30,60 70,60 105,45 V65 H-5 z" fill="hsl(40, 80%, 70%)" />
+          <circle cx="20" cy="20" r="10" fill="hsl(50, 100%, 60%)">
+             <animate attributeName="cy" values="20;18;20" dur="3s" repeatCount="indefinite" />
+          </circle>
+        </svg>
+      ),
+      gradient: 'from-yellow-100 to-sky-300 dark:from-yellow-900/30 dark:to-sky-900/50',
+    },
+  };
+
+  const currentShift = shiftDetails[shift];
+
+  return (
+    <div className={cn(
+      "p-4 rounded-lg bg-gradient-to-br",
+      "relative min-h-[120px] overflow-hidden flex flex-col justify-end items-start col-span-2 md:col-span-3",
+      currentShift.gradient
+    )}>
+        {currentShift.icon}
+        <div className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black/50 to-transparent"></div>
+        <div className="relative z-10 p-2">
+            <p className="font-semibold text-xl text-white drop-shadow-sm">{currentShift.name}</p>
+            <p className="text-sm text-white/90 font-medium drop-shadow-sm">{currentShift.timing}</p>
+        </div>
+    </div>
+  );
+};
+
+
 
 // A new component for individual stat boxes
 const StatBox = ({ title, value, icon, badge }: { title: string, value: string | React.ReactNode, icon?: React.ElementType, badge?: React.ReactNode }) => {
@@ -175,7 +247,7 @@ export default function MemberFeesPage() {
           <CardDescription>Your current subscription details.</CardDescription>
         </CardHeader>
         <CardContent className="grid grid-cols-2 md:grid-cols-3 gap-4">
-            <StatBox title="Plan Type" value={studentData.shift} icon={Briefcase} />
+            <ShiftDisplayCard shift={studentData.shift} />
             <StatBox title="Monthly Fee" value={getMonthlyFeeDisplay(studentData.shift, feeStructure)} icon={IndianRupee} />
             <StatBox title="Fee Status" value="" badge={getFeeStatusBadge(studentData.feeStatus, studentData.activityStatus)} />
             <StatBox title="Amount Due" value={studentData.activityStatus === 'Left' ? 'N/A' : (studentData.amountDue && studentData.amountDue !== "Rs. 0" ? studentData.amountDue : getMonthlyFeeDisplay(studentData.shift, feeStructure))} icon={IndianRupee} />
