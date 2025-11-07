@@ -43,13 +43,11 @@ const AnimatedNumber = ({ value }: { value: number | null }) => {
   const [displayValue, setDisplayValue] = React.useState(0);
 
   React.useEffect(() => {
-    if (value === null) {
-      setDisplayValue(0);
-      return;
-    }
+    // If the incoming value is null or undefined, treat it as 0.
+    const targetValue = value ?? 0;
     
-    let start = 0;
-    const end = value;
+    let start = displayValue;
+    const end = targetValue;
     const duration = 1000; // 1 second animation
     const range = end - start;
     let startTime: number | null = null;
@@ -69,12 +67,11 @@ const AnimatedNumber = ({ value }: { value: number | null }) => {
     animationFrameId = requestAnimationFrame(step);
 
     return () => cancelAnimationFrame(animationFrameId);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value]);
 
-  if (value === null) return <span className="text-4xl font-bold">N/A</span>;
-
   const hours = Math.floor(displayValue);
-  const decimals = value % 1 !== 0 ? Math.max(0, Math.min(2, (value.toString().split('.')[1] || '').length)) : 0;
+  const decimals = (value ?? 0) % 1 !== 0 ? Math.max(0, Math.min(2, ((value ?? 0).toString().split('.')[1] || '').length)) : 0;
   
   return <span className="text-4xl font-bold">{displayValue.toFixed(decimals)}</span>;
 };
@@ -108,8 +105,6 @@ export default function MemberAttendancePage() {
 
   const fetchStudentData = React.useCallback(async () => {
     if (user?.studentId || user?.email) {
-      setIsLoadingStudyHours(true);
-      setIsLoadingActiveCheckIn(true);
       try {
         let student = null;
         if (user.studentId) {
@@ -124,7 +119,7 @@ export default function MemberAttendancePage() {
         } else {
           toast({
             title: "Student Record Not Found",
-            description: "Could not find a student record associated with your email.",
+            description: "Could not find a student record associated with your account.",
             variant: "destructive",
           });
           setCurrentStudent(null);
@@ -134,46 +129,43 @@ export default function MemberAttendancePage() {
         console.error("Error fetching student data (Attendance Page):", error);
         toast({
           title: "Error",
-          description: error.message || "Failed to fetch student details or session status.",
+          description: error.message || "Failed to fetch student details.",
           variant: "destructive",
-        });
+          });
         setCurrentStudent(null);
         return null;
-      } finally {
-        setIsLoadingStudyHours(false);
-        setIsLoadingActiveCheckIn(false);
       }
-    } else {
-      setIsLoadingStudyHours(false);
-      setIsLoadingActiveCheckIn(false);
-      setCurrentStudent(null);
-      return null;
     }
+    return null;
   }, [user, toast]);
   
-  const handleShowMonthlyStudyTime = React.useCallback(async () => {
+ const handleShowMonthlyStudyTime = React.useCallback(async () => {
     setShowMonthlyStudyTime(true);
     setIsLoadingStudyHours(true);
+    
+    // Use a temporary variable for the student to ensure the latest data is used.
+    let studentForCalc = currentStudent;
 
-    // Ensure we have the student data before proceeding
-    let student = currentStudent;
-    if (!student) {
-        student = await fetchStudentData();
+    // If student data isn't loaded yet, fetch it first.
+    if (!studentForCalc) {
+        studentForCalc = await fetchStudentData();
     }
     
-    if (!student?.studentId) {
+    // Now check if we have the student data needed for the calculation.
+    if (!studentForCalc || !studentForCalc.studentId) {
         toast({ title: "Error", description: "Cannot calculate hours without student data.", variant: "destructive" });
         setIsLoadingStudyHours(false);
-        setMonthlyStudyHours(0);
+        setMonthlyStudyHours(0); // Set to 0 on failure
         return;
     }
 
     try {
-        const hours = await calculateMonthlyStudyHours(student.studentId);
+        // Perform the calculation with the guaranteed student ID.
+        const hours = await calculateMonthlyStudyHours(studentForCalc.studentId);
         setMonthlyStudyHours(hours);
     } catch (error: any) {
-        toast({ title: "Error", description: error.message, variant: "destructive" });
-        setMonthlyStudyHours(0);
+        toast({ title: "Error Calculating Hours", description: error.message, variant: "destructive" });
+        setMonthlyStudyHours(0); // Set to 0 on error
     } finally {
         setIsLoadingStudyHours(false);
     }
@@ -181,7 +173,10 @@ export default function MemberAttendancePage() {
 
 
   React.useEffect(() => {
-    fetchStudentData();
+    fetchStudentData().finally(() => {
+        setIsLoadingStudyHours(false);
+        setIsLoadingActiveCheckIn(false);
+    });
   }, [fetchStudentData]);
 
     const getDailyStudyDataForMonth = React.useCallback(async (studentId: string, month: Date) => {
@@ -189,12 +184,12 @@ export default function MemberAttendancePage() {
       try {
           const startDate = startOfMonth(month);
           const endDate = endOfMonth(month);
-          const allDays = eachDayOfInterval({ start: startDate, end: endDate });
 
           // Fetch all records for the student once
           const allRecordsForStudent = await getAttendanceRecordsByStudentId(studentId);
 
           const recordsForMonth = allRecordsForStudent.filter(rec => {
+              if(!rec.date || !isValid(parseISO(rec.date))) return false;
               const recDate = parseISO(rec.date);
               return isWithinInterval(recDate, { start: startDate, end: endDate });
           });
@@ -207,6 +202,8 @@ export default function MemberAttendancePage() {
               dayRecords.push(rec);
               recordsByDate.set(dateKey, dayRecords);
           });
+          
+          const allDays = eachDayOfInterval({ start: startDate, end: endDate });
 
           const studyData: { date: string; hours: number }[] = allDays.map(day => {
               const dateString = format(day, 'yyyy-MM-dd');
