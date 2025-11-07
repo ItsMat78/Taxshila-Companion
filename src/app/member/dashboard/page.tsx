@@ -197,9 +197,6 @@ export default function MemberDashboardPage() {
   const [hasUnreadAlerts, setHasUnreadAlerts] = React.useState(false);
   const [isLoadingStudentData, setIsLoadingStudentData] = React.useState(true);
 
-  const [monthlyStudyHours, setMonthlyStudyHours] = React.useState<number | null>(null);
-  const [isLoadingStudyHours, setIsLoadingStudyHours] = React.useState(true);
-
   const [activeCheckInRecord, setActiveCheckInRecord] = React.useState<AttendanceRecord | null>(null);
   const [hoursStudiedToday, setHoursStudiedToday] = React.useState<number | null>(null);
   const [isLoadingCurrentSession, setIsLoadingCurrentSession] = React.useState(true);
@@ -262,12 +259,10 @@ export default function MemberDashboardPage() {
   const fetchAllDashboardData = React.useCallback(async () => {
     if (user?.studentId || user?.email) {
         setIsLoadingStudentData(true);
-        setIsLoadingStudyHours(true);
         setIsLoadingCurrentSession(true);
 
         setStudentFirstName(null);
         setStudentId(null);
-        setMonthlyStudyHours(null);
         setHasUnreadAlerts(false);
         setActiveCheckInRecord(null);
         setHoursStudiedToday(null);
@@ -292,18 +287,15 @@ export default function MemberDashboardPage() {
 
           const [
             alerts,
-            hours,
             activeCheckInData,
             todayAttendanceData
           ] = await Promise.all([
             getAlertsForStudent(studentDetails.studentId),
-            calculateMonthlyStudyHours(studentDetails.studentId),
             getActiveCheckIn(studentDetails.studentId),
             getAttendanceForDate(studentDetails.studentId, format(new Date(), 'yyyy-MM-dd'))
           ]);
 
           setHasUnreadAlerts(alerts.some(alert => !alert.isRead));
-          setMonthlyStudyHours(hours);
 
           setActiveCheckInRecord(activeCheckInData || null);
           let totalMillisecondsToday = 0;
@@ -325,17 +317,16 @@ export default function MemberDashboardPage() {
         toast({ title: "Error", description: error.message || "Could not load all dashboard information.", variant: "destructive" });
       } finally {
         setIsLoadingStudentData(false);
-        setIsLoadingStudyHours(false);
         setIsLoadingCurrentSession(false);
         if (!studentDetailsFetchedSuccessfully) {
-            setStudentFirstName(null); setStudentId(null); setMonthlyStudyHours(null);
+            setStudentFirstName(null); setStudentId(null);
             setHasUnreadAlerts(false); setActiveCheckInRecord(null); setHoursStudiedToday(null);
             setStudentFeeStatus(null); setStudentNextDueDate(null);
         }
       }
     } else {
-      setIsLoadingStudentData(false); setIsLoadingStudyHours(false); setIsLoadingCurrentSession(false);
-      setStudentFirstName(null); setStudentId(null); setMonthlyStudyHours(null);
+      setIsLoadingStudentData(false); setIsLoadingCurrentSession(false);
+      setStudentFirstName(null); setStudentId(null);
       setHasUnreadAlerts(false); setActiveCheckInRecord(null); setHoursStudiedToday(null);
       setStudentFeeStatus(null); setStudentNextDueDate(null);
     }
@@ -344,11 +335,7 @@ export default function MemberDashboardPage() {
 
   React.useEffect(() => {
     fetchAllDashboardData();
-
-    // Set up interval to refresh data every 5 minutes (300000 milliseconds)
     const intervalId = setInterval(fetchAllDashboardData, 300000);
-
-    // Clear the interval on component unmount
     return () => clearInterval(intervalId);
   }, [fetchAllDashboardData]);
 
@@ -414,7 +401,6 @@ export default function MemberDashboardPage() {
           setIsProcessingQr(true);
 
           if (html5QrcodeScannerRef.current && html5QrcodeScannerRef.current.getState() === 2 /* PAUSED */) {
-              // Already paused, no need to pause again, just proceed.
           } else if (html5QrcodeScannerRef.current) {
               try { await html5QrcodeScannerRef.current.pause(true); }
               catch(e) { console.warn("Scanner pause error", e); }
@@ -551,29 +537,6 @@ export default function MemberDashboardPage() {
   };
 
 
-  let activityStatisticDisplay: string | null = null;
-  let activityDescription: string = "Track your study hours.";
-
-  if (isLoadingStudentData || isLoadingStudyHours) {
-    activityStatisticDisplay = null;
-    activityDescription = "Loading hours...";
-  } else if (studentId) {
-    if (monthlyStudyHours === null) {
-      activityStatisticDisplay = "0 hours";
-      activityDescription = "No activity recorded yet.";
-    } else if (monthlyStudyHours === 0) {
-      activityStatisticDisplay = "0 hours";
-      activityDescription = "No hours recorded this month.";
-    } else {
-      activityStatisticDisplay = `${monthlyStudyHours} hours`;
-      activityDescription = "studied this month";
-    }
-  } else if (!isLoadingStudentData && !studentId) {
-    activityStatisticDisplay = "N/A";
-    activityDescription = "Student record not linked.";
-  }
-
-
   const generateCoreActionTiles = (): DashboardTileProps[] => {
     let payFeesTileDesc = "Settle your outstanding dues.";
     let payFeesTileStatistic: string | null = null;
@@ -604,9 +567,8 @@ export default function MemberDashboardPage() {
       },
       {
         title: "Activity Summary",
-        statistic: activityStatisticDisplay,
-        description: activityDescription,
-        isLoadingStatistic: isLoadingStudentData || isLoadingStudyHours,
+        description: "View your attendance and study hours.",
+        isLoadingStatistic: false,
         icon: BarChart3,
         href: "/member/attendance",
         disabled: !studentId,

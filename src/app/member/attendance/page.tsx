@@ -33,7 +33,6 @@ import { BarChart, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Ba
 import { cn } from "@/lib/utils";
 
 
-// Corrected implementation for ChartTooltipContent
 const ChartTooltipContent = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
     const hours = payload[0].value;
@@ -78,6 +77,10 @@ export default function MemberAttendancePage() {
 
     const [viewedMonth, setViewedMonth] = React.useState(new Date());
 
+    // New state to control visibility
+    const [showMonthlyStudyTime, setShowMonthlyStudyTime] = React.useState(false);
+    const [showAttendanceOverview, setShowAttendanceOverview] = React.useState(false);
+
     const handlePrevMonth = () => {
         setViewedMonth((prev) => subMonths(prev, 1));
     };
@@ -101,11 +104,8 @@ export default function MemberAttendancePage() {
 
         if (student) {
           setCurrentStudent(student);
-          const [hours, activeCheckIn] = await Promise.all([
-            calculateMonthlyStudyHours(student.studentId),
-            getActiveCheckIn(student.studentId)
-          ]);
-          setMonthlyStudyHours(hours);
+          // Only fetch active check-in initially
+          const activeCheckIn = await getActiveCheckIn(student.studentId);
           setActiveCheckInRecord(activeCheckIn || null);
         } else {
           toast({
@@ -114,7 +114,6 @@ export default function MemberAttendancePage() {
             variant: "destructive",
           });
           setCurrentStudent(null);
-          setMonthlyStudyHours(0);
           setActiveCheckInRecord(null);
         }
       } catch (error: any) {
@@ -125,7 +124,6 @@ export default function MemberAttendancePage() {
           variant: "destructive",
         });
         setCurrentStudent(null);
-        setMonthlyStudyHours(0);
         setActiveCheckInRecord(null);
       } finally {
         setIsLoadingStudyHours(false);
@@ -138,6 +136,21 @@ export default function MemberAttendancePage() {
       setActiveCheckInRecord(null);
     }
   }, [user, toast]);
+  
+  const handleShowMonthlyStudyTime = React.useCallback(async () => {
+    if (!currentStudent?.studentId) return;
+    setShowMonthlyStudyTime(true);
+    setIsLoadingStudyHours(true);
+    try {
+        const hours = await calculateMonthlyStudyHours(currentStudent.studentId);
+        setMonthlyStudyHours(hours);
+    } catch (error: any) {
+        toast({ title: "Error", description: error.message, variant: "destructive" });
+        setMonthlyStudyHours(0);
+    } finally {
+        setIsLoadingStudyHours(false);
+    }
+  }, [currentStudent, toast]);
 
   React.useEffect(() => {
     fetchStudentDataAndActiveCheckIn();
@@ -181,10 +194,10 @@ export default function MemberAttendancePage() {
     }, []);
 
   React.useEffect(() => {
-    if (currentStudent?.studentId) {
+    if (currentStudent?.studentId && showMonthlyStudyTime) {
       getDailyStudyDataForMonth(currentStudent.studentId, viewedMonth);
     }
-  }, [currentStudent, viewedMonth, getDailyStudyDataForMonth]);
+  }, [currentStudent, viewedMonth, getDailyStudyDataForMonth, showMonthlyStudyTime]);
 
   const calculateDailyStudyTime = (records: AttendanceRecord[]) => {
     let totalMilliseconds = 0;
@@ -211,7 +224,7 @@ export default function MemberAttendancePage() {
   };
 
   const fetchAttendanceForSelectedDate = React.useCallback(async () => {
-    if (currentStudent?.studentId && date) {
+    if (currentStudent?.studentId && date && showAttendanceOverview) {
       setIsLoadingDetails(true);
       try {
         const records = await getAttendanceForDate(currentStudent.studentId, format(date, 'yyyy-MM-dd'));
@@ -227,10 +240,8 @@ export default function MemberAttendancePage() {
       } finally {
         setIsLoadingDetails(false);
       }
-    } else {
-      setAttendanceForDay([]);
     }
-  }, [currentStudent, date, toast]);
+  }, [currentStudent, date, showAttendanceOverview, toast]);
 
   React.useEffect(() => {
     fetchAttendanceForSelectedDate();
@@ -487,7 +498,12 @@ export default function MemberAttendancePage() {
             <CardDescription>Your study performance this month.</CardDescription>
           </CardHeader>
           <CardContent>
-            {isLoadingStudyHours ? (
+            {!showMonthlyStudyTime ? (
+                 <Button onClick={handleShowMonthlyStudyTime} className="w-full">
+                    <TrendingUp className="mr-2 h-4 w-4" />
+                    Show Monthly Hours
+                </Button>
+            ) : isLoadingStudyHours ? (
                 <div className="flex items-center justify-center">
                     <Loader2 className="h-8 w-8 animate-spin text-primary" />
                 </div>
@@ -497,33 +513,45 @@ export default function MemberAttendancePage() {
                     <span className="text-lg font-normal text-muted-foreground"> hours</span>
                 </div>
             )}
-            <p className="text-sm text-muted-foreground mt-1">
-                Total hours studied this month.
-            </p>
+            {showMonthlyStudyTime && !isLoadingStudyHours && (
+                <p className="text-sm text-muted-foreground mt-1">
+                    Total hours studied this month.
+                </p>
+            )}
           </CardContent>
         </Card>
       </div>
         <Card className="mt-6 shadow-lg w-full overflow-x-auto">
             <CardHeader>
-                <div className="flex items-center justify-between w-full">
-                    <CardTitle className="flex items-center text-base sm:text-lg">
-                        <TrendingUp className="mr-2 h-5 w-5" />
-                        Monthly Study Time
-                    </CardTitle>
-                    <div className="flex items-center space-x-2">
-                        <Button variant="outline" size="icon" onClick={handlePrevMonth} disabled={isLoadingMonthlyStudyData}>
-                            <ChevronLeft className="h-4 w-4" />
-                        </Button>
-                        <span>{format(viewedMonth, 'MMMM yyyy')}</span>
-                        <Button variant="outline" size="icon" onClick={handleNextMonth} disabled={isLoadingMonthlyStudyData}>
-                            <ChevronRight className="h-4 w-4" />
-                        </Button>
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between w-full gap-2">
+                    <div className="flex-grow">
+                        <CardTitle className="flex items-center text-base sm:text-lg">
+                            <TrendingUp className="mr-2 h-5 w-5" />
+                            Monthly Study Time
+                        </CardTitle>
+                        <CardDescription className="mt-1">Hours studied per day for the selected month.</CardDescription>
                     </div>
+                    {showMonthlyStudyTime && (
+                        <div className="flex items-center space-x-2 self-end sm:self-center">
+                            <Button variant="outline" size="icon" onClick={handlePrevMonth} disabled={isLoadingMonthlyStudyData}>
+                                <ChevronLeft className="h-4 w-4" />
+                            </Button>
+                            <span className="text-sm font-medium w-32 text-center">{format(viewedMonth, 'MMMM yyyy')}</span>
+                            <Button variant="outline" size="icon" onClick={handleNextMonth} disabled={isLoadingMonthlyStudyData}>
+                                <ChevronRight className="h-4 w-4" />
+                            </Button>
+                        </div>
+                    )}
                 </div>
-                <CardDescription>Hours studied per day this month</CardDescription>
             </CardHeader>
             <CardContent>
-                {isLoadingMonthlyStudyData ? (
+                {!showMonthlyStudyTime ? (
+                    <div className="text-center py-10">
+                        <Button onClick={() => setShowMonthlyStudyTime(true)}>
+                            Show Monthly Study Chart
+                        </Button>
+                    </div>
+                ) : isLoadingMonthlyStudyData ? (
                     <div className="flex items-center justify-center h-[300px]">
                         <Loader2 className="h-8 w-8 animate-spin text-primary"/>
                     </div>
@@ -563,60 +591,71 @@ export default function MemberAttendancePage() {
           <BarChart3 className="mr-2 h-5 w-5" />
           Daily Log
         </CardTitle>
-        <CardDescription>Select a date to view your check-in and check-out times for that day.</CardDescription>
+        <CardDescription>Select a date on the calendar to view your check-in and check-out times for that day.</CardDescription>
       </CardHeader>
-      <CardContent className="flex flex-col md:flex-row items-center md:items-start gap-6">
-        <div className="w-full md:w-auto flex justify-center">
-            <Calendar
-                mode="single"
-                selected={date}
-                onSelect={setDate}
-                className="rounded-md border shadow-inner"
-                modifiers={{ today: new Date() }}
-                modifiersStyles={{ today: { color: 'hsl(var(--accent-foreground))', backgroundColor: 'hsl(var(--accent))' } }}
-                disabled={!currentStudent?.studentId}
-            />
-        </div>
-        <div className="w-full md:flex-1">
-            <h4 className="text-md font-semibold mb-2">Details for {date ? format(date, 'PPP') : 'selected date'}:</h4>
-            {isLoadingDetails ? (
-              <div className="flex items-center justify-center text-muted-foreground"><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading details...</div>
-            ) : (
-              <>
-                <div className="mb-4 text-lg font-semibold text-primary">
-                  Total study time: {(() => { const { hours, minutes } = calculateDailyStudyTime(attendanceForDay); return `${hours} hr ${minutes} min`; })()}
+      <CardContent>
+        {!showAttendanceOverview ? (
+             <div className="text-center py-10">
+                <Button onClick={() => setShowAttendanceOverview(true)}>
+                    Show Attendance Calendar
+                </Button>
+            </div>
+        ) : (
+            <div className="flex flex-col md:flex-row items-center md:items-start gap-6">
+                <div className="w-full md:w-auto flex justify-center">
+                    <Calendar
+                        mode="single"
+                        selected={date}
+                        onSelect={setDate}
+                        className="rounded-md border shadow-inner"
+                        modifiers={{ today: new Date() }}
+                        modifiersStyles={{ today: { color: 'hsl(var(--accent-foreground))', backgroundColor: 'hsl(var(--accent))' } }}
+                        disabled={!currentStudent?.studentId}
+                    />
                 </div>
-
-                {attendanceForDay.length === 0 ? (
-                  <p className="text-muted-foreground">No attendance records found for this day.</p>
-                ) : (
-                  <ul className="space-y-3">
-                    {attendanceForDay.map(record => (
-                      <li key={record.recordId} className="p-3 border rounded-md bg-muted/30">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center"><LogIn className="mr-2 h-4 w-4 text-green-600" /><span className="font-medium">Checked In:</span></div>
-                          <span className="text-sm">{record.checkInTime && isValid(parseISO(record.checkInTime)) ? format(parseISO(record.checkInTime), 'p') : 'N/A'}</span>
+                <div className="w-full md:flex-1">
+                    <h4 className="text-md font-semibold mb-2">Details for {date ? format(date, 'PPP') : 'selected date'}:</h4>
+                    {isLoadingDetails ? (
+                    <div className="flex items-center justify-center text-muted-foreground"><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading details...</div>
+                    ) : (
+                    <>
+                        <div className="mb-4 text-lg font-semibold text-primary">
+                        Total study time: {(() => { const { hours, minutes } = calculateDailyStudyTime(attendanceForDay); return `${hours} hr ${minutes} min`; })()}
                         </div>
-                        {record.checkOutTime && isValid(parseISO(record.checkOutTime)) ? (
-                          <div className="flex items-center justify-between mt-1">
-                            <div className="flex items-center"><LogOut className="mr-2 h-4 w-4 text-red-600" /><span className="font-medium">Checked Out:</span></div>
-                            <span className="text-sm">{format(parseISO(record.checkOutTime), 'p')}</span>
-                          </div>
+
+                        {attendanceForDay.length === 0 ? (
+                        <p className="text-muted-foreground">No attendance records found for this day.</p>
                         ) : (
-                          <div className="flex items-center justify-between mt-1">
-                            <div className="flex items-center"><Clock className="mr-2 h-4 w-4 text-yellow-500" /><span className="font-medium">Status:</span></div>
-                            <span className="text-sm text-yellow-600">Currently Checked In</span>
-                          </div>
+                        <ul className="space-y-3">
+                            {attendanceForDay.map(record => (
+                            <li key={record.recordId} className="p-3 border rounded-md bg-muted/30">
+                                <div className="flex items-center justify-between">
+                                <div className="flex items-center"><LogIn className="mr-2 h-4 w-4 text-green-600" /><span className="font-medium">Checked In:</span></div>
+                                <span className="text-sm">{record.checkInTime && isValid(parseISO(record.checkInTime)) ? format(parseISO(record.checkInTime), 'p') : 'N/A'}</span>
+                                </div>
+                                {record.checkOutTime && isValid(parseISO(record.checkOutTime)) ? (
+                                <div className="flex items-center justify-between mt-1">
+                                    <div className="flex items-center"><LogOut className="mr-2 h-4 w-4 text-red-600" /><span className="font-medium">Checked Out:</span></div>
+                                    <span className="text-sm">{format(parseISO(record.checkOutTime), 'p')}</span>
+                                </div>
+                                ) : (
+                                <div className="flex items-center justify-between mt-1">
+                                    <div className="flex items-center"><Clock className="mr-2 h-4 w-4 text-yellow-500" /><span className="font-medium">Status:</span></div>
+                                    <span className="text-sm text-yellow-600">Currently Checked In</span>
+                                </div>
+                                )}
+                            </li>
+                            ))}
+                        </ul>
                         )}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </>
-            )}
-          </div>
+                    </>
+                    )}
+                </div>
+            </div>
+        )}
         </CardContent>
       </Card>
     </>
   );
 }
+
