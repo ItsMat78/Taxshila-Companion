@@ -295,7 +295,7 @@ export default function MemberAttendancePage() {
           </CardContent>
         </Card>
 
-      <div className="grid grid-cols-2 gap-4 mt-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
         <Card className="shadow-lg w-full overflow-hidden">
             <CardHeader>
                 <CardTitle className="flex items-center text-base sm:text-lg">
@@ -396,7 +396,7 @@ export default function MemberAttendancePage() {
                             ) : (
                             <>
                                 <div className="mb-4 text-lg font-semibold text-primary">
-                                Total study time: {(() => { const { hours, minutes } = calculateDailyStudyTime(attendanceForDay); return `${hours} hr ${minutes} min`; })()}
+                                Total study time: {(() => { const { hours, minutes } = calculateDailyStudyTime(attendanceForDay); return `${hours} hr ${minutes}`; })()}
                                 </div>
 
                                 {attendanceForDay.length === 0 ? (
@@ -435,3 +435,5 @@ export default function MemberAttendancePage() {
     </>
   );
 }
+
+    
