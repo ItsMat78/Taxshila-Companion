@@ -29,10 +29,12 @@ import { Camera, QrCode, Receipt, IndianRupee, MessageSquare, Bell, ScrollText, 
 import { cn } from '@/lib/utils';
 import { getStudentByEmail, getAlertsForStudent, addCheckIn, addCheckOut, getActiveCheckIn, getAttendanceForDate, getStudentByCustomId } from '@/services/student-service';
 import type { AlertItem } from '@/types/communication';
-import type { Student, AttendanceRecord, FeeStatus } from '@/types/student';
+import type { Student, AttendanceRecord, FeeStatus, Shift } from '@/types/student';
 import { format, parseISO, differenceInMilliseconds, isValid, differenceInMinutes, differenceInHours } from 'date-fns';
 import { Html5QrcodeScanner, Html5QrcodeSupportedFormats, Html5QrcodeScanType } from 'html5-qrcode';
 import { setupPushNotifications } from '@/lib/notification-setup';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { getInitials } from '@/lib/utils';
 
 const DASHBOARD_QR_SCANNER_ELEMENT_ID = "qr-reader-dashboard";
 const LIBRARY_QR_CODE_PAYLOAD = "TAXSHILA_LIBRARY_CHECKIN_QR_V1";
@@ -79,8 +81,11 @@ const DashboardTile: React.FC<DashboardTileProps> = ({
         "relative",
         isPrimaryAction ? "p-3 sm:p-4 pb-1 sm:pb-2" : "p-2 sm:p-3 pb-0 sm:pb-1"
       )}>
-        {(hasNew || isUrgent) && !isPrimaryAction && !hasNew && (
-          <span className="absolute top-1 right-1 block h-2.5 w-2.5 rounded-full bg-destructive ring-1 ring-white" />
+        {(hasNew || isUrgent) && (
+          <span className={cn(
+            "absolute top-1 right-1 block h-2.5 w-2.5 rounded-full ring-1 ring-white",
+             isUrgent ? 'bg-destructive' : 'bg-primary'
+          )} />
         )}
         <div className={cn(
           "flex items-center gap-2",
@@ -189,6 +194,7 @@ export default function MemberDashboardPage() {
   const html5QrcodeScannerRef = React.useRef<Html5QrcodeScanner | null>(null);
 
 
+  const [currentStudent, setCurrentStudent] = React.useState<Student | null>(null);
   const [studentId, setStudentId] = React.useState<string | null>(null);
   const [studentFirstName, setStudentFirstName] = React.useState<string | null>(null);
   const [hasUnreadAlerts, setHasUnreadAlerts] = React.useState(false);
@@ -234,6 +240,7 @@ export default function MemberDashboardPage() {
         setActiveCheckInRecord(null);
         setStudentFeeStatus(null);
         setStudentNextDueDate(null);
+        setCurrentStudent(null);
 
       let studentDetailsFetchedSuccessfully = false;
       try {
@@ -246,6 +253,7 @@ export default function MemberDashboardPage() {
 
         if (studentDetails) {
           studentDetailsFetchedSuccessfully = true;
+          setCurrentStudent(studentDetails);
           setStudentId(studentDetails.studentId);
           setStudentFirstName(studentDetails.name ? studentDetails.name.split(' ')[0] : null);
           setStudentFeeStatus(studentDetails.feeStatus);
@@ -276,6 +284,7 @@ export default function MemberDashboardPage() {
             setStudentFirstName(null); setStudentId(null);
             setHasUnreadAlerts(false); setActiveCheckInRecord(null);
             setStudentFeeStatus(null); setStudentNextDueDate(null);
+            setCurrentStudent(null);
         }
       }
     } else {
@@ -283,6 +292,7 @@ export default function MemberDashboardPage() {
       setStudentFirstName(null); setStudentId(null);
       setHasUnreadAlerts(false); setActiveCheckInRecord(null);
       setStudentFeeStatus(null); setStudentNextDueDate(null);
+      setCurrentStudent(null);
     }
   }, [user, toast]);
 
@@ -305,7 +315,8 @@ export default function MemberDashboardPage() {
         setElapsedTime(`${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`);
       };
       
-      updateElapsedTime(); // Update immediately
+      updateElapsedTime();
+      timerId = setInterval(updateElapsedTime, 30000); // Update every 30 seconds
     } else {
       setElapsedTime(null);
     }
@@ -515,6 +526,16 @@ export default function MemberDashboardPage() {
     }
   };
 
+  const getShiftColorClass = (shift: Shift | undefined) => {
+    if (!shift) return 'bg-gray-100 text-gray-800 border-gray-300';
+    switch (shift) {
+      case 'morning': return 'bg-seat-morning text-seat-morning-foreground border-orange-300 dark:border-orange-700';
+      case 'evening': return 'bg-seat-evening text-seat-evening-foreground border-purple-300 dark:border-purple-700';
+      case 'fullday': return 'bg-seat-fullday text-seat-fullday-foreground border-yellow-300 dark:border-yellow-700';
+      default: return 'bg-gray-100 text-gray-800 border-gray-300';
+    }
+  };
+
   const generateCoreActionTiles = (): DashboardTileProps[] => {
     let payFeesTileDesc = "Settle your outstanding dues.";
     let payFeesIsUrgent = false;
@@ -527,12 +548,12 @@ export default function MemberDashboardPage() {
         case "Due":
           payFeesIsUrgent = true;
           payFeesTileDesc = `Status: Due. Next payment due: ${studentNextDueDate && isValid(parseISO(studentNextDueDate)) ? format(parseISO(studentNextDueDate), 'PP') : 'N/A'}.`;
-          payFeesClass = "bg-yellow-100 text-yellow-700 border-yellow-300";
+          payFeesClass = "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300 border-yellow-300 dark:border-yellow-700/50";
           break;
         case "Overdue":
           payFeesIsUrgent = true;
           payFeesTileDesc = `Status: Overdue. Payment is late.`;
-          payFeesClass = "bg-destructive/10 text-destructive border-destructive";
+          payFeesClass = "bg-destructive/20 text-destructive border-destructive/50";
           break;
         case "Paid":
           payFeesTileDesc = `Fees paid up to: ${studentNextDueDate && isValid(parseISO(studentNextDueDate)) ? format(parseISO(studentNextDueDate), 'PP') : 'N/A'}.`;
@@ -551,8 +572,9 @@ export default function MemberDashboardPage() {
         icon: Bell,
         href: "/member/alerts",
         hasNew: !isLoadingStudentData && hasUnreadAlerts,
+        isUrgent: !isLoadingStudentData && hasUnreadAlerts,
         disabled: !studentId,
-        className: hasUnreadAlerts ? "animate-breathing-stroke bg-destructive/10" : "",
+        className: hasUnreadAlerts ? "bg-destructive/20 border-destructive/50 animate-breathing-stroke" : "",
       },
       {
         title: "Activity Summary",
@@ -619,7 +641,23 @@ export default function MemberDashboardPage() {
 
   return (
     <>
-      <PageTitle title={pageTitleText} description="Your Taxshila Companion dashboard." />
+      <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <Avatar className="h-16 w-16 border-2 border-primary shadow-md">
+            <AvatarImage src={currentStudent?.profilePictureUrl || user?.profilePictureUrl || undefined} alt={currentStudent?.name} data-ai-hint="profile person" />
+            <AvatarFallback className="text-2xl">{getInitials(currentStudent?.name)}</AvatarFallback>
+          </Avatar>
+          <div className="flex-1">
+            <h1 className="text-xl font-headline font-semibold tracking-tight md:text-2xl leading-tight">{pageTitleText}</h1>
+            <p className="text-muted-foreground">Your Taxshila Companion dashboard.</p>
+          </div>
+        </div>
+        {currentStudent && (
+          <div className={cn("flex items-center justify-center h-14 w-14 text-xl rounded-lg border-2 font-bold flex-shrink-0", getShiftColorClass(currentStudent.shift))} title={`Seat ${currentStudent.seatNumber}`}>
+            {currentStudent.seatNumber || 'N/A'}
+          </div>
+        )}
+      </div>
 
       {showNotificationPrompt && <NotificationPrompt onDismiss={handleDismissPrompt} />}
 
@@ -764,7 +802,3 @@ export default function MemberDashboardPage() {
     </>
   );
 }
-
-    
-
-      
