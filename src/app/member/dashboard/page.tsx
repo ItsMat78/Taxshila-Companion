@@ -577,7 +577,7 @@ export default function MemberDashboardPage() {
         hasNew: !isLoadingStudentData && hasUnreadAlerts,
         isUrgent: !isLoadingStudentData && hasUnreadAlerts,
         disabled: !studentId,
-        className: hasUnreadAlerts ? "bg-destructive/20 border-destructive/50 animate-breathing-stroke" : "",
+        className: hasUnreadAlerts ? "bg-destructive/20 animate-breathing-stroke" : "",
       },
       {
         title: "Activity Summary",
@@ -646,35 +646,21 @@ export default function MemberDashboardPage() {
     <>
       <div className="mb-6 flex flex-row items-center justify-between gap-4">
         <div className="flex items-center gap-4 flex-1 min-w-0">
-          <Dialog>
-            <DialogTrigger asChild>
-              <div className="cursor-pointer relative group flex-shrink-0">
-                <Avatar className="h-12 w-12 sm:h-16 sm:w-16 border-2 border-primary shadow-md">
-                  <AvatarImage src={currentStudent?.profilePictureUrl || user?.profilePictureUrl || undefined} alt={currentStudent?.name} data-ai-hint="profile person" />
-                  <AvatarFallback className="text-2xl">{getInitials(currentStudent?.name)}</AvatarFallback>
-                </Avatar>
-                 <div className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                    <View className="text-white h-6 w-6"/>
-                </div>
-              </div>
-            </DialogTrigger>
-            <DialogContent className="max-w-md w-auto p-2">
-                <NextImage 
-                  src={currentStudent?.profilePictureUrl || DEFAULT_PROFILE_PLACEHOLDER}
-                  alt="Profile Picture Full View" 
-                  width={500} 
-                  height={500}
-                  className="rounded-md object-contain max-h-[80vh] w-full h-auto"
-                />
-            </DialogContent>
-          </Dialog>
+          <Link href="/member/profile" passHref legacyBehavior>
+            <a className="cursor-pointer relative group flex-shrink-0">
+              <Avatar className="h-12 w-12 sm:h-16 sm:w-16 border-2 border-primary shadow-md">
+                <AvatarImage src={currentStudent?.profilePictureUrl || user?.profilePictureUrl || undefined} alt={currentStudent?.name} data-ai-hint="profile person" />
+                <AvatarFallback className="text-2xl">{getInitials(currentStudent?.name)}</AvatarFallback>
+              </Avatar>
+            </a>
+          </Link>
           <div className="flex-1 min-w-0">
             <h1 className="text-xl font-headline font-semibold tracking-tight md:text-2xl leading-tight truncate">{pageTitleText}</h1>
             <p className="text-muted-foreground text-sm truncate">Your Taxshila Companion dashboard.</p>
           </div>
         </div>
         {currentStudent && (
-          <div className={cn("flex items-center justify-center h-12 w-12 sm:h-14 sm:w-14 text-lg sm:text-xl rounded-lg border-2 font-bold flex-shrink-0", getShiftColorClass(currentStudent.shift))} title={`Seat ${currentStudent.seatNumber}`}>
+          <div className={cn("flex items-center justify-center h-10 w-10 sm:h-12 sm:w-12 text-md sm:text-lg rounded-lg border-2 font-bold flex-shrink-0", getShiftColorClass(currentStudent.shift))} title={`Seat ${currentStudent.seatNumber}`}>
             {currentStudent.seatNumber || 'N/A'}
           </div>
         )}
@@ -823,5 +809,3 @@ export default function MemberDashboardPage() {
     </>
   );
 }
-
-    
