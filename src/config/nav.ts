@@ -198,12 +198,6 @@ export const mainNav: NavItem[] = [
     icon: AlertCircle,
     roles: ['member'],
   },
-   {
-    title: 'Scan QR',
-    href: '/students/qr-code',
-    icon: QrCode,
-    roles: ['member'],
-  },
   {
     title: 'Library Rules',
     href: '/member/rules',
@@ -217,3 +211,5 @@ export const mainNav: NavItem[] = [
     roles: ['member'],
   },
 ];
+
+    

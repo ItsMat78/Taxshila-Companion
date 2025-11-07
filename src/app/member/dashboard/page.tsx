@@ -25,7 +25,7 @@ import {
 import { Alert, AlertDescription, AlertTitle as ShadcnAlertTitle } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/auth-context';
-import { Camera, QrCode, Receipt, IndianRupee, MessageSquare, Bell, ScrollText, Star, Loader2, XCircle, Home, BarChart3, PlayCircle, CheckCircle, Hourglass, ScanLine, LogOut, AlertCircle, X } from 'lucide-react';
+import { Camera, QrCode, Receipt, IndianRupee, MessageSquare, Bell, ScrollText, Star, Loader2, XCircle, Home, BarChart3, PlayCircle, CheckCircle, Hourglass, ScanLine, LogOut, AlertCircle, X, Eye } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getStudentByEmail, getAlertsForStudent, addCheckIn, addCheckOut, getActiveCheckIn, getAttendanceForDate, getStudentByCustomId } from '@/services/student-service';
 import type { AlertItem } from '@/types/communication';
@@ -201,6 +201,7 @@ export default function MemberDashboardPage() {
   const [hoursStudiedToday, setHoursStudiedToday] = React.useState<number | null>(null);
   const [isLoadingCurrentSession, setIsLoadingCurrentSession] = React.useState(true);
   const [isProcessingCheckout, setIsProcessingCheckout] = React.useState(false);
+  const [isLoadingHoursToday, setIsLoadingHoursToday] = React.useState(false);
 
 
   const [studentFeeStatus, setStudentFeeStatus] = React.useState<FeeStatus | null>(null);
@@ -288,26 +289,13 @@ export default function MemberDashboardPage() {
           const [
             alerts,
             activeCheckInData,
-            todayAttendanceData
           ] = await Promise.all([
             getAlertsForStudent(studentDetails.studentId),
             getActiveCheckIn(studentDetails.studentId),
-            getAttendanceForDate(studentDetails.studentId, format(new Date(), 'yyyy-MM-dd'))
           ]);
 
           setHasUnreadAlerts(alerts.some(alert => !alert.isRead));
-
           setActiveCheckInRecord(activeCheckInData || null);
-          let totalMillisecondsToday = 0;
-          const now = new Date();
-          todayAttendanceData.forEach(record => {
-            if (record.checkOutTime && record.checkInTime && isValid(parseISO(record.checkOutTime)) && isValid(parseISO(record.checkInTime))) {
-              totalMillisecondsToday += differenceInMilliseconds(parseISO(record.checkOutTime), parseISO(record.checkInTime));
-            } else if (activeCheckInData && record.recordId === activeCheckInData.recordId && record.checkInTime && isValid(parseISO(record.checkInTime))) {
-              totalMillisecondsToday += differenceInMilliseconds(now, parseISO(record.checkInTime));
-            }
-          });
-          setHoursStudiedToday(totalMillisecondsToday / (1000 * 60 * 60));
 
         } else {
             toast({ title: "Error", description: "Could not find your student record.", variant: "destructive" });
@@ -536,6 +524,29 @@ export default function MemberDashboardPage() {
     }
   };
 
+  const handleShowHoursToday = async () => {
+    if (!studentId) return;
+    setIsLoadingHoursToday(true);
+    try {
+      const todayAttendanceData = await getAttendanceForDate(studentId, format(new Date(), 'yyyy-MM-dd'));
+      let totalMillisecondsToday = 0;
+      const now = new Date();
+      todayAttendanceData.forEach(record => {
+        if (record.checkOutTime && record.checkInTime && isValid(parseISO(record.checkOutTime)) && isValid(parseISO(record.checkInTime))) {
+          totalMillisecondsToday += differenceInMilliseconds(parseISO(record.checkOutTime), parseISO(record.checkInTime));
+        } else if (activeCheckInRecord && record.recordId === activeCheckInRecord.recordId && record.checkInTime && isValid(parseISO(record.checkInTime))) {
+          totalMillisecondsToday += differenceInMilliseconds(now, parseISO(record.checkInTime));
+        }
+      });
+      setHoursStudiedToday(totalMillisecondsToday / (1000 * 60 * 60));
+    } catch (error) {
+      console.error("Error fetching hours today:", error);
+      toast({title: "Error", description: "Could not calculate today's hours.", variant: "destructive"});
+    } finally {
+      setIsLoadingHoursToday(false);
+    }
+  };
+
 
   const generateCoreActionTiles = (): DashboardTileProps[] => {
     let payFeesTileDesc = "Settle your outstanding dues.";
@@ -690,22 +701,25 @@ export default function MemberDashboardPage() {
                 <span>Not Currently Checked In</span>
               </div>
             )}
-            {!activeCheckInRecord && hoursStudiedToday !== null && hoursStudiedToday > 0 && (
-              <div className="flex items-center">
-                <Hourglass className="mr-1 h-3 w-3 text-blue-500" />
-                <span>
-                  Today: {Math.floor(hoursStudiedToday)} hr{" "}
-                  {Math.round((hoursStudiedToday % 1) * 60)} min
-                </span>
-              </div>
-            )}
-
-            {!activeCheckInRecord && hoursStudiedToday === 0 && !isLoadingCurrentSession && (
+             {
+              isLoadingHoursToday ? (
+                <Button variant="link" size="sm" className="h-auto p-0 text-xs" disabled>
+                  <Loader2 className="mr-1 h-3 w-3 animate-spin" /> Loading...
+                </Button>
+              ) : hoursStudiedToday !== null ? (
                 <div className="flex items-center">
-                <Hourglass className="mr-1 h-3 w-3 text-blue-500" />
-                <span>No study today.</span>
-              </div>
-            )}
+                  <Hourglass className="mr-1 h-3 w-3 text-blue-500" />
+                  <span>
+                    Today: {Math.floor(hoursStudiedToday)} hr{" "}
+                    {Math.round((hoursStudiedToday % 1) * 60)} min
+                  </span>
+                </div>
+              ) : (
+                <Button variant="link" size="sm" onClick={handleShowHoursToday} className="h-auto p-0 text-xs" disabled={isLoadingCurrentSession}>
+                   <Eye className="mr-1 h-3 w-3"/> Show Today's Hours
+                </Button>
+              )
+            }
           </div>
         </div>
 
@@ -795,3 +809,5 @@ export default function MemberDashboardPage() {
     </>
   );
 }
+
+    
