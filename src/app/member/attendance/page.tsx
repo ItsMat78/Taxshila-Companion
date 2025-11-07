@@ -13,24 +13,12 @@ import {
 } from "@/components/ui/card";
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { 
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { Camera, Loader2, XCircle, BarChart3, Clock, LogIn, LogOut, ScanLine, CheckCircle, TrendingUp, ChevronLeft, ChevronRight, AlertCircle } from 'lucide-react';
+import { Loader2, BarChart3, Clock, LogIn, LogOut, TrendingUp, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
-import { getStudentByEmail, getActiveCheckIn, addCheckIn, addCheckOut, getAttendanceForDate, calculateMonthlyStudyHours, getStudentByCustomId } from '@/services/student-service';
+import { getStudentByEmail, calculateMonthlyStudyHours, getAttendanceForDate, getStudentByCustomId } from '@/services/student-service';
 import type { Student, AttendanceRecord } from '@/types/student';
 import { format, parseISO, isValid, differenceInMilliseconds, startOfMonth, endOfMonth, eachDayOfInterval, addMonths, subMonths } from 'date-fns';
-import { Html5QrcodeScanner, Html5QrcodeSupportedFormats, Html5QrcodeScanType } from 'html5-qrcode';
 import { BarChart, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Bar } from 'recharts';
-import { cn } from "@/lib/utils";
 
 
 const ChartTooltipContent = ({ active, payload, label }: any) => {
@@ -51,35 +39,23 @@ const ChartTooltipContent = ({ active, payload, label }: any) => {
 };
 
 
-const QR_SCANNER_ELEMENT_ID_ATTENDANCE = "qr-reader-attendance-page";
-const LIBRARY_QR_CODE_PAYLOAD = "TAXSHILA_LIBRARY_CHECKIN_QR_V1";
-
 export default function MemberAttendancePage() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [date, setDate] = React.useState<Date | undefined>(new Date());
-  const [isScannerOpen, setIsScannerOpen] = React.useState(false);
-  const [hasCameraPermission, setHasCameraPermission] = React.useState<boolean | null>(null);
-  const [isProcessingQr, setIsProcessingQr] = React.useState(false);
-  const html5QrcodeScannerRef = React.useRef<Html5QrcodeScanner | null>(null);
-
+  
   const [currentStudent, setCurrentStudent] = React.useState<Student | null>(null);
   const [attendanceForDay, setAttendanceForDay] = React.useState<AttendanceRecord[]>([]);
   const [isLoadingDetails, setIsLoadingDetails] = React.useState(false);
   const [monthlyStudyHours, setMonthlyStudyHours] = React.useState<number | null>(null);
   const [isLoadingStudyHours, setIsLoadingStudyHours] = React.useState(true);
-  const [activeCheckInRecord, setActiveCheckInRecord] = React.useState<AttendanceRecord | null>(null);
   const [isLoadingActiveCheckIn, setIsLoadingActiveCheckIn] = React.useState(true);
   const [monthlyStudyData, setMonthlyStudyData] = React.useState<{ date: string; hours: number }[]>([]);
   const [isLoadingMonthlyStudyData, setIsLoadingMonthlyStudyData] = React.useState(true);
-  const [isOverdueDialogOpen, setIsOverdueDialogOpen] = React.useState(false);
-
-
-    const [viewedMonth, setViewedMonth] = React.useState(new Date());
-
-    // New state to control visibility
-    const [showMonthlyStudyTime, setShowMonthlyStudyTime] = React.useState(false);
-    const [showAttendanceOverview, setShowAttendanceOverview] = React.useState(false);
+  
+  const [viewedMonth, setViewedMonth] = React.useState(new Date());
+  const [showMonthlyStudyTime, setShowMonthlyStudyTime] = React.useState(false);
+  const [showAttendanceOverview, setShowAttendanceOverview] = React.useState(false);
 
     const handlePrevMonth = () => {
         setViewedMonth((prev) => subMonths(prev, 1));
@@ -89,8 +65,7 @@ export default function MemberAttendancePage() {
         setViewedMonth((prev) => addMonths(prev, 1));
     };
 
-
-  const fetchStudentDataAndActiveCheckIn = React.useCallback(async () => {
+  const fetchStudentData = React.useCallback(async () => {
     if (user?.studentId || user?.email) {
       setIsLoadingStudyHours(true);
       setIsLoadingActiveCheckIn(true);
@@ -104,9 +79,6 @@ export default function MemberAttendancePage() {
 
         if (student) {
           setCurrentStudent(student);
-          // Only fetch active check-in initially
-          const activeCheckIn = await getActiveCheckIn(student.studentId);
-          setActiveCheckInRecord(activeCheckIn || null);
         } else {
           toast({
             title: "Student Record Not Found",
@@ -114,17 +86,15 @@ export default function MemberAttendancePage() {
             variant: "destructive",
           });
           setCurrentStudent(null);
-          setActiveCheckInRecord(null);
         }
       } catch (error: any) {
-        console.error("Error fetching student data/active check-in (Attendance Page):", error);
+        console.error("Error fetching student data (Attendance Page):", error);
         toast({
           title: "Error",
           description: error.message || "Failed to fetch student details or session status.",
           variant: "destructive",
         });
         setCurrentStudent(null);
-        setActiveCheckInRecord(null);
       } finally {
         setIsLoadingStudyHours(false);
         setIsLoadingActiveCheckIn(false);
@@ -133,12 +103,15 @@ export default function MemberAttendancePage() {
       setIsLoadingStudyHours(false);
       setIsLoadingActiveCheckIn(false);
       setCurrentStudent(null);
-      setActiveCheckInRecord(null);
     }
   }, [user, toast]);
   
   const handleShowMonthlyStudyTime = React.useCallback(async () => {
-    if (!currentStudent?.studentId) return;
+    if (!currentStudent?.studentId) {
+        if (!user) await fetchStudentData();
+        if (!currentStudent) return;
+    };
+
     setShowMonthlyStudyTime(true);
     setIsLoadingStudyHours(true);
     try {
@@ -150,11 +123,11 @@ export default function MemberAttendancePage() {
     } finally {
         setIsLoadingStudyHours(false);
     }
-  }, [currentStudent, toast]);
+  }, [currentStudent, toast, user, fetchStudentData]);
 
   React.useEffect(() => {
-    fetchStudentDataAndActiveCheckIn();
-  }, [fetchStudentDataAndActiveCheckIn]);
+    fetchStudentData();
+  }, [fetchStudentData]);
 
     const getDailyStudyDataForMonth = React.useCallback(async (studentId: string, month: Date) => {
         setIsLoadingMonthlyStudyData(true);
@@ -247,247 +220,12 @@ export default function MemberAttendancePage() {
     fetchAttendanceForSelectedDate();
   }, [fetchAttendanceForSelectedDate]);
 
-  React.useEffect(() => {
-    let timeoutId: NodeJS.Timeout;
-    if (isScannerOpen && currentStudent?.studentId && !activeCheckInRecord) {
-      timeoutId = setTimeout(() => {
-        const scannerElement = document.getElementById(QR_SCANNER_ELEMENT_ID_ATTENDANCE);
-        if (!scannerElement) {
-          toast({variant: 'destructive', title: "Scanner Error", description: "Could not initialize QR scanner display. Please try again."});
-          setIsScannerOpen(false);
-          return;
-        }
-
-        if (html5QrcodeScannerRef.current) {
-          html5QrcodeScannerRef.current.clear()
-            .catch(clearError => console.error("Error clearing previous scanner instance (Attendance Page):", clearError))
-            .finally(() => html5QrcodeScannerRef.current = null);
-        }
-        
-        const formatsToSupport = [ Html5QrcodeSupportedFormats.QR_CODE ];
-        const config = {
-          fps: 10,
-          qrbox: (viewfinderWidth: number, viewfinderHeight: number) => {
-              const edgePercentage = 0.7;
-              const edgeLength = Math.min(viewfinderWidth, viewfinderHeight) * edgePercentage;
-              return { width: edgeLength, height: edgeLength };
-          },
-          supportedScanTypes: [Html5QrcodeScanType.SCAN_TYPE_CAMERA],
-          formatsToSupport: formatsToSupport,
-          rememberLastUsedCamera: true,
-          videoConstraints: { 
-            facingMode: "environment" 
-          }
-        };
-
-        const scanner = new Html5QrcodeScanner( QR_SCANNER_ELEMENT_ID_ATTENDANCE, config, false );
-        html5QrcodeScannerRef.current = scanner;
-
-        const onScanSuccess = async (decodedText: string) => {
-          if (isProcessingQr) return;
-          setIsProcessingQr(true);
-          if (html5QrcodeScannerRef.current) {
-              try { await html5QrcodeScannerRef.current.pause(true); } 
-              catch(e){ console.warn("Scanner pause error", e)}
-          }
-          
-          if (decodedText === LIBRARY_QR_CODE_PAYLOAD) {
-            try {
-              if (currentStudent?.studentId) {
-                await addCheckIn(currentStudent.studentId);
-                toast({
-                  title: "Checked In!",
-                  description: `Successfully checked in at ${new Date().toLocaleTimeString()}.`,
-                });
-                await fetchStudentDataAndActiveCheckIn();
-                await fetchAttendanceForSelectedDate();
-              }
-            } catch (error: any) {
-              toast({ title: "Check-in Error", description: error.message || "Failed to process check-in. Please try again.", variant: "destructive" });
-            }
-          } else {
-            toast({
-              title: "Invalid QR Code", description: "Please scan the official library QR code.", variant: "destructive" });
-             setTimeout(() => {
-               if (html5QrcodeScannerRef.current ) {
-                  try {
-                    if (html5QrcodeScannerRef.current.getState() === 2 /* PAUSED */) { 
-                       html5QrcodeScannerRef.current.resume();
-                    }
-                  } catch(e) { console.warn("Scanner resume error", e)}
-              }
-            }, 1000);
-          }
-          setIsProcessingQr(false);
-          setIsScannerOpen(false);
-        };
-
-        const onScanFailure = (errorPayload: any) => {
-          let errorMessage = typeof errorPayload === 'string' ? errorPayload : (errorPayload?.message || JSON.stringify(errorPayload));
-          const errorMsgLower = errorMessage.toLowerCase();
-
-          if (errorMsgLower.includes("permission denied") ||
-              errorMsgLower.includes("notallowederror") ||
-              errorMsgLower.includes("notfounderror") ||
-              errorMsgLower.includes("aborterror")) {
-            if (!errorMsgLower.includes("no qr code")) {
-              setHasCameraPermission(false);
-              toast({
-                variant: 'destructive',
-                title: 'Camera Access Denied or Not Found',
-                description: 'Please enable camera permissions and ensure a camera is connected.',
-              });
-              setIsScannerOpen(false);
-            }
-          }
-        };
-        
-        try {
-          scanner.render(onScanSuccess, onScanFailure);
-          setHasCameraPermission(true); 
-        } catch (renderError: any) {
-          setHasCameraPermission(false);
-          toast({
-            variant: 'destructive',
-            title: 'Scanner Initialization Error',
-            description: renderError.message || 'Could not start the QR scanner. Ensure camera permissions are enabled and try again.',
-          });
-          setIsScannerOpen(false);
-        }
-      }, 100); 
-
-    } else if (!isScannerOpen && html5QrcodeScannerRef.current) {
-        html5QrcodeScannerRef.current.clear()
-          .catch(err => console.error("Error clearing scanner (Attendance Page on close):", err))
-          .finally(() => html5QrcodeScannerRef.current = null);
-    }
-
-    return () => {
-      clearTimeout(timeoutId);
-      if (html5QrcodeScannerRef.current) {
-        html5QrcodeScannerRef.current.clear()
-          .catch((err) => console.error("Cleanup: Error clearing scanner (Attendance Page):", err))
-          .finally(() => html5QrcodeScannerRef.current = null);
-      }
-    };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isScannerOpen, currentStudent, activeCheckInRecord, toast, fetchStudentDataAndActiveCheckIn, fetchAttendanceForSelectedDate]);
-
-
-  const handleScanCheckInButtonClick = () => {
-    if (currentStudent?.feeStatus === 'Overdue') {
-      setIsOverdueDialogOpen(true);
-      return;
-    }
-    setHasCameraPermission(null);
-    setIsScannerOpen(true);
-  };
-
-  const handleCancelScan = () => {
-    setIsScannerOpen(false);
-  };
-
-  const handleCheckOut = async () => {
-    if (!currentStudent?.studentId || !activeCheckInRecord) {
-      toast({ title: "Error", description: "Cannot check out. Active session not found.", variant: "destructive" });
-      return;
-    }
-    setIsProcessingQr(true);
-    try {
-      await addCheckOut(activeCheckInRecord.recordId);
-      toast({
-        title: "Checked Out!",
-        description: `Successfully checked out at ${new Date().toLocaleTimeString()}.`,
-      });
-      await fetchStudentDataAndActiveCheckIn();
-      await fetchAttendanceForSelectedDate();
-    } catch (error: any) {
-      toast({ title: "Check-out Error", description: error.message || "Failed to process check-out. Please try again.", variant: "destructive" });
-    } finally {
-      setIsProcessingQr(false);
-    }
-  };
-
-
   return (
     <>
       <PageTitle
         title="My Attendance"
-        description="Mark your presence, view your calendar, and track your study hours"
+        description="View your calendar and track your study hours"
       />
-
-       <AlertDialog open={isOverdueDialogOpen} onOpenChange={setIsOverdueDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center text-destructive">
-              <AlertCircle className="mr-2 h-5 w-5" />
-              Fee Payment Overdue
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              Your fee payment is overdue by more than 5 days. Please pay your outstanding fees at the desk immediately to continue using the services.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogAction onClick={() => setIsOverdueDialogOpen(false)}>Okay</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-2">
-        <Card className="shadow-lg">
-          <CardHeader>
-            <CardTitle className="flex items-center text-base sm:text-lg">
-              {activeCheckInRecord ? <LogOut className="mr-2 h-5 w-5 text-red-500" /> : <ScanLine className="mr-2 h-5 w-5 text-green-500" />}
-              Mark Attendance
-            </CardTitle>
-            <CardDescription>
-              {isLoadingActiveCheckIn ? "Loading session status..." :
-                (activeCheckInRecord
-                  ? `You are currently checked in since ${format(parseISO(activeCheckInRecord.checkInTime), 'p')}.`
-                  : "Scan the QR code at the library desk to check-in.")
-              }
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {isLoadingActiveCheckIn ? (
-              <div className="flex items-center justify-center">
-                <Loader2 className="h-6 w-6 animate-spin text-primary" />
-              </div>
-            ) : activeCheckInRecord ? (
-              <Button onClick={handleCheckOut} className="w-full" disabled={isProcessingQr || !currentStudent?.studentId}>
-                {isProcessingQr && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Check Out
-              </Button>
-            ) : isScannerOpen ? (
-              <div className="space-y-4">
-                 {hasCameraPermission === false && (
-                  <Alert variant="destructive">
-                    <XCircle className="h-4 w-4" />
-                    <AlertTitle>Camera Access Denied</AlertTitle>
-                    <AlertDescription>
-                      Camera access is required. Please enable it in your browser settings.
-                    </AlertDescription>
-                  </Alert>
-                )}
-                <div id={QR_SCANNER_ELEMENT_ID_ATTENDANCE} className="w-full aspect-square bg-muted rounded-md overflow-hidden border" />
-                {(hasCameraPermission === null && !isProcessingQr) && (
-                     <div className="flex items-center justify-center text-muted-foreground">
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Initializing camera...
-                    </div>
-                )}
-                {isProcessingQr && <p className="text-sm text-muted-foreground text-center">Processing QR code...</p>}
-                <Button variant="outline" onClick={handleCancelScan} className="w-full" disabled={isProcessingQr}>
-                  Cancel Scan
-                </Button>
-              </div>
-            ) : (
-              <Button onClick={handleScanCheckInButtonClick} className="w-full" disabled={!currentStudent?.studentId || isScannerOpen}>
-                <ScanLine className="mr-2 h-4 w-4" /> Scan QR to Check-In
-              </Button>
-            )}
-          </CardContent>
-        </Card>
 
         <Card className="shadow-lg">
           <CardHeader>
@@ -520,7 +258,7 @@ export default function MemberAttendancePage() {
             )}
           </CardContent>
         </Card>
-      </div>
+
         <Card className="mt-6 shadow-lg w-full overflow-x-auto">
             <CardHeader>
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between w-full gap-2">
@@ -547,7 +285,8 @@ export default function MemberAttendancePage() {
             <CardContent>
                 {!showMonthlyStudyTime ? (
                     <div className="text-center py-10">
-                        <Button onClick={() => setShowMonthlyStudyTime(true)}>
+                        <Button onClick={() => setShowMonthlyStudyTime(true)} className="h-24 w-full text-lg">
+                             <BarChart3 className="h-8 w-8 mr-4" />
                             Show Monthly Study Chart
                         </Button>
                     </div>
@@ -596,7 +335,8 @@ export default function MemberAttendancePage() {
       <CardContent>
         {!showAttendanceOverview ? (
              <div className="text-center py-10">
-                <Button onClick={() => setShowAttendanceOverview(true)}>
+                <Button onClick={() => setShowAttendanceOverview(true)} className="h-24 w-full text-lg">
+                    <Calendar className="h-8 w-8 mr-4" />
                     Show Attendance Calendar
                 </Button>
             </div>
@@ -658,4 +398,3 @@ export default function MemberAttendancePage() {
     </>
   );
 }
-
