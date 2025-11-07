@@ -4,7 +4,7 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { PageTitle } from '@/components/shared/page-title';
-import { Card, CardContent, CardHeader, CardTitle as ShadcnCardTitle, CardDescription as ShadcnCardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle as ShadcnCardTitle, CardDescription as ShadcnCardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -629,22 +629,16 @@ export default function MemberDashboardPage() {
     ? `Welcome, ${defaultWelcomeName}!`
     : (studentFirstName ? `Welcome, ${studentFirstName}!` : `Welcome, ${defaultWelcomeName}!`);
 
-  const primaryAttendanceAction = activeCheckInRecord ? handleDashboardCheckOut : handleOpenScanner;
-  let primaryAttendanceTitle: string;
-  let primaryAttendanceIcon: React.ElementType;
+  const primaryAttendanceAction = activeCheckInRecord ? undefined : handleOpenScanner;
+  let primaryAttendanceTitle = "Scan to Check In";
+  let primaryAttendanceIcon: React.ElementType = ScanLine;
 
   if (isLoadingCurrentSession) {
     primaryAttendanceTitle = "Loading...";
     primaryAttendanceIcon = Loader2;
-  } else if (activeCheckInRecord) {
-    primaryAttendanceTitle = "Tap to Check Out";
-    primaryAttendanceIcon = LogOut;
-  } else {
-    primaryAttendanceTitle = "Scan to Check In";
-    primaryAttendanceIcon = ScanLine;
   }
 
-  const primaryAttendanceDisabled = !studentId || isLoadingCurrentSession || (activeCheckInRecord && isProcessingCheckout) || (!activeCheckInRecord && isScannerOpen);
+  const primaryAttendanceDisabled = !studentId || isLoadingCurrentSession || isScannerOpen;
 
 
   return (
@@ -653,20 +647,56 @@ export default function MemberDashboardPage() {
 
       {showNotificationPrompt && <NotificationPrompt onDismiss={handleDismissPrompt} />}
 
-      {activeCheckInRecord && elapsedTime && (
-        <Card className="my-4 text-center shadow-lg bg-background">
-          <CardHeader className="pb-2">
-            <ShadcnCardTitle className="text-muted-foreground font-medium text-sm tracking-widest uppercase">
-              Current Session Time
-            </ShadcnCardTitle>
-          </CardHeader>
-          <CardContent className="pt-0">
-            <div className="text-5xl sm:text-7xl font-bold font-mono tracking-tighter text-primary">
-              {elapsedTime}
+      {activeCheckInRecord && (
+        <Card className="my-6 shadow-lg rounded-lg overflow-hidden">
+          <CardContent className="p-4 flex items-center justify-between gap-4">
+            <div className="flex-1">
+              <ShadcnCardDescription className="text-xs text-muted-foreground uppercase tracking-wider mb-2">Current Session</ShadcnCardDescription>
+              <div className="text-5xl sm:text-6xl font-bold font-mono tracking-tighter text-primary">
+                {elapsedTime || "00:00"}
+              </div>
+            </div>
+            <div className="text-right text-xs text-muted-foreground space-y-2">
+                <div className="flex items-center justify-end">
+                    <PlayCircle className="mr-1.5 h-3 w-3 text-green-600" />
+                    <span>Checked In: {activeCheckInRecord.checkInTime && isValid(parseISO(activeCheckInRecord.checkInTime)) ? format(parseISO(activeCheckInRecord.checkInTime), 'p') : 'N/A'}</span>
+                </div>
+                {isLoadingHoursToday ? (
+                    <Button variant="link" size="sm" className="h-auto p-0 text-xs" disabled>
+                        <Loader2 className="mr-1 h-3 w-3 animate-spin" /> Loading...
+                    </Button>
+                ) : hoursStudiedToday !== null ? (
+                    <div className="flex items-center justify-end">
+                        <Hourglass className="mr-1.5 h-3 w-3 text-blue-500" />
+                        <span>
+                        Today: {Math.floor(hoursStudiedToday)} hr{" "}
+                        {Math.round((hoursStudiedToday % 1) * 60)} min
+                        </span>
+                    </div>
+                ) : (
+                    <Button variant="link" size="sm" onClick={handleShowHoursToday} className="h-auto p-0 text-xs" disabled={isLoadingCurrentSession}>
+                        <Eye className="mr-1 h-3 w-3"/> Show Today's Hours
+                    </Button>
+                )}
             </div>
           </CardContent>
+          <CardFooter className="p-0">
+             <Button
+                onClick={handleDashboardCheckOut}
+                disabled={isProcessingCheckout}
+                className="w-full rounded-t-none h-12 text-base bg-green-600 hover:bg-green-700 text-white"
+             >
+                {isProcessingCheckout ? (
+                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                ) : (
+                    <LogOut className="mr-2 h-5 w-5" />
+                )}
+                Tap to Check Out
+             </Button>
+          </CardFooter>
         </Card>
       )}
+
 
       <AlertDialog open={isOverdueDialogOpen} onOpenChange={setIsOverdueDialogOpen}>
         <AlertDialogContent>
@@ -685,60 +715,20 @@ export default function MemberDashboardPage() {
         </AlertDialogContent>
       </AlertDialog>
 
-       {isLoadingCurrentSession ? (
-         <div className="mt-1 mb-4 text-xs text-center text-muted-foreground">
-          <div className="flex items-center justify-center">
-            <Loader2 className="mr-1 h-3 w-3 animate-spin" />
-            <span>Loading session...</span>
-          </div>
+       {!activeCheckInRecord && (
+         <div className="mb-6">
+            <DashboardTile
+            title={primaryAttendanceTitle}
+            description="Scan the library QR code for attendance."
+            icon={primaryAttendanceIcon}
+            action={primaryAttendanceAction}
+            isPrimaryAction={!primaryAttendanceDisabled}
+            isLoadingStatistic={isLoadingCurrentSession && primaryAttendanceIcon === Loader2}
+            disabled={primaryAttendanceDisabled}
+            />
         </div>
-       ) : activeCheckInRecord ? (
-        <div className="mt-1 mb-4 text-xs text-center text-muted-foreground">
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-x-3 gap-y-1">
-              <div className="flex items-center">
-                <PlayCircle className="mr-1 h-3 w-3 text-green-600" />
-                <span>Checked In (since {activeCheckInRecord.checkInTime && isValid(parseISO(activeCheckInRecord.checkInTime)) ? format(parseISO(activeCheckInRecord.checkInTime), 'p') : 'N/A'})</span>
-              </div>
-            {isLoadingHoursToday ? (
-              <Button variant="link" size="sm" className="h-auto p-0 text-xs" disabled>
-                <Loader2 className="mr-1 h-3 w-3 animate-spin" /> Loading...
-              </Button>
-            ) : hoursStudiedToday !== null ? (
-              <div className="flex items-center">
-                <Hourglass className="mr-1 h-3 w-3 text-blue-500" />
-                <span>
-                  Today: {Math.floor(hoursStudiedToday)} hr{" "}
-                  {Math.round((hoursStudiedToday % 1) * 60)} min
-                </span>
-              </div>
-            ) : (
-              <Button variant="link" size="sm" onClick={handleShowHoursToday} className="h-auto p-0 text-xs" disabled={isLoadingCurrentSession}>
-                  <Eye className="mr-1 h-3 w-3"/> Show Today's Hours
-              </Button>
-            )}
-          </div>
-        </div>
-       ) : (
-        <div className="mt-1 mb-4 h-[18px]"></div> // Placeholder to prevent layout shift
        )}
 
-
-      <div className="mb-6">
-        <DashboardTile
-          title={primaryAttendanceTitle}
-          description={activeCheckInRecord ? "You are currently checked in." : "Scan the library QR code for attendance."}
-          icon={primaryAttendanceIcon}
-          action={primaryAttendanceAction}
-          isPrimaryAction={!primaryAttendanceDisabled}
-          isLoadingStatistic={isLoadingCurrentSession && primaryAttendanceIcon === Loader2}
-          disabled={primaryAttendanceDisabled}
-          className={cn(
-            (activeCheckInRecord && !isProcessingCheckout && !isLoadingCurrentSession && !primaryAttendanceDisabled)
-              ? 'bg-green-600 hover:bg-green-700'
-              : ''
-          )}
-        />
-      </div>
 
        <Dialog open={isScannerOpen} onOpenChange={(open) => { if(!open) handleCloseScanner(); else if (!activeCheckInRecord) handleOpenScanner();}}>
          <DialogContent className="w-[90vw] max-w-xs sm:max-w-sm md:max-w-md p-4 flex flex-col overflow-hidden">
