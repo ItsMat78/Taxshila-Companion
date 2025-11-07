@@ -529,11 +529,11 @@
   background-size: 200% auto;
   background-image: linear-gradient(
     to right,
-    hsl(var(--primary) / 0.8) 0%,
-    hsl(var(--primary) / 0.9) 25%,
-    hsl(var(--primary) / 1) 50%,
-    hsl(var(--primary) / 0.9) 75%,
-    hsl(var(--primary) / 0.8) 100%
+    hsl(var(--primary)) 0%,
+    hsl(var(--primary) / 0.8) 30%,
+    hsl(var(--primary) / 0.6) 50%,
+    hsl(var(--primary) / 0.8) 70%,
+    hsl(var(--primary)) 100%
   );
   animation: gradient-sweep 3.5s linear infinite;
 }
@@ -552,3 +552,5 @@
 .animate-breathing-stroke {
   animation: breathing-stroke 2s ease-in-out infinite;
 }
+
+    

@@ -73,10 +73,9 @@ const DashboardTile: React.FC<DashboardTileProps> = ({
       "shadow-lg h-full flex flex-col",
       isPrimaryAction ? 'bg-primary text-primary-foreground' : '',
       disabled ? 'opacity-60 cursor-not-allowed bg-muted/50' : (isPrimaryAction ? 'hover:bg-primary/90' : 'hover:bg-muted/50 hover:shadow-xl transition-shadow'),
-      isPrimaryAction && !disabled && "animate-gradient-sweep", // Apply animation to primary action button
+      isPrimaryAction && !disabled && "animate-gradient-sweep",
       {
-        'border-destructive ring-1 ring-destructive/30': (isUrgent) && !isPrimaryAction,
-        'animate-breathing-stroke': hasNew,
+        'border-destructive ring-1 ring-destructive/30': (isUrgent || hasNew),
       },
       className
     )}>
@@ -523,19 +522,29 @@ export default function MemberDashboardPage() {
 
   const generateCoreActionTiles = (): DashboardTileProps[] => {
     let payFeesTileDesc = "Settle your outstanding dues.";
-    let payFeesTileStatistic: string | null = null;
     let payFeesTileIsUrgent = false;
-
+    let payFeesClass = "";
+    
     if (isLoadingStudentData) {
       payFeesTileDesc = "Loading fee status...";
     } else if (studentId) {
-      if (studentFeeStatus === "Due" || studentFeeStatus === "Overdue") {
-        payFeesTileIsUrgent = true;
-        payFeesTileDesc = `Status: ${studentFeeStatus}. Next payment due: ${studentNextDueDate && isValid(parseISO(studentNextDueDate)) ? format(parseISO(studentNextDueDate), 'PP') : 'N/A'}.`;
-      } else if (studentFeeStatus === "Paid") {
-        payFeesTileDesc = `Fees paid up to: ${studentNextDueDate && isValid(parseISO(studentNextDueDate)) ? format(parseISO(studentNextDueDate), 'PP') : 'N/A'}.`;
-      } else if (studentFeeStatus) {
-         payFeesTileDesc = `Fee status: ${studentFeeStatus}.`;
+      switch (studentFeeStatus) {
+        case "Due":
+          payFeesTileIsUrgent = true;
+          payFeesTileDesc = `Status: Due. Next payment due: ${studentNextDueDate && isValid(parseISO(studentNextDueDate)) ? format(parseISO(studentNextDueDate), 'PP') : 'N/A'}.`;
+          payFeesClass = "bg-status-due-bg text-status-due-text border-yellow-500/50";
+          break;
+        case "Overdue":
+          payFeesTileIsUrgent = true;
+          payFeesTileDesc = `Status: Overdue. Payment is late.`;
+          payFeesClass = "bg-destructive/10 text-destructive border-destructive";
+          break;
+        case "Paid":
+          payFeesTileDesc = `Fees paid up to: ${studentNextDueDate && isValid(parseISO(studentNextDueDate)) ? format(parseISO(studentNextDueDate), 'PP') : 'N/A'}.`;
+          break;
+        default:
+          payFeesTileDesc = `Fee status: ${studentFeeStatus || 'N/A'}.`;
+          break;
       }
     }
 
@@ -546,7 +555,7 @@ export default function MemberDashboardPage() {
         description: "Catch up on announcements.",
         icon: Bell,
         href: "/member/alerts",
-        hasNew: isLoadingStudentData ? false : hasUnreadAlerts,
+        hasNew: !isLoadingStudentData && hasUnreadAlerts,
         disabled: !studentId,
       },
       {
@@ -559,12 +568,12 @@ export default function MemberDashboardPage() {
       {
         title: "My Payments",
         description: payFeesTileDesc,
-        statistic: payFeesTileStatistic,
         isLoadingStatistic: isLoadingStudentData,
         icon: IndianRupee,
         href: "/member/fees",
         isUrgent: payFeesTileIsUrgent,
         disabled: !studentId,
+        className: payFeesClass,
       },
       {
         title: "Submit Feedback",
@@ -643,8 +652,8 @@ export default function MemberDashboardPage() {
                 onClick={handleDashboardCheckOut}
                 disabled={isProcessingCheckout}
                 className={cn(
-                  "w-full rounded-t-none h-12 text-base text-white", // Changed text color to white for contrast
-                  "bg-green-700 hover:bg-green-800",
+                  "w-full rounded-t-none h-12 text-base text-primary-foreground",
+                  "bg-primary hover:bg-primary/90",
                   !isProcessingCheckout && "animate-gradient-sweep"
                 )}
              >
@@ -760,3 +769,5 @@ export default function MemberDashboardPage() {
     </>
   );
 }
+
+    
