@@ -73,9 +73,6 @@ const DashboardTile: React.FC<DashboardTileProps> = ({
       "shadow-lg h-full flex flex-col",
       isPrimaryAction ? 'text-primary-foreground' : '',
       disabled ? 'opacity-60 cursor-not-allowed bg-muted/50' : (isPrimaryAction ? 'hover:opacity-90' : 'hover:bg-muted/50 hover:shadow-xl transition-shadow'),
-      {
-        'animate-breathing-stroke': hasNew,
-      },
       className
     )}>
       <CardHeader className={cn(
@@ -555,7 +552,7 @@ export default function MemberDashboardPage() {
         href: "/member/alerts",
         hasNew: !isLoadingStudentData && hasUnreadAlerts,
         disabled: !studentId,
-        className: hasUnreadAlerts ? 'animate-breathing-stroke' : '',
+        className: hasUnreadAlerts ? "animate-breathing-stroke bg-destructive/10" : "",
       },
       {
         title: "Activity Summary",
@@ -769,3 +766,5 @@ export default function MemberDashboardPage() {
 }
 
     
+
+      

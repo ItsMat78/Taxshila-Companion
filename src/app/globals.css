@@ -518,24 +518,23 @@
 /* New Animation for Gradient Sweep */
 @keyframes gradient-sweep {
   0% {
-    background-position: -200% 0;
+    background-position: -100% 0;
   }
   100% {
-    background-position: 200% 0;
+    background-position: 100% 0;
   }
 }
 
 .animate-gradient-sweep {
   background-size: 200% auto;
-  animation: gradient-sweep 3.5s linear infinite;
+  animation: gradient-sweep 6s linear infinite;
   background-image: linear-gradient(
     to right,
     hsl(var(--primary)) 0%,
-    hsl(var(--primary) / 0.8) 20%,
-    hsl(var(--primary) / 0.6) 40%,
-    hsl(var(--primary)) 60%,
-    hsl(var(--primary) / 0.6) 80%,
-    hsl(var(--primary) / 0.8) 100%
+    hsl(var(--primary) / 0.9) 30%,
+    hsl(var(--primary) / 0.7) 50%,
+    hsl(var(--primary) / 0.9) 70%,
+    hsl(var(--primary)) 100%
   );
 }
 
@@ -553,16 +552,16 @@
 
 @keyframes breathing-stroke {
   0% {
-    background-color: hsl(var(--destructive) / 0.2);
-    border-color: hsl(var(--destructive) / 0.5);
+    background-color: hsl(var(--destructive) / 0.1);
+    border-color: hsl(var(--destructive) / 0.3);
   }
   50% {
-    background-color: hsl(var(--destructive) / 0.1);
-    border-color: hsl(var(--destructive));
+    background-color: hsl(var(--destructive) / 0.2);
+    border-color: hsl(var(--destructive) / 0.7);
   }
   100% {
-    background-color: hsl(var(--destructive) / 0.2);
-    border-color: hsl(var(--destructive) / 0.5);
+    background-color: hsl(var(--destructive) / 0.1);
+    border-color: hsl(var(--destructive) / 0.3);
   }
 }
 
@@ -573,3 +572,5 @@
     
 
     
+
+      
