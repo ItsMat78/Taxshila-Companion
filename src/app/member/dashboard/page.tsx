@@ -71,11 +71,11 @@ const DashboardTile: React.FC<DashboardTileProps> = ({
   const content = (
     <Card className={cn(
       "shadow-lg h-full flex flex-col",
-      isPrimaryAction ? 'bg-primary text-primary-foreground' : '',
-      disabled ? 'opacity-60 cursor-not-allowed bg-muted/50' : (isPrimaryAction ? 'hover:bg-primary/90' : 'hover:bg-muted/50 hover:shadow-xl transition-shadow'),
-      isPrimaryAction && !disabled && "animate-gradient-sweep",
+      isPrimaryAction ? 'text-primary-foreground' : '',
+      isPrimaryAction && !disabled ? "animate-gradient-sweep" : (isPrimaryAction ? 'bg-primary' : ''),
+      disabled ? 'opacity-60 cursor-not-allowed bg-muted/50' : (isPrimaryAction ? 'hover:opacity-90' : 'hover:bg-muted/50 hover:shadow-xl transition-shadow'),
       {
-        'animate-breathing-stroke bg-destructive/10': hasNew,
+        'animate-breathing-stroke bg-destructive/20': hasNew,
       },
       className
     )}>
@@ -310,7 +310,6 @@ export default function MemberDashboardPage() {
       };
       
       updateElapsedTime(); // Update immediately
-      timerId = setInterval(updateElapsedTime, 30000); // And then every 30 seconds
     } else {
       setElapsedTime(null);
     }
@@ -320,7 +319,7 @@ export default function MemberDashboardPage() {
         clearInterval(timerId);
       }
     };
-  }, [activeCheckInRecord]);
+  }, [activeCheckInRecord, isRefreshing]); // Re-run when activeCheckInRecord or refresh state changes
 
 
   const handleCloseScanner = React.useCallback(async () => {
@@ -653,8 +652,7 @@ export default function MemberDashboardPage() {
                 onClick={handleDashboardCheckOut}
                 disabled={isProcessingCheckout}
                 className={cn(
-                  "w-full rounded-t-none h-12 text-base text-primary-foreground",
-                  !isProcessingCheckout && "animate-gradient-sweep-green"
+                  "w-full rounded-t-none h-12 text-base text-primary-foreground animate-gradient-sweep-green"
                 )}
              >
                 {isProcessingCheckout ? (
@@ -769,5 +767,7 @@ export default function MemberDashboardPage() {
     </>
   );
 }
+
+    
 
     
