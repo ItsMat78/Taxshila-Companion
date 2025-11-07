@@ -15,9 +15,9 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, BarChart3, Clock, LogIn, LogOut, TrendingUp, ChevronLeft, ChevronRight, Calendar as CalendarIcon } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
-import { getStudentByEmail, calculateMonthlyStudyHours, getAttendanceForDate, getStudentByCustomId } from '@/services/student-service';
+import { getStudentByEmail, calculateMonthlyStudyHours, getAttendanceForDate, getAttendanceForDateRange, getStudentByCustomId } from '@/services/student-service';
 import type { Student, AttendanceRecord } from '@/types/student';
-import { format, parseISO, isValid, differenceInMilliseconds, startOfMonth, endOfMonth, eachDayOfInterval, addMonths, subMonths } from 'date-fns';
+import { format, parseISO, isValid, differenceInMilliseconds, startOfMonth, endOfMonth, eachDayOfInterval, addMonths, subMonths, isAfter } from 'date-fns';
 import { BarChart, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Bar } from 'recharts';
 
 
@@ -38,47 +38,6 @@ const ChartTooltipContent = ({ active, payload, label }: any) => {
   return null;
 };
 
-// New component for the animated number
-const AnimatedNumber = ({ value }: { value: number | null }) => {
-  const [displayValue, setDisplayValue] = React.useState(0);
-
-  React.useEffect(() => {
-    if (value === null) {
-      setDisplayValue(0);
-      return;
-    }
-    
-    let start = 0;
-    const end = value;
-    const duration = 1000; // 1 second animation
-    const range = end - start;
-    let startTime: number | null = null;
-    let animationFrameId: number;
-
-    const step = (timestamp: number) => {
-      if (!startTime) startTime = timestamp;
-      const progress = Math.min((timestamp - startTime) / duration, 1);
-      const easedProgress = 1 - Math.pow(1 - progress, 3); // Ease-out cubic
-      const current = start + easedProgress * range;
-      setDisplayValue(current);
-      if (progress < 1) {
-        animationFrameId = requestAnimationFrame(step);
-      }
-    };
-    
-    animationFrameId = requestAnimationFrame(step);
-
-    return () => cancelAnimationFrame(animationFrameId);
-  }, [value]);
-
-  if (value === null) return <span className="text-4xl font-bold">N/A</span>;
-
-  const hours = Math.floor(displayValue);
-  const decimals = value % 1 !== 0 ? Math.max(0, Math.min(2, (value.toString().split('.')[1] || '').length)) : 0;
-  
-  return <span className="text-4xl font-bold">{displayValue.toFixed(decimals)}</span>;
-};
-
 
 export default function MemberAttendancePage() {
   const { user } = useAuth();
@@ -88,8 +47,6 @@ export default function MemberAttendancePage() {
   const [currentStudent, setCurrentStudent] = React.useState<Student | null>(null);
   const [attendanceForDay, setAttendanceForDay] = React.useState<AttendanceRecord[]>([]);
   const [isLoadingDetails, setIsLoadingDetails] = React.useState(false);
-  const [monthlyStudyHours, setMonthlyStudyHours] = React.useState<number | null>(null);
-  const [isLoadingStudyHours, setIsLoadingStudyHours] = React.useState(true);
   const [isLoadingActiveCheckIn, setIsLoadingActiveCheckIn] = React.useState(true);
   const [monthlyStudyData, setMonthlyStudyData] = React.useState<{ date: string; hours: number }[]>([]);
   const [isLoadingMonthlyStudyData, setIsLoadingMonthlyStudyData] = React.useState(true);
@@ -108,8 +65,6 @@ export default function MemberAttendancePage() {
 
   const fetchStudentData = React.useCallback(async () => {
     if (user?.studentId || user?.email) {
-      setIsLoadingStudyHours(true);
-      setIsLoadingActiveCheckIn(true);
       try {
         let student = null;
         if (user.studentId) {
@@ -120,54 +75,35 @@ export default function MemberAttendancePage() {
 
         if (student) {
           setCurrentStudent(student);
+          return student; // Return the fetched student
         } else {
           toast({
             title: "Student Record Not Found",
-            description: "Could not find a student record associated with your email.",
+            description: "Could not find a student record associated with your account.",
             variant: "destructive",
           });
           setCurrentStudent(null);
+          return null;
         }
       } catch (error: any) {
         console.error("Error fetching student data (Attendance Page):", error);
         toast({
           title: "Error",
-          description: error.message || "Failed to fetch student details or session status.",
+          description: error.message || "Failed to fetch student details.",
           variant: "destructive",
-        });
+          });
         setCurrentStudent(null);
-      } finally {
-        setIsLoadingStudyHours(false);
-        setIsLoadingActiveCheckIn(false);
+        return null;
       }
-    } else {
-      setIsLoadingStudyHours(false);
-      setIsLoadingActiveCheckIn(false);
-      setCurrentStudent(null);
     }
+    return null;
   }, [user, toast]);
   
-  const handleShowMonthlyStudyTime = React.useCallback(async () => {
-    if (!currentStudent?.studentId) {
-        if (!user) await fetchStudentData();
-        if (!currentStudent) return;
-    };
-
-    setShowMonthlyStudyTime(true);
-    setIsLoadingStudyHours(true);
-    try {
-        const hours = await calculateMonthlyStudyHours(currentStudent.studentId);
-        setMonthlyStudyHours(hours);
-    } catch (error: any) {
-        toast({ title: "Error", description: error.message, variant: "destructive" });
-        setMonthlyStudyHours(0);
-    } finally {
-        setIsLoadingStudyHours(false);
-    }
-  }, [currentStudent, toast, user, fetchStudentData]);
 
   React.useEffect(() => {
-    fetchStudentData();
+    fetchStudentData().finally(() => {
+        setIsLoadingActiveCheckIn(false);
+    });
   }, [fetchStudentData]);
 
     const getDailyStudyDataForMonth = React.useCallback(async (studentId: string, month: Date) => {
@@ -185,15 +121,6 @@ export default function MemberAttendancePage() {
                 records.forEach(record => {
                     if (record.checkInTime && record.checkOutTime && isValid(parseISO(record.checkInTime)) && isValid(parseISO(record.checkOutTime))) {
                         totalMilliseconds += differenceInMilliseconds(parseISO(record.checkOutTime), parseISO(record.checkInTime));
-                    } else if (record.checkInTime && !record.checkOutTime && isValid(parseISO(record.checkInTime))) {
-                        const checkInTime = parseISO(record.checkInTime);
-                        const endTime = new Date(checkInTime);
-                        endTime.setHours(21, 30, 0, 0);
-
-                        const now = new Date();
-                        const calculationEndTime = endTime > now ? now : endTime;
-
-                        totalMilliseconds += differenceInMilliseconds(calculationEndTime, checkInTime);
                     }
                 });
                 const totalHours = totalMilliseconds / (1000 * 60 * 60);
@@ -218,15 +145,6 @@ export default function MemberAttendancePage() {
     records.forEach(record => {
       if (record.checkInTime && record.checkOutTime && isValid(parseISO(record.checkInTime)) && isValid(parseISO(record.checkOutTime))) {
         totalMilliseconds += differenceInMilliseconds(parseISO(record.checkOutTime), parseISO(record.checkInTime));
-      } else if (record.checkInTime && !record.checkOutTime && isValid(parseISO(record.checkInTime))) {
-        const checkInTime = parseISO(record.checkInTime);
-        const endTime = new Date(checkInTime);
-        endTime.setHours(21, 30, 0, 0);
-
-        const now = new Date();
-        const calculationEndTime = endTime > now ? now : endTime;
-
-        totalMilliseconds += differenceInMilliseconds(calculationEndTime, checkInTime);
       }
     });
 
@@ -234,7 +152,7 @@ export default function MemberAttendancePage() {
     const hours = Math.floor(totalHours);
     const minutes = Math.round((totalHours - hours) * 60);
 
-    return { hours, minutes };
+    return { hours, minutes, totalHours };
   };
 
   const fetchAttendanceForSelectedDate = React.useCallback(async () => {
@@ -267,33 +185,6 @@ export default function MemberAttendancePage() {
         title="My Attendance"
         description="View your calendar and track your study hours"
       />
-
-        <Card className="shadow-lg">
-          <CardHeader>
-            <CardTitle className="flex items-center text-base sm:text-lg">
-              <Clock className="mr-2 h-5 w-5" />
-              Total Hours this month
-            </CardTitle>
-            <CardDescription>Your total study performance for the current month.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {!showMonthlyStudyTime ? (
-                 <Button onClick={handleShowMonthlyStudyTime}>
-                    <TrendingUp className="mr-2 h-4 w-4" />
-                    Show
-                </Button>
-            ) : isLoadingStudyHours ? (
-                <div className="flex items-center justify-center">
-                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                </div>
-            ) : (
-              <div className="flex items-end gap-2">
-                <AnimatedNumber value={monthlyStudyHours} />
-                <span className="text-lg font-normal text-muted-foreground pb-1"> hours</span>
-              </div>
-            )}
-          </CardContent>
-        </Card>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
         <Card className="shadow-lg w-full overflow-hidden">
@@ -396,7 +287,7 @@ export default function MemberAttendancePage() {
                             ) : (
                             <>
                                 <div className="mb-4 text-lg font-semibold text-primary">
-                                Total study time: {(() => { const { hours, minutes } = calculateDailyStudyTime(attendanceForDay); return `${hours} hr ${minutes}`; })()}
+                                Total study time: {(() => { const { hours, minutes } = calculateDailyStudyTime(attendanceForDay); return `${hours} hr ${minutes} min`; })()}
                                 </div>
 
                                 {attendanceForDay.length === 0 ? (

@@ -655,8 +655,8 @@ export default function MemberDashboardPage() {
             </a>
           </Link>
           <div className="flex-1 min-w-0">
-            <h1 className="text-xl font-headline font-semibold tracking-tight md:text-2xl leading-tight truncate">{pageTitleText}</h1>
-            <p className="text-muted-foreground text-sm truncate">Your Taxshila Companion dashboard.</p>
+            <h1 className="text-xl font-headline font-semibold tracking-tight md:text-2xl leading-tight">{pageTitleText}</h1>
+            <p className="text-muted-foreground text-sm">Your Taxshila Companion dashboard.</p>
           </div>
         </div>
         {currentStudent && (
