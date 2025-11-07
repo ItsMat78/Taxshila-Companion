@@ -56,13 +56,12 @@ const ShiftDisplayCard = ({ shift }: { shift: Shift }) => {
           <path d="M55,65 l15,-38 l15,38 z" fill="hsl(120, 60%, 20%)" />
           <path d="M75,65 l15,-42 l15,42 z" fill="hsl(120, 60%, 15%)" />
           <circle cx="85" cy="15" r="8" fill="hsl(60, 80%, 90%)" />
-          <circle cx="90" cy="18" r="8" fill="hsl(222 47% 11%)" />
           <circle cx="20" cy="10" r="1.5" fill="hsl(60, 80%, 90%)" />
           <circle cx="45" cy="20" r="1" fill="hsl(60, 80%, 90%)" />
           <circle cx="65" cy="12" r="1.5" fill="hsl(60, 80%, 90%)" />
         </svg>
       ),
-      gradient: 'from-indigo-300 to-slate-800 dark:from-indigo-900/40 dark:to-slate-900/50',
+      gradient: 'from-indigo-800 to-slate-800 dark:from-indigo-900/40 dark:to-slate-900/50',
     },
     fullday: {
       name: 'Full Day',
