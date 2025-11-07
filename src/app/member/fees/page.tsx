@@ -34,48 +34,68 @@ const ShiftDisplayCard = ({ shift }: { shift: Shift }) => {
     morning: {
       name: 'Morning Shift',
       timing: '7 AM - 2 PM',
-      icon: <Sun className="h-10 w-10 text-orange-400" />,
-      gradient: 'from-orange-100 to-yellow-100 dark:from-orange-900/30 dark:to-yellow-900/30',
+      icon: (
+        <svg viewBox="0 0 100 60" className="w-24 h-auto">
+          <path d="M-5,65 l25,-20 l15,10 l25,-20 l15,10 l25,-20 v25 h-105 z" fill="hsl(var(--primary)/0.4)" />
+          <path d="M-5,65 l30,-25 l15,10 l20,-15 l15,10 l25,-20 v25 h-105 z" fill="hsl(var(--primary)/0.6)" />
+          <circle cx="80" cy="15" r="8" fill="hsl(25, 95%, 60%)" />
+          <circle cx="20" cy="20" r="5" fill="hsl(var(--background)/0.7)" />
+          <circle cx="45" cy="15" r="7" fill="hsl(var(--background)/0.7)" />
+        </svg>
+      ),
+      gradient: 'from-orange-100 to-sky-200 dark:from-orange-900/30 dark:to-sky-900/40',
     },
     evening: {
       name: 'Evening Shift',
       timing: '2 PM - 9:30 PM',
-      icon: (
-        <div className="relative">
-          <Moon className="h-10 w-10 text-indigo-400" />
-          <Sparkles className="absolute -top-1 -right-1 h-4 w-4 text-yellow-300" />
-          <Sparkles className="absolute top-3 right-5 h-3 w-3 text-yellow-300" />
-        </div>
+       icon: (
+        <svg viewBox="0 0 100 60" className="w-24 h-auto">
+          <path d="M-5,65 l15-40 l15,40 z" fill="hsl(120, 60%, 25%)" />
+          <path d="M15,65 l15-35 l15,35 z" fill="hsl(120, 60%, 30%)" />
+          <path d="M35,65 l15-45 l15,45 z" fill="hsl(120, 60%, 25%)" />
+          <path d="M55,65 l15-38 l15,38 z" fill="hsl(120, 60%, 30%)" />
+          <path d="M75,65 l15-42 l15,42 z" fill="hsl(120, 60%, 25%)" />
+          <circle cx="85" cy="15" r="8" fill="hsl(60, 80%, 90%)" />
+          <circle cx="90" cy="18" r="8" fill="hsl(var(--background))" />
+          <circle cx="20" cy="10" r="1.5" fill="hsl(60, 80%, 90%)" />
+          <circle cx="45" cy="20" r="1" fill="hsl(60, 80%, 90%)" />
+          <circle cx="65" cy="12" r="1.5" fill="hsl(60, 80%, 90%)" />
+        </svg>
       ),
-      gradient: 'from-indigo-200 to-slate-300 dark:from-indigo-900/30 dark:to-slate-800/30',
+      gradient: 'from-indigo-300 to-slate-400 dark:from-indigo-900/40 dark:to-slate-800/50',
     },
     fullday: {
       name: 'Full Day',
       timing: '7 AM - 9:30 PM',
       icon: (
-         <div className="flex items-center gap-2">
-            <Sun className="h-8 w-8 text-orange-400" />
-            <Moon className="h-8 w-8 text-indigo-400" />
-        </div>
+        <svg viewBox="0 0 100 60" className="w-24 h-auto">
+          <path d="M-5,35 C30,50 70,50 105,35 V65 H-5 z" fill="hsl(200, 70%, 60%)" />
+          <path d="M-5,40 C30,55 70,55 105,40 V65 H-5 z" fill="hsl(200, 70%, 70%)" />
+          <path d="M-5,45 C30,60 70,60 105,45 V65 H-5 z" fill="hsl(40, 80%, 80%)" />
+          <circle cx="20" cy="20" r="10" fill="hsl(50, 100%, 60%)">
+             <animate attributeName="cy" values="20;18;20" dur="3s" repeatCount="indefinite" />
+          </circle>
+        </svg>
       ),
-      gradient: 'from-orange-100 via-purple-100 to-indigo-200 dark:from-orange-900/30 dark:via-purple-900/30 dark:to-indigo-900/30',
+      gradient: 'from-yellow-100 to-sky-300 dark:from-yellow-900/30 dark:to-sky-900/50',
     },
   };
 
   const currentShift = shiftDetails[shift];
 
   return (
-    <div className={cn("p-4 rounded-lg flex flex-col items-center justify-between text-center h-full bg-gradient-to-br", currentShift.gradient)}>
-        <div className="flex-grow flex items-center justify-center">
-            {currentShift.icon}
+    <div className={cn("p-4 rounded-lg flex items-center justify-between text-center bg-gradient-to-br col-span-2 md:col-span-3", currentShift.gradient)}>
+        <div className="flex-grow flex flex-col items-start text-left">
+            <p className="font-semibold text-xl text-foreground">{currentShift.name}</p>
+            <p className="text-sm text-muted-foreground">{currentShift.timing}</p>
         </div>
-        <div className="mt-2">
-            <p className="font-semibold text-foreground">{currentShift.name}</p>
-            <p className="text-xs text-muted-foreground">{currentShift.timing}</p>
+        <div className="flex-shrink-0">
+            {currentShift.icon}
         </div>
     </div>
   );
 };
+
 
 
 // A new component for individual stat boxes
