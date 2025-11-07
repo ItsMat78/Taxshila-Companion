@@ -92,9 +92,9 @@ const ShiftDisplayCard = ({ shift }: { shift: Shift }) => {
         <div className="absolute inset-0 z-0">
             {currentShift.icon}
         </div>
-        <div className="relative z-10 text-left">
-            <p className="font-semibold text-xl text-foreground drop-shadow-sm">{currentShift.name}</p>
-            <p className="text-sm text-foreground/80 font-medium drop-shadow-sm">{currentShift.timing}</p>
+        <div className="relative z-10 text-left bg-black/20 backdrop-blur-sm p-2 rounded-md">
+            <p className="font-semibold text-xl text-white drop-shadow-sm">{currentShift.name}</p>
+            <p className="text-sm text-white/90 font-medium drop-shadow-sm">{currentShift.timing}</p>
         </div>
     </div>
   );
