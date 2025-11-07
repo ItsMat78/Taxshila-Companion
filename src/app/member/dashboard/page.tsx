@@ -4,7 +4,7 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { PageTitle } from '@/components/shared/page-title';
-import { Card, CardContent, CardHeader, CardTitle as ShadcnCardTitle, CardDescription as ShadcnCardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle as ShadcnCardTitle, CardDescription as ShadcnCardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -12,6 +12,7 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle as ShadcnDialogTitle,
+  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
   AlertDialog,
@@ -25,17 +26,21 @@ import {
 import { Alert, AlertDescription, AlertTitle as ShadcnAlertTitle } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/auth-context';
-import { Camera, QrCode, Receipt, IndianRupee, MessageSquare, Bell, ScrollText, Star, Loader2, XCircle, Home, BarChart3, PlayCircle, CheckCircle, Hourglass, ScanLine, LogOut, AlertCircle, X } from 'lucide-react';
+import { Camera, QrCode, Receipt, IndianRupee, MessageSquare, Bell, ScrollText, Star, Loader2, XCircle, Home, BarChart3, PlayCircle, CheckCircle, Hourglass, ScanLine, LogOut, AlertCircle, X, Eye, RefreshCw, View } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { getStudentByEmail, getAlertsForStudent, calculateMonthlyStudyHours, addCheckIn, addCheckOut, getActiveCheckIn, getAttendanceForDate, getStudentByCustomId } from '@/services/student-service';
+import { getStudentByEmail, getAlertsForStudent, addCheckIn, addCheckOut, getActiveCheckIn, getAttendanceForDate, getStudentByCustomId } from '@/services/student-service';
 import type { AlertItem } from '@/types/communication';
-import type { Student, AttendanceRecord, FeeStatus } from '@/types/student';
-import { format, parseISO, differenceInMilliseconds, isValid } from 'date-fns';
+import type { Student, AttendanceRecord, FeeStatus, Shift } from '@/types/student';
+import { format, parseISO, differenceInMilliseconds, isValid, differenceInMinutes, differenceInHours } from 'date-fns';
 import { Html5QrcodeScanner, Html5QrcodeSupportedFormats, Html5QrcodeScanType } from 'html5-qrcode';
 import { setupPushNotifications } from '@/lib/notification-setup';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { getInitials } from '@/lib/utils';
+import NextImage from 'next/image';
 
 const DASHBOARD_QR_SCANNER_ELEMENT_ID = "qr-reader-dashboard";
 const LIBRARY_QR_CODE_PAYLOAD = "TAXSHILA_LIBRARY_CHECKIN_QR_V1";
+const DEFAULT_PROFILE_PLACEHOLDER = "https://placehold.co/400x400.png";
 
 type DashboardTileProps = {
   title: string;
@@ -71,19 +76,19 @@ const DashboardTile: React.FC<DashboardTileProps> = ({
   const content = (
     <Card className={cn(
       "shadow-lg h-full flex flex-col",
-      isPrimaryAction ? 'bg-primary text-primary-foreground' : '',
-      disabled ? 'opacity-60 cursor-not-allowed bg-muted/50' : (isPrimaryAction ? 'hover:bg-primary/90' : 'hover:bg-muted/50 hover:shadow-xl transition-shadow'),
-      {
-        'border-destructive ring-1 ring-destructive/30': (isUrgent) && !isPrimaryAction,
-      },
+      isPrimaryAction ? 'text-primary-foreground' : '',
+      disabled ? 'opacity-60 cursor-not-allowed bg-muted/50' : (isPrimaryAction ? 'hover:opacity-90' : 'hover:bg-muted/50 hover:shadow-xl transition-shadow'),
       className
     )}>
       <CardHeader className={cn(
         "relative",
         isPrimaryAction ? "p-3 sm:p-4 pb-1 sm:pb-2" : "p-2 sm:p-3 pb-0 sm:pb-1"
       )}>
-        {(hasNew || isUrgent) && !isPrimaryAction && (
-          <span className="absolute top-1 right-1 block h-2.5 w-2.5 rounded-full bg-destructive ring-1 ring-white" />
+        {(hasNew || isUrgent) && (
+          <span className={cn(
+            "absolute top-1 right-1 block h-2.5 w-2.5 rounded-full ring-1 ring-white",
+             isUrgent ? 'bg-destructive' : 'bg-primary'
+          )} />
         )}
         <div className={cn(
           "flex items-center gap-2",
@@ -192,16 +197,13 @@ export default function MemberDashboardPage() {
   const html5QrcodeScannerRef = React.useRef<Html5QrcodeScanner | null>(null);
 
 
+  const [currentStudent, setCurrentStudent] = React.useState<Student | null>(null);
   const [studentId, setStudentId] = React.useState<string | null>(null);
   const [studentFirstName, setStudentFirstName] = React.useState<string | null>(null);
   const [hasUnreadAlerts, setHasUnreadAlerts] = React.useState(false);
   const [isLoadingStudentData, setIsLoadingStudentData] = React.useState(true);
 
-  const [monthlyStudyHours, setMonthlyStudyHours] = React.useState<number | null>(null);
-  const [isLoadingStudyHours, setIsLoadingStudyHours] = React.useState(true);
-
   const [activeCheckInRecord, setActiveCheckInRecord] = React.useState<AttendanceRecord | null>(null);
-  const [hoursStudiedToday, setHoursStudiedToday] = React.useState<number | null>(null);
   const [isLoadingCurrentSession, setIsLoadingCurrentSession] = React.useState(true);
   const [isProcessingCheckout, setIsProcessingCheckout] = React.useState(false);
 
@@ -211,6 +213,7 @@ export default function MemberDashboardPage() {
   const [isOverdueDialogOpen, setIsOverdueDialogOpen] = React.useState(false);
   const [elapsedTime, setElapsedTime] = React.useState<string | null>(null);
   const [showNotificationPrompt, setShowNotificationPrompt] = React.useState(false);
+  const [isRefreshing, setIsRefreshing] = React.useState(false);
 
   React.useEffect(() => {
     if (typeof window !== 'undefined' && 'Notification' in window) {
@@ -227,52 +230,20 @@ export default function MemberDashboardPage() {
   };
 
 
-  React.useEffect(() => {
-    let intervalId: NodeJS.Timeout | null = null;
-
-    if (activeCheckInRecord?.checkInTime && isValid(parseISO(activeCheckInRecord.checkInTime))) {
-      const checkInTime = parseISO(activeCheckInRecord.checkInTime);
-
-      intervalId = setInterval(() => {
-        const now = new Date();
-        const diff = now.getTime() - checkInTime.getTime();
-
-        if (diff < 0) return;
-
-        const hours = Math.floor(diff / 3600000);
-        const minutes = Math.floor((diff % 3600000) / 60000);
-        const seconds = Math.floor((diff % 60000) / 1000);
-
-        setElapsedTime(
-          `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
-        );
-      }, 1000);
-    } else {
-      setElapsedTime(null);
-    }
-
-    return () => {
-      if (intervalId) {
-        clearInterval(intervalId);
-      }
-    };
-  }, [activeCheckInRecord]);
-
-
-  const fetchAllDashboardData = React.useCallback(async () => {
+  const fetchAllDashboardData = React.useCallback(async (isManualRefresh = false) => {
     if (user?.studentId || user?.email) {
+        if (isManualRefresh) setIsRefreshing(true);
+
         setIsLoadingStudentData(true);
-        setIsLoadingStudyHours(true);
         setIsLoadingCurrentSession(true);
 
         setStudentFirstName(null);
         setStudentId(null);
-        setMonthlyStudyHours(null);
         setHasUnreadAlerts(false);
         setActiveCheckInRecord(null);
-        setHoursStudiedToday(null);
         setStudentFeeStatus(null);
         setStudentNextDueDate(null);
+        setCurrentStudent(null);
 
       let studentDetailsFetchedSuccessfully = false;
       try {
@@ -285,6 +256,7 @@ export default function MemberDashboardPage() {
 
         if (studentDetails) {
           studentDetailsFetchedSuccessfully = true;
+          setCurrentStudent(studentDetails);
           setStudentId(studentDetails.studentId);
           setStudentFirstName(studentDetails.name ? studentDetails.name.split(' ')[0] : null);
           setStudentFeeStatus(studentDetails.feeStatus);
@@ -292,30 +264,14 @@ export default function MemberDashboardPage() {
 
           const [
             alerts,
-            hours,
             activeCheckInData,
-            todayAttendanceData
           ] = await Promise.all([
             getAlertsForStudent(studentDetails.studentId),
-            calculateMonthlyStudyHours(studentDetails.studentId),
             getActiveCheckIn(studentDetails.studentId),
-            getAttendanceForDate(studentDetails.studentId, format(new Date(), 'yyyy-MM-dd'))
           ]);
 
           setHasUnreadAlerts(alerts.some(alert => !alert.isRead));
-          setMonthlyStudyHours(hours);
-
           setActiveCheckInRecord(activeCheckInData || null);
-          let totalMillisecondsToday = 0;
-          const now = new Date();
-          todayAttendanceData.forEach(record => {
-            if (record.checkOutTime && record.checkInTime && isValid(parseISO(record.checkOutTime)) && isValid(parseISO(record.checkInTime))) {
-              totalMillisecondsToday += differenceInMilliseconds(parseISO(record.checkOutTime), parseISO(record.checkInTime));
-            } else if (activeCheckInData && record.recordId === activeCheckInData.recordId && record.checkInTime && isValid(parseISO(record.checkInTime))) {
-              totalMillisecondsToday += differenceInMilliseconds(now, parseISO(record.checkInTime));
-            }
-          });
-          setHoursStudiedToday(totalMillisecondsToday / (1000 * 60 * 60));
 
         } else {
             toast({ title: "Error", description: "Could not find your student record.", variant: "destructive" });
@@ -325,32 +281,56 @@ export default function MemberDashboardPage() {
         toast({ title: "Error", description: error.message || "Could not load all dashboard information.", variant: "destructive" });
       } finally {
         setIsLoadingStudentData(false);
-        setIsLoadingStudyHours(false);
         setIsLoadingCurrentSession(false);
+        if (isManualRefresh) setIsRefreshing(false);
         if (!studentDetailsFetchedSuccessfully) {
-            setStudentFirstName(null); setStudentId(null); setMonthlyStudyHours(null);
-            setHasUnreadAlerts(false); setActiveCheckInRecord(null); setHoursStudiedToday(null);
+            setStudentFirstName(null); setStudentId(null);
+            setHasUnreadAlerts(false); setActiveCheckInRecord(null);
             setStudentFeeStatus(null); setStudentNextDueDate(null);
+            setCurrentStudent(null);
         }
       }
     } else {
-      setIsLoadingStudentData(false); setIsLoadingStudyHours(false); setIsLoadingCurrentSession(false);
-      setStudentFirstName(null); setStudentId(null); setMonthlyStudyHours(null);
-      setHasUnreadAlerts(false); setActiveCheckInRecord(null); setHoursStudiedToday(null);
+      setIsLoadingStudentData(false); setIsLoadingCurrentSession(false);
+      setStudentFirstName(null); setStudentId(null);
+      setHasUnreadAlerts(false); setActiveCheckInRecord(null);
       setStudentFeeStatus(null); setStudentNextDueDate(null);
+      setCurrentStudent(null);
     }
   }, [user, toast]);
 
 
   React.useEffect(() => {
     fetchAllDashboardData();
-
-    // Set up interval to refresh data every 5 minutes (300000 milliseconds)
-    const intervalId = setInterval(fetchAllDashboardData, 300000);
-
-    // Clear the interval on component unmount
+    const intervalId = setInterval(() => fetchAllDashboardData(true), 300000); // Refresh every 5 minutes
     return () => clearInterval(intervalId);
-  }, [fetchAllDashboardData]);
+  }, [user]); // Re-run only when user object changes
+
+  // This effect updates the displayed time string
+   React.useEffect(() => {
+    let timerId: NodeJS.Timeout | null = null;
+    if (activeCheckInRecord?.checkInTime && isValid(parseISO(activeCheckInRecord.checkInTime))) {
+      const updateElapsedTime = () => {
+        const now = new Date();
+        const checkInTime = parseISO(activeCheckInRecord.checkInTime);
+        const hours = differenceInHours(now, checkInTime);
+        const minutes = differenceInMinutes(now, checkInTime) % 60;
+        setElapsedTime(`${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`);
+      };
+      
+      updateElapsedTime();
+      timerId = setInterval(updateElapsedTime, 30000); // Update every 30 seconds
+    } else {
+      setElapsedTime(null);
+    }
+
+    return () => {
+      if (timerId) {
+        clearInterval(timerId);
+      }
+    };
+  }, [activeCheckInRecord, isRefreshing]); // Re-run when activeCheckInRecord or refresh state changes
+
 
   const handleCloseScanner = React.useCallback(async () => {
     if (html5QrcodeScannerRef.current && typeof html5QrcodeScannerRef.current.clear === 'function') {
@@ -414,7 +394,6 @@ export default function MemberDashboardPage() {
           setIsProcessingQr(true);
 
           if (html5QrcodeScannerRef.current && html5QrcodeScannerRef.current.getState() === 2 /* PAUSED */) {
-              // Already paused, no need to pause again, just proceed.
           } else if (html5QrcodeScannerRef.current) {
               try { await html5QrcodeScannerRef.current.pause(true); }
               catch(e) { console.warn("Scanner pause error", e); }
@@ -550,76 +529,72 @@ export default function MemberDashboardPage() {
     }
   };
 
-
-  let activityStatisticDisplay: string | null = null;
-  let activityDescription: string = "Track your study hours.";
-
-  if (isLoadingStudentData || isLoadingStudyHours) {
-    activityStatisticDisplay = null;
-    activityDescription = "Loading hours...";
-  } else if (studentId) {
-    if (monthlyStudyHours === null) {
-      activityStatisticDisplay = "0 hours";
-      activityDescription = "No activity recorded yet.";
-    } else if (monthlyStudyHours === 0) {
-      activityStatisticDisplay = "0 hours";
-      activityDescription = "No hours recorded this month.";
-    } else {
-      activityStatisticDisplay = `${monthlyStudyHours} hours`;
-      activityDescription = "studied this month";
+  const getShiftColorClass = (shift: Shift | undefined) => {
+    if (!shift) return 'bg-gray-100 text-gray-800 border-gray-300';
+    switch (shift) {
+      case 'morning': return 'bg-seat-morning text-seat-morning-foreground border-orange-300 dark:border-orange-700';
+      case 'evening': return 'bg-seat-evening text-seat-evening-foreground border-purple-300 dark:border-purple-700';
+      case 'fullday': return 'bg-seat-fullday text-seat-fullday-foreground border-yellow-300 dark:border-yellow-700';
+      default: return 'bg-gray-100 text-gray-800 border-gray-300';
     }
-  } else if (!isLoadingStudentData && !studentId) {
-    activityStatisticDisplay = "N/A";
-    activityDescription = "Student record not linked.";
-  }
-
+  };
 
   const generateCoreActionTiles = (): DashboardTileProps[] => {
     let payFeesTileDesc = "Settle your outstanding dues.";
-    let payFeesTileStatistic: string | null = null;
-    let payFeesTileIsUrgent = false;
-
+    let payFeesIsUrgent = false;
+    let payFeesClass = "";
+    
     if (isLoadingStudentData) {
       payFeesTileDesc = "Loading fee status...";
     } else if (studentId) {
-      if (studentFeeStatus === "Due" || studentFeeStatus === "Overdue") {
-        payFeesTileIsUrgent = true;
-        payFeesTileDesc = `Status: ${studentFeeStatus}. Next payment due: ${studentNextDueDate && isValid(parseISO(studentNextDueDate)) ? format(parseISO(studentNextDueDate), 'PP') : 'N/A'}.`;
-      } else if (studentFeeStatus === "Paid") {
-        payFeesTileDesc = `Fees paid up to: ${studentNextDueDate && isValid(parseISO(studentNextDueDate)) ? format(parseISO(studentNextDueDate), 'PP') : 'N/A'}.`;
-      } else if (studentFeeStatus) {
-         payFeesTileDesc = `Fee status: ${studentFeeStatus}.`;
+      switch (studentFeeStatus) {
+        case "Due":
+          payFeesIsUrgent = true;
+          payFeesTileDesc = `Status: Due. Next payment due: ${studentNextDueDate && isValid(parseISO(studentNextDueDate)) ? format(parseISO(studentNextDueDate), 'PP') : 'N/A'}.`;
+          payFeesClass = "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300 border-yellow-300 dark:border-yellow-700/50";
+          break;
+        case "Overdue":
+          payFeesIsUrgent = true;
+          payFeesTileDesc = `Status: Overdue. Payment is late.`;
+          payFeesClass = "bg-destructive/20 text-destructive border-destructive/50";
+          break;
+        case "Paid":
+          payFeesTileDesc = `Fees paid up to: ${studentNextDueDate && isValid(parseISO(studentNextDueDate)) ? format(parseISO(studentNextDueDate), 'PP') : 'N/A'}.`;
+          break;
+        default:
+          payFeesTileDesc = `Fee status: ${studentFeeStatus || 'N/A'}.`;
+          break;
       }
     }
 
 
     return [
       {
-        title: "View Alerts",
+        title: "Alerts!",
         description: "Catch up on announcements.",
         icon: Bell,
         href: "/member/alerts",
-        hasNew: isLoadingStudentData ? false : hasUnreadAlerts,
+        hasNew: !isLoadingStudentData && hasUnreadAlerts,
+        isUrgent: !isLoadingStudentData && hasUnreadAlerts,
         disabled: !studentId,
+        className: hasUnreadAlerts ? "bg-destructive/20 animate-breathing-stroke" : "",
       },
       {
         title: "Activity Summary",
-        statistic: activityStatisticDisplay,
-        description: activityDescription,
-        isLoadingStatistic: isLoadingStudentData || isLoadingStudyHours,
+        description: "View your attendance and study hours.",
         icon: BarChart3,
         href: "/member/attendance",
         disabled: !studentId,
       },
       {
-        title: "Pay Fees",
+        title: "My Payments",
         description: payFeesTileDesc,
-        statistic: payFeesTileStatistic,
         isLoadingStatistic: isLoadingStudentData,
         icon: IndianRupee,
-        href: "/member/pay",
-        isUrgent: payFeesTileIsUrgent,
+        href: "/member/fees",
+        isUrgent: payFeesIsUrgent,
         disabled: !studentId,
+        className: payFeesClass,
       },
       {
         title: "Submit Feedback",
@@ -655,44 +630,83 @@ export default function MemberDashboardPage() {
     ? `Welcome, ${defaultWelcomeName}!`
     : (studentFirstName ? `Welcome, ${studentFirstName}!` : `Welcome, ${defaultWelcomeName}!`);
 
-  const primaryAttendanceAction = activeCheckInRecord ? handleDashboardCheckOut : handleOpenScanner;
-  let primaryAttendanceTitle: string;
-  let primaryAttendanceIcon: React.ElementType;
+  const primaryAttendanceAction = activeCheckInRecord ? undefined : handleOpenScanner;
+  let primaryAttendanceTitle = "Scan to Check In";
+  let primaryAttendanceIcon: React.ElementType = ScanLine;
 
   if (isLoadingCurrentSession) {
     primaryAttendanceTitle = "Loading...";
     primaryAttendanceIcon = Loader2;
-  } else if (activeCheckInRecord) {
-    primaryAttendanceTitle = "Tap to Check Out";
-    primaryAttendanceIcon = LogOut;
-  } else {
-    primaryAttendanceTitle = "Scan to Check In";
-    primaryAttendanceIcon = ScanLine;
   }
 
-  const primaryAttendanceDisabled = !studentId || isLoadingCurrentSession || (activeCheckInRecord && isProcessingCheckout) || (!activeCheckInRecord && isScannerOpen);
+  const primaryAttendanceDisabled = !studentId || isLoadingCurrentSession || isScannerOpen;
 
 
   return (
     <>
-      <PageTitle title={pageTitleText} description="Your Taxshila Companion dashboard." />
+      <div className="mb-6 flex flex-row items-center justify-between gap-4">
+        <div className="flex items-center gap-4 flex-1 min-w-0">
+          <Link href="/member/profile" passHref legacyBehavior>
+            <a className="cursor-pointer relative group flex-shrink-0">
+              <Avatar className="h-12 w-12 sm:h-16 sm:w-16 border-2 border-primary shadow-md">
+                <AvatarImage src={currentStudent?.profilePictureUrl || user?.profilePictureUrl || undefined} alt={currentStudent?.name} data-ai-hint="profile person" />
+                <AvatarFallback className="text-2xl">{getInitials(currentStudent?.name)}</AvatarFallback>
+              </Avatar>
+            </a>
+          </Link>
+          <div className="flex-1 min-w-0">
+            <h1 className="text-xl font-headline font-semibold tracking-tight md:text-2xl leading-tight truncate">{pageTitleText}</h1>
+            <p className="text-muted-foreground text-sm truncate">Your Taxshila Companion dashboard.</p>
+          </div>
+        </div>
+        {currentStudent && (
+          <div className={cn("flex items-center justify-center h-10 w-10 sm:h-12 sm:w-12 text-md sm:text-lg rounded-lg border-2 font-bold flex-shrink-0", getShiftColorClass(currentStudent.shift))} title={`Seat ${currentStudent.seatNumber}`}>
+            {currentStudent.seatNumber || 'N/A'}
+          </div>
+        )}
+      </div>
 
       {showNotificationPrompt && <NotificationPrompt onDismiss={handleDismissPrompt} />}
 
-      {activeCheckInRecord && elapsedTime && (
-        <Card className="my-4 text-center shadow-lg bg-background">
-          <CardHeader className="pb-2">
-            <ShadcnCardTitle className="text-muted-foreground font-medium text-sm tracking-widest uppercase">
-              Current Session Time
-            </ShadcnCardTitle>
-          </CardHeader>
-          <CardContent className="pt-0">
-            <div className="text-5xl sm:text-7xl font-bold font-mono tracking-tighter text-primary">
-              {elapsedTime}
+      {activeCheckInRecord && (
+        <Card className="my-6 shadow-lg rounded-lg overflow-hidden">
+          <CardContent className="p-4 flex items-center justify-between gap-4">
+            <div className="flex-1">
+              <ShadcnCardDescription className="text-xs text-muted-foreground uppercase tracking-wider mb-2">Current Session</ShadcnCardDescription>
+              <div className="text-5xl sm:text-6xl font-bold font-mono tracking-tighter text-primary">
+                {elapsedTime || "00:00"}
+              </div>
+            </div>
+            <div className="text-right text-xs text-muted-foreground space-y-2">
+                <div className="flex items-center justify-end">
+                    <PlayCircle className="mr-1.5 h-3 w-3 text-green-600" />
+                    <span>Checked In: {activeCheckInRecord.checkInTime && isValid(parseISO(activeCheckInRecord.checkInTime)) ? format(parseISO(activeCheckInRecord.checkInTime), 'p') : 'N/A'}</span>
+                </div>
+                <Button variant="link" size="sm" onClick={() => fetchAllDashboardData(true)} className="h-auto p-0 text-xs" disabled={isRefreshing}>
+                    {isRefreshing ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <RefreshCw className="mr-1 h-3 w-3"/>}
+                    {isRefreshing ? 'Refreshing...' : 'Refresh'}
+                </Button>
             </div>
           </CardContent>
+          <CardFooter className="p-0">
+             <Button
+                onClick={handleDashboardCheckOut}
+                disabled={isProcessingCheckout}
+                className={cn(
+                  "w-full rounded-t-none h-12 text-base text-primary-foreground animate-gradient-sweep-green"
+                )}
+             >
+                {isProcessingCheckout ? (
+                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                ) : (
+                    <LogOut className="mr-2 h-5 w-5" />
+                )}
+                Tap to Check Out
+             </Button>
+          </CardFooter>
         </Card>
       )}
+
 
       <AlertDialog open={isOverdueDialogOpen} onOpenChange={setIsOverdueDialogOpen}>
         <AlertDialogContent>
@@ -711,60 +725,21 @@ export default function MemberDashboardPage() {
         </AlertDialogContent>
       </AlertDialog>
 
-       <div className="mt-1 mb-4 text-xs text-center text-muted-foreground">
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-x-3 gap-y-1">
-            {isLoadingCurrentSession ? (
-              <div className="flex items-center justify-center">
-                <Loader2 className="mr-1 h-3 w-3 animate-spin" />
-                <span>Loading session...</span>
-              </div>
-            ) : activeCheckInRecord ? (
-              <div className="flex items-center">
-                <PlayCircle className="mr-1 h-3 w-3 text-green-600" />
-                <span>Checked In (since {activeCheckInRecord.checkInTime && isValid(parseISO(activeCheckInRecord.checkInTime)) ? format(parseISO(activeCheckInRecord.checkInTime), 'p') : 'N/A'})</span>
-              </div>
-            ) : (
-              <div className="flex items-center">
-                <CheckCircle className="mr-1 h-3 w-3 text-gray-500" />
-                <span>Not Currently Checked In</span>
-              </div>
-            )}
-            {!activeCheckInRecord && hoursStudiedToday !== null && hoursStudiedToday > 0 && (
-              <div className="flex items-center">
-                <Hourglass className="mr-1 h-3 w-3 text-blue-500" />
-                <span>
-                  Today: {Math.floor(hoursStudiedToday)} hr{" "}
-                  {Math.round((hoursStudiedToday % 1) * 60)} min
-                </span>
-              </div>
-            )}
-
-            {!activeCheckInRecord && hoursStudiedToday === 0 && !isLoadingCurrentSession && (
-                <div className="flex items-center">
-                <Hourglass className="mr-1 h-3 w-3 text-blue-500" />
-                <span>No study today.</span>
-              </div>
-            )}
-          </div>
+       {!activeCheckInRecord && (
+         <div className="mb-6">
+            <DashboardTile
+              title={primaryAttendanceTitle}
+              description="Scan the library QR code for attendance."
+              icon={primaryAttendanceIcon}
+              action={primaryAttendanceAction}
+              isPrimaryAction={!primaryAttendanceDisabled}
+              isLoadingStatistic={isLoadingCurrentSession && primaryAttendanceIcon === Loader2}
+              disabled={primaryAttendanceDisabled}
+              className={cn(!primaryAttendanceDisabled && "animate-gradient-sweep")}
+            />
         </div>
+       )}
 
-
-      <div className="mb-6">
-        <DashboardTile
-          title={primaryAttendanceTitle}
-          description={activeCheckInRecord ? "You are currently checked in." : "Scan the library QR code for attendance."}
-          icon={primaryAttendanceIcon}
-          action={primaryAttendanceAction}
-          isPrimaryAction={!primaryAttendanceDisabled}
-          isLoadingStatistic={isLoadingCurrentSession && primaryAttendanceIcon === Loader2}
-          disabled={primaryAttendanceDisabled}
-          className={cn(
-            (activeCheckInRecord && !isProcessingCheckout && !isLoadingCurrentSession && !primaryAttendanceDisabled)
-              ? 'bg-green-600 hover:bg-green-700'
-              : ''
-          )}
-        />
-      </div>
 
        <Dialog open={isScannerOpen} onOpenChange={(open) => { if(!open) handleCloseScanner(); else if (!activeCheckInRecord) handleOpenScanner();}}>
          <DialogContent className="w-[90vw] max-w-xs sm:max-w-sm md:max-w-md p-4 flex flex-col overflow-hidden">

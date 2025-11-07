@@ -187,7 +187,7 @@ export const mainNav: NavItem[] = [
     roles: ['member'],
   },
   {
-    title: 'Pay Fees',
+    title: 'My Payments',
     href: '/member/fees',
     icon: BadgeIndianRupee,
     roles: ['member'],
@@ -196,12 +196,6 @@ export const mainNav: NavItem[] = [
     title: 'Alerts',
     href: '/member/alerts',
     icon: AlertCircle,
-    roles: ['member'],
-  },
-   {
-    title: 'Scan QR',
-    href: '/students/qr-code',
-    icon: QrCode,
     roles: ['member'],
   },
   {
@@ -217,3 +211,5 @@ export const mainNav: NavItem[] = [
     roles: ['member'],
   },
 ];
+
+    

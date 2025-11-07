@@ -1,4 +1,5 @@
 
+
 "use client";
 import * as React from 'react';
 import Link from 'next/link';
@@ -46,8 +47,8 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAuth } from '@/contexts/auth-context';
 import { useRouter, usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
-import { getAllStudents, getAvailableSeats, getAllAttendanceRecords, calculateMonthlyRevenue, getTodaysActiveAttendanceRecords, processCheckedInStudentsFromSnapshot, refreshAllStudentFeeStatuses, sendShiftWarningAlert } from '@/services/student-service';
-import type { Student, Shift, AttendanceRecord, CheckedInStudentInfo } from '@/types/student';
+import { getStudentSeatAssignments, getAllStudents, getAvailableSeats, getAllAttendanceRecords, calculateMonthlyRevenue, getTodaysActiveAttendanceRecords, processCheckedInStudentsFromSnapshot, refreshAllStudentFeeStatuses, sendShiftWarningAlert } from '@/services/student-service';
+import type { Student, Shift, AttendanceRecord, CheckedInStudentInfo, StudentSeatAssignment } from '@/types/student';
 import type { FeedbackItem } from '@/types/communication';
 import { format, parseISO, isToday, getHours, getMinutes } from 'date-fns';
 import { useNotificationCounts } from '@/hooks/use-notification-counts';
@@ -197,7 +198,7 @@ function AdminDashboardContent() {
   const [isLoadingCheckedInStudents, setIsLoadingCheckedInStudents] = React.useState(true);
   const [isLoadingRevenue, setIsLoadingRevenue] = React.useState(true);
 
-  const [allStudents, setAllStudents] = React.useState<Student[]>([]);
+  const [seatAssignments, setSeatAssignments] = React.useState<StudentSeatAssignment[]>([]);
   const [baseCheckedInStudents, setBaseCheckedInStudents] = React.useState<CheckedInStudentInfo[]>([]);
   const [liveCheckedInStudents, setLiveCheckedInStudents] = React.useState<CheckedInStudentInfo[]>([]);
   const [showCheckedInDialog, setShowCheckedInDialog] = React.useState(false);
@@ -219,33 +220,32 @@ function AdminDashboardContent() {
       setIsLoadingRevenue(true);
 
       try {
-        // Run fee status refresh silently in the background
         await refreshAllStudentFeeStatuses();
 
         const [
-          allStudentsData,
+          seatAssignmentsData,
           attendanceSnapshot,
           revenueData,
         ] = await Promise.all([
-          getAllStudents(),
+          getStudentSeatAssignments(),
           getTodaysActiveAttendanceRecords(),
           calculateMonthlyRevenue(),
         ]);
 
-        setAllStudents(allStudentsData);
+        setSeatAssignments(seatAssignmentsData);
         setMonthlyRevenue(revenueData);
 
-        const checkedInStudents = await processCheckedInStudentsFromSnapshot(attendanceSnapshot, allStudentsData);
+        const checkedInStudents = await processCheckedInStudentsFromSnapshot(attendanceSnapshot, seatAssignmentsData);
         setBaseCheckedInStudents(checkedInStudents);
 
       } catch (error) {
         console.error("Failed to load dashboard stats:", error);
-        setAllStudents([]);
+        setSeatAssignments([]);
         setBaseCheckedInStudents([]);
         setMonthlyRevenue("Rs. 0");
       } finally {
         setIsLoadingDashboardStats(false);
-        setIsLoadingAvailabilityStats(false); // This will depend on calculations from allStudents, so turn off loading here.
+        setIsLoadingAvailabilityStats(false);
         setIsLoadingCheckedInStudents(false);
         setIsLoadingRevenue(false);
       }
@@ -273,17 +273,16 @@ function AdminDashboardContent() {
               currentlyOutsideShift = true;
             }
           }
-          // Full day students are by definition not "outside shift" during library hours
           return { ...student, isOutsideShift: currentlyOutsideShift };
         })
       );
     };
 
     if (showCheckedInDialog && baseCheckedInStudents.length > 0) {
-      updateLiveStudentStatus(); // Initial update when dialog opens
-      intervalId = setInterval(updateLiveStudentStatus, 30000); // Update every 30 seconds
+      updateLiveStudentStatus(); 
+      intervalId = setInterval(updateLiveStudentStatus, 30000); 
     } else {
-      setLiveCheckedInStudents([]); // Clear live data if dialog is closed or no base students
+      setLiveCheckedInStudents([]); 
     }
 
     return () => {
@@ -312,13 +311,12 @@ function AdminDashboardContent() {
     }
   };
 
-  const activeStudents = allStudents.filter(s => s.activityStatus === "Active");
+  const activeStudents = seatAssignments.filter(s => s.activityStatus === "Active");
   const morningShiftStudentCount = activeStudents.filter(s => s.shift === 'morning').length;
   const eveningShiftStudentCount = activeStudents.filter(s => s.shift === 'evening').length;
   const fullDayShiftStudentCount = activeStudents.filter(s => s.shift === 'fullday').length;
   const totalRegisteredStudents = morningShiftStudentCount + eveningShiftStudentCount + fullDayShiftStudentCount;
 
-  // Derive available seats from the single student list
   const occupiedSeatsMorning = new Set(activeStudents.filter(s => s.seatNumber && (s.shift === 'morning' || s.shift === 'fullday')).map(s => s.seatNumber));
   const occupiedSeatsEvening = new Set(activeStudents.filter(s => s.seatNumber && (s.shift === 'evening' || s.shift === 'fullday')).map(s => s.seatNumber));
   const allOccupiedSeatNumbers = new Set(activeStudents.filter(s => s.seatNumber).map(s => s.seatNumber));
@@ -514,7 +512,6 @@ export default function MainPage() {
     // This case can happen if user is on login page and logs out, or directly navigates to login.
     // We don't want to show a full-page loader here because the login page should render.
     // The AppLayout handles the redirection if they try to access protected routes without auth.
-    // If AppLayout is not handling children correctly for /login route, this might be a safety net.
     // However, with the current AppLayout, this condition might lead to rendering the loader over the login page.
      return null;
   }

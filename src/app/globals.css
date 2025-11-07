@@ -514,3 +514,63 @@
   outline: 3px solid #EC4899; /* pink-500 */
   outline-offset: 1px;
 }
+
+/* New Animation for Gradient Sweep */
+@keyframes gradient-sweep {
+  0% {
+    background-position: -100% 0;
+  }
+  100% {
+    background-position: 100% 0;
+  }
+}
+
+.animate-gradient-sweep {
+  background-size: 200% auto;
+  animation: gradient-sweep 6s linear infinite;
+  background-image: linear-gradient(
+    to right,
+    hsl(var(--primary)) 0%,
+    hsl(var(--primary) / 0.9) 30%,
+    hsl(var(--primary) / 0.7) 50%,
+    hsl(var(--primary) / 0.9) 70%,
+    hsl(var(--primary)) 100%
+  );
+}
+
+.animate-gradient-sweep-green {
+  background-size: 200% auto;
+  animation: gradient-sweep 3.5s linear infinite;
+  background-image: linear-gradient(
+    to right,
+    #14532d 0%, /* green-900 */
+    #16a34a 50%, /* green-600 */
+    #14532d 100%
+  );
+}
+
+
+@keyframes breathing-stroke {
+  0% {
+    background-color: hsl(var(--destructive) / 0.1);
+    border-color: hsl(var(--destructive) / 0.3);
+  }
+  50% {
+    background-color: hsl(var(--destructive) / 0.2);
+    border-color: hsl(var(--destructive) / 0.7);
+  }
+  100% {
+    background-color: hsl(var(--destructive) / 0.1);
+    border-color: hsl(var(--destructive) / 0.3);
+  }
+}
+
+.animate-breathing-stroke {
+  animation: breathing-stroke 2s ease-in-out infinite;
+}
+
+    
+
+    
+
+      

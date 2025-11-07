@@ -522,12 +522,20 @@ export default function EditStudentPage() {
   return (
     <>
       <PageTitle title={`Edit Student: ${studentData.name}`} description={`Modifying details for Student ID: ${studentId}`}>
-        <Link href="/students/list" passHref legacyBehavior>
-          <Button variant="outline" disabled={isSaving || isDeleting}>
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to List
-          </Button>
-        </Link>
+        <div className="flex items-center space-x-2">
+            <Link href={`/students/profiles/${studentId}`} passHref legacyBehavior>
+                <Button variant="outline" disabled={isSaving || isDeleting}>
+                    <User className="mr-2 h-4 w-4" />
+                    Go to Profile
+                </Button>
+            </Link>
+            <Link href="/students/list" passHref legacyBehavior>
+                <Button variant="outline" disabled={isSaving || isDeleting}>
+                    <ArrowLeft className="mr-2 h-4 w-4" />
+                    Back to List
+                </Button>
+            </Link>
+        </div>
       </PageTitle>
 
       <Form {...form}>

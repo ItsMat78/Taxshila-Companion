@@ -83,34 +83,36 @@ export async function getDailyAttendanceDetails(date: string): Promise<DailyAtte
   const attendanceQuery = query(
     collection(db, "attendanceRecords"),
     where("date", "==", date)
-    // Removed: orderBy("checkInTime", "asc") // This was causing the index requirement
   );
 
-  const attendanceSnapshot = await getDocs(attendanceQuery);
+  const studentsQuery = query(collection(db, "students"));
+
+  const [attendanceSnapshot, studentsSnapshot] = await Promise.all([
+    getDocs(attendanceQuery),
+    getDocs(studentsQuery)
+  ]);
+  
   if (attendanceSnapshot.empty) {
     return [];
   }
 
+  const studentMap = new Map<string, Pick<Student, 'studentId' | 'name' | 'seatNumber' | 'shift'>>();
+  studentsSnapshot.docs.forEach(doc => {
+    const studentData = studentFromSnapshot(doc);
+    if(studentData) {
+        studentMap.set(studentData.studentId, studentData);
+    }
+  });
+  
+
   const attendanceDetails: DailyAttendanceDetail[] = [];
-  const studentCache = new Map<string, Pick<Student, 'studentId' | 'name' | 'seatNumber' | 'shift'> | null>();
 
   for (const attendanceDoc of attendanceSnapshot.docs) {
     const record = attendanceRecordFromSnapshot(attendanceDoc);
     if (!record) continue;
 
-    let studentData = studentCache.get(record.studentId);
-    if (studentData === undefined) { // Not in cache, fetch it
-      const studentQuery = query(collection(db, "students"), where("studentId", "==", record.studentId), limit(1));
-      const studentDocSnapshots = await getDocs(studentQuery);
-      if (!studentDocSnapshots.empty) {
-          const rawStudentData = studentFromSnapshot(studentDocSnapshots.docs[0]);
-          studentData = rawStudentData;
-      } else {
-          studentData = null; // Student not found
-      }
-      studentCache.set(record.studentId, studentData);
-    }
-
+    let studentData = studentMap.get(record.studentId);
+    
     if (studentData) {
       attendanceDetails.push({
         recordId: record.recordId,
@@ -140,4 +142,5 @@ export async function getDailyAttendanceDetails(date: string): Promise<DailyAtte
     parseISO(a.checkInTime).getTime() - parseISO(b.checkInTime).getTime()
   );
 }
+
 

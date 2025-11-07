@@ -33,13 +33,13 @@ import { format, parseISO, differenceInDays, isPast, addMonths, startOfDay, isVa
 import { ALL_SEAT_NUMBERS } from '@/config/seats';
 
 import {
-  getAuth,
   updateEmail,
   updatePassword,
   EmailAuthProvider,
   reauthenticateWithCredential,
   updateProfile,
 } from 'firebase/auth';
+import { getAuth } from 'firebase-admin/auth';
 
 
 // --- Collections ---
@@ -205,8 +205,40 @@ export async function getAllStudents(): Promise<Student[]> {
   return querySnapshot.docs.map(studentFromDoc);
 }
 
+export type StudentSeatAssignment = Pick<Student, 'studentId' | 'name' | 'shift' | 'seatNumber' | 'activityStatus' | 'profilePictureUrl'>;
+
+export async function getStudentSeatAssignments(): Promise<StudentSeatAssignment[]> {
+    const studentsRef = collection(db, STUDENTS_COLLECTION);
+    const q = query(studentsRef, where("activityStatus", "==", "Active"));
+
+    const querySnapshot = await getDocs(q);
+    
+    return querySnapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+            studentId: data.studentId,
+            name: data.name,
+            shift: data.shift,
+            seatNumber: data.seatNumber || null,
+            activityStatus: data.activityStatus,
+            profilePictureUrl: data.profilePictureUrl,
+        } as StudentSeatAssignment;
+    });
+}
+
+
+export async function getStudentsWithFeesDue(): Promise<Student[]> {
+  const q = query(
+    collection(db, STUDENTS_COLLECTION),
+    where("activityStatus", "==", "Active"),
+    where("feeStatus", "in", ["Due", "Overdue"])
+  );
+  const querySnapshot = await getDocs(q);
+  return querySnapshot.docs.map(studentFromDoc);
+}
+
 export async function getStudentByCustomId(studentId: string): Promise<Student | undefined> {
-  const q = query(collection(db, STUDENTS_COLLECTION), where("studentId", "==", studentId));
+  const q = query(collection(db, STUDENTS_COLLECTION), where("studentId", "==", studentId), limit(1));
   const querySnapshot = await getDocs(q);
   if (querySnapshot.empty) {
     return undefined;
@@ -319,48 +351,64 @@ export async function addStudent(studentData: AddStudentData): Promise<Student> 
 
 export async function updateStudent(customStudentId: string, studentUpdateData: Partial<Student>): Promise<Student | undefined> {
   const studentToUpdate = await getStudentByCustomId(customStudentId);
-  if (!studentToUpdate || !studentToUpdate.firestoreId || !studentToUpdate.uid) {
-    throw new Error("Student not found or is missing critical data (Firestore ID or Auth UID).");
+  if (!studentToUpdate || !studentToUpdate.firestoreId) {
+    throw new Error("Student not found or is missing critical data (Firestore ID).");
   }
   const studentDocRef = doc(db, STUDENTS_COLLECTION, studentToUpdate.firestoreId);
 
   // --- Firebase Auth Update ---
-  const authUpdatePayload: { uid: string; email?: string; phone?: string; password?: string, disabled?: boolean } = { uid: studentToUpdate.uid };
-  let authNeedsUpdate = false;
+  if (studentToUpdate.uid) {
+    const authUpdatePayload: { uid: string; email?: string; phone?: string; password?: string, disabled?: boolean } = { uid: studentToUpdate.uid };
+    let authNeedsUpdate = false;
 
-  if (studentUpdateData.email && studentUpdateData.email !== studentToUpdate.email) {
-      authUpdatePayload.email = studentUpdateData.email;
-      authNeedsUpdate = true;
-  }
-  if (studentUpdateData.phone && studentUpdateData.phone !== studentToUpdate.phone) {
-      authUpdatePayload.phone = studentUpdateData.phone;
-      authNeedsUpdate = true;
-  }
-  if (studentUpdateData.password) {
-      authUpdatePayload.password = studentUpdateData.password;
-      authNeedsUpdate = true;
-  }
-  
-  if (studentUpdateData.activityStatus === 'Left' && studentToUpdate.activityStatus === 'Active') {
-      authUpdatePayload.disabled = true;
-      authNeedsUpdate = true;
-  } else if (studentUpdateData.activityStatus === 'Active' && studentToUpdate.activityStatus === 'Left') {
-      authUpdatePayload.disabled = false;
-      authNeedsUpdate = true;
-  }
+    if (studentUpdateData.email && studentUpdateData.email !== studentToUpdate.email) {
+        authUpdatePayload.email = studentUpdateData.email;
+        authNeedsUpdate = true;
+    }
+    if (studentUpdateData.phone && studentUpdateData.phone !== studentToUpdate.phone) {
+        authUpdatePayload.phone = studentUpdateData.phone;
+        authNeedsUpdate = true;
+    }
+    if (studentUpdateData.password) {
+        authUpdatePayload.password = studentUpdateData.password;
+        authNeedsUpdate = true;
+    }
+    
+    if (studentUpdateData.activityStatus === 'Left' && studentToUpdate.activityStatus === 'Active') {
+        authUpdatePayload.disabled = true;
+        authNeedsUpdate = true;
+    } else if (studentUpdateData.activityStatus === 'Active' && studentToUpdate.activityStatus === 'Left') {
+        authUpdatePayload.disabled = false;
+        authNeedsUpdate = true;
+    }
 
+    if (authNeedsUpdate) {
+        try {
+          const authResponse = await fetch('/api/admin/update-student-auth', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(authUpdatePayload),
+          });
 
-  if (authNeedsUpdate) {
-      const authResponse = await fetch('/api/admin/update-student-auth', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(authUpdatePayload),
-      });
-
-      if (!authResponse.ok) {
-          const errorResult = await authResponse.json();
-          throw new Error(`Auth Update Failed: ${errorResult.error || 'An unknown error occurred.'}`);
-      }
+          if (!authResponse.ok) {
+              const errorResult = await authResponse.json();
+              const errorMessage = errorResult.error || 'An unknown error occurred.';
+              if (errorMessage.includes("already disabled") || errorMessage.includes("already enabled")) {
+                console.warn(`Auth state for ${customStudentId} was already as requested. Proceeding with DB update.`);
+              } else {
+                throw new Error(`Auth Update Failed: ${errorMessage}`);
+              }
+          }
+        } catch(e) {
+           if (e instanceof Error && (e.message.includes("already disabled") || e.message.includes("already enabled"))) {
+              console.warn(`Auth state for ${customStudentId} was already as requested. Proceeding with DB update.`);
+           } else {
+              throw e; // Re-throw other errors
+           }
+        }
+    }
+  } else if (studentUpdateData.activityStatus) {
+    console.warn(`Skipping auth update for student ${customStudentId} because they have no UID.`);
   }
 
 
@@ -563,7 +611,7 @@ export async function getActiveCheckIn(studentId: string): Promise<AttendanceRec
 
 export async function addCheckIn(studentId: string): Promise<AttendanceRecord> {
   const student = await getStudentByCustomId(studentId);
-  if (!student) {
+  if (!student || !student.firestoreId) {
     throw new Error("Student not found for check-in.");
   }
   
@@ -582,10 +630,8 @@ export async function addCheckIn(studentId: string): Promise<AttendanceRecord> {
   };
   const docRef = await addDoc(collection(db, ATTENDANCE_COLLECTION), newRecordData);
   
-  if (student.firestoreId) {
-      const studentDocRef = doc(db, STUDENTS_COLLECTION, student.firestoreId);
-      await updateDoc(studentDocRef, { lastAttendanceDate: Timestamp.fromDate(now) });
-  }
+  const studentDocRef = doc(db, STUDENTS_COLLECTION, student.firestoreId);
+  await updateDoc(studentDocRef, { lastAttendanceDate: Timestamp.fromDate(now) });
 
   return {
     recordId: docRef.id,
@@ -617,6 +663,20 @@ export async function getAttendanceForDate(studentId: string, date: string): Pro
   records.sort((a, b) => parseISO(a.checkInTime).getTime() - parseISO(b.checkInTime).getTime());
   return records;
 }
+
+export async function getAttendanceForDateRange(studentId: string, startDate: string, endDate: string): Promise<AttendanceRecord[]> {
+    const q = query(
+        collection(db, ATTENDANCE_COLLECTION),
+        where("studentId", "==", studentId),
+        where("date", ">=", startDate),
+        where("date", "<=", endDate)
+    );
+    const querySnapshot = await getDocs(q);
+    const records = querySnapshot.docs.map(doc => attendanceRecordFromDoc(doc));
+    records.sort((a, b) => parseISO(a.checkInTime).getTime() - parseISO(b.checkInTime).getTime());
+    return records;
+}
+
 
 export async function getAllAttendanceRecords(): Promise<AttendanceRecord[]> {
     const q = query(collection(db, ATTENDANCE_COLLECTION));
@@ -660,16 +720,9 @@ export async function recordStudentPayment(
     case "fullday": expectedMonthlyFee = fees.fullDayFee; break;
     default: throw new Error("Invalid shift for fee calculation.");
   }
-
-  let amountToPayNumeric: number;
-  if (totalAmountPaidString === "Rs. 0" || totalAmountPaidString === "N/A" || !totalAmountPaidString.startsWith("Rs.")) {
-    amountToPayNumeric = expectedMonthlyFee * numberOfMonthsPaid;
-  } else {
-    amountToPayNumeric = parseInt(totalAmountPaidString.replace('Rs. ', '').trim(), 10);
-    if (isNaN(amountToPayNumeric) || amountToPayNumeric <= 0) {
-        throw new Error("Invalid payment amount provided in string.");
-    }
-  }
+  
+  // This is the key change: always use the fee from the settings, ignore `totalAmountPaidString` from the UI.
+  const amountToPayNumeric = expectedMonthlyFee * numberOfMonthsPaid;
 
   const studentDocRef = doc(db, STUDENTS_COLLECTION, studentToUpdate.firestoreId);
   const today = new Date(); // Actual payment date
@@ -1354,3 +1407,7 @@ declare module '@/types/communication' {
   }
 }
 
+
+
+
+    

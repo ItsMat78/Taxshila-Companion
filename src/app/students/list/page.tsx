@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import * as React from 'react';
@@ -25,7 +26,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Eye, Edit, Loader2, Users, UserX, UserCheck, Search as SearchIcon, Phone, Mail, MapPin, CalendarDays, CalendarX2, CalendarCheck, CalendarClock, View } from 'lucide-react';
-import { getAllStudents, getAllAttendanceRecords } from '@/services/student-service';
+import { getAllStudents } from '@/services/student-service';
 import type { Student as StudentData } from '@/types/student';
 import { cn } from '@/lib/utils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -159,40 +160,23 @@ const StudentCardItem = ({ student, isLeftTable, getStatusBadge }: { student: St
 
 
 export default function StudentListPage() {
-  const [allStudents, setAllStudents] = React.useState<StudentWithAttendance[]>([]);
+  const [allStudents, setAllStudents] = React.useState<StudentData[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [searchTerm, setSearchTerm] = React.useState("");
 
   React.useEffect(() => {
-    const fetchStudentsAndAttendance = async () => {
+    const fetchStudents = async () => {
       try {
         setIsLoading(true);
-        const [students, attendance] = await Promise.all([
-            getAllStudents(),
-            getAllAttendanceRecords()
-        ]);
-        
-        const lastAttendedMap = new Map<string, string>();
-        attendance.forEach(record => {
-            const existing = lastAttendedMap.get(record.studentId);
-            if (!existing || new Date(record.checkInTime) > new Date(existing)) {
-                lastAttendedMap.set(record.studentId, record.checkInTime);
-            }
-        });
-        
-        const studentsWithAttendance = students.map(s => ({
-            ...s,
-            lastAttendanceDate: lastAttendedMap.get(s.studentId)
-        }));
-
-        setAllStudents(studentsWithAttendance);
+        const students = await getAllStudents();
+        setAllStudents(students);
       } catch (error) {
         console.error("Failed to fetch students:", error);
       } finally {
         setIsLoading(false);
       }
     };
-    fetchStudentsAndAttendance();
+    fetchStudents();
   }, []);
 
   const filteredStudents = React.useMemo(() => {
@@ -228,7 +212,7 @@ export default function StudentListPage() {
     }
   };
 
-  const renderStudentList = (studentsToRender: StudentWithAttendance[], isLeftTable: boolean = false) => (
+  const renderStudentList = (studentsToRender: StudentData[], isLeftTable: boolean = false) => (
     <>
       {isLoading ? (
         <div className="flex items-center justify-center py-10">
@@ -386,3 +370,5 @@ export default function StudentListPage() {
     </>
   );
 }
+
+    

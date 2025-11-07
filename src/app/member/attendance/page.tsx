@@ -3,7 +3,7 @@
 
 import * as React from 'react';
 import { PageTitle } from '@/components/shared/page-title';
-import { Calendar } from "@/components/ui/calendar";
+import { Calendar as CalendarIconComponent } from "@/components/ui/calendar";
 import {
   Card,
   CardContent,
@@ -13,27 +13,14 @@ import {
 } from "@/components/ui/card";
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { 
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { Camera, Loader2, XCircle, BarChart3, Clock, LogIn, LogOut, ScanLine, CheckCircle, TrendingUp, ChevronLeft, ChevronRight, AlertCircle } from 'lucide-react';
+import { Loader2, BarChart3, Clock, LogIn, LogOut, TrendingUp, ChevronLeft, ChevronRight, Calendar as CalendarIcon } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
-import { getStudentByEmail, getActiveCheckIn, addCheckIn, addCheckOut, getAttendanceForDate, calculateMonthlyStudyHours, getStudentByCustomId } from '@/services/student-service';
+import { getStudentByEmail, calculateMonthlyStudyHours, getAttendanceForDate, getStudentByCustomId } from '@/services/student-service';
 import type { Student, AttendanceRecord } from '@/types/student';
 import { format, parseISO, isValid, differenceInMilliseconds, startOfMonth, endOfMonth, eachDayOfInterval, addMonths, subMonths } from 'date-fns';
-import { Html5QrcodeScanner, Html5QrcodeSupportedFormats, Html5QrcodeScanType } from 'html5-qrcode';
 import { BarChart, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Bar } from 'recharts';
-import { cn } from "@/lib/utils";
 
 
-// Corrected implementation for ChartTooltipContent
 const ChartTooltipContent = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
     const hours = payload[0].value;
@@ -51,32 +38,65 @@ const ChartTooltipContent = ({ active, payload, label }: any) => {
   return null;
 };
 
+// New component for the animated number
+const AnimatedNumber = ({ value }: { value: number | null }) => {
+  const [displayValue, setDisplayValue] = React.useState(0);
 
-const QR_SCANNER_ELEMENT_ID_ATTENDANCE = "qr-reader-attendance-page";
-const LIBRARY_QR_CODE_PAYLOAD = "TAXSHILA_LIBRARY_CHECKIN_QR_V1";
+  React.useEffect(() => {
+    if (value === null) {
+      setDisplayValue(0);
+      return;
+    }
+    
+    let start = 0;
+    const end = value;
+    const duration = 1000; // 1 second animation
+    const range = end - start;
+    let startTime: number | null = null;
+    let animationFrameId: number;
+
+    const step = (timestamp: number) => {
+      if (!startTime) startTime = timestamp;
+      const progress = Math.min((timestamp - startTime) / duration, 1);
+      const easedProgress = 1 - Math.pow(1 - progress, 3); // Ease-out cubic
+      const current = start + easedProgress * range;
+      setDisplayValue(current);
+      if (progress < 1) {
+        animationFrameId = requestAnimationFrame(step);
+      }
+    };
+    
+    animationFrameId = requestAnimationFrame(step);
+
+    return () => cancelAnimationFrame(animationFrameId);
+  }, [value]);
+
+  if (value === null) return <span className="text-4xl font-bold">N/A</span>;
+
+  const hours = Math.floor(displayValue);
+  const decimals = value % 1 !== 0 ? Math.max(0, Math.min(2, (value.toString().split('.')[1] || '').length)) : 0;
+  
+  return <span className="text-4xl font-bold">{displayValue.toFixed(decimals)}</span>;
+};
+
 
 export default function MemberAttendancePage() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [date, setDate] = React.useState<Date | undefined>(new Date());
-  const [isScannerOpen, setIsScannerOpen] = React.useState(false);
-  const [hasCameraPermission, setHasCameraPermission] = React.useState<boolean | null>(null);
-  const [isProcessingQr, setIsProcessingQr] = React.useState(false);
-  const html5QrcodeScannerRef = React.useRef<Html5QrcodeScanner | null>(null);
-
+  
   const [currentStudent, setCurrentStudent] = React.useState<Student | null>(null);
   const [attendanceForDay, setAttendanceForDay] = React.useState<AttendanceRecord[]>([]);
   const [isLoadingDetails, setIsLoadingDetails] = React.useState(false);
   const [monthlyStudyHours, setMonthlyStudyHours] = React.useState<number | null>(null);
   const [isLoadingStudyHours, setIsLoadingStudyHours] = React.useState(true);
-  const [activeCheckInRecord, setActiveCheckInRecord] = React.useState<AttendanceRecord | null>(null);
   const [isLoadingActiveCheckIn, setIsLoadingActiveCheckIn] = React.useState(true);
   const [monthlyStudyData, setMonthlyStudyData] = React.useState<{ date: string; hours: number }[]>([]);
   const [isLoadingMonthlyStudyData, setIsLoadingMonthlyStudyData] = React.useState(true);
-  const [isOverdueDialogOpen, setIsOverdueDialogOpen] = React.useState(false);
-
-
-    const [viewedMonth, setViewedMonth] = React.useState(new Date());
+  
+  const [viewedMonth, setViewedMonth] = React.useState(new Date());
+  const [showMonthlyStudyTime, setShowMonthlyStudyTime] = React.useState(false);
+  const [showAttendanceOverview, setShowAttendanceOverview] = React.useState(false);
 
     const handlePrevMonth = () => {
         setViewedMonth((prev) => subMonths(prev, 1));
@@ -86,8 +106,7 @@ export default function MemberAttendancePage() {
         setViewedMonth((prev) => addMonths(prev, 1));
     };
 
-
-  const fetchStudentDataAndActiveCheckIn = React.useCallback(async () => {
+  const fetchStudentData = React.useCallback(async () => {
     if (user?.studentId || user?.email) {
       setIsLoadingStudyHours(true);
       setIsLoadingActiveCheckIn(true);
@@ -101,12 +120,6 @@ export default function MemberAttendancePage() {
 
         if (student) {
           setCurrentStudent(student);
-          const [hours, activeCheckIn] = await Promise.all([
-            calculateMonthlyStudyHours(student.studentId),
-            getActiveCheckIn(student.studentId)
-          ]);
-          setMonthlyStudyHours(hours);
-          setActiveCheckInRecord(activeCheckIn || null);
         } else {
           toast({
             title: "Student Record Not Found",
@@ -114,19 +127,15 @@ export default function MemberAttendancePage() {
             variant: "destructive",
           });
           setCurrentStudent(null);
-          setMonthlyStudyHours(0);
-          setActiveCheckInRecord(null);
         }
       } catch (error: any) {
-        console.error("Error fetching student data/active check-in (Attendance Page):", error);
+        console.error("Error fetching student data (Attendance Page):", error);
         toast({
           title: "Error",
           description: error.message || "Failed to fetch student details or session status.",
           variant: "destructive",
         });
         setCurrentStudent(null);
-        setMonthlyStudyHours(0);
-        setActiveCheckInRecord(null);
       } finally {
         setIsLoadingStudyHours(false);
         setIsLoadingActiveCheckIn(false);
@@ -135,13 +144,31 @@ export default function MemberAttendancePage() {
       setIsLoadingStudyHours(false);
       setIsLoadingActiveCheckIn(false);
       setCurrentStudent(null);
-      setActiveCheckInRecord(null);
     }
   }, [user, toast]);
+  
+  const handleShowMonthlyStudyTime = React.useCallback(async () => {
+    if (!currentStudent?.studentId) {
+        if (!user) await fetchStudentData();
+        if (!currentStudent) return;
+    };
+
+    setShowMonthlyStudyTime(true);
+    setIsLoadingStudyHours(true);
+    try {
+        const hours = await calculateMonthlyStudyHours(currentStudent.studentId);
+        setMonthlyStudyHours(hours);
+    } catch (error: any) {
+        toast({ title: "Error", description: error.message, variant: "destructive" });
+        setMonthlyStudyHours(0);
+    } finally {
+        setIsLoadingStudyHours(false);
+    }
+  }, [currentStudent, toast, user, fetchStudentData]);
 
   React.useEffect(() => {
-    fetchStudentDataAndActiveCheckIn();
-  }, [fetchStudentDataAndActiveCheckIn]);
+    fetchStudentData();
+  }, [fetchStudentData]);
 
     const getDailyStudyDataForMonth = React.useCallback(async (studentId: string, month: Date) => {
         setIsLoadingMonthlyStudyData(true);
@@ -181,10 +208,10 @@ export default function MemberAttendancePage() {
     }, []);
 
   React.useEffect(() => {
-    if (currentStudent?.studentId) {
+    if (currentStudent?.studentId && showMonthlyStudyTime) {
       getDailyStudyDataForMonth(currentStudent.studentId, viewedMonth);
     }
-  }, [currentStudent, viewedMonth, getDailyStudyDataForMonth]);
+  }, [currentStudent, viewedMonth, getDailyStudyDataForMonth, showMonthlyStudyTime]);
 
   const calculateDailyStudyTime = (records: AttendanceRecord[]) => {
     let totalMilliseconds = 0;
@@ -211,7 +238,7 @@ export default function MemberAttendancePage() {
   };
 
   const fetchAttendanceForSelectedDate = React.useCallback(async () => {
-    if (currentStudent?.studentId && date) {
+    if (currentStudent?.studentId && date && showAttendanceOverview) {
       setIsLoadingDetails(true);
       try {
         const records = await getAttendanceForDate(currentStudent.studentId, format(date, 'yyyy-MM-dd'));
@@ -227,308 +254,82 @@ export default function MemberAttendancePage() {
       } finally {
         setIsLoadingDetails(false);
       }
-    } else {
-      setAttendanceForDay([]);
     }
-  }, [currentStudent, date, toast]);
+  }, [currentStudent, date, showAttendanceOverview, toast]);
 
   React.useEffect(() => {
     fetchAttendanceForSelectedDate();
   }, [fetchAttendanceForSelectedDate]);
 
-  React.useEffect(() => {
-    let timeoutId: NodeJS.Timeout;
-    if (isScannerOpen && currentStudent?.studentId && !activeCheckInRecord) {
-      timeoutId = setTimeout(() => {
-        const scannerElement = document.getElementById(QR_SCANNER_ELEMENT_ID_ATTENDANCE);
-        if (!scannerElement) {
-          toast({variant: 'destructive', title: "Scanner Error", description: "Could not initialize QR scanner display. Please try again."});
-          setIsScannerOpen(false);
-          return;
-        }
-
-        if (html5QrcodeScannerRef.current) {
-          html5QrcodeScannerRef.current.clear()
-            .catch(clearError => console.error("Error clearing previous scanner instance (Attendance Page):", clearError))
-            .finally(() => html5QrcodeScannerRef.current = null);
-        }
-        
-        const formatsToSupport = [ Html5QrcodeSupportedFormats.QR_CODE ];
-        const config = {
-          fps: 10,
-          qrbox: (viewfinderWidth: number, viewfinderHeight: number) => {
-              const edgePercentage = 0.7;
-              const edgeLength = Math.min(viewfinderWidth, viewfinderHeight) * edgePercentage;
-              return { width: edgeLength, height: edgeLength };
-          },
-          supportedScanTypes: [Html5QrcodeScanType.SCAN_TYPE_CAMERA],
-          formatsToSupport: formatsToSupport,
-          rememberLastUsedCamera: true,
-          videoConstraints: { 
-            facingMode: "environment" 
-          }
-        };
-
-        const scanner = new Html5QrcodeScanner( QR_SCANNER_ELEMENT_ID_ATTENDANCE, config, false );
-        html5QrcodeScannerRef.current = scanner;
-
-        const onScanSuccess = async (decodedText: string) => {
-          if (isProcessingQr) return;
-          setIsProcessingQr(true);
-          if (html5QrcodeScannerRef.current) {
-              try { await html5QrcodeScannerRef.current.pause(true); } 
-              catch(e){ console.warn("Scanner pause error", e)}
-          }
-          
-          if (decodedText === LIBRARY_QR_CODE_PAYLOAD) {
-            try {
-              if (currentStudent?.studentId) {
-                await addCheckIn(currentStudent.studentId);
-                toast({
-                  title: "Checked In!",
-                  description: `Successfully checked in at ${new Date().toLocaleTimeString()}.`,
-                });
-                await fetchStudentDataAndActiveCheckIn();
-                await fetchAttendanceForSelectedDate();
-              }
-            } catch (error: any) {
-              toast({ title: "Check-in Error", description: error.message || "Failed to process check-in. Please try again.", variant: "destructive" });
-            }
-          } else {
-            toast({
-              title: "Invalid QR Code", description: "Please scan the official library QR code.", variant: "destructive" });
-             setTimeout(() => {
-               if (html5QrcodeScannerRef.current ) {
-                  try {
-                    if (html5QrcodeScannerRef.current.getState() === 2 /* PAUSED */) { 
-                       html5QrcodeScannerRef.current.resume();
-                    }
-                  } catch(e) { console.warn("Scanner resume error", e)}
-              }
-            }, 1000);
-          }
-          setIsProcessingQr(false);
-          setIsScannerOpen(false);
-        };
-
-        const onScanFailure = (errorPayload: any) => {
-          let errorMessage = typeof errorPayload === 'string' ? errorPayload : (errorPayload?.message || JSON.stringify(errorPayload));
-          const errorMsgLower = errorMessage.toLowerCase();
-
-          if (errorMsgLower.includes("permission denied") ||
-              errorMsgLower.includes("notallowederror") ||
-              errorMsgLower.includes("notfounderror") ||
-              errorMsgLower.includes("aborterror")) {
-            if (!errorMsgLower.includes("no qr code")) {
-              setHasCameraPermission(false);
-              toast({
-                variant: 'destructive',
-                title: 'Camera Access Denied or Not Found',
-                description: 'Please enable camera permissions and ensure a camera is connected.',
-              });
-              setIsScannerOpen(false);
-            }
-          }
-        };
-        
-        try {
-          scanner.render(onScanSuccess, onScanFailure);
-          setHasCameraPermission(true); 
-        } catch (renderError: any) {
-          setHasCameraPermission(false);
-          toast({
-            variant: 'destructive',
-            title: 'Scanner Initialization Error',
-            description: renderError.message || 'Could not start the QR scanner. Ensure camera permissions are enabled and try again.',
-          });
-          setIsScannerOpen(false);
-        }
-      }, 100); 
-
-    } else if (!isScannerOpen && html5QrcodeScannerRef.current) {
-        html5QrcodeScannerRef.current.clear()
-          .catch(err => console.error("Error clearing scanner (Attendance Page on close):", err))
-          .finally(() => html5QrcodeScannerRef.current = null);
-    }
-
-    return () => {
-      clearTimeout(timeoutId);
-      if (html5QrcodeScannerRef.current) {
-        html5QrcodeScannerRef.current.clear()
-          .catch((err) => console.error("Cleanup: Error clearing scanner (Attendance Page):", err))
-          .finally(() => html5QrcodeScannerRef.current = null);
-      }
-    };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isScannerOpen, currentStudent, activeCheckInRecord, toast, fetchStudentDataAndActiveCheckIn, fetchAttendanceForSelectedDate]);
-
-
-  const handleScanCheckInButtonClick = () => {
-    if (currentStudent?.feeStatus === 'Overdue') {
-      setIsOverdueDialogOpen(true);
-      return;
-    }
-    setHasCameraPermission(null);
-    setIsScannerOpen(true);
-  };
-
-  const handleCancelScan = () => {
-    setIsScannerOpen(false);
-  };
-
-  const handleCheckOut = async () => {
-    if (!currentStudent?.studentId || !activeCheckInRecord) {
-      toast({ title: "Error", description: "Cannot check out. Active session not found.", variant: "destructive" });
-      return;
-    }
-    setIsProcessingQr(true);
-    try {
-      await addCheckOut(activeCheckInRecord.recordId);
-      toast({
-        title: "Checked Out!",
-        description: `Successfully checked out at ${new Date().toLocaleTimeString()}.`,
-      });
-      await fetchStudentDataAndActiveCheckIn();
-      await fetchAttendanceForSelectedDate();
-    } catch (error: any) {
-      toast({ title: "Check-out Error", description: error.message || "Failed to process check-out. Please try again.", variant: "destructive" });
-    } finally {
-      setIsProcessingQr(false);
-    }
-  };
-
-
   return (
     <>
       <PageTitle
         title="My Attendance"
-        description="Mark your presence, view your calendar, and track your study hours"
+        description="View your calendar and track your study hours"
       />
-
-       <AlertDialog open={isOverdueDialogOpen} onOpenChange={setIsOverdueDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center text-destructive">
-              <AlertCircle className="mr-2 h-5 w-5" />
-              Fee Payment Overdue
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              Your fee payment is overdue by more than 5 days. Please pay your outstanding fees at the desk immediately to continue using the services.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogAction onClick={() => setIsOverdueDialogOpen(false)}>Okay</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-2">
-        <Card className="shadow-lg">
-          <CardHeader>
-            <CardTitle className="flex items-center text-base sm:text-lg">
-              {activeCheckInRecord ? <LogOut className="mr-2 h-5 w-5 text-red-500" /> : <ScanLine className="mr-2 h-5 w-5 text-green-500" />}
-              Mark Attendance
-            </CardTitle>
-            <CardDescription>
-              {isLoadingActiveCheckIn ? "Loading session status..." :
-                (activeCheckInRecord
-                  ? `You are currently checked in since ${format(parseISO(activeCheckInRecord.checkInTime), 'p')}.`
-                  : "Scan the QR code at the library desk to check-in.")
-              }
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {isLoadingActiveCheckIn ? (
-              <div className="flex items-center justify-center">
-                <Loader2 className="h-6 w-6 animate-spin text-primary" />
-              </div>
-            ) : activeCheckInRecord ? (
-              <Button onClick={handleCheckOut} className="w-full" disabled={isProcessingQr || !currentStudent?.studentId}>
-                {isProcessingQr && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Check Out
-              </Button>
-            ) : isScannerOpen ? (
-              <div className="space-y-4">
-                 {hasCameraPermission === false && (
-                  <Alert variant="destructive">
-                    <XCircle className="h-4 w-4" />
-                    <AlertTitle>Camera Access Denied</AlertTitle>
-                    <AlertDescription>
-                      Camera access is required. Please enable it in your browser settings.
-                    </AlertDescription>
-                  </Alert>
-                )}
-                <div id={QR_SCANNER_ELEMENT_ID_ATTENDANCE} className="w-full aspect-square bg-muted rounded-md overflow-hidden border" />
-                {(hasCameraPermission === null && !isProcessingQr) && (
-                     <div className="flex items-center justify-center text-muted-foreground">
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Initializing camera...
-                    </div>
-                )}
-                {isProcessingQr && <p className="text-sm text-muted-foreground text-center">Processing QR code...</p>}
-                <Button variant="outline" onClick={handleCancelScan} className="w-full" disabled={isProcessingQr}>
-                  Cancel Scan
-                </Button>
-              </div>
-            ) : (
-              <Button onClick={handleScanCheckInButtonClick} className="w-full" disabled={!currentStudent?.studentId || isScannerOpen}>
-                <ScanLine className="mr-2 h-4 w-4" /> Scan QR to Check-In
-              </Button>
-            )}
-          </CardContent>
-        </Card>
 
         <Card className="shadow-lg">
           <CardHeader>
             <CardTitle className="flex items-center text-base sm:text-lg">
               <Clock className="mr-2 h-5 w-5" />
-              Activity Summary
+              Total Hours this month
             </CardTitle>
-            <CardDescription>Your study performance this month.</CardDescription>
+            <CardDescription>Your total study performance for the current month.</CardDescription>
           </CardHeader>
           <CardContent>
-            {isLoadingStudyHours ? (
+            {!showMonthlyStudyTime ? (
+                 <Button onClick={handleShowMonthlyStudyTime}>
+                    <TrendingUp className="mr-2 h-4 w-4" />
+                    Show
+                </Button>
+            ) : isLoadingStudyHours ? (
                 <div className="flex items-center justify-center">
                     <Loader2 className="h-8 w-8 animate-spin text-primary" />
                 </div>
             ) : (
-                <div className="text-4xl font-bold">
-                    {monthlyStudyHours !== null ? monthlyStudyHours : 'N/A'}
-                    <span className="text-lg font-normal text-muted-foreground"> hours</span>
-                </div>
+              <div className="flex items-end gap-2">
+                <AnimatedNumber value={monthlyStudyHours} />
+                <span className="text-lg font-normal text-muted-foreground pb-1"> hours</span>
+              </div>
             )}
-            <p className="text-sm text-muted-foreground mt-1">
-                Total hours studied this month.
-            </p>
           </CardContent>
         </Card>
-      </div>
-        <Card className="mt-6 shadow-lg w-full overflow-x-auto">
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+        <Card className="shadow-lg w-full overflow-hidden">
             <CardHeader>
-                <div className="flex items-center justify-between w-full">
-                    <CardTitle className="flex items-center text-base sm:text-lg">
-                        <TrendingUp className="mr-2 h-5 w-5" />
-                        Monthly Study Time
-                    </CardTitle>
-                    <div className="flex items-center space-x-2">
-                        <Button variant="outline" size="icon" onClick={handlePrevMonth} disabled={isLoadingMonthlyStudyData}>
-                            <ChevronLeft className="h-4 w-4" />
-                        </Button>
-                        <span>{format(viewedMonth, 'MMMM yyyy')}</span>
-                        <Button variant="outline" size="icon" onClick={handleNextMonth} disabled={isLoadingMonthlyStudyData}>
-                            <ChevronRight className="h-4 w-4" />
-                        </Button>
-                    </div>
-                </div>
-                <CardDescription>Hours studied per day this month</CardDescription>
+                <CardTitle className="flex items-center text-base sm:text-lg">
+                    <TrendingUp className="mr-2 h-5 w-5" />
+                    Hours every day
+                </CardTitle>
+                <CardDescription className="mt-1 text-xs">Hours studied per day for the selected month.</CardDescription>
             </CardHeader>
             <CardContent>
-                {isLoadingMonthlyStudyData ? (
+                {!showMonthlyStudyTime ? (
+                    <Button
+                        onClick={() => setShowMonthlyStudyTime(true)}
+                        className="h-24 w-full text-lg flex flex-col gap-2"
+                        variant="outline"
+                    >
+                        <BarChart3 className="h-8 w-8" />
+                        <span className="text-sm font-medium">Show Chart</span>
+                    </Button>
+                ) : isLoadingMonthlyStudyData ? (
                     <div className="flex items-center justify-center h-[300px]">
                         <Loader2 className="h-8 w-8 animate-spin text-primary"/>
                     </div>
                 ) : (
-                    monthlyStudyData.length > 0 ? (
+                  <div className="w-full">
+                    <div className="flex items-center space-x-2 justify-center mb-4">
+                        <Button variant="outline" size="icon" onClick={handlePrevMonth} disabled={isLoadingMonthlyStudyData}>
+                            <ChevronLeft className="h-4 w-4" />
+                        </Button>
+                        <span className="text-sm font-medium w-32 text-center">{format(viewedMonth, 'MMMM yyyy')}</span>
+                        <Button variant="outline" size="icon" onClick={handleNextMonth} disabled={isLoadingMonthlyStudyData}>
+                            <ChevronRight className="h-4 w-4" />
+                        </Button>
+                    </div>
+                    {monthlyStudyData.length > 0 && monthlyStudyData.some(d => d.hours > 0) ? (
                         <div className="min-h-[300px] w-full">
                             <ResponsiveContainer width="100%" height={300}>
                                 <BarChart data={monthlyStudyData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
@@ -551,72 +352,88 @@ export default function MemberAttendancePage() {
                         </div>
                     ) : (
                         <p className="text-center text-muted-foreground py-10 h-[300px] flex items-center justify-center">No study history data available for this month.</p>
-                    )
+                    )}
+                  </div>
                 )}
             </CardContent>
         </Card>
       
-
-      <Card className="mt-6 shadow-lg">
-      <CardHeader>
-        <CardTitle className="flex items-center text-base sm:text-lg">
-          <BarChart3 className="mr-2 h-5 w-5" />
-          Daily Log
-        </CardTitle>
-        <CardDescription>Select a date to view your check-in and check-out times for that day.</CardDescription>
-      </CardHeader>
-      <CardContent className="flex flex-col md:flex-row items-center md:items-start gap-6">
-        <div className="w-full md:w-auto flex justify-center">
-            <Calendar
-                mode="single"
-                selected={date}
-                onSelect={setDate}
-                className="rounded-md border shadow-inner"
-                modifiers={{ today: new Date() }}
-                modifiersStyles={{ today: { color: 'hsl(var(--accent-foreground))', backgroundColor: 'hsl(var(--accent))' } }}
-                disabled={!currentStudent?.studentId}
-            />
-        </div>
-        <div className="w-full md:flex-1">
-            <h4 className="text-md font-semibold mb-2">Details for {date ? format(date, 'PPP') : 'selected date'}:</h4>
-            {isLoadingDetails ? (
-              <div className="flex items-center justify-center text-muted-foreground"><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading details...</div>
-            ) : (
-              <>
-                <div className="mb-4 text-lg font-semibold text-primary">
-                  Total study time: {(() => { const { hours, minutes } = calculateDailyStudyTime(attendanceForDay); return `${hours} hr ${minutes} min`; })()}
-                </div>
-
-                {attendanceForDay.length === 0 ? (
-                  <p className="text-muted-foreground">No attendance records found for this day.</p>
+        <Card className="shadow-lg">
+            <CardHeader>
+                <CardTitle className="flex items-center text-base sm:text-lg">
+                <BarChart3 className="mr-2 h-5 w-5" />
+                Daily Check-in/out time
+                </CardTitle>
+                <CardDescription className="text-xs">Select a date on the calendar to view your check-in and check-out times for that day.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                {!showAttendanceOverview ? (
+                    <Button
+                        onClick={() => setShowAttendanceOverview(true)}
+                        className="h-24 w-full text-lg flex flex-col gap-2"
+                        variant="outline"
+                    >
+                        <CalendarIcon className="h-8 w-8" />
+                        <span className="text-sm font-medium">Show Calendar</span>
+                    </Button>
                 ) : (
-                  <ul className="space-y-3">
-                    {attendanceForDay.map(record => (
-                      <li key={record.recordId} className="p-3 border rounded-md bg-muted/30">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center"><LogIn className="mr-2 h-4 w-4 text-green-600" /><span className="font-medium">Checked In:</span></div>
-                          <span className="text-sm">{record.checkInTime && isValid(parseISO(record.checkInTime)) ? format(parseISO(record.checkInTime), 'p') : 'N/A'}</span>
+                    <div className="flex flex-col md:flex-row items-center md:items-start gap-6">
+                        <div className="w-full md:w-auto flex justify-center">
+                            <CalendarIconComponent
+                                mode="single"
+                                selected={date}
+                                onSelect={setDate}
+                                className="rounded-md border shadow-inner"
+                                modifiers={{ today: new Date() }}
+                                modifiersStyles={{ today: { color: 'hsl(var(--accent-foreground))', backgroundColor: 'hsl(var(--accent))' } }}
+                                disabled={!currentStudent?.studentId}
+                            />
                         </div>
-                        {record.checkOutTime && isValid(parseISO(record.checkOutTime)) ? (
-                          <div className="flex items-center justify-between mt-1">
-                            <div className="flex items-center"><LogOut className="mr-2 h-4 w-4 text-red-600" /><span className="font-medium">Checked Out:</span></div>
-                            <span className="text-sm">{format(parseISO(record.checkOutTime), 'p')}</span>
-                          </div>
-                        ) : (
-                          <div className="flex items-center justify-between mt-1">
-                            <div className="flex items-center"><Clock className="mr-2 h-4 w-4 text-yellow-500" /><span className="font-medium">Status:</span></div>
-                            <span className="text-sm text-yellow-600">Currently Checked In</span>
-                          </div>
-                        )}
-                      </li>
-                    ))}
-                  </ul>
+                        <div className="w-full md:flex-1">
+                            <h4 className="text-md font-semibold mb-2">Details for {date ? format(date, 'PPP') : 'selected date'}:</h4>
+                            {isLoadingDetails ? (
+                            <div className="flex items-center justify-center text-muted-foreground"><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading details...</div>
+                            ) : (
+                            <>
+                                <div className="mb-4 text-lg font-semibold text-primary">
+                                Total study time: {(() => { const { hours, minutes } = calculateDailyStudyTime(attendanceForDay); return `${hours} hr ${minutes}`; })()}
+                                </div>
+
+                                {attendanceForDay.length === 0 ? (
+                                <p className="text-muted-foreground">No attendance records found for this day.</p>
+                                ) : (
+                                <ul className="space-y-3">
+                                    {attendanceForDay.map(record => (
+                                    <li key={record.recordId} className="p-3 border rounded-md bg-muted/30">
+                                        <div className="flex items-center justify-between">
+                                        <div className="flex items-center"><LogIn className="mr-2 h-4 w-4 text-green-600" /><span className="font-medium">Checked In:</span></div>
+                                        <span className="text-sm">{record.checkInTime && isValid(parseISO(record.checkInTime)) ? format(parseISO(record.checkInTime), 'p') : 'N/A'}</span>
+                                        </div>
+                                        {record.checkOutTime && isValid(parseISO(record.checkOutTime)) ? (
+                                        <div className="flex items-center justify-between mt-1">
+                                            <div className="flex items-center"><LogOut className="mr-2 h-4 w-4 text-red-600" /><span className="font-medium">Checked Out:</span></div>
+                                            <span className="text-sm">{format(parseISO(record.checkOutTime), 'p')}</span>
+                                        </div>
+                                        ) : (
+                                        <div className="flex items-center justify-between mt-1">
+                                            <div className="flex items-center"><Clock className="mr-2 h-4 w-4 text-yellow-500" /><span className="font-medium">Status:</span></div>
+                                            <span className="text-sm text-yellow-600">Currently Checked In</span>
+                                        </div>
+                                        )}
+                                    </li>
+                                    ))}
+                                </ul>
+                                )}
+                            </>
+                            )}
+                        </div>
+                    </div>
                 )}
-              </>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+            </CardContent>
+        </Card>
+      </div>
     </>
   );
 }
+
+    
