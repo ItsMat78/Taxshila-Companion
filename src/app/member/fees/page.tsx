@@ -84,12 +84,13 @@ export default function MemberFeesPage() {
   };
   
   const getFeeStatusBadge = (status?: Student['feeStatus'], activityStatus?: Student['activityStatus']) => {
+    const baseClasses = "capitalize border-transparent";
     if (activityStatus === 'Left') {
-      return <Badge className="capitalize bg-status-left-bg text-status-left-text border-transparent">N/A (Left)</Badge>;
+      return <Badge className={cn(baseClasses, "bg-status-left-bg text-status-left-text")}>N/A (Left)</Badge>;
     }
     switch (status) {
-      case "Paid": return <Badge className="capitalize bg-status-paid-bg text-status-paid-text border-transparent">Paid</Badge>; 
-      case "Due": return <Badge className="capitalize bg-status-due-bg text-status-due-text border-transparent">Due</Badge>; 
+      case "Paid": return <Badge className={cn(baseClasses, "bg-status-paid-bg text-status-paid-text")}>Paid</Badge>; 
+      case "Due": return <Badge className={cn(baseClasses, "bg-status-due-bg text-status-due-text")}>Due</Badge>; 
       case "Overdue": return <Badge variant="destructive" className="capitalize">Overdue</Badge>;
       default: return <Badge variant="outline" className="capitalize">{status || 'N/A'}</Badge>;
     }
@@ -138,11 +139,11 @@ export default function MemberFeesPage() {
             <CardDescription>Overview of your current subscription.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
-            <div className="flex justify-between">
+            <div className="flex justify-between items-center">
               <span className="text-muted-foreground">Plan Type:</span>
               <span className="font-medium capitalize">{studentData.shift} Shift</span>
             </div>
-            <div className="flex justify-between">
+            <div className="flex justify-between items-center">
               <span className="text-muted-foreground">Monthly Fee:</span>
               <span className="font-medium">{getMonthlyFeeDisplay(studentData.shift, feeStructure)}</span>
             </div>
@@ -150,11 +151,11 @@ export default function MemberFeesPage() {
               <span className="text-muted-foreground">Status:</span>
               {getFeeStatusBadge(studentData.feeStatus, studentData.activityStatus)}
             </div>
-            <div className="flex justify-between">
+            <div className="flex justify-between items-center">
               <span className="text-muted-foreground">Amount Due:</span>
               <span className="font-medium">{studentData.activityStatus === 'Left' ? 'N/A' : (studentData.amountDue && studentData.amountDue !== "Rs. 0" ? studentData.amountDue : getMonthlyFeeDisplay(studentData.shift, feeStructure))}</span>
             </div>
-            <div className="flex justify-between">
+            <div className="flex justify-between items-center">
               <span className="text-muted-foreground">Next Due Date:</span>
               <span className="font-medium">{studentData.activityStatus === 'Left' ? 'N/A' : (studentData.nextDueDate && isValid(parseISO(studentData.nextDueDate)) ? format(parseISO(studentData.nextDueDate), 'PP') : "N/A")}</span>
             </div>
@@ -174,32 +175,32 @@ export default function MemberFeesPage() {
           </CardHeader>
           <CardContent>
             {paymentHistory.length > 0 ? (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Amount</TableHead>
-                    <TableHead>Method</TableHead>
-                    <TableHead>Transaction ID</TableHead>
-                    <TableHead>Action</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {paymentHistory.slice().reverse().map((payment: PaymentRecord) => ( 
-                    <TableRow key={payment.paymentId}>
-                      <TableCell>{payment.date && isValid(parseISO(payment.date)) ? format(parseISO(payment.date), 'dd-MMM-yy') : 'N/A'}</TableCell>
-                      <TableCell>{payment.amount}</TableCell>
-                      <TableCell className="capitalize">{payment.method}</TableCell>
-                      <TableCell>{payment.transactionId}</TableCell>
-                       <TableCell>
-                        <Button variant="outline" size="sm" disabled>
-                          <Download className="mr-1 h-3 w-3" /> Invoice
-                        </Button>
-                      </TableCell>
+              <div className="overflow-auto max-h-80">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Amount</TableHead>
+                      <TableHead>Method</TableHead>
+                      <TableHead>Action</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {paymentHistory.slice().reverse().map((payment: PaymentRecord) => ( 
+                      <TableRow key={payment.paymentId}>
+                        <TableCell className="whitespace-nowrap">{payment.date && isValid(parseISO(payment.date)) ? format(parseISO(payment.date), 'dd-MMM-yy') : 'N/A'}</TableCell>
+                        <TableCell className="whitespace-nowrap">{payment.amount}</TableCell>
+                        <TableCell className="capitalize whitespace-nowrap">{payment.method}</TableCell>
+                         <TableCell className="whitespace-nowrap">
+                          <Button variant="outline" size="sm" disabled>
+                            <Download className="mr-1 h-3 w-3" /> Invoice
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             ) : (
               <p className="text-muted-foreground text-center py-4">No payment history available.</p>
             )}
