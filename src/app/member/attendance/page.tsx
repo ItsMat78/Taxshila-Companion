@@ -3,7 +3,7 @@
 
 import * as React from 'react';
 import { PageTitle } from '@/components/shared/page-title';
-import { Calendar } from "@/components/ui/calendar";
+import { Calendar as CalendarIconComponent } from "@/components/ui/calendar"; // Renamed to avoid conflict
 import {
   Card,
   CardContent,
@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/card";
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, BarChart3, Clock, LogIn, LogOut, TrendingUp, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Loader2, BarChart3, Clock, LogIn, LogOut, TrendingUp, ChevronLeft, ChevronRight, Calendar as CalendarIcon } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
 import { getStudentByEmail, calculateMonthlyStudyHours, getAttendanceForDate, getStudentByCustomId } from '@/services/student-service';
 import type { Student, AttendanceRecord } from '@/types/student';
@@ -336,14 +336,14 @@ export default function MemberAttendancePage() {
         {!showAttendanceOverview ? (
              <div className="text-center py-10">
                 <Button onClick={() => setShowAttendanceOverview(true)} className="h-24 w-full text-lg">
-                    <Calendar className="h-8 w-8 mr-4" />
+                    <CalendarIcon className="h-8 w-8 mr-4" />
                     Show Attendance Calendar
                 </Button>
             </div>
         ) : (
             <div className="flex flex-col md:flex-row items-center md:items-start gap-6">
                 <div className="w-full md:w-auto flex justify-center">
-                    <Calendar
+                    <CalendarIconComponent
                         mode="single"
                         selected={date}
                         onSelect={setDate}
@@ -398,3 +398,4 @@ export default function MemberAttendancePage() {
     </>
   );
 }
+
