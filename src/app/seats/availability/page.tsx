@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import * as React from 'react';
@@ -6,14 +7,6 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { PageTitle } from '@/components/shared/page-title';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import {
   Dialog,
   DialogContent,
@@ -28,10 +21,10 @@ import {
 } from "@/components/ui/popover";
 import { Button } from '@/components/ui/button';
 import { Label } from "@/components/ui/label";
-import { Armchair, Users, UserCheck, Loader2, Circle, Sunrise, Sunset, Sun, Briefcase, Edit, UserCircle as UserProfileIcon, PhoneIcon, View } from 'lucide-react';
-import { getAvailableSeatsFromList, getAllStudents } from '@/services/student-service';
+import { Armchair, Users, Loader2, Circle, Sunrise, Sunset, Sun, Edit, User, View } from 'lucide-react';
+import { getStudentSeatAssignments } from '@/services/student-service';
 import { ALL_SEAT_NUMBERS as serviceAllSeats } from '@/config/seats';
-import type { Student, Shift } from '@/types/student';
+import type { Student, Shift, StudentSeatAssignment } from '@/types/student';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -81,53 +74,37 @@ const getInitials = (name?: string) => {
 
 export default function SeatAvailabilityPage() {
   const { toast } = useToast();
-  const [allStudents, setAllStudents] = React.useState<Student[]>([]);
+  const [seatAssignments, setSeatAssignments] = React.useState<StudentSeatAssignment[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   
-  const [occupiedMorningStudentsCount, setOccupiedMorningStudentsCount] = React.useState(0);
-  const [occupiedEveningStudentsCount, setOccupiedEveningStudentsCount] = React.useState(0);
-  const [occupiedFullDayStudentsCount, setOccupiedFullDayStudentsCount] = React.useState(0);
+  const occupiedMorningStudentsCount = seatAssignments.filter(s => s.shift === 'morning').length;
+  const occupiedEveningStudentsCount = seatAssignments.filter(s => s.shift === 'evening').length;
+  const occupiedFullDayStudentsCount = seatAssignments.filter(s => s.shift === 'fullday').length;
   
-  const [availableMorningSlotsCount, setAvailableMorningSlotsCount] = React.useState(0);
-  const [availableEveningSlotsCount, setAvailableEveningSlotsCount] = React.useState(0);
-  const [availableForFullDayBookingCount, setAvailableForFullDayBookingCount] = React.useState(0);
-  const [isLoadingOverallAvailableStats, setIsLoadingOverallAvailableStats] = React.useState(true);
+  const occupiedSeatsMorning = new Set(seatAssignments.filter(s => s.seatNumber && (s.shift === 'morning' || s.shift === 'fullday')).map(s => s.seatNumber));
+  const occupiedSeatsEvening = new Set(seatAssignments.filter(s => s.seatNumber && (s.shift === 'evening' || s.shift === 'fullday')).map(s => s.seatNumber));
+  const allOccupiedSeatNumbers = new Set(seatAssignments.filter(s => s.seatNumber).map(s => s.seatNumber));
+  
+  const availableMorningSlotsCount = serviceAllSeats.length - occupiedSeatsMorning.size;
+  const availableEveningSlotsCount = serviceAllSeats.length - occupiedSeatsEvening.size;
+  const availableForFullDayBookingCount = serviceAllSeats.length - allOccupiedSeatNumbers.size;
 
-  const activeStudents = React.useMemo(() => allStudents.filter(s => s.activityStatus === "Active"), [allStudents]);
 
   React.useEffect(() => {
     const fetchData = async () => {
       setIsLoading(true);
-      setIsLoadingOverallAvailableStats(true);
       try {
-        const studentsData = await getAllStudents();
-        setAllStudents(studentsData);
-
-        const activeSeatHolders = studentsData.filter(s => s.activityStatus === "Active" && s.seatNumber);
-        
-        setOccupiedMorningStudentsCount(activeSeatHolders.filter(s => s.shift === 'morning').length);
-        setOccupiedEveningStudentsCount(activeSeatHolders.filter(s => s.shift === 'evening').length);
-        setOccupiedFullDayStudentsCount(activeSeatHolders.filter(s => s.shift === 'fullday').length);
-        
-        const [morningAvail, eveningAvail, fulldayAvail] = await Promise.all([
-          getAvailableSeatsFromList('morning', studentsData),
-          getAvailableSeatsFromList('evening', studentsData),
-          getAvailableSeatsFromList('fullday', studentsData)
-        ]);
-        setAvailableMorningSlotsCount(morningAvail.length);
-        setAvailableEveningSlotsCount(eveningAvail.length);
-        setAvailableForFullDayBookingCount(fulldayAvail.length);
-        
+        const assignments = await getStudentSeatAssignments();
+        setSeatAssignments(assignments);
       } catch (error) {
         console.error("Failed to fetch initial data:", error);
         toast({
           title: "Error",
-          description: "Could not load initial seat and student data.",
+          description: "Could not load seat and student data.",
           variant: "destructive",
         });
       } finally {
         setIsLoading(false);
-        setIsLoadingOverallAvailableStats(false);
       }
     };
     fetchData();
@@ -135,9 +112,9 @@ export default function SeatAvailabilityPage() {
 
 
   const getSeatStatusKey = (seatNumber: string): SeatStatusKey => {
-    const studentMorning = activeStudents.find(s => s.seatNumber === seatNumber && s.shift === 'morning');
-    const studentEvening = activeStudents.find(s => s.seatNumber === seatNumber && s.shift === 'evening');
-    const studentFullDay = activeStudents.find(s => s.seatNumber === seatNumber && s.shift === 'fullday');
+    const studentMorning = seatAssignments.find(s => s.seatNumber === seatNumber && s.shift === 'morning');
+    const studentEvening = seatAssignments.find(s => s.seatNumber === seatNumber && s.shift === 'evening');
+    const studentFullDay = seatAssignments.find(s => s.seatNumber === seatNumber && s.shift === 'fullday');
 
     if (studentFullDay) return 'fullday';
     if (studentMorning && studentEvening) return 'split';
@@ -170,7 +147,7 @@ export default function SeatAvailabilityPage() {
             </div>
             <div className="p-2 rounded-lg bg-muted/50 col-span-2 sm:col-span-1">
                 <p className="text-xs text-muted-foreground">Available Slots (M/E/FD)</p>
-                {isLoadingOverallAvailableStats ? <Loader2 className="h-5 w-5 animate-spin mx-auto mt-1" /> : (
+                {isLoading ? <Loader2 className="h-5 w-5 animate-spin mx-auto mt-1" /> : (
                     <p className="text-xl font-bold">
                         {availableMorningSlotsCount} / {availableEveningSlotsCount} / {availableForFullDayBookingCount}
                     </p>
@@ -219,7 +196,7 @@ export default function SeatAvailabilityPage() {
                   const seatStatusKey = getSeatStatusKey(seatNum);
                   const styles = SEAT_STYLES[seatStatusKey];
                   const ShiftIcon = styles.icon;
-                  const studentsOnThisSeat = activeStudents.filter(s => s.seatNumber === seatNum);
+                  const studentsOnThisSeat = seatAssignments.filter(s => s.seatNumber === seatNum);
                   const isFemaleOnly = (parseInt(seatNum) >= 18 && parseInt(seatNum) <= 27) || (parseInt(seatNum) >= 50 && parseInt(seatNum) <= 58) || (parseInt(seatNum) == 84);
 
                   return (
@@ -278,7 +255,7 @@ export default function SeatAvailabilityPage() {
                                           <div className="flex items-center gap-2">
                                               <Link href={`/students/profiles/${student.studentId}`} passHref legacyBehavior>
                                                   <Button variant="outline" size="sm" className="flex-1">
-                                                      <UserProfileIcon className="mr-1 h-3 w-3" /> Profile
+                                                      <User className="mr-1 h-3 w-3" /> Profile
                                                   </Button>
                                               </Link>
                                               <Link href={`/admin/students/edit/${student.studentId}`} passHref legacyBehavior>

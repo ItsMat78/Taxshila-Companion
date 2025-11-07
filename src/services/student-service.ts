@@ -33,13 +33,13 @@ import { format, parseISO, differenceInDays, isPast, addMonths, startOfDay, isVa
 import { ALL_SEAT_NUMBERS } from '@/config/seats';
 
 import {
-  getAuth,
   updateEmail,
   updatePassword,
   EmailAuthProvider,
   reauthenticateWithCredential,
   updateProfile,
 } from 'firebase/auth';
+import { getAuth } from 'firebase-admin/auth';
 
 
 // --- Collections ---
@@ -204,6 +204,28 @@ export async function getAllStudents(): Promise<Student[]> {
   const querySnapshot = await getDocs(q);
   return querySnapshot.docs.map(studentFromDoc);
 }
+
+export type StudentSeatAssignment = Pick<Student, 'studentId' | 'name' | 'shift' | 'seatNumber' | 'activityStatus' | 'profilePictureUrl'>;
+
+export async function getStudentSeatAssignments(): Promise<StudentSeatAssignment[]> {
+    const studentsRef = collection(db, STUDENTS_COLLECTION);
+    const q = query(studentsRef, where("activityStatus", "==", "Active"));
+
+    const querySnapshot = await getDocs(q);
+    
+    return querySnapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+            studentId: data.studentId,
+            name: data.name,
+            shift: data.shift,
+            seatNumber: data.seatNumber || null,
+            activityStatus: data.activityStatus,
+            profilePictureUrl: data.profilePictureUrl,
+        } as StudentSeatAssignment;
+    });
+}
+
 
 export async function getStudentsWithFeesDue(): Promise<Student[]> {
   const q = query(
