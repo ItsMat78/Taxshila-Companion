@@ -9,22 +9,22 @@ import {
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from '@/contexts/auth-context';
-import { getStudentByEmail, getStudentByCustomId, updateProfilePicture } from '@/services/student-service'; 
-import type { Student, PaymentRecord } from '@/types/student'; 
-import { UserCircle, UploadCloud, Save, Mail, Phone, BookOpen, MapPin, Receipt, Loader2, Camera, View, Video, VideoOff, History, Download, Briefcase, BadgeIndianRupee } from 'lucide-react';
+import { getStudentByEmail, getStudentByCustomId, updateProfilePicture, getAttendanceForDate } from '@/services/student-service'; 
+import type { Student, PaymentRecord, AttendanceRecord } from '@/types/student'; 
+import { UserCircle, UploadCloud, Save, Mail, Phone, BookOpen, MapPin, Receipt, Loader2, Camera, View, Video, VideoOff, History, Download, Briefcase, BadgeIndianRupee, LogIn, LogOut, Clock, CalendarDays } from 'lucide-react';
 import { Dialog, DialogContent, DialogTrigger, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { Badge } from '@/components/ui/badge';
 import { format, parseISO, isValid } from 'date-fns';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { cn } from '@/lib/utils';
+import { Calendar } from "@/components/ui/calendar";
 
 
 const DEFAULT_PROFILE_PLACEHOLDER = "https://placehold.co/200x200.png";
@@ -124,6 +124,13 @@ export default function MemberProfilePage() {
   const videoRef = React.useRef<HTMLVideoElement>(null);
   const canvasRef = React.useRef<HTMLCanvasElement>(null);
 
+  const [showPaymentHistory, setShowPaymentHistory] = React.useState(false);
+  const [showAttendance, setShowAttendance] = React.useState(false);
+  const [selectedCalendarDate, setSelectedCalendarDate] = React.useState<Date | undefined>(new Date());
+  const [dailyAttendanceRecords, setDailyAttendanceRecords] = React.useState<AttendanceRecord[]>([]);
+  const [isLoadingDailyAttendance, setIsLoadingDailyAttendance] = React.useState(false);
+
+
   React.useEffect(() => {
     setIsLoading(true);
     const fetchStudent = async () => {
@@ -146,6 +153,27 @@ export default function MemberProfilePage() {
     };
     if (user) fetchStudent();
   }, [user, toast]);
+  
+  React.useEffect(() => {
+    if (memberDetails?.studentId && selectedCalendarDate && showAttendance) {
+      const fetchDailyData = async () => {
+        setIsLoadingDailyAttendance(true);
+        setDailyAttendanceRecords([]);
+        try {
+          const records = await getAttendanceForDate(memberDetails.studentId, format(selectedCalendarDate, 'yyyy-MM-dd'));
+          setDailyAttendanceRecords(records.sort((a,b) => parseISO(a.checkInTime).getTime() - parseISO(b.checkInTime).getTime()));
+        } catch (error) {
+          console.error("Failed to fetch daily attendance records:", error);
+          toast({ title: "Error", description: "Could not load attendance for selected date.", variant: "destructive" });
+          setDailyAttendanceRecords([]);
+        } finally {
+          setIsLoadingDailyAttendance(false);
+        }
+      };
+      fetchDailyData();
+    }
+  }, [memberDetails, selectedCalendarDate, showAttendance, toast]);
+
 
   React.useEffect(() => {
     let stream: MediaStream | null = null;
@@ -318,42 +346,118 @@ export default function MemberProfilePage() {
             </Card>
         </div>
         
-        <Card className="shadow-md lg:col-span-2">
-            <CardHeader>
-                <CardTitle className="flex items-center"><History className="mr-2 h-5 w-5" />Payment History</CardTitle>
-                <CardDescription>Record of all past payments.</CardDescription>
-            </CardHeader>
-            <CardContent>
-                {(memberDetails.paymentHistory && memberDetails.paymentHistory.length > 0) ? (
-                    <>
-                        <div className="md:hidden space-y-3 max-h-80 overflow-y-auto">
-                        {memberDetails.paymentHistory.slice().reverse().map((payment: PaymentRecord) => (
-                            <PaymentHistoryCardItem key={payment.paymentId} payment={payment} />
-                        ))}
+        <div className="lg:col-span-2 space-y-6">
+            <Card className="shadow-md">
+                <CardHeader>
+                    <CardTitle className="flex items-center"><History className="mr-2 h-5 w-5" />Payment History</CardTitle>
+                    <CardDescription>Record of all past payments.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    {!showPaymentHistory ? (
+                        <div className="text-center py-6">
+                            <Button onClick={() => setShowPaymentHistory(true)}>Show Payment History</Button>
                         </div>
-                        <div className="hidden md:block max-h-80 w-full overflow-y-auto overflow-x-auto">
-                        <Table><TableHeader><TableRow><TableHead>Date</TableHead><TableHead>Amount</TableHead><TableHead>Method</TableHead><TableHead>Transaction ID</TableHead><TableHead>Action</TableHead></TableRow></TableHeader>
-                            <TableBody>
+                    ) : (memberDetails.paymentHistory && memberDetails.paymentHistory.length > 0) ? (
+                        <>
+                            <div className="md:hidden space-y-3 max-h-80 overflow-y-auto">
                             {memberDetails.paymentHistory.slice().reverse().map((payment: PaymentRecord) => (
-                                <TableRow key={payment.paymentId}>
-                                <TableCell className="whitespace-nowrap">{payment.date && isValid(parseISO(payment.date)) ? format(parseISO(payment.date), 'dd-MMM-yy') : 'N/A'}</TableCell>
-                                <TableCell className="whitespace-nowrap">{payment.amount}</TableCell>
-                                <TableCell className="capitalize whitespace-nowrap">{payment.method}</TableCell>
-                                <TableCell className="whitespace-nowrap">{payment.transactionId}</TableCell>
-                                <TableCell className="whitespace-nowrap"><Button variant="outline" size="sm" disabled><Download className="mr-1 h-3 w-3" /> Invoice</Button></TableCell>
-                                </TableRow>
+                                <PaymentHistoryCardItem key={payment.paymentId} payment={payment} />
                             ))}
-                            </TableBody>
-                        </Table>
+                            </div>
+                            <div className="hidden md:block max-h-80 w-full overflow-y-auto overflow-x-auto">
+                            <Table><TableHeader><TableRow><TableHead>Date</TableHead><TableHead>Amount</TableHead><TableHead>Method</TableHead><TableHead>Transaction ID</TableHead><TableHead>Action</TableHead></TableRow></TableHeader>
+                                <TableBody>
+                                {memberDetails.paymentHistory.slice().reverse().map((payment: PaymentRecord) => (
+                                    <TableRow key={payment.paymentId}>
+                                    <TableCell className="whitespace-nowrap">{payment.date && isValid(parseISO(payment.date)) ? format(parseISO(payment.date), 'dd-MMM-yy') : 'N/A'}</TableCell>
+                                    <TableCell className="whitespace-nowrap">{payment.amount}</TableCell>
+                                    <TableCell className="capitalize whitespace-nowrap">{payment.method}</TableCell>
+                                    <TableCell className="whitespace-nowrap">{payment.transactionId}</TableCell>
+                                    <TableCell className="whitespace-nowrap"><Button variant="outline" size="sm" disabled><Download className="mr-1 h-3 w-3" /> Invoice</Button></TableCell>
+                                    </TableRow>
+                                ))}
+                                </TableBody>
+                            </Table>
+                            </div>
+                        </>
+                    ) : (
+                    <p className="text-muted-foreground text-sm text-center py-4">No payment history found.</p>
+                    )}
+                </CardContent>
+            </Card>
+            <Card className="shadow-md">
+                <CardHeader>
+                    <CardTitle className="flex items-center"><CalendarDays className="mr-2 h-5 w-5" />Attendance Overview</CardTitle>
+                    <CardDescription>Select a date to view your check-in and check-out times.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    {!showAttendance ? (
+                        <div className="text-center py-6">
+                            <Button onClick={() => setShowAttendance(true)}>Show Attendance</Button>
                         </div>
-                    </>
-                ) : (
-                <p className="text-muted-foreground text-sm text-center py-4">No payment history found.</p>
-                )}
-            </CardContent>
-        </Card>
+                    ) : (
+                        <div className="flex flex-col items-stretch gap-6 md:flex-row md:items-start">
+                            <div className="w-full flex justify-center md:w-auto">
+                                <Calendar
+                                    mode="single"
+                                    selected={selectedCalendarDate}
+                                    onSelect={setSelectedCalendarDate}
+                                    className="rounded-md border shadow-inner min-w-[280px] sm:min-w-[320px]"
+                                />
+                            </div>
+                            <div className="w-full md:flex-1">
+                                <h4 className="text-md font-semibold mb-2">
+                                    Details for {selectedCalendarDate ? format(selectedCalendarDate, 'PPP') : 'selected date'}:
+                                </h4>
+                                {isLoadingDailyAttendance ? (
+                                    <div className="flex items-center justify-center text-muted-foreground py-4">
+                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading details...
+                                    </div>
+                                ) : dailyAttendanceRecords.length === 0 ? (
+                                    <p className="text-muted-foreground py-4">No attendance records found for this day.</p>
+                                ) : (
+                                    <ul className="space-y-3 max-h-80 overflow-y-auto">
+                                    {dailyAttendanceRecords.map(record => (
+                                        <li key={record.recordId} className="p-3 border rounded-md bg-muted/30">
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center">
+                                            <LogIn className="mr-2 h-4 w-4 text-green-600" />
+                                            <span className="font-medium">Checked In:</span>
+                                            </div>
+                                            <span className="text-sm">
+                                            {record.checkInTime && isValid(parseISO(record.checkInTime)) ? format(parseISO(record.checkInTime), 'p') : 'N/A'}
+                                            </span>
+                                        </div>
+                                        {record.checkOutTime ? (
+                                            <div className="flex items-center justify-between mt-1">
+                                            <div className="flex items-center">
+                                                <LogOut className="mr-2 h-4 w-4 text-red-600" />
+                                                <span className="font-medium">Checked Out:</span>
+                                            </div>
+                                            <span className="text-sm">
+                                                {isValid(parseISO(record.checkOutTime)) ? format(parseISO(record.checkOutTime), 'p') : 'N/A'}
+                                                </span>
+                                            </div>
+                                        ) : (
+                                            <div className="flex items-center justify-between mt-1">
+                                            <div className="flex items-center">
+                                                <Clock className="mr-2 h-4 w-4 text-yellow-500" />
+                                                <span className="font-medium">Status:</span>
+                                            </div>
+                                            <span className="text-sm text-yellow-600">Currently Checked In</span>
+                                            </div>
+                                        )}
+                                        </li>
+                                    ))}
+                                    </ul>
+                                )}
+                            </div>
+                        </div>
+                    )}
+                </CardContent>
+            </Card>
+        </div>
       </div>
     </>
   );
 }
-
