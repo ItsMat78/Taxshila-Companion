@@ -20,13 +20,63 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Receipt, History, Download, IndianRupee, Loader2, Briefcase, CalendarClock, AlertTriangle, CheckCircle, CreditCard } from 'lucide-react';
+import { Receipt, History, Download, IndianRupee, Loader2, Briefcase, CalendarClock, AlertTriangle, CheckCircle, CreditCard, Sun, Moon, Sparkles } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
 import { getStudentByEmail, getFeeStructure, getStudentByCustomId } from '@/services/student-service';
-import type { Student, PaymentRecord, FeeStructure as FeeStructureType } from '@/types/student';
+import type { Student, PaymentRecord, FeeStructure as FeeStructureType, Shift } from '@/types/student';
 import { useToast } from '@/hooks/use-toast';
 import { format, parseISO, isValid } from 'date-fns';
 import { cn } from '@/lib/utils';
+
+// New Shift Display Card Component
+const ShiftDisplayCard = ({ shift }: { shift: Shift }) => {
+  const shiftDetails = {
+    morning: {
+      name: 'Morning Shift',
+      timing: '7 AM - 2 PM',
+      icon: <Sun className="h-10 w-10 text-orange-400" />,
+      gradient: 'from-orange-100 to-yellow-100 dark:from-orange-900/30 dark:to-yellow-900/30',
+    },
+    evening: {
+      name: 'Evening Shift',
+      timing: '2 PM - 9:30 PM',
+      icon: (
+        <div className="relative">
+          <Moon className="h-10 w-10 text-indigo-400" />
+          <Sparkles className="absolute -top-1 -right-1 h-4 w-4 text-yellow-300" />
+          <Sparkles className="absolute top-3 right-5 h-3 w-3 text-yellow-300" />
+        </div>
+      ),
+      gradient: 'from-indigo-200 to-slate-300 dark:from-indigo-900/30 dark:to-slate-800/30',
+    },
+    fullday: {
+      name: 'Full Day',
+      timing: '7 AM - 9:30 PM',
+      icon: (
+         <div className="flex items-center gap-2">
+            <Sun className="h-8 w-8 text-orange-400" />
+            <Moon className="h-8 w-8 text-indigo-400" />
+        </div>
+      ),
+      gradient: 'from-orange-100 via-purple-100 to-indigo-200 dark:from-orange-900/30 dark:via-purple-900/30 dark:to-indigo-900/30',
+    },
+  };
+
+  const currentShift = shiftDetails[shift];
+
+  return (
+    <div className={cn("p-4 rounded-lg flex flex-col items-center justify-between text-center h-full bg-gradient-to-br", currentShift.gradient)}>
+        <div className="flex-grow flex items-center justify-center">
+            {currentShift.icon}
+        </div>
+        <div className="mt-2">
+            <p className="font-semibold text-foreground">{currentShift.name}</p>
+            <p className="text-xs text-muted-foreground">{currentShift.timing}</p>
+        </div>
+    </div>
+  );
+};
+
 
 // A new component for individual stat boxes
 const StatBox = ({ title, value, icon, badge }: { title: string, value: string | React.ReactNode, icon?: React.ElementType, badge?: React.ReactNode }) => {
@@ -175,7 +225,7 @@ export default function MemberFeesPage() {
           <CardDescription>Your current subscription details.</CardDescription>
         </CardHeader>
         <CardContent className="grid grid-cols-2 md:grid-cols-3 gap-4">
-            <StatBox title="Plan Type" value={studentData.shift} icon={Briefcase} />
+            <ShiftDisplayCard shift={studentData.shift} />
             <StatBox title="Monthly Fee" value={getMonthlyFeeDisplay(studentData.shift, feeStructure)} icon={IndianRupee} />
             <StatBox title="Fee Status" value="" badge={getFeeStatusBadge(studentData.feeStatus, studentData.activityStatus)} />
             <StatBox title="Amount Due" value={studentData.activityStatus === 'Left' ? 'N/A' : (studentData.amountDue && studentData.amountDue !== "Rs. 0" ? studentData.amountDue : getMonthlyFeeDisplay(studentData.shift, feeStructure))} icon={IndianRupee} />
