@@ -198,10 +198,8 @@ export default function MemberDashboardPage() {
   const [isLoadingStudentData, setIsLoadingStudentData] = React.useState(true);
 
   const [activeCheckInRecord, setActiveCheckInRecord] = React.useState<AttendanceRecord | null>(null);
-  const [hoursStudiedToday, setHoursStudiedToday] = React.useState<number | null>(null);
   const [isLoadingCurrentSession, setIsLoadingCurrentSession] = React.useState(true);
   const [isProcessingCheckout, setIsProcessingCheckout] = React.useState(false);
-  const [isLoadingHoursToday, setIsLoadingHoursToday] = React.useState(false);
 
 
   const [studentFeeStatus, setStudentFeeStatus] = React.useState<FeeStatus | null>(null);
@@ -237,7 +235,6 @@ export default function MemberDashboardPage() {
         setStudentId(null);
         setHasUnreadAlerts(false);
         setActiveCheckInRecord(null);
-        setHoursStudiedToday(null);
         setStudentFeeStatus(null);
         setStudentNextDueDate(null);
 
@@ -290,14 +287,14 @@ export default function MemberDashboardPage() {
         if (isManualRefresh) setIsRefreshing(false);
         if (!studentDetailsFetchedSuccessfully) {
             setStudentFirstName(null); setStudentId(null);
-            setHasUnreadAlerts(false); setActiveCheckInRecord(null); setHoursStudiedToday(null);
+            setHasUnreadAlerts(false); setActiveCheckInRecord(null);
             setStudentFeeStatus(null); setStudentNextDueDate(null);
         }
       }
     } else {
       setIsLoadingStudentData(false); setIsLoadingCurrentSession(false);
       setStudentFirstName(null); setStudentId(null);
-      setHasUnreadAlerts(false); setActiveCheckInRecord(null); setHoursStudiedToday(null);
+      setHasUnreadAlerts(false); setActiveCheckInRecord(null);
       setStudentFeeStatus(null); setStudentNextDueDate(null);
     }
   }, [user, toast]);
@@ -305,9 +302,9 @@ export default function MemberDashboardPage() {
 
   React.useEffect(() => {
     fetchAllDashboardData();
-    const intervalId = setInterval(fetchAllDashboardData, 300000); // 5 minutes
+    const intervalId = setInterval(() => fetchAllDashboardData(true), 300000); // Refresh every 5 minutes
     return () => clearInterval(intervalId);
-  }, [user]); // Rerun only when user object changes, not the function itself
+  }, [user]); // Re-run only when user object changes
 
 
   const handleCloseScanner = React.useCallback(async () => {
@@ -507,30 +504,6 @@ export default function MemberDashboardPage() {
     }
   };
 
-  const handleShowHoursToday = async () => {
-    if (!studentId) return;
-    setIsLoadingHoursToday(true);
-    try {
-      const todayAttendanceData = await getAttendanceForDate(studentId, format(new Date(), 'yyyy-MM-dd'));
-      let totalMillisecondsToday = 0;
-      const now = new Date();
-      todayAttendanceData.forEach(record => {
-        if (record.checkOutTime && record.checkInTime && isValid(parseISO(record.checkOutTime)) && isValid(parseISO(record.checkInTime))) {
-          totalMillisecondsToday += differenceInMilliseconds(parseISO(record.checkOutTime), parseISO(record.checkInTime));
-        } else if (activeCheckInRecord && record.recordId === activeCheckInRecord.recordId && record.checkInTime && isValid(parseISO(record.checkInTime))) {
-          totalMillisecondsToday += differenceInMilliseconds(now, parseISO(record.checkInTime));
-        }
-      });
-      setHoursStudiedToday(totalMillisecondsToday / (1000 * 60 * 60));
-    } catch (error) {
-      console.error("Error fetching hours today:", error);
-      toast({title: "Error", description: "Could not calculate today's hours.", variant: "destructive"});
-    } finally {
-      setIsLoadingHoursToday(false);
-    }
-  };
-
-
   const generateCoreActionTiles = (): DashboardTileProps[] => {
     let payFeesTileDesc = "Settle your outstanding dues.";
     let payFeesTileStatistic: string | null = null;
@@ -624,12 +597,7 @@ export default function MemberDashboardPage() {
 
   return (
     <>
-      <PageTitle title={pageTitleText} description="Your Taxshila Companion dashboard.">
-         <Button variant="outline" size="sm" onClick={() => fetchAllDashboardData(true)} disabled={isRefreshing}>
-          {isRefreshing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
-          Refresh
-        </Button>
-      </PageTitle>
+      <PageTitle title={pageTitleText} description="Your Taxshila Companion dashboard." />
 
       {showNotificationPrompt && <NotificationPrompt onDismiss={handleDismissPrompt} />}
 
@@ -647,23 +615,10 @@ export default function MemberDashboardPage() {
                     <PlayCircle className="mr-1.5 h-3 w-3 text-green-600" />
                     <span>Checked In: {activeCheckInRecord.checkInTime && isValid(parseISO(activeCheckInRecord.checkInTime)) ? format(parseISO(activeCheckInRecord.checkInTime), 'p') : 'N/A'}</span>
                 </div>
-                {isLoadingHoursToday ? (
-                    <Button variant="link" size="sm" className="h-auto p-0 text-xs" disabled>
-                        <Loader2 className="mr-1 h-3 w-3 animate-spin" /> Loading...
-                    </Button>
-                ) : hoursStudiedToday !== null ? (
-                    <div className="flex items-center justify-end">
-                        <Hourglass className="mr-1.5 h-3 w-3 text-blue-500" />
-                        <span>
-                        Today: {Math.floor(hoursStudiedToday)} hr{" "}
-                        {Math.round((hoursStudiedToday % 1) * 60)} min
-                        </span>
-                    </div>
-                ) : (
-                    <Button variant="link" size="sm" onClick={handleShowHoursToday} className="h-auto p-0 text-xs" disabled={isLoadingCurrentSession}>
-                        <Eye className="mr-1 h-3 w-3"/> Show Today's Hours
-                    </Button>
-                )}
+                <Button variant="link" size="sm" onClick={() => fetchAllDashboardData(true)} className="h-auto p-0 text-xs" disabled={isRefreshing}>
+                    {isRefreshing ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <RefreshCw className="mr-1 h-3 w-3"/>}
+                    {isRefreshing ? 'Refreshing...' : 'Refresh Status'}
+                </Button>
             </div>
           </CardContent>
           <CardFooter className="p-0">
@@ -672,7 +627,7 @@ export default function MemberDashboardPage() {
                 disabled={isProcessingCheckout}
                 className={cn(
                   "w-full rounded-t-none h-12 text-base text-white relative overflow-hidden",
-                  "bg-green-700 hover:bg-green-800",
+                  "bg-green-600 hover:bg-green-700",
                   !isProcessingCheckout && "animate-gradient-sweep"
                 )}
              >
