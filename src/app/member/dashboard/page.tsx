@@ -12,6 +12,7 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle as ShadcnDialogTitle,
+  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
   AlertDialog,
@@ -25,7 +26,7 @@ import {
 import { Alert, AlertDescription, AlertTitle as ShadcnAlertTitle } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/auth-context';
-import { Camera, QrCode, Receipt, IndianRupee, MessageSquare, Bell, ScrollText, Star, Loader2, XCircle, Home, BarChart3, PlayCircle, CheckCircle, Hourglass, ScanLine, LogOut, AlertCircle, X, Eye, RefreshCw } from 'lucide-react';
+import { Camera, QrCode, Receipt, IndianRupee, MessageSquare, Bell, ScrollText, Star, Loader2, XCircle, Home, BarChart3, PlayCircle, CheckCircle, Hourglass, ScanLine, LogOut, AlertCircle, X, Eye, RefreshCw, View } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getStudentByEmail, getAlertsForStudent, addCheckIn, addCheckOut, getActiveCheckIn, getAttendanceForDate, getStudentByCustomId } from '@/services/student-service';
 import type { AlertItem } from '@/types/communication';
@@ -35,9 +36,11 @@ import { Html5QrcodeScanner, Html5QrcodeSupportedFormats, Html5QrcodeScanType } 
 import { setupPushNotifications } from '@/lib/notification-setup';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { getInitials } from '@/lib/utils';
+import NextImage from 'next/image';
 
 const DASHBOARD_QR_SCANNER_ELEMENT_ID = "qr-reader-dashboard";
 const LIBRARY_QR_CODE_PAYLOAD = "TAXSHILA_LIBRARY_CHECKIN_QR_V1";
+const DEFAULT_PROFILE_PLACEHOLDER = "https://placehold.co/400x400.png";
 
 type DashboardTileProps = {
   title: string;
@@ -641,19 +644,37 @@ export default function MemberDashboardPage() {
 
   return (
     <>
-      <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <Avatar className="h-16 w-16 border-2 border-primary shadow-md">
-            <AvatarImage src={currentStudent?.profilePictureUrl || user?.profilePictureUrl || undefined} alt={currentStudent?.name} data-ai-hint="profile person" />
-            <AvatarFallback className="text-2xl">{getInitials(currentStudent?.name)}</AvatarFallback>
-          </Avatar>
-          <div className="flex-1">
-            <h1 className="text-xl font-headline font-semibold tracking-tight md:text-2xl leading-tight">{pageTitleText}</h1>
-            <p className="text-muted-foreground">Your Taxshila Companion dashboard.</p>
+      <div className="mb-6 flex flex-row items-center justify-between gap-4">
+        <div className="flex items-center gap-4 flex-1 min-w-0">
+          <Dialog>
+            <DialogTrigger asChild>
+              <div className="cursor-pointer relative group flex-shrink-0">
+                <Avatar className="h-12 w-12 sm:h-16 sm:w-16 border-2 border-primary shadow-md">
+                  <AvatarImage src={currentStudent?.profilePictureUrl || user?.profilePictureUrl || undefined} alt={currentStudent?.name} data-ai-hint="profile person" />
+                  <AvatarFallback className="text-2xl">{getInitials(currentStudent?.name)}</AvatarFallback>
+                </Avatar>
+                 <div className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                    <View className="text-white h-6 w-6"/>
+                </div>
+              </div>
+            </DialogTrigger>
+            <DialogContent className="max-w-md w-auto p-2">
+                <NextImage 
+                  src={currentStudent?.profilePictureUrl || DEFAULT_PROFILE_PLACEHOLDER}
+                  alt="Profile Picture Full View" 
+                  width={500} 
+                  height={500}
+                  className="rounded-md object-contain max-h-[80vh] w-full h-auto"
+                />
+            </DialogContent>
+          </Dialog>
+          <div className="flex-1 min-w-0">
+            <h1 className="text-xl font-headline font-semibold tracking-tight md:text-2xl leading-tight truncate">{pageTitleText}</h1>
+            <p className="text-muted-foreground text-sm truncate">Your Taxshila Companion dashboard.</p>
           </div>
         </div>
         {currentStudent && (
-          <div className={cn("flex items-center justify-center h-14 w-14 text-xl rounded-lg border-2 font-bold flex-shrink-0", getShiftColorClass(currentStudent.shift))} title={`Seat ${currentStudent.seatNumber}`}>
+          <div className={cn("flex items-center justify-center h-12 w-12 sm:h-14 sm:w-14 text-lg sm:text-xl rounded-lg border-2 font-bold flex-shrink-0", getShiftColorClass(currentStudent.shift))} title={`Seat ${currentStudent.seatNumber}`}>
             {currentStudent.seatNumber || 'N/A'}
           </div>
         )}
@@ -802,3 +823,5 @@ export default function MemberDashboardPage() {
     </>
   );
 }
+
+    
