@@ -75,7 +75,7 @@ const DashboardTile: React.FC<DashboardTileProps> = ({
       disabled ? 'opacity-60 cursor-not-allowed bg-muted/50' : (isPrimaryAction ? 'hover:bg-primary/90' : 'hover:bg-muted/50 hover:shadow-xl transition-shadow'),
       isPrimaryAction && !disabled && "animate-gradient-sweep",
       {
-        'border-destructive ring-1 ring-destructive/30': (isUrgent || hasNew),
+        'animate-breathing-stroke bg-destructive/10': hasNew,
       },
       className
     )}>
@@ -83,7 +83,7 @@ const DashboardTile: React.FC<DashboardTileProps> = ({
         "relative",
         isPrimaryAction ? "p-3 sm:p-4 pb-1 sm:pb-2" : "p-2 sm:p-3 pb-0 sm:pb-1"
       )}>
-        {(hasNew || isUrgent) && !isPrimaryAction && (
+        {(hasNew || isUrgent) && !isPrimaryAction && !hasNew && (
           <span className="absolute top-1 right-1 block h-2.5 w-2.5 rounded-full bg-destructive ring-1 ring-white" />
         )}
         <div className={cn(
@@ -522,7 +522,7 @@ export default function MemberDashboardPage() {
 
   const generateCoreActionTiles = (): DashboardTileProps[] => {
     let payFeesTileDesc = "Settle your outstanding dues.";
-    let payFeesTileIsUrgent = false;
+    let payFeesIsUrgent = false;
     let payFeesClass = "";
     
     if (isLoadingStudentData) {
@@ -530,12 +530,12 @@ export default function MemberDashboardPage() {
     } else if (studentId) {
       switch (studentFeeStatus) {
         case "Due":
-          payFeesTileIsUrgent = true;
+          payFeesIsUrgent = true;
           payFeesTileDesc = `Status: Due. Next payment due: ${studentNextDueDate && isValid(parseISO(studentNextDueDate)) ? format(parseISO(studentNextDueDate), 'PP') : 'N/A'}.`;
           payFeesClass = "bg-status-due-bg text-status-due-text border-yellow-500/50";
           break;
         case "Overdue":
-          payFeesTileIsUrgent = true;
+          payFeesIsUrgent = true;
           payFeesTileDesc = `Status: Overdue. Payment is late.`;
           payFeesClass = "bg-destructive/10 text-destructive border-destructive";
           break;
@@ -571,7 +571,7 @@ export default function MemberDashboardPage() {
         isLoadingStatistic: isLoadingStudentData,
         icon: IndianRupee,
         href: "/member/fees",
-        isUrgent: payFeesTileIsUrgent,
+        isUrgent: payFeesIsUrgent,
         disabled: !studentId,
         className: payFeesClass,
       },
@@ -653,7 +653,7 @@ export default function MemberDashboardPage() {
                 disabled={isProcessingCheckout}
                 className={cn(
                   "w-full rounded-t-none h-12 text-base text-primary-foreground",
-                  "bg-primary hover:bg-primary/90",
+                  "bg-green-600 hover:bg-green-700",
                   !isProcessingCheckout && "animate-gradient-sweep"
                 )}
              >

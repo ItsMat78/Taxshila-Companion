@@ -527,7 +527,11 @@
 
 .animate-gradient-sweep {
   background-size: 200% auto;
-  background-image: linear-gradient(
+  animation: gradient-sweep 3.5s linear infinite;
+}
+
+.animate-gradient-sweep.bg-primary {
+    background-image: linear-gradient(
     to right,
     hsl(var(--primary)) 0%,
     hsl(var(--primary) / 0.8) 30%,
@@ -535,8 +539,19 @@
     hsl(var(--primary) / 0.8) 70%,
     hsl(var(--primary)) 100%
   );
-  animation: gradient-sweep 3.5s linear infinite;
 }
+
+.animate-gradient-sweep.bg-green-600 {
+    background-image: linear-gradient(
+    to right,
+    #16a34a 0%, /* green-600 */
+    #15803d 30%, /* green-700 */
+    #166534 50%, /* green-800 */
+    #15803d 70%,
+    #16a34a 100%
+  );
+}
+
 
 @keyframes breathing-stroke {
   0%, 100% {
