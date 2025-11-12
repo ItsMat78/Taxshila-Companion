@@ -665,14 +665,13 @@ export async function getAttendanceForDate(studentId: string, date: string): Pro
 }
 
 export async function getAttendanceForDateRange(studentId: string, startDate: string, endDate: string): Promise<AttendanceRecord[]> {
-    const q = query(
-        collection(db, ATTENDANCE_COLLECTION),
-        where("studentId", "==", studentId),
-        where("date", ">=", startDate),
-        where("date", "<=", endDate)
-    );
+    const q = query(collection(db, ATTENDANCE_COLLECTION), where("studentId", "==", studentId));
     const querySnapshot = await getDocs(q);
-    const records = querySnapshot.docs.map(doc => attendanceRecordFromDoc(doc));
+    const records = querySnapshot.docs.map(doc => attendanceRecordFromDoc(doc)).filter(record => {
+      if (!record.date) return false;
+      return record.date >= startDate && record.date <= endDate;
+    });
+
     records.sort((a, b) => parseISO(a.checkInTime).getTime() - parseISO(b.checkInTime).getTime());
     return records;
 }
