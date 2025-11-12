@@ -57,10 +57,15 @@ const StudyGrid = ({ data }: { data: { date: string; hours: number }[] }) => {
         return 'bg-primary';
     };
     
+    // Find the first day of the month to add spacer divs
+    const firstDayOfMonth = data.length > 0 ? getDay(parseISO(data[0].date)) : 0;
+    const spacers = Array.from({ length: firstDayOfMonth });
+
     return (
          <TooltipProvider>
             <div className="flex flex-col items-center justify-center gap-3 w-full">
-                <div className="grid grid-cols-[repeat(auto-fill,minmax(1rem,1fr))] gap-1.5 w-full">
+                <div className="grid grid-cols-7 gap-1.5 w-full">
+                    {spacers.map((_, index) => <div key={`spacer-${index}`} className="aspect-square w-full" />)}
                     {data.map(({ date, hours }) => (
                         <ShadcnTooltip key={date} delayDuration={100}>
                             <TooltipTrigger asChild>
@@ -69,7 +74,7 @@ const StudyGrid = ({ data }: { data: { date: string; hours: number }[] }) => {
                             <TooltipContent>
                                 <p className="text-sm font-semibold">{format(parseISO(date), 'MMM d, yyyy')}</p>
                                 <p className="text-xs">
-                                    {Math.floor(hours)}h {Math.round((hours % 1) * 60)}m
+                                    {Math.floor(hours)}h {Math.round((hours % 1) * 60)}m of study
                                 </p>
                             </TooltipContent>
                         </ShadcnTooltip>
@@ -410,7 +415,7 @@ export default function MemberAttendancePage() {
                             ) : (
                             <>
                                 <div className="mb-4 text-lg font-semibold text-primary">
-                                Total study time: {(() => { const { hours, minutes } = calculateDailyStudyTime(attendanceForDay, currentStudent?.shift); return `${hours} hr ${minutes}`; })()}
+                                Total study time: {(() => { const { hours, minutes } = calculateDailyStudyTime(attendanceForDay, currentStudent?.shift); return `${hours} hr ${minutes} min`; })()}
                                 </div>
 
                                 {attendanceForDay.length === 0 ? (
@@ -449,5 +454,3 @@ export default function MemberAttendancePage() {
     </>
   );
 }
-
-    
