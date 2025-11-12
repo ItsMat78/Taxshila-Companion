@@ -17,7 +17,7 @@ import { Loader2, BarChart3, Clock, LogIn, LogOut, TrendingUp, ChevronLeft, Chev
 import { useAuth } from '@/contexts/auth-context';
 import { getStudentByEmail, getAttendanceForDate, getStudentByCustomId, getAttendanceForDateRange } from '@/services/student-service';
 import type { Student, AttendanceRecord } from '@/types/student';
-import { format, parseISO, isValid, differenceInMilliseconds, startOfMonth, endOfMonth, eachDayOfInterval, addMonths, subMonths, isAfter, isToday } from 'date-fns';
+import { format, parseISO, isValid, differenceInMilliseconds, startOfMonth, endOfMonth, eachDayOfInterval, addMonths, subMonths, isAfter, isToday, getHours, getMinutes } from 'date-fns';
 import { BarChart, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Bar } from 'recharts';
 
 
@@ -109,20 +109,21 @@ export default function MemberAttendancePage() {
   const getDailyStudyDataForMonth = React.useCallback(async (student: Student, month: Date) => {
     setIsLoadingMonthlyStudyData(true);
     try {
-      const monthStart = startOfMonth(month);
-      const monthEnd = endOfMonth(month);
-      const allDays = eachDayOfInterval({ start: monthStart, end: monthEnd });
-      
-      const promises = allDays.map(async day => {
-        const dateString = format(day, 'yyyy-MM-dd');
-        const recordsForDay = await getAttendanceForDate(student.studentId, dateString);
+        const startDate = startOfMonth(month);
+        const endDate = endOfMonth(month);
         
-        let totalMilliseconds = 0;
-        recordsForDay.forEach(record => {
+        const recordsForMonth = await getAttendanceForDateRange(student.studentId, format(startDate, 'yyyy-MM-dd'), format(endDate, 'yyyy-MM-dd'));
+        const dailyHoursMap = new Map<string, number>();
+
+        recordsForMonth.forEach(record => {
+            let totalMilliseconds = 0;
+             if (!record || !record.checkInTime) return;
+
             const checkInDate = parseISO(record.checkInTime);
             if (!isValid(checkInDate)) return;
-
+            
             let sessionEndDate: Date;
+
             if (record.checkOutTime && isValid(parseISO(record.checkOutTime))) {
                 sessionEndDate = parseISO(record.checkOutTime);
             } else {
@@ -146,28 +147,28 @@ export default function MemberAttendancePage() {
                     sessionEndDate = shiftEndTimeToday;
                 }
             }
-
             if (isAfter(sessionEndDate, checkInDate)) {
               totalMilliseconds += differenceInMilliseconds(sessionEndDate, checkInDate);
             }
+            const dateKey = format(checkInDate, 'yyyy-MM-dd');
+            dailyHoursMap.set(dateKey, (dailyHoursMap.get(dateKey) || 0) + totalMilliseconds);
         });
-        
-        return {
-          date: dateString,
-          hours: totalMilliseconds / (1000 * 60 * 60)
-        };
-      });
 
-      const studyData = await Promise.all(promises);
-      setMonthlyStudyData(studyData);
-
+        const allDays = eachDayOfInterval({ start: startDate, end: endDate });
+        const studyData = allDays.map(day => {
+            const dateString = format(day, 'yyyy-MM-dd');
+            const totalMilliseconds = dailyHoursMap.get(dateString) || 0;
+            const totalHours = totalMilliseconds / (1000 * 60 * 60);
+            return { date: dateString, hours: totalHours };
+        });
+        setMonthlyStudyData(studyData);
     } catch (error) {
-      console.error("Error fetching daily study data:", error);
-      toast({ title: "Chart Error", description: "Could not load monthly study data.", variant: "destructive" });
+        console.error("Error fetching daily study data:", error);
+        toast({ title: "Chart Error", description: "Could not load monthly study data.", variant: "destructive" });
     } finally {
-      setIsLoadingMonthlyStudyData(false);
+        setIsLoadingMonthlyStudyData(false);
     }
-  }, [toast]);
+}, [toast]);
 
 
   React.useEffect(() => {
