@@ -46,7 +46,7 @@ const ChartTooltipContent = ({ active, payload, label }: any) => {
 };
 
 // New Component for GitHub-style grid
-const StudyGrid = ({ data, month }: { data: { date: string; hours: number }[]; month: Date }) => {
+const StudyGrid = ({ data, month, onDayClick }: { data: { date: string; hours: number }[]; month: Date, onDayClick: (date: Date) => void }) => {
     if (!data.length) return null;
 
     const getIntensityClass = (hours: number) => {
@@ -83,14 +83,16 @@ const StudyGrid = ({ data, month }: { data: { date: string; hours: number }[]; m
                         const hours = studyDataMap.get(dateString) ?? 0;
                         const isCurrentMonth = isSameMonth(day, month);
 
-                        if (!isCurrentMonth) {
-                            return <div key={dateString} className="aspect-square w-full rounded-sm bg-muted/10" />;
-                        }
-
                         return (
                             <ShadcnTooltip key={dateString} delayDuration={100}>
                                 <TooltipTrigger asChild>
-                                    <div className={cn("aspect-square w-full rounded-sm", getIntensityClass(hours))} />
+                                    <button 
+                                      onClick={() => onDayClick(day)}
+                                      className={cn(
+                                        "aspect-square w-full rounded-sm cursor-pointer focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:z-10", 
+                                        getIntensityClass(hours),
+                                        isCurrentMonth ? "border border-border" : "opacity-50"
+                                    )} />
                                 </TooltipTrigger>
                                 <TooltipContent>
                                     <p className="text-sm font-semibold">{format(day, 'MMM d, yyyy')}</p>
@@ -346,8 +348,12 @@ export default function MemberAttendancePage() {
                         className="h-24 w-full text-lg flex flex-col gap-2"
                         variant="outline"
                     >
-                        <BarChart3 className="h-8 w-8" />
-                        <span className="text-sm font-medium">Show Chart</span>
+                        <div className="md:hidden"><Grid3x3 className="h-8 w-8" /></div>
+                        <div className="hidden md:block"><BarChart3 className="h-8 w-8" /></div>
+                        <span className="text-sm font-medium">
+                          <span className="md:hidden">Show Grid</span>
+                          <span className="hidden md:block">Show Chart</span>
+                        </span>
                     </Button>
                 ) : isLoadingMonthlyStudyData ? (
                     <div className="flex items-center justify-center h-[300px]">
@@ -368,7 +374,7 @@ export default function MemberAttendancePage() {
                          <div className="min-h-[300px] w-full flex items-center justify-center">
                             {/* Mobile: Grid View */}
                             <div className="md:hidden w-full">
-                                <StudyGrid data={monthlyStudyData} month={viewedMonth} />
+                                <StudyGrid data={monthlyStudyData} month={viewedMonth} onDayClick={(day) => { setDate(day); setShowAttendanceOverview(true); }}/>
                             </div>
                             {/* Desktop: Chart View */}
                             <div className="hidden md:block w-full h-full">
@@ -477,5 +483,3 @@ export default function MemberAttendancePage() {
     </>
   );
 }
-
-    
