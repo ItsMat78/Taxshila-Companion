@@ -665,12 +665,21 @@ export async function getAttendanceForDate(studentId: string, date: string): Pro
 }
 
 export async function getAttendanceForDateRange(studentId: string, startDate: string, endDate: string): Promise<AttendanceRecord[]> {
-    const q = query(collection(db, ATTENDANCE_COLLECTION), where("studentId", "==", studentId));
+    const q = query(
+        collection(db, ATTENDANCE_COLLECTION),
+        where("studentId", "==", studentId)
+    );
     const querySnapshot = await getDocs(q);
-    const records = querySnapshot.docs.map(doc => attendanceRecordFromDoc(doc)).filter(record => {
-      if (!record.date) return false;
-      return record.date >= startDate && record.date <= endDate;
-    });
+    const records = querySnapshot.docs
+        .map(doc => attendanceRecordFromDoc(doc))
+        .filter(record => {
+            if (!record.date) return false;
+            // Use isWithinInterval for robust date comparison
+            const recordDate = parseISO(record.date);
+            const start = parseISO(startDate);
+            const end = parseISO(endDate);
+            return isValid(recordDate) && isValid(start) && isValid(end) && isWithinInterval(recordDate, { start, end });
+        });
 
     records.sort((a, b) => parseISO(a.checkInTime).getTime() - parseISO(b.checkInTime).getTime());
     return records;
@@ -1403,3 +1412,4 @@ declare module '@/types/communication' {
 
 
     
+
