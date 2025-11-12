@@ -17,7 +17,7 @@ import { Loader2, BarChart3, Clock, LogIn, LogOut, TrendingUp, ChevronLeft, Chev
 import { useAuth } from '@/contexts/auth-context';
 import { getStudentByEmail, calculateMonthlyStudyHours, getAttendanceForDate, getStudentByCustomId } from '@/services/student-service';
 import type { Student, AttendanceRecord } from '@/types/student';
-import { format, parseISO, isValid, differenceInMilliseconds, startOfMonth, endOfMonth, eachDayOfInterval, addMonths, subMonths, isAfter } from 'date-fns';
+import { format, parseISO, isValid, differenceInMilliseconds, startOfMonth, endOfMonth, eachDayOfInterval, addMonths, subMonths, isAfter, isToday } from 'date-fns';
 import { BarChart, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Bar } from 'recharts';
 
 
@@ -106,7 +106,7 @@ export default function MemberAttendancePage() {
     });
   }, [fetchStudentData]);
 
-  const getDailyStudyDataForMonth = React.useCallback(async (studentId: string, month: Date) => {
+  const getDailyStudyDataForMonth = React.useCallback(async (student: Student, month: Date) => {
     setIsLoadingMonthlyStudyData(true);
     try {
       const monthStart = startOfMonth(month);
@@ -115,13 +115,43 @@ export default function MemberAttendancePage() {
 
       const promises = daysInMonth.map(async (day) => {
         const dateString = format(day, 'yyyy-MM-dd');
-        const recordsForDay = await getAttendanceForDate(studentId, dateString);
+        const recordsForDay = await getAttendanceForDate(student.studentId, dateString);
         let totalMilliseconds = 0;
+        
         recordsForDay.forEach(record => {
-           if (record.checkInTime && record.checkOutTime && isValid(parseISO(record.checkInTime)) && isValid(parseISO(record.checkOutTime))) {
-                totalMilliseconds += differenceInMilliseconds(parseISO(record.checkOutTime), parseISO(record.checkInTime));
+            const checkInDate = parseISO(record.checkInTime);
+            if (!isValid(checkInDate)) return;
+
+            let sessionEndDate: Date;
+
+            if (record.checkOutTime && isValid(parseISO(record.checkOutTime))) {
+                sessionEndDate = parseISO(record.checkOutTime);
+            } else if (isToday(checkInDate)) {
+                // Active session for today, calculate up to now
+                sessionEndDate = new Date();
+            } else {
+                // "Stuck" session from a past day, cap at shift end time
+                sessionEndDate = new Date(checkInDate);
+                switch(student.shift) {
+                    case 'morning':
+                        sessionEndDate.setHours(14, 0, 0, 0); // 2 PM
+                        break;
+                    case 'evening':
+                    case 'fullday':
+                        sessionEndDate.setHours(21, 30, 0, 0); // 9:30 PM
+                        break;
+                    default:
+                        // Fallback: If no shift, maybe cap at midnight? Or ignore? For now, we'll cap at 9:30 PM
+                        sessionEndDate.setHours(21, 30, 0, 0);
+                        break;
+                }
+            }
+            
+            if (isAfter(sessionEndDate, checkInDate)) {
+                totalMilliseconds += differenceInMilliseconds(sessionEndDate, checkInDate);
             }
         });
+
         const totalHours = totalMilliseconds / (1000 * 60 * 60);
         return { date: dateString, hours: totalHours };
       });
@@ -139,7 +169,7 @@ export default function MemberAttendancePage() {
 
   React.useEffect(() => {
     if (currentStudent?.studentId && showMonthlyStudyTime) {
-      getDailyStudyDataForMonth(currentStudent.studentId, viewedMonth);
+      getDailyStudyDataForMonth(currentStudent, viewedMonth);
     }
   }, [currentStudent, viewedMonth, getDailyStudyDataForMonth, showMonthlyStudyTime]);
 
