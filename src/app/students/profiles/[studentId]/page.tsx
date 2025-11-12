@@ -22,10 +22,16 @@ import {
 import { Calendar } from "@/components/ui/calendar";
 import { getStudentById, getAttendanceForDate, getAttendanceForDateRange } from '@/services/student-service';
 import type { Student, PaymentRecord, AttendanceRecord, Shift } from '@/types/student';
-import { format, parseISO, isValid, differenceInMilliseconds, startOfMonth, endOfMonth, eachDayOfInterval, addMonths, subMonths } from 'date-fns';
+import { format, parseISO, isValid, differenceInMilliseconds, startOfMonth, endOfMonth, eachDayOfInterval, addMonths, subMonths, isAfter, isToday, getDay, startOfWeek, endOfWeek, isSameMonth } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { BarChart, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Bar } from 'recharts';
+import { BarChart, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Bar } from 'recharts';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
 
 const DEFAULT_PROFILE_PLACEHOLDER = "https://placehold.co/100x100.png";
@@ -49,6 +55,77 @@ const ChartTooltipContent = ({ active, payload, label }: any) => {
     return null;
 };
 
+const StudyGrid = ({ data, month, onDayClick }: { data: { date: string; hours: number }[]; month: Date, onDayClick: (date: Date) => void }) => {
+    if (!data.length) return null;
+
+    const getIntensityClass = (hours: number) => {
+        if (hours <= 0) return 'bg-muted/30';
+        if (hours < 3) return 'bg-primary/20';
+        if (hours < 6) return 'bg-primary/50';
+        if (hours < 9) return 'bg-primary/70';
+        return 'bg-primary';
+    };
+
+    const weekStartsOn = 0; // 0 for Sunday
+    const monthStart = startOfMonth(month);
+    const monthEnd = endOfMonth(month);
+    const gridStart = startOfWeek(monthStart, { weekStartsOn });
+    const gridEnd = endOfWeek(monthEnd, { weekStartsOn });
+
+    const daysInGrid = eachDayOfInterval({ start: gridStart, end: gridEnd });
+    
+    const studyDataMap = new Map(data.map(item => [item.date, item.hours]));
+    const weekdays = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+
+    return (
+        <TooltipProvider>
+            <div className="flex flex-col items-center justify-center gap-2 w-full">
+                <div className="grid grid-cols-7 gap-1.5 w-full">
+                    {weekdays.map((day, index) => (
+                        <div key={`${day}-${index}`} className="text-xs text-center font-semibold text-muted-foreground">{day}</div>
+                    ))}
+                </div>
+                <div className="grid grid-cols-7 gap-1.5 w-full">
+                    {daysInGrid.map((day) => {
+                        const dateString = format(day, 'yyyy-MM-dd');
+                        const hours = studyDataMap.get(dateString) ?? 0;
+                        const isCurrentMonth = isSameMonth(day, month);
+
+                        return (
+                            <Tooltip key={dateString} delayDuration={100}>
+                                <TooltipTrigger asChild>
+                                    <button 
+                                      onClick={() => { onDayClick(day); }}
+                                      className={cn(
+                                        "aspect-square w-full rounded-sm cursor-pointer focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:z-10", 
+                                        getIntensityClass(hours),
+                                        isCurrentMonth ? "border border-border" : "opacity-50",
+                                        isToday(day) && "ring-2 ring-offset-2 ring-accent"
+                                    )} />
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                    <p className="text-sm font-semibold">{format(day, 'MMM d, yyyy')}</p>
+                                    <p className="text-xs">
+                                        {Math.floor(hours)}h {Math.round((hours % 1) * 60)}m of study
+                                    </p>
+                                </TooltipContent>
+                            </Tooltip>
+                        );
+                    })}
+                </div>
+                <div className="flex items-center gap-2 text-xs text-muted-foreground mt-2">
+                    <span>Less</span>
+                    <div className="h-3 w-3 rounded-sm bg-muted/30" title="0 hours" />
+                    <div className="h-3 w-3 rounded-sm bg-primary/20" title="< 3 hours" />
+                    <div className="h-3 w-3 rounded-sm bg-primary/50" title="< 6 hours" />
+                    <div className="h-3 w-3 rounded-sm bg-primary/70" title="< 9 hours" />
+                    <div className="h-3 w-3 rounded-sm bg-primary" title="> 9 hours" />
+                    <span>More</span>
+                </div>
+            </div>
+        </TooltipProvider>
+    );
+};
 
 // Mobile Card Item for Payment History
 const PaymentHistoryCardItem = ({ payment }: { payment: PaymentRecord }) => (
@@ -456,24 +533,29 @@ export default function StudentDetailPage() {
             ) : (
                 (monthlyStudyData.length > 0 && monthlyStudyData.some(d => d.hours > 0)) ? (
                     <div className="min-h-[300px] w-full">
-                        <ResponsiveContainer width="100%" height={300}>
-                            <BarChart data={monthlyStudyData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                                <XAxis dataKey="date" tickFormatter={(date) => format(parseISO(date), 'dd')} tickLine={false} axisLine={false} tickMargin={8} />
-                                <YAxis
-                                    tickLine={false}
-                                    axisLine={false}
-                                    tickMargin={8}
-                                    width={50}
-                                    tickFormatter={(value) => `${value}h`}
-                                />
-                                <Tooltip
-                                    cursor={{ fill: 'hsl(var(--muted))', radius: 4 }}
-                                    content={<ChartTooltipContent />}
-                                />
-                                <Bar dataKey="hours" name="Hours Studied" fill="hsl(var(--primary))" radius={4} />
-                            </BarChart>
-                        </ResponsiveContainer>
+                        <div className="md:hidden">
+                            <StudyGrid data={monthlyStudyData} month={viewedMonth} onDayClick={(day) => { setSelectedCalendarDate(day); setShowAttendanceOverview(true); }}/>
+                        </div>
+                        <div className="hidden md:block">
+                            <ResponsiveContainer width="100%" height={300}>
+                                <BarChart data={monthlyStudyData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                                    <XAxis dataKey="date" tickFormatter={(date) => format(parseISO(date), 'dd')} tickLine={false} axisLine={false} tickMargin={8} />
+                                    <YAxis
+                                        tickLine={false}
+                                        axisLine={false}
+                                        tickMargin={8}
+                                        width={50}
+                                        tickFormatter={(value) => `${value}h`}
+                                    />
+                                    <RechartsTooltip
+                                        cursor={{ fill: 'hsl(var(--muted))', radius: 4 }}
+                                        content={<ChartTooltipContent />}
+                                    />
+                                    <Bar dataKey="hours" name="Hours Studied" fill="hsl(var(--primary))" radius={4} />
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </div>
                     </div>
                 ) : (
                     <p className="text-center text-muted-foreground py-10 h-[300px] flex items-center justify-center">No study history data available for this month.</p>
@@ -565,3 +647,5 @@ export default function StudentDetailPage() {
     </>
   );
 }
+
+    
