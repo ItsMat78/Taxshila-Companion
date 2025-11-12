@@ -488,6 +488,7 @@ export async function updateStudent(customStudentId: string, studentUpdateData: 
               payload.amountDue = "Rs. 0";
           }
       } else {
+          // Due date is today or in the past
           const daysOverdue = differenceInDays(today, dueDate);
           if (daysOverdue > 5) {
               payload.feeStatus = 'Overdue';
@@ -665,17 +666,29 @@ export async function getAttendanceForDate(studentId: string, date: string): Pro
 }
 
 export async function getAttendanceForDateRange(studentId: string, startDate: string, endDate: string): Promise<AttendanceRecord[]> {
-    const q = query(
-        collection(db, ATTENDANCE_COLLECTION),
-        where("studentId", "==", studentId),
-        where("date", ">=", startDate),
-        where("date", "<=", endDate)
-    );
-    const querySnapshot = await getDocs(q);
-    const records = querySnapshot.docs.map(doc => attendanceRecordFromDoc(doc));
-    records.sort((a, b) => parseISO(a.checkInTime).getTime() - parseISO(b.checkInTime).getTime());
-    return records;
+  const q = query(
+    collection(db, ATTENDANCE_COLLECTION),
+    where("studentId", "==", studentId)
+  );
+  const querySnapshot = await getDocs(q);
+  const allRecords = querySnapshot.docs.map(doc => attendanceRecordFromDoc(doc));
+
+  // Filter by date range in code
+  const filteredRecords = allRecords.filter(record => {
+    try {
+      const recordDate = parseISO(record.date);
+      const start = parseISO(startDate);
+      const end = parseISO(endDate);
+      return isValid(recordDate) && recordDate >= start && recordDate <= end;
+    } catch(e) {
+      return false;
+    }
+  });
+
+  filteredRecords.sort((a, b) => parseISO(a.checkInTime).getTime() - parseISO(b.checkInTime).getTime());
+  return filteredRecords;
 }
+
 
 
 export async function getAllAttendanceRecords(): Promise<AttendanceRecord[]> {

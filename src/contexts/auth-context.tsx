@@ -114,7 +114,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 email: adminRecord.email,
                 role: 'admin',
                 firestoreId: adminRecord.firestoreId,
-                identifierForDisplay: adminRecord.email,
+                identifierForDisplay: adminRecord.name, // Use name for display
                 theme: adminRecord.theme || 'light-default',
             };
         } else {
@@ -137,7 +137,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 profilePictureUrl: studentRecord.profilePictureUrl,
                 firestoreId: studentRecord.firestoreId,
                 studentId: studentRecord.studentId,
-                identifierForDisplay: studentRecord.email || studentRecord.phone,
+                identifierForDisplay: studentRecord.name, // Use name for display
                 theme: studentRecord.theme || 'light-default',
             };
         }
