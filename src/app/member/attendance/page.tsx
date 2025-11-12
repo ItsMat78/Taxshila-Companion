@@ -109,26 +109,24 @@ export default function MemberAttendancePage() {
   const getDailyStudyDataForMonth = React.useCallback(async (student: Student, month: Date) => {
     setIsLoadingMonthlyStudyData(true);
     try {
-        const monthStart = startOfMonth(month);
-        const monthEnd = endOfMonth(month);
+      const monthStart = startOfMonth(month);
+      const monthEnd = endOfMonth(month);
+      const allDays = eachDayOfInterval({ start: monthStart, end: monthEnd });
+      
+      const promises = allDays.map(async day => {
+        const dateString = format(day, 'yyyy-MM-dd');
+        const recordsForDay = await getAttendanceForDate(student.studentId, dateString);
         
-        const recordsForMonth = await getAttendanceForDateRange(student.studentId, format(monthStart, 'yyyy-MM-dd'), format(monthEnd, 'yyyy-MM-dd'));
-        const dailyHoursMap = new Map<string, number>();
-
-        recordsForMonth.forEach(record => {
-            let totalMilliseconds = 0;
+        let totalMilliseconds = 0;
+        recordsForDay.forEach(record => {
             const checkInDate = parseISO(record.checkInTime);
             if (!isValid(checkInDate)) return;
 
             let sessionEndDate: Date;
-            
             if (record.checkOutTime && isValid(parseISO(record.checkOutTime))) {
                 sessionEndDate = parseISO(record.checkOutTime);
             } else {
-                // No checkout time, session is either active or stuck
                 const now = new Date();
-                const shiftEndTimeToday = new Date(checkInDate);
-
                 let shiftEndHour = 21;
                 let shiftEndMinute = 30;
 
@@ -137,40 +135,39 @@ export default function MemberAttendancePage() {
                     shiftEndMinute = 0;
                 }
 
+                const shiftEndTimeToday = new Date(checkInDate);
                 shiftEndTimeToday.setHours(shiftEndHour, shiftEndMinute, 0, 0);
-
-                if (isToday(checkInDate)) {
-                    // Active session for today. Cap at shift end time if user is past their shift.
-                    sessionEndDate = isAfter(now, shiftEndTimeToday) ? shiftEndTimeToday : now;
+                
+                if (isToday(checkInDate) && isAfter(now, shiftEndTimeToday)) {
+                    sessionEndDate = shiftEndTimeToday;
+                } else if (isToday(checkInDate)) {
+                    sessionEndDate = now;
                 } else {
-                    // "Stuck" session from a past day. Cap at shift end time.
                     sessionEndDate = shiftEndTimeToday;
                 }
             }
-            
+
             if (isAfter(sessionEndDate, checkInDate)) {
-                totalMilliseconds = differenceInMilliseconds(sessionEndDate, checkInDate);
+              totalMilliseconds += differenceInMilliseconds(sessionEndDate, checkInDate);
             }
-
-            const dateKey = format(checkInDate, 'yyyy-MM-dd');
-            dailyHoursMap.set(dateKey, (dailyHoursMap.get(dateKey) || 0) + totalMilliseconds);
         });
+        
+        return {
+          date: dateString,
+          hours: totalMilliseconds / (1000 * 60 * 60)
+        };
+      });
 
-        const allDays = eachDayOfInterval({ start: monthStart, end: monthEnd });
-        const studyData = allDays.map(day => {
-            const dateString = format(day, 'yyyy-MM-dd');
-            const totalMilliseconds = dailyHoursMap.get(dateString) || 0;
-            const totalHours = totalMilliseconds / (1000 * 60 * 60);
-            return { date: dateString, hours: totalHours };
-        });
-        setMonthlyStudyData(studyData);
+      const studyData = await Promise.all(promises);
+      setMonthlyStudyData(studyData);
+
     } catch (error) {
-        console.error("Error fetching daily study data:", error);
-        toast({ title: "Chart Error", description: "Could not load monthly study data.", variant: "destructive" });
+      console.error("Error fetching daily study data:", error);
+      toast({ title: "Chart Error", description: "Could not load monthly study data.", variant: "destructive" });
     } finally {
-        setIsLoadingMonthlyStudyData(false);
+      setIsLoadingMonthlyStudyData(false);
     }
-}, [toast]);
+  }, [toast]);
 
 
   React.useEffect(() => {
