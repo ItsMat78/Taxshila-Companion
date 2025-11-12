@@ -106,33 +106,40 @@ export default function MemberAttendancePage() {
     });
   }, [fetchStudentData]);
 
-    const getDailyStudyDataForMonth = React.useCallback(async (studentId: string, month: Date) => {
-        setIsLoadingMonthlyStudyData(true);
-        try {
-            const startDate = startOfMonth(month);
-            const endDate = endOfMonth(month);
-            const allDays = eachDayOfInterval({ start: startDate, end: endDate });
-            const studyData: { date: string; hours: number }[] = [];
+  const getDailyStudyDataForMonth = React.useCallback(async (studentId: string, month: Date) => {
+    setIsLoadingMonthlyStudyData(true);
+    try {
+      const startDate = startOfMonth(month);
+      const endDate = endOfMonth(month);
+      
+      const recordsForMonth = await getAttendanceForDateRange(studentId, format(startDate, 'yyyy-MM-dd'), format(endDate, 'yyyy-MM-dd'));
+      const dailyHoursMap = new Map<string, number>();
 
-            for (const day of allDays) {
-                const dateString = format(day, 'yyyy-MM-dd');
-                const records = await getAttendanceForDate(studentId, dateString);
-                let totalMilliseconds = 0;
-                records.forEach(record => {
-                    if (record.checkInTime && record.checkOutTime && isValid(parseISO(record.checkInTime)) && isValid(parseISO(record.checkOutTime))) {
-                        totalMilliseconds += differenceInMilliseconds(parseISO(record.checkOutTime), parseISO(record.checkInTime));
-                    }
-                });
-                const totalHours = totalMilliseconds / (1000 * 60 * 60);
-                studyData.push({ date: dateString, hours: totalHours });
-            }
-            setMonthlyStudyData(studyData);
-        } catch (error) {
-            console.error("Error fetching daily study data:", error);
-        } finally {
-            setIsLoadingMonthlyStudyData(false);
+      recordsForMonth.forEach(record => {
+        let totalMilliseconds = 0;
+        if (record.checkInTime && record.checkOutTime && isValid(parseISO(record.checkInTime)) && isValid(parseISO(record.checkOutTime))) {
+          totalMilliseconds = differenceInMilliseconds(parseISO(record.checkOutTime), parseISO(record.checkInTime));
         }
-    }, []);
+        const dateKey = format(parseISO(record.checkInTime), 'yyyy-MM-dd');
+        dailyHoursMap.set(dateKey, (dailyHoursMap.get(dateKey) || 0) + totalMilliseconds);
+      });
+
+      const allDays = eachDayOfInterval({ start: startDate, end: endDate });
+      const studyData = allDays.map(day => {
+        const dateString = format(day, 'yyyy-MM-dd');
+        const totalMilliseconds = dailyHoursMap.get(dateString) || 0;
+        const totalHours = totalMilliseconds / (1000 * 60 * 60);
+        return { date: dateString, hours: totalHours };
+      });
+      
+      setMonthlyStudyData(studyData);
+    } catch (error) {
+      console.error("Error fetching daily study data:", error);
+      toast({ title: "Chart Error", description: "Could not load monthly study data.", variant: "destructive" });
+    } finally {
+      setIsLoadingMonthlyStudyData(false);
+    }
+  }, [toast]);
 
   React.useEffect(() => {
     if (currentStudent?.studentId && showMonthlyStudyTime) {
@@ -326,5 +333,3 @@ export default function MemberAttendancePage() {
     </>
   );
 }
-
-    
