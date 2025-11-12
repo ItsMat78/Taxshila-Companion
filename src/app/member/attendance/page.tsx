@@ -73,8 +73,8 @@ const StudyGrid = ({ data, month }: { data: { date: string; hours: number }[]; m
         <TooltipProvider>
             <div className="flex flex-col items-center justify-center gap-2 w-full">
                 <div className="grid grid-cols-7 gap-1.5 w-full">
-                    {weekdays.map(day => (
-                        <div key={day} className="text-xs text-center font-semibold text-muted-foreground">{day}</div>
+                    {weekdays.map((day, index) => (
+                        <div key={`${day}-${index}`} className="text-xs text-center font-semibold text-muted-foreground">{day}</div>
                     ))}
                 </div>
                 <div className="grid grid-cols-7 gap-1.5 w-full">
@@ -477,3 +477,5 @@ export default function MemberAttendancePage() {
     </>
   );
 }
+
+    
