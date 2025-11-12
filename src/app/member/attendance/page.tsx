@@ -13,12 +13,20 @@ import {
 } from "@/components/ui/card";
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, BarChart3, Clock, LogIn, LogOut, TrendingUp, ChevronLeft, ChevronRight, Calendar as CalendarIcon } from 'lucide-react';
+import { Loader2, BarChart3, Clock, LogIn, LogOut, TrendingUp, ChevronLeft, ChevronRight, Calendar as CalendarIcon, Grid3x3 } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
 import { getStudentByEmail, getAttendanceForDate, getStudentByCustomId, getAttendanceForDateRange } from '@/services/student-service';
 import type { Student, AttendanceRecord } from '@/types/student';
-import { format, parseISO, isValid, differenceInMilliseconds, startOfMonth, endOfMonth, eachDayOfInterval, addMonths, subMonths, isAfter, isToday, getHours, getMinutes } from 'date-fns';
+import { format, parseISO, isValid, differenceInMilliseconds, startOfMonth, endOfMonth, eachDayOfInterval, addMonths, subMonths, isAfter, isToday, getHours, getMinutes, getDay, addDays } from 'date-fns';
 import { BarChart, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Bar } from 'recharts';
+import {
+  Tooltip as ShadcnTooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
+import { cn } from '@/lib/utils';
 
 
 const ChartTooltipContent = ({ active, payload, label }: any) => {
@@ -38,6 +46,49 @@ const ChartTooltipContent = ({ active, payload, label }: any) => {
   return null;
 };
 
+// New Component for GitHub-style grid
+const StudyGrid = ({ data }: { data: { date: string; hours: number }[] }) => {
+    if (!data.length) return null;
+
+    const getIntensityClass = (hours: number) => {
+        if (hours <= 0) return 'bg-muted/30';
+        if (hours < 3) return 'bg-primary/20';
+        if (hours < 6) return 'bg-primary/50';
+        if (hours < 9) return 'bg-primary/70';
+        return 'bg-primary';
+    };
+
+    const firstDayOfMonth = getDay(parseISO(data[0].date)); // 0=Sun, 1=Mon, ...
+    const emptyCells = Array.from({ length: firstDayOfMonth }).map((_, i) => (
+        <div key={`empty-${i}`} className="h-4 w-4 rounded-sm" />
+    ));
+
+    const dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+    return (
+         <TooltipProvider>
+            <div className="flex justify-center">
+                <div className="grid grid-flow-col grid-rows-7 grid-cols-[repeat(auto-fill,minmax(1rem,1fr))] gap-1 items-center">
+                    {emptyCells}
+                    {data.map(({ date, hours }) => (
+                        <ShadcnTooltip key={date}>
+                            <TooltipTrigger asChild>
+                                <div className={cn("h-4 w-4 rounded-sm", getIntensityClass(hours))} />
+                            </TooltipTrigger>
+                            <TooltipContent>
+                                <p className="text-sm font-semibold">{format(parseISO(date), 'MMM d, yyyy')}</p>
+                                <p className="text-xs">
+                                    {Math.floor(hours)} hr {Math.round((hours % 1) * 60)} min
+                                </p>
+                            </TooltipContent>
+                        </ShadcnTooltip>
+                    ))}
+                </div>
+            </div>
+        </TooltipProvider>
+    );
+};
+
 
 export default function MemberAttendancePage() {
   const { user } = useAuth();
@@ -54,6 +105,8 @@ export default function MemberAttendancePage() {
   const [viewedMonth, setViewedMonth] = React.useState(new Date());
   const [showMonthlyStudyTime, setShowMonthlyStudyTime] = React.useState(false);
   const [showAttendanceOverview, setShowAttendanceOverview] = React.useState(false);
+  const [monthlyViewMode, setMonthlyViewMode] = React.useState<'chart' | 'grid'>('chart');
+
 
     const handlePrevMonth = () => {
         setViewedMonth((prev) => subMonths(prev, 1));
@@ -116,35 +169,33 @@ export default function MemberAttendancePage() {
         const dailyHoursMap = new Map<string, number>();
 
         recordsForMonth.forEach(record => {
-            let totalMilliseconds = 0;
              if (!record || !record.checkInTime) return;
 
             const checkInDate = parseISO(record.checkInTime);
             if (!isValid(checkInDate)) return;
             
+            let totalMilliseconds = 0;
             let sessionEndDate: Date;
+            const now = new Date();
 
             if (record.checkOutTime && isValid(parseISO(record.checkOutTime))) {
                 sessionEndDate = parseISO(record.checkOutTime);
             } else {
-                const now = new Date();
-                let shiftEndHour = 21;
-                let shiftEndMinute = 30;
+                 let shiftEndHour = 21;
+                 let shiftEndMinute = 30;
 
-                if (student.shift === 'morning') {
-                    shiftEndHour = 14;
-                    shiftEndMinute = 0;
-                }
-
-                const shiftEndTimeToday = new Date(checkInDate);
-                shiftEndTimeToday.setHours(shiftEndHour, shiftEndMinute, 0, 0);
+                 if (student.shift === 'morning') {
+                     shiftEndHour = 14;
+                     shiftEndMinute = 0;
+                 }
                 
-                if (isToday(checkInDate) && isAfter(now, shiftEndTimeToday)) {
-                    sessionEndDate = shiftEndTimeToday;
-                } else if (isToday(checkInDate)) {
-                    sessionEndDate = now;
+                const shiftEndTimeOnDate = new Date(checkInDate);
+                shiftEndTimeOnDate.setHours(shiftEndHour, shiftEndMinute, 0, 0);
+
+                if (isToday(checkInDate)) {
+                    sessionEndDate = isAfter(now, shiftEndTimeOnDate) ? shiftEndTimeOnDate : now;
                 } else {
-                    sessionEndDate = shiftEndTimeToday;
+                    sessionEndDate = shiftEndTimeOnDate;
                 }
             }
             if (isAfter(sessionEndDate, checkInDate)) {
@@ -177,11 +228,35 @@ export default function MemberAttendancePage() {
     }
   }, [currentStudent, viewedMonth, getDailyStudyDataForMonth, showMonthlyStudyTime]);
 
-  const calculateDailyStudyTime = (records: AttendanceRecord[]) => {
+  const calculateDailyStudyTime = (records: AttendanceRecord[], studentShift: Student['shift']) => {
     let totalMilliseconds = 0;
     records.forEach(record => {
-      if (record.checkInTime && record.checkOutTime && isValid(parseISO(record.checkInTime)) && isValid(parseISO(record.checkOutTime))) {
-        totalMilliseconds += differenceInMilliseconds(parseISO(record.checkOutTime), parseISO(record.checkInTime));
+      if (record.checkInTime && isValid(parseISO(record.checkInTime))) {
+        const checkInTime = parseISO(record.checkInTime);
+        let checkOutTimeCalc: Date;
+
+        if (record.checkOutTime && isValid(parseISO(record.checkOutTime))) {
+            checkOutTimeCalc = parseISO(record.checkOutTime);
+        } else {
+            let shiftEndHour = 21, shiftEndMinute = 30;
+            if (studentShift === 'morning') {
+                shiftEndHour = 14; shiftEndMinute = 0;
+            }
+            
+            const now = new Date();
+            const shiftEndTimeOnDate = new Date(checkInTime);
+            shiftEndTimeOnDate.setHours(shiftEndHour, shiftEndMinute, 0, 0);
+
+            if(isToday(checkInTime)) {
+                checkOutTimeCalc = isAfter(now, shiftEndTimeOnDate) ? shiftEndTimeOnDate : now;
+            } else {
+                checkOutTimeCalc = shiftEndTimeOnDate;
+            }
+        }
+        
+        if (isAfter(checkOutTimeCalc, checkInTime)) {
+          totalMilliseconds += differenceInMilliseconds(checkOutTimeCalc, checkInTime);
+        }
       }
     });
 
@@ -226,11 +301,31 @@ export default function MemberAttendancePage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
         <Card className="shadow-lg w-full overflow-hidden">
             <CardHeader>
-                <CardTitle className="flex items-center text-base sm:text-lg">
-                    <TrendingUp className="mr-2 h-5 w-5" />
-                    Hours every day
-                </CardTitle>
-                <CardDescription className="mt-1 text-xs">Hours studied per day for the selected month.</CardDescription>
+                <div className="flex justify-between items-start gap-2">
+                    <div>
+                        <CardTitle className="flex items-center text-base sm:text-lg">
+                            <TrendingUp className="mr-2 h-5 w-5" />
+                            Hours every day
+                        </CardTitle>
+                        <CardDescription className="mt-1 text-xs">Hours studied per day for the selected month.</CardDescription>
+                    </div>
+                    {showMonthlyStudyTime && (
+                       <ToggleGroup
+                            type="single"
+                            variant="outline"
+                            value={monthlyViewMode}
+                            onValueChange={(value: 'chart' | 'grid') => { if(value) setMonthlyViewMode(value) }}
+                            size="sm"
+                        >
+                            <ToggleGroupItem value="chart" aria-label="Chart view">
+                                <BarChart3 className="h-4 w-4" />
+                            </ToggleGroupItem>
+                            <ToggleGroupItem value="grid" aria-label="Grid view">
+                                <Grid3x3 className="h-4 w-4" />
+                            </ToggleGroupItem>
+                        </ToggleGroup>
+                    )}
+                </div>
             </CardHeader>
             <CardContent>
                 {!showMonthlyStudyTime ? (
@@ -258,25 +353,29 @@ export default function MemberAttendancePage() {
                         </Button>
                     </div>
                     {monthlyStudyData.length > 0 && monthlyStudyData.some(d => d.hours > 0) ? (
-                        <div className="min-h-[300px] w-full">
-                            <ResponsiveContainer width="100%" height={300}>
-                                <BarChart data={monthlyStudyData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
-                                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                                    <XAxis dataKey="date" tickFormatter={(date) => format(parseISO(date), 'dd')} tickLine={false} axisLine={false} tickMargin={8} />
-                                    <YAxis
-                                        tickLine={false}
-                                        axisLine={false}
-                                        tickMargin={8}
-                                        width={50}
-                                        tickFormatter={(value) => `${value}h`}
-                                    />
-                                    <Tooltip
-                                        cursor={{ fill: 'hsl(var(--muted))', radius: 4 }}
-                                        content={<ChartTooltipContent />}
-                                    />
-                                    <Bar dataKey="hours" name="Hours Studied" fill="hsl(var(--primary))" radius={4} />
-                                </BarChart>
-                            </ResponsiveContainer>
+                         <div className="min-h-[300px] w-full flex items-center justify-center">
+                            {monthlyViewMode === 'chart' ? (
+                                <ResponsiveContainer width="100%" height={300}>
+                                    <BarChart data={monthlyStudyData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
+                                        <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                                        <XAxis dataKey="date" tickFormatter={(date) => format(parseISO(date), 'dd')} tickLine={false} axisLine={false} tickMargin={8} />
+                                        <YAxis
+                                            tickLine={false}
+                                            axisLine={false}
+                                            tickMargin={8}
+                                            width={50}
+                                            tickFormatter={(value) => `${value}h`}
+                                        />
+                                        <Tooltip
+                                            cursor={{ fill: 'hsl(var(--muted))', radius: 4 }}
+                                            content={<ChartTooltipContent />}
+                                        />
+                                        <Bar dataKey="hours" name="Hours Studied" fill="hsl(var(--primary))" radius={4} />
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            ) : (
+                                <StudyGrid data={monthlyStudyData} />
+                            )}
                         </div>
                     ) : (
                         <p className="text-center text-muted-foreground py-10 h-[300px] flex items-center justify-center">No study history data available for this month.</p>
@@ -289,7 +388,7 @@ export default function MemberAttendancePage() {
         <Card className="shadow-lg">
             <CardHeader>
                 <CardTitle className="flex items-center text-base sm:text-lg">
-                <BarChart3 className="mr-2 h-5 w-5" />
+                <CalendarIcon className="mr-2 h-5 w-5" />
                 Daily Check-in/out time
                 </CardTitle>
                 <CardDescription className="text-xs">Select a date on the calendar to view your check-in and check-out times for that day.</CardDescription>
@@ -324,7 +423,7 @@ export default function MemberAttendancePage() {
                             ) : (
                             <>
                                 <div className="mb-4 text-lg font-semibold text-primary">
-                                Total study time: {(() => { const { hours, minutes } = calculateDailyStudyTime(attendanceForDay); return `${hours} hr ${minutes} min`; })()}
+                                Total study time: {(() => { const { hours, minutes } = calculateDailyStudyTime(attendanceForDay, currentStudent?.shift); return `${hours} hr ${minutes} min`; })()}
                                 </div>
 
                                 {attendanceForDay.length === 0 ? (
