@@ -59,17 +59,17 @@ const StudyGrid = ({ data }: { data: { date: string; hours: number }[] }) => {
     
     return (
          <TooltipProvider>
-            <div className="flex flex-col items-center justify-center gap-3">
-                <div className="grid grid-cols-[repeat(7,minmax(0,1fr))] sm:grid-cols-[repeat(10,minmax(0,1fr))] gap-1.5 items-center">
+            <div className="flex flex-col items-center justify-center gap-3 w-full">
+                <div className="grid grid-cols-[repeat(auto-fill,minmax(1rem,1fr))] gap-1.5 w-full">
                     {data.map(({ date, hours }) => (
                         <ShadcnTooltip key={date} delayDuration={100}>
                             <TooltipTrigger asChild>
-                                <div className={cn("h-4 w-4 rounded-sm", getIntensityClass(hours))} />
+                                <div className={cn("aspect-square w-full rounded-sm", getIntensityClass(hours))} />
                             </TooltipTrigger>
                             <TooltipContent>
                                 <p className="text-sm font-semibold">{format(parseISO(date), 'MMM d, yyyy')}</p>
                                 <p className="text-xs">
-                                    {Math.floor(hours)} hr {Math.round((hours % 1) * 60)} min
+                                    {Math.floor(hours)}h {Math.round((hours % 1) * 60)}m
                                 </p>
                             </TooltipContent>
                         </ShadcnTooltip>
@@ -339,7 +339,7 @@ export default function MemberAttendancePage() {
                     {monthlyStudyData.length > 0 && monthlyStudyData.some(d => d.hours > 0) ? (
                          <div className="min-h-[300px] w-full flex items-center justify-center">
                             {/* Mobile: Grid View */}
-                            <div className="md:hidden">
+                            <div className="md:hidden w-full">
                                 <StudyGrid data={monthlyStudyData} />
                             </div>
                             {/* Desktop: Chart View */}
@@ -410,7 +410,7 @@ export default function MemberAttendancePage() {
                             ) : (
                             <>
                                 <div className="mb-4 text-lg font-semibold text-primary">
-                                Total study time: {(() => { const { hours, minutes } = calculateDailyStudyTime(attendanceForDay, currentStudent?.shift); return `${hours} hr ${minutes} min`; })()}
+                                Total study time: {(() => { const { hours, minutes } = calculateDailyStudyTime(attendanceForDay, currentStudent?.shift); return `${hours} hr ${minutes}`; })()}
                                 </div>
 
                                 {attendanceForDay.length === 0 ? (
@@ -449,3 +449,5 @@ export default function MemberAttendancePage() {
     </>
   );
 }
+
+    
