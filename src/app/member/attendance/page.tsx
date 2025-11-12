@@ -91,7 +91,8 @@ const StudyGrid = ({ data, month, onDayClick }: { data: { date: string; hours: n
                                       className={cn(
                                         "aspect-square w-full rounded-sm cursor-pointer focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:z-10", 
                                         getIntensityClass(hours),
-                                        isCurrentMonth ? "border border-border" : "opacity-50"
+                                        isCurrentMonth ? "border border-border" : "opacity-50",
+                                        isToday(day) && "ring-2 ring-offset-2 ring-accent"
                                     )} />
                                 </TooltipTrigger>
                                 <TooltipContent>
@@ -483,3 +484,5 @@ export default function MemberAttendancePage() {
     </>
   );
 }
+
+    
