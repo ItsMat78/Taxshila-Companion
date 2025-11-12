@@ -666,17 +666,20 @@ export async function getAttendanceForDate(studentId: string, date: string): Pro
 }
 
 export async function getAttendanceForDateRange(studentId: string, startDate: string, endDate: string): Promise<AttendanceRecord[]> {
-  const q = query(
-    collection(db, ATTENDANCE_COLLECTION),
-    where("studentId", "==", studentId),
-    where("date", ">=", startDate),
-    where("date", "<=", endDate)
-  );
-  const querySnapshot = await getDocs(q);
-  const records = querySnapshot.docs.map(doc => attendanceRecordFromDoc(doc));
-  records.sort((a, b) => parseISO(a.checkInTime).getTime() - parseISO(b.checkInTime).getTime());
-  return records;
+    const q = query(
+        collection(db, ATTENDANCE_COLLECTION),
+        where("studentId", "==", studentId),
+        where("date", ">=", startDate),
+        where("date", "<=", endDate)
+    );
+    const querySnapshot = await getDocs(q);
+    const records = querySnapshot.docs.map(doc => attendanceRecordFromDoc(doc));
+    // It's often better to sort client-side after fetching, but if the volume is huge, an orderBy could be added.
+    // However, orderBy('date') with another range filter often requires a composite index.
+    records.sort((a, b) => parseISO(a.checkInTime).getTime() - parseISO(b.checkInTime).getTime());
+    return records;
 }
+
 
 
 export async function getAllAttendanceRecords(): Promise<AttendanceRecord[]> {
