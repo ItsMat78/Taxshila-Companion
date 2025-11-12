@@ -188,6 +188,23 @@ function NotificationPrompt({ onDismiss }: { onDismiss: () => void }) {
 }
 
 
+const motivationalQuotes = [
+  "Stay motivated.",
+  "You got this.",
+  "Never give up.",
+  "Progress, not perfection.",
+  "Find a way.",
+  "Make it happen.",
+  "Keep moving forward.",
+  "You are strong.",
+  "See it through.",
+  "Trust the process.",
+  "Dare to begin.",
+  "Stay the course.",
+  "Embrace the journey."
+];
+
+
 export default function MemberDashboardPage() {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -207,13 +224,17 @@ export default function MemberDashboardPage() {
   const [isLoadingCurrentSession, setIsLoadingCurrentSession] = React.useState(true);
   const [isProcessingCheckout, setIsProcessingCheckout] = React.useState(false);
 
-
+  const [motivationalQuote, setMotivationalQuote] = React.useState("Stay motivated.");
   const [studentFeeStatus, setStudentFeeStatus] = React.useState<FeeStatus | null>(null);
   const [studentNextDueDate, setStudentNextDueDate] = React.useState<string | null>(null);
   const [isOverdueDialogOpen, setIsOverdueDialogOpen] = React.useState(false);
   const [elapsedTime, setElapsedTime] = React.useState<string | null>(null);
   const [showNotificationPrompt, setShowNotificationPrompt] = React.useState(false);
   const [isRefreshing, setIsRefreshing] = React.useState(false);
+
+  React.useEffect(() => {
+    setMotivationalQuote(motivationalQuotes[Math.floor(Math.random() * motivationalQuotes.length)]);
+  }, []);
 
   React.useEffect(() => {
     if (typeof window !== 'undefined' && 'Notification' in window) {
@@ -656,7 +677,7 @@ export default function MemberDashboardPage() {
           </Link>
           <div className="flex-1 min-w-0">
             <h1 className="text-xl font-headline font-semibold tracking-tight md:text-2xl leading-tight">{pageTitleText}</h1>
-            <p className="text-muted-foreground text-sm">Track your progress. Stay motivated.</p>
+            <p className="text-muted-foreground text-sm">{motivationalQuote}</p>
           </div>
         </div>
         {currentStudent && (
