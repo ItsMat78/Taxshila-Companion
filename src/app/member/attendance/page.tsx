@@ -15,7 +15,7 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, BarChart3, Clock, LogIn, LogOut, TrendingUp, ChevronLeft, ChevronRight, Calendar as CalendarIcon } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
-import { getStudentByEmail, calculateMonthlyStudyHours, getAttendanceForDate, getAttendanceForDateRange, getStudentByCustomId } from '@/services/student-service';
+import { getStudentByEmail, calculateMonthlyStudyHours, getAttendanceForDate, getStudentByCustomId } from '@/services/student-service';
 import type { Student, AttendanceRecord } from '@/types/student';
 import { format, parseISO, isValid, differenceInMilliseconds, startOfMonth, endOfMonth, eachDayOfInterval, addMonths, subMonths, isAfter } from 'date-fns';
 import { BarChart, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Bar } from 'recharts';
@@ -109,30 +109,26 @@ export default function MemberAttendancePage() {
   const getDailyStudyDataForMonth = React.useCallback(async (studentId: string, month: Date) => {
     setIsLoadingMonthlyStudyData(true);
     try {
-      const startDate = startOfMonth(month);
-      const endDate = endOfMonth(month);
-      
-      const recordsForMonth = await getAttendanceForDateRange(studentId, format(startDate, 'yyyy-MM-dd'), format(endDate, 'yyyy-MM-dd'));
-      const dailyHoursMap = new Map<string, number>();
+      const monthStart = startOfMonth(month);
+      const monthEnd = endOfMonth(month);
+      const daysInMonth = eachDayOfInterval({ start: monthStart, end: monthEnd });
 
-      recordsForMonth.forEach(record => {
-        let totalMilliseconds = 0;
-        if (record.checkInTime && record.checkOutTime && isValid(parseISO(record.checkInTime)) && isValid(parseISO(record.checkOutTime))) {
-          totalMilliseconds = differenceInMilliseconds(parseISO(record.checkOutTime), parseISO(record.checkInTime));
-        }
-        const dateKey = format(parseISO(record.checkInTime), 'yyyy-MM-dd');
-        dailyHoursMap.set(dateKey, (dailyHoursMap.get(dateKey) || 0) + totalMilliseconds);
-      });
-
-      const allDays = eachDayOfInterval({ start: startDate, end: endDate });
-      const studyData = allDays.map(day => {
+      const promises = daysInMonth.map(async (day) => {
         const dateString = format(day, 'yyyy-MM-dd');
-        const totalMilliseconds = dailyHoursMap.get(dateString) || 0;
+        const recordsForDay = await getAttendanceForDate(studentId, dateString);
+        let totalMilliseconds = 0;
+        recordsForDay.forEach(record => {
+           if (record.checkInTime && record.checkOutTime && isValid(parseISO(record.checkInTime)) && isValid(parseISO(record.checkOutTime))) {
+                totalMilliseconds += differenceInMilliseconds(parseISO(record.checkOutTime), parseISO(record.checkInTime));
+            }
+        });
         const totalHours = totalMilliseconds / (1000 * 60 * 60);
         return { date: dateString, hours: totalHours };
       });
-      
+
+      const studyData = await Promise.all(promises);
       setMonthlyStudyData(studyData);
+
     } catch (error) {
       console.error("Error fetching daily study data:", error);
       toast({ title: "Chart Error", description: "Could not load monthly study data.", variant: "destructive" });
