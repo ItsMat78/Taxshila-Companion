@@ -17,7 +17,7 @@ import { Loader2, BarChart3, Clock, LogIn, LogOut, TrendingUp, ChevronLeft, Chev
 import { useAuth } from '@/contexts/auth-context';
 import { getStudentByEmail, getAttendanceForDate, getStudentByCustomId, getAttendanceForDateRange } from '@/services/student-service';
 import type { Student, AttendanceRecord } from '@/types/student';
-import { format, parseISO, isValid, differenceInMilliseconds, startOfMonth, endOfMonth, eachDayOfInterval, addMonths, subMonths, isAfter, isToday, getHours, getMinutes, getDay, addDays } from 'date-fns';
+import { format, parseISO, isValid, differenceInMilliseconds, startOfMonth, endOfMonth, eachDayOfInterval, addMonths, subMonths, isAfter, isToday, getHours, getMinutes, getDay, addDays, startOfWeek, endOfWeek, isSameMonth } from 'date-fns';
 import { BarChart, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Bar } from 'recharts';
 import {
   Tooltip as ShadcnTooltip,
@@ -46,7 +46,7 @@ const ChartTooltipContent = ({ active, payload, label }: any) => {
 };
 
 // New Component for GitHub-style grid
-const StudyGrid = ({ data }: { data: { date: string; hours: number }[] }) => {
+const StudyGrid = ({ data, month }: { data: { date: string; hours: number }[]; month: Date }) => {
     if (!data.length) return null;
 
     const getIntensityClass = (hours: number) => {
@@ -56,31 +56,53 @@ const StudyGrid = ({ data }: { data: { date: string; hours: number }[] }) => {
         if (hours < 9) return 'bg-primary/70';
         return 'bg-primary';
     };
+
+    const weekStartsOn = 0; // 0 for Sunday
+    const monthStart = startOfMonth(month);
+    const monthEnd = endOfMonth(month);
+    const gridStart = startOfWeek(monthStart, { weekStartsOn });
+    const gridEnd = endOfWeek(monthEnd, { weekStartsOn });
+
+    const daysInGrid = eachDayOfInterval({ start: gridStart, end: gridEnd });
     
-    // Find the first day of the month to add spacer divs
-    const firstDayOfMonth = data.length > 0 ? getDay(parseISO(data[0].date)) : 0;
-    const spacers = Array.from({ length: firstDayOfMonth });
+    const studyDataMap = new Map(data.map(item => [item.date, item.hours]));
+    const weekdays = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+
 
     return (
-         <TooltipProvider>
-            <div className="flex flex-col items-center justify-center gap-3 w-full">
+        <TooltipProvider>
+            <div className="flex flex-col items-center justify-center gap-2 w-full">
                 <div className="grid grid-cols-7 gap-1.5 w-full">
-                    {spacers.map((_, index) => <div key={`spacer-${index}`} className="aspect-square w-full" />)}
-                    {data.map(({ date, hours }) => (
-                        <ShadcnTooltip key={date} delayDuration={100}>
-                            <TooltipTrigger asChild>
-                                <div className={cn("aspect-square w-full rounded-sm", getIntensityClass(hours))} />
-                            </TooltipTrigger>
-                            <TooltipContent>
-                                <p className="text-sm font-semibold">{format(parseISO(date), 'MMM d, yyyy')}</p>
-                                <p className="text-xs">
-                                    {Math.floor(hours)}h {Math.round((hours % 1) * 60)}m of study
-                                </p>
-                            </TooltipContent>
-                        </ShadcnTooltip>
+                    {weekdays.map(day => (
+                        <div key={day} className="text-xs text-center font-semibold text-muted-foreground">{day}</div>
                     ))}
                 </div>
-                 <div className="flex items-center gap-2 text-xs text-muted-foreground mt-2">
+                <div className="grid grid-cols-7 gap-1.5 w-full">
+                    {daysInGrid.map((day) => {
+                        const dateString = format(day, 'yyyy-MM-dd');
+                        const hours = studyDataMap.get(dateString) ?? 0;
+                        const isCurrentMonth = isSameMonth(day, month);
+
+                        if (!isCurrentMonth) {
+                            return <div key={dateString} className="aspect-square w-full rounded-sm bg-muted/10" />;
+                        }
+
+                        return (
+                            <ShadcnTooltip key={dateString} delayDuration={100}>
+                                <TooltipTrigger asChild>
+                                    <div className={cn("aspect-square w-full rounded-sm", getIntensityClass(hours))} />
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                    <p className="text-sm font-semibold">{format(day, 'MMM d, yyyy')}</p>
+                                    <p className="text-xs">
+                                        {Math.floor(hours)}h {Math.round((hours % 1) * 60)}m of study
+                                    </p>
+                                </TooltipContent>
+                            </ShadcnTooltip>
+                        );
+                    })}
+                </div>
+                <div className="flex items-center gap-2 text-xs text-muted-foreground mt-2">
                     <span>Less</span>
                     <div className="h-3 w-3 rounded-sm bg-muted/30" title="0 hours" />
                     <div className="h-3 w-3 rounded-sm bg-primary/20" title="< 3 hours" />
@@ -93,6 +115,7 @@ const StudyGrid = ({ data }: { data: { date: string; hours: number }[] }) => {
         </TooltipProvider>
     );
 };
+
 
 
 export default function MemberAttendancePage() {
@@ -345,7 +368,7 @@ export default function MemberAttendancePage() {
                          <div className="min-h-[300px] w-full flex items-center justify-center">
                             {/* Mobile: Grid View */}
                             <div className="md:hidden w-full">
-                                <StudyGrid data={monthlyStudyData} />
+                                <StudyGrid data={monthlyStudyData} month={viewedMonth} />
                             </div>
                             {/* Desktop: Chart View */}
                             <div className="hidden md:block w-full h-full">
