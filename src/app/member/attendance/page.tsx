@@ -63,26 +63,35 @@ const StudyGrid = ({ data }: { data: { date: string; hours: number }[] }) => {
         <div key={`empty-${i}`} className="h-4 w-4 rounded-sm" />
     ));
 
-    const dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-
     return (
          <TooltipProvider>
-            <div className="flex justify-center">
-                <div className="grid grid-flow-col grid-rows-7 grid-cols-[repeat(auto-fill,minmax(1rem,1fr))] gap-1 items-center">
-                    {emptyCells}
-                    {data.map(({ date, hours }) => (
-                        <ShadcnTooltip key={date}>
-                            <TooltipTrigger asChild>
-                                <div className={cn("h-4 w-4 rounded-sm", getIntensityClass(hours))} />
-                            </TooltipTrigger>
-                            <TooltipContent>
-                                <p className="text-sm font-semibold">{format(parseISO(date), 'MMM d, yyyy')}</p>
-                                <p className="text-xs">
-                                    {Math.floor(hours)} hr {Math.round((hours % 1) * 60)} min
-                                </p>
-                            </TooltipContent>
-                        </ShadcnTooltip>
-                    ))}
+            <div className="flex flex-col items-center justify-center gap-3">
+                <div className="flex justify-center">
+                    <div className="grid grid-flow-col grid-rows-7 grid-cols-[repeat(auto-fill,minmax(1rem,1fr))] gap-1 items-center">
+                        {emptyCells}
+                        {data.map(({ date, hours }) => (
+                            <ShadcnTooltip key={date}>
+                                <TooltipTrigger asChild>
+                                    <div className={cn("h-4 w-4 rounded-sm", getIntensityClass(hours))} />
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                    <p className="text-sm font-semibold">{format(parseISO(date), 'MMM d, yyyy')}</p>
+                                    <p className="text-xs">
+                                        {Math.floor(hours)} hr {Math.round((hours % 1) * 60)} min
+                                    </p>
+                                </TooltipContent>
+                            </ShadcnTooltip>
+                        ))}
+                    </div>
+                </div>
+                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <span>Less</span>
+                    <div className="h-3 w-3 rounded-sm bg-muted/30" />
+                    <div className="h-3 w-3 rounded-sm bg-primary/20" />
+                    <div className="h-3 w-3 rounded-sm bg-primary/50" />
+                    <div className="h-3 w-3 rounded-sm bg-primary/70" />
+                    <div className="h-3 w-3 rounded-sm bg-primary" />
+                    <span>More</span>
                 </div>
             </div>
         </TooltipProvider>
@@ -462,3 +471,5 @@ export default function MemberAttendancePage() {
     </>
   );
 }
+
+    
