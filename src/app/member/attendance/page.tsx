@@ -25,7 +25,6 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { cn } from '@/lib/utils';
 
 
@@ -67,7 +66,7 @@ const StudyGrid = ({ data }: { data: { date: string; hours: number }[] }) => {
          <TooltipProvider>
             <div className="flex flex-col items-center justify-center gap-3">
                 <div className="flex justify-center">
-                    <div className="grid grid-flow-col grid-rows-7 grid-cols-[repeat(auto-fill,minmax(1rem,1fr))] gap-1 items-center">
+                    <div className="grid grid-flow-col grid-rows-7 gap-1 items-center">
                         {emptyCells}
                         {data.map(({ date, hours }) => (
                             <ShadcnTooltip key={date}>
@@ -86,11 +85,11 @@ const StudyGrid = ({ data }: { data: { date: string; hours: number }[] }) => {
                 </div>
                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
                     <span>Less</span>
-                    <div className="h-3 w-3 rounded-sm bg-muted/30" />
-                    <div className="h-3 w-3 rounded-sm bg-primary/20" />
-                    <div className="h-3 w-3 rounded-sm bg-primary/50" />
-                    <div className="h-3 w-3 rounded-sm bg-primary/70" />
-                    <div className="h-3 w-3 rounded-sm bg-primary" />
+                    <div className="h-3 w-3 rounded-sm bg-muted/30" title="0 hours" />
+                    <div className="h-3 w-3 rounded-sm bg-primary/20" title="< 3 hours" />
+                    <div className="h-3 w-3 rounded-sm bg-primary/50" title="< 6 hours" />
+                    <div className="h-3 w-3 rounded-sm bg-primary/70" title="< 9 hours" />
+                    <div className="h-3 w-3 rounded-sm bg-primary" title="> 9 hours" />
                     <span>More</span>
                 </div>
             </div>
@@ -114,8 +113,6 @@ export default function MemberAttendancePage() {
   const [viewedMonth, setViewedMonth] = React.useState(new Date());
   const [showMonthlyStudyTime, setShowMonthlyStudyTime] = React.useState(false);
   const [showAttendanceOverview, setShowAttendanceOverview] = React.useState(false);
-  const [monthlyViewMode, setMonthlyViewMode] = React.useState<'chart' | 'grid'>('chart');
-
 
     const handlePrevMonth = () => {
         setViewedMonth((prev) => subMonths(prev, 1));
@@ -171,64 +168,66 @@ export default function MemberAttendancePage() {
   const getDailyStudyDataForMonth = React.useCallback(async (student: Student, month: Date) => {
     setIsLoadingMonthlyStudyData(true);
     try {
-        const startDate = startOfMonth(month);
-        const endDate = endOfMonth(month);
-        
-        const recordsForMonth = await getAttendanceForDateRange(student.studentId, format(startDate, 'yyyy-MM-dd'), format(endDate, 'yyyy-MM-dd'));
-        const dailyHoursMap = new Map<string, number>();
+      const startDate = startOfMonth(month);
+      const endDate = endOfMonth(month);
+      const recordsForMonth = await getAttendanceForDateRange(
+        student.studentId,
+        format(startDate, 'yyyy-MM-dd'),
+        format(endDate, 'yyyy-MM-dd')
+      );
+      const dailyHoursMap = new Map<string, number>();
 
-        recordsForMonth.forEach(record => {
-             if (!record || !record.checkInTime) return;
+      recordsForMonth.forEach(record => {
+        if (!record || !record.checkInTime) return;
+        const checkInDate = parseISO(record.checkInTime);
+        if (!isValid(checkInDate)) return;
 
-            const checkInDate = parseISO(record.checkInTime);
-            if (!isValid(checkInDate)) return;
-            
-            let totalMilliseconds = 0;
-            let sessionEndDate: Date;
-            const now = new Date();
+        let totalMilliseconds = 0;
+        let sessionEndDate: Date;
+        const now = new Date();
 
-            if (record.checkOutTime && isValid(parseISO(record.checkOutTime))) {
-                sessionEndDate = parseISO(record.checkOutTime);
-            } else {
-                 let shiftEndHour = 21;
-                 let shiftEndMinute = 30;
+        if (record.checkOutTime && isValid(parseISO(record.checkOutTime))) {
+          sessionEndDate = parseISO(record.checkOutTime);
+        } else {
+          let shiftEndHour = 21;
+          let shiftEndMinute = 30;
 
-                 if (student.shift === 'morning') {
-                     shiftEndHour = 14;
-                     shiftEndMinute = 0;
-                 }
-                
-                const shiftEndTimeOnDate = new Date(checkInDate);
-                shiftEndTimeOnDate.setHours(shiftEndHour, shiftEndMinute, 0, 0);
+          if (student.shift === 'morning') {
+            shiftEndHour = 14;
+            shiftEndMinute = 0;
+          }
 
-                if (isToday(checkInDate)) {
-                    sessionEndDate = isAfter(now, shiftEndTimeOnDate) ? shiftEndTimeOnDate : now;
-                } else {
-                    sessionEndDate = shiftEndTimeOnDate;
-                }
-            }
-            if (isAfter(sessionEndDate, checkInDate)) {
-              totalMilliseconds += differenceInMilliseconds(sessionEndDate, checkInDate);
-            }
-            const dateKey = format(checkInDate, 'yyyy-MM-dd');
-            dailyHoursMap.set(dateKey, (dailyHoursMap.get(dateKey) || 0) + totalMilliseconds);
-        });
+          const shiftEndTimeOnDate = new Date(checkInDate);
+          shiftEndTimeOnDate.setHours(shiftEndHour, shiftEndMinute, 0, 0);
 
-        const allDays = eachDayOfInterval({ start: startDate, end: endDate });
-        const studyData = allDays.map(day => {
-            const dateString = format(day, 'yyyy-MM-dd');
-            const totalMilliseconds = dailyHoursMap.get(dateString) || 0;
-            const totalHours = totalMilliseconds / (1000 * 60 * 60);
-            return { date: dateString, hours: totalHours };
-        });
-        setMonthlyStudyData(studyData);
+          if (isToday(checkInDate)) {
+            sessionEndDate = isAfter(now, shiftEndTimeOnDate) ? shiftEndTimeOnDate : now;
+          } else {
+            sessionEndDate = shiftEndTimeOnDate;
+          }
+        }
+        if (isAfter(sessionEndDate, checkInDate)) {
+          totalMilliseconds += differenceInMilliseconds(sessionEndDate, checkInDate);
+        }
+        const dateKey = format(checkInDate, 'yyyy-MM-dd');
+        dailyHoursMap.set(dateKey, (dailyHoursMap.get(dateKey) || 0) + totalMilliseconds);
+      });
+
+      const allDays = eachDayOfInterval({ start: startDate, end: endDate });
+      const studyData = allDays.map(day => {
+        const dateString = format(day, 'yyyy-MM-dd');
+        const totalMilliseconds = dailyHoursMap.get(dateString) || 0;
+        const totalHours = totalMilliseconds / (1000 * 60 * 60);
+        return { date: dateString, hours: totalHours };
+      });
+      setMonthlyStudyData(studyData);
     } catch (error) {
-        console.error("Error fetching daily study data:", error);
-        toast({ title: "Chart Error", description: "Could not load monthly study data.", variant: "destructive" });
+      console.error("Error fetching daily study data:", error);
+      toast({ title: "Chart Error", description: "Could not load monthly study data.", variant: "destructive" });
     } finally {
-        setIsLoadingMonthlyStudyData(false);
+      setIsLoadingMonthlyStudyData(false);
     }
-}, [toast]);
+  }, [toast]);
 
 
   React.useEffect(() => {
@@ -318,22 +317,6 @@ export default function MemberAttendancePage() {
                         </CardTitle>
                         <CardDescription className="mt-1 text-xs">Hours studied per day for the selected month.</CardDescription>
                     </div>
-                    {showMonthlyStudyTime && (
-                       <ToggleGroup
-                            type="single"
-                            variant="outline"
-                            value={monthlyViewMode}
-                            onValueChange={(value: 'chart' | 'grid') => { if(value) setMonthlyViewMode(value) }}
-                            size="sm"
-                        >
-                            <ToggleGroupItem value="chart" aria-label="Chart view">
-                                <BarChart3 className="h-4 w-4" />
-                            </ToggleGroupItem>
-                            <ToggleGroupItem value="grid" aria-label="Grid view">
-                                <Grid3x3 className="h-4 w-4" />
-                            </ToggleGroupItem>
-                        </ToggleGroup>
-                    )}
                 </div>
             </CardHeader>
             <CardContent>
@@ -363,7 +346,12 @@ export default function MemberAttendancePage() {
                     </div>
                     {monthlyStudyData.length > 0 && monthlyStudyData.some(d => d.hours > 0) ? (
                          <div className="min-h-[300px] w-full flex items-center justify-center">
-                            {monthlyViewMode === 'chart' ? (
+                            {/* Mobile: Grid View */}
+                            <div className="md:hidden">
+                                <StudyGrid data={monthlyStudyData} />
+                            </div>
+                            {/* Desktop: Chart View */}
+                            <div className="hidden md:block w-full h-full">
                                 <ResponsiveContainer width="100%" height={300}>
                                     <BarChart data={monthlyStudyData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
                                         <CartesianGrid strokeDasharray="3 3" vertical={false} />
@@ -382,9 +370,7 @@ export default function MemberAttendancePage() {
                                         <Bar dataKey="hours" name="Hours Studied" fill="hsl(var(--primary))" radius={4} />
                                     </BarChart>
                                 </ResponsiveContainer>
-                            ) : (
-                                <StudyGrid data={monthlyStudyData} />
-                            )}
+                            </div>
                         </div>
                     ) : (
                         <p className="text-center text-muted-foreground py-10 h-[300px] flex items-center justify-center">No study history data available for this month.</p>
@@ -471,5 +457,3 @@ export default function MemberAttendancePage() {
     </>
   );
 }
-
-    
