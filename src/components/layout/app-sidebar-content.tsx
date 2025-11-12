@@ -203,9 +203,9 @@ export function AppSidebarContent() {
 
   if (!user) return null;
 
-  const getInitials = (identifierForDisplay?: string) => {
-    if (!identifierForDisplay) return 'U';
-    return identifierForDisplay.substring(0, 2).toUpperCase();
+  const getInitials = (name?: string) => {
+    if (!name) return 'U';
+    return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
   }
 
   return (
