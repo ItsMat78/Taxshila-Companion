@@ -859,12 +859,12 @@ export default function MemberDashboardPage() {
                 wifiConfig.map(wifi => (
                   <div key={wifi.id} className="p-3 border rounded-lg bg-muted/50 space-y-2">
                     <div className="space-y-1">
-                      <p className="text-xs text-muted-foreground">SSID</p>
+                      <p className="text-xs text-muted-foreground font-semibold">SSID</p>
                       <p className="text-sm font-semibold">{wifi.ssid}</p>
                     </div>
                     {wifi.password && (
                         <div className="space-y-1">
-                            <p className="text-xs text-muted-foreground">Password</p>
+                            <p className="text-xs text-muted-foreground font-semibold">Password</p>
                             <div className="flex items-center gap-2">
                                 <p className="text-sm font-mono font-semibold flex-1 break-all">{wifi.password}</p>
                                 <Button variant="outline" size="sm" onClick={() => handleCopy(wifi.password!)}>
@@ -882,21 +882,19 @@ export default function MemberDashboardPage() {
             </div>
           </DialogContent>
         </Dialog>
+      </div>
+      <div className="mt-4 sm:mt-6">
         <DashboardTile
             title="Rate Us"
             description="Love our space? Let others know!"
             icon={Star}
             href="https://g.page/r/CS-yYFo4JxNXEBM/review"
             external={true}
+            className="w-full"
         />
       </div>
     </>
   );
 }
-
-
-    
-
-    
 
     
