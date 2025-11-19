@@ -101,17 +101,25 @@ export default function WifiManagementPage() {
     setIsSaving(true);
     try {
       let updatedConfigs: WifiConfig[];
+
+      // Construct the new or updated config object carefully
+      const newOrUpdatedConfig: Partial<WifiConfig> = {
+        id: editingConfig ? editingConfig.id : `wifi_${Date.now()}`,
+        ssid: data.ssid,
+      };
+      // Only include the password if it's a non-empty string
+      if (data.password && data.password.trim() !== '') {
+        newOrUpdatedConfig.password = data.password;
+      }
+      
       if (editingConfig) { // Editing existing config
         updatedConfigs = wifiConfigs.map(c => 
-          c.id === editingConfig.id ? { ...c, ...data } : c
+          c.id === editingConfig.id ? (newOrUpdatedConfig as WifiConfig) : c
         );
       } else { // Adding new config
-        const newConfig: WifiConfig = { 
-          id: `wifi_${Date.now()}`, 
-          ...data 
-        };
-        updatedConfigs = [...wifiConfigs, newConfig];
+        updatedConfigs = [...wifiConfigs, newOrUpdatedConfig as WifiConfig];
       }
+      
       await updateWifiConfiguration(updatedConfigs);
       toast({
         title: "WiFi Settings Updated",
