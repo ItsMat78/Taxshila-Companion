@@ -179,7 +179,7 @@ export default function WifiManagementPage() {
                             <div key={config.id} className="flex items-center justify-between p-3 border rounded-lg">
                                 <div>
                                     <p className="font-semibold">{config.ssid}</p>
-                                    <p className="text-sm text-muted-foreground">Password: {config.password ? '••••••••' : 'None'}</p>
+                                    <p className="text-sm text-muted-foreground font-mono">{config.password || 'No password'}</p>
                                 </div>
                                 <div className="flex gap-2">
                                     <Button variant="ghost" size="icon" onClick={() => setEditingConfig(config)}>
