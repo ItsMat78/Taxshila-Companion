@@ -218,7 +218,7 @@ export default function MemberDashboardPage() {
   const html5QrcodeScannerRef = React.useRef<Html5QrcodeScanner | null>(null);
 
   const [wifiConfig, setWifiConfig] = React.useState<WifiConfig[]>([]);
-  const [isLoadingWifi, setIsLoadingWifi] = React.useState(true);
+  const [isLoadingWifi, setIsLoadingWifi] = React.useState(false);
   const [isWifiDialogOpen, setIsWifiDialogOpen] = React.useState(false);
   const [currentStudent, setCurrentStudent] = React.useState<Student | null>(null);
   const [studentId, setStudentId] = React.useState<string | null>(null);
@@ -263,7 +263,6 @@ export default function MemberDashboardPage() {
 
         setIsLoadingStudentData(true);
         setIsLoadingCurrentSession(true);
-        setIsLoadingWifi(true);
 
         setStudentFirstName(null);
         setStudentId(null);
@@ -272,7 +271,6 @@ export default function MemberDashboardPage() {
         setStudentFeeStatus(null);
         setStudentNextDueDate(null);
         setCurrentStudent(null);
-        setWifiConfig([]);
 
       let studentDetailsFetchedSuccessfully = false;
       try {
@@ -294,16 +292,13 @@ export default function MemberDashboardPage() {
           const [
             alerts,
             activeCheckInData,
-            wifiData
           ] = await Promise.all([
             getAlertsForStudent(studentDetails.studentId),
             getActiveCheckIn(studentDetails.studentId),
-            getWifiConfiguration(),
           ]);
 
           setHasUnreadAlerts(alerts.some(alert => !alert.isRead));
           setActiveCheckInRecord(activeCheckInData || null);
-          setWifiConfig(wifiData);
 
         } else {
             toast({ title: "Error", description: "Could not find your student record.", variant: "destructive" });
@@ -314,23 +309,37 @@ export default function MemberDashboardPage() {
       } finally {
         setIsLoadingStudentData(false);
         setIsLoadingCurrentSession(false);
-        setIsLoadingWifi(false);
         if (isManualRefresh) setIsRefreshing(false);
         if (!studentDetailsFetchedSuccessfully) {
             setStudentFirstName(null); setStudentId(null);
             setHasUnreadAlerts(false); setActiveCheckInRecord(null);
             setStudentFeeStatus(null); setStudentNextDueDate(null);
-            setCurrentStudent(null); setWifiConfig([]);
+            setCurrentStudent(null);
         }
       }
     } else {
-      setIsLoadingStudentData(false); setIsLoadingCurrentSession(false); setIsLoadingWifi(false);
+      setIsLoadingStudentData(false); setIsLoadingCurrentSession(false);
       setStudentFirstName(null); setStudentId(null);
       setHasUnreadAlerts(false); setActiveCheckInRecord(null);
       setStudentFeeStatus(null); setStudentNextDueDate(null);
-      setCurrentStudent(null); setWifiConfig([]);
+      setCurrentStudent(null);
     }
   }, [user, toast]);
+  
+  const handleOpenWifiDialog = async () => {
+    setIsWifiDialogOpen(true);
+    setIsLoadingWifi(true);
+    setWifiConfig([]);
+    try {
+        const wifiData = await getWifiConfiguration();
+        setWifiConfig(wifiData);
+    } catch (error) {
+        console.error("Failed to fetch WiFi details on demand:", error);
+        toast({ title: "Error", description: "Could not load WiFi details.", variant: "destructive" });
+    } finally {
+        setIsLoadingWifi(false);
+    }
+  };
 
 
   React.useEffect(() => {
@@ -834,12 +843,12 @@ export default function MemberDashboardPage() {
         />
         <Dialog open={isWifiDialogOpen} onOpenChange={setIsWifiDialogOpen}>
           <DialogTrigger asChild>
-            <button className="block w-full h-full text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-lg">
+            <button onClick={handleOpenWifiDialog} className="block w-full h-full text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-lg">
                 <DashboardTile
                   title="WiFi Details"
                   description="View network credentials."
                   icon={Wifi}
-                  isLoadingStatistic={isLoadingWifi}
+                  isLoadingStatistic={isLoadingWifi && isWifiDialogOpen}
                 />
             </button>
           </DialogTrigger>
@@ -857,24 +866,24 @@ export default function MemberDashboardPage() {
                 </div>
               ) : wifiConfig.length > 0 ? (
                 wifiConfig.map(wifi => (
-                  <div key={wifi.id} className="p-3 border rounded-lg bg-muted/50 space-y-2">
-                    <div className="space-y-1">
-                      <p className="text-xs text-muted-foreground font-semibold">SSID</p>
-                      <p className="text-sm font-semibold">{wifi.ssid}</p>
-                    </div>
-                    {wifi.password && (
+                    <div key={wifi.id} className="p-4 border rounded-lg bg-muted/50 space-y-3">
                         <div className="space-y-1">
-                            <p className="text-xs text-muted-foreground font-semibold">Password</p>
-                            <div className="flex items-center gap-2">
-                                <p className="text-sm font-mono font-semibold flex-1 break-all">{wifi.password}</p>
-                                <Button variant="outline" size="sm" onClick={() => handleCopy(wifi.password!)}>
-                                <Copy className="h-3 w-3 mr-1" />
-                                Copy
-                                </Button>
-                            </div>
+                            <p className="text-xs text-muted-foreground font-semibold">SSID</p>
+                            <p className="text-sm font-semibold">{wifi.ssid}</p>
                         </div>
-                    )}
-                  </div>
+                        {wifi.password && (
+                            <div className="space-y-1">
+                                <p className="text-xs text-muted-foreground font-semibold">Password</p>
+                                <div className="flex items-center gap-2">
+                                    <p className="text-sm font-mono font-semibold flex-1 break-all">{wifi.password}</p>
+                                    <Button variant="outline" size="sm" onClick={() => handleCopy(wifi.password!)}>
+                                    <Copy className="h-3 w-3 mr-1" />
+                                    Copy
+                                    </Button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
                 ))
               ) : (
                 <p className="text-center text-muted-foreground">No WiFi networks are currently configured.</p>
@@ -896,5 +905,7 @@ export default function MemberDashboardPage() {
     </>
   );
 }
+
+    
 
     
