@@ -1,5 +1,4 @@
 
-
 import {
   db,
   collection,
@@ -842,6 +841,12 @@ export async function calculateMonthlyStudyHours(customStudentId: string, monthD
 
 // --- Communication Service Functions (Feedback & Alerts) ---
 async function triggerNotification(type: 'alert' | 'feedback', payload: any) {
+  // Use __GENERAL__ as a special marker for general alerts.
+  if (type === 'alert' && payload.studentId === '__GENERAL__') {
+      console.log(`[StudentService] General alert created (ID: ${payload.id}). Not sending individual push notifications.`);
+      return;
+  }
+  
   console.log(`[StudentService] Calling API to send notification. Type: ${type}`);
   try {
     const response = await fetch('/api/send-notification', {
@@ -932,6 +937,10 @@ export async function sendAlertToStudent(
   originalFeedbackId?: string,
   originalFeedbackMessageSnippet?: string
 ): Promise<AlertItem> {
+    if (customStudentId === '__GENERAL__') {
+        return sendGeneralAlert(title, message, type);
+    }
+
     const newAlertDataForFirestore: any = {
         studentId: customStudentId,
         title,
