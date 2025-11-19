@@ -1408,7 +1408,16 @@ export async function getWifiConfiguration(): Promise<WifiConfig[]> {
 
 export async function updateWifiConfiguration(configurations: WifiConfig[]): Promise<void> {
   const wifiSettingsDocRef = doc(db, APP_CONFIG_COLLECTION, WIFI_SETTINGS_DOC_ID);
-  await setDoc(wifiSettingsDocRef, { configurations });
+  // Clean the data before sending it to Firestore
+  const cleanedConfigurations = configurations.map(config => {
+    const cleanedConfig: Partial<WifiConfig> = { id: config.id, ssid: config.ssid };
+    if (config.password) {
+      cleanedConfig.password = config.password;
+    }
+    // Omit notes if it's undefined or empty
+    return cleanedConfig;
+  });
+  await setDoc(wifiSettingsDocRef, { configurations: cleanedConfigurations });
 }
 
 
