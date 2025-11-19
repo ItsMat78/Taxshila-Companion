@@ -857,15 +857,21 @@ export default function MemberDashboardPage() {
                 </div>
               ) : wifiConfig.length > 0 ? (
                 wifiConfig.map(wifi => (
-                  <div key={wifi.id} className="space-y-2">
-                    <p className="text-sm font-medium text-foreground">{wifi.ssid}</p>
+                  <div key={wifi.id} className="p-3 border rounded-lg bg-muted/50 space-y-2">
+                    <div className="space-y-1">
+                      <p className="text-xs text-muted-foreground">SSID</p>
+                      <p className="text-sm font-semibold">{wifi.ssid}</p>
+                    </div>
                     {wifi.password && (
-                        <div className="flex items-center gap-2">
-                          <p className="text-sm font-mono p-2 bg-muted rounded-md flex-1 break-all">{wifi.password}</p>
-                          <Button variant="outline" size="sm" onClick={() => handleCopy(wifi.password!)}>
-                            <Copy className="h-3 w-3 mr-1" />
-                            Copy
-                          </Button>
+                        <div className="space-y-1">
+                            <p className="text-xs text-muted-foreground">Password</p>
+                            <div className="flex items-center gap-2">
+                                <p className="text-sm font-mono font-semibold flex-1 break-all">{wifi.password}</p>
+                                <Button variant="outline" size="sm" onClick={() => handleCopy(wifi.password!)}>
+                                <Copy className="h-3 w-3 mr-1" />
+                                Copy
+                                </Button>
+                            </div>
                         </div>
                     )}
                   </div>
@@ -888,6 +894,8 @@ export default function MemberDashboardPage() {
   );
 }
 
+
+    
 
     
 
