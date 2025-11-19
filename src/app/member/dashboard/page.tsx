@@ -26,11 +26,11 @@ import {
 import { Alert, AlertDescription, AlertTitle as ShadcnAlertTitle } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/auth-context';
-import { Camera, QrCode, Receipt, IndianRupee, MessageSquare, Bell, ScrollText, Star, Loader2, XCircle, Home, BarChart3, PlayCircle, CheckCircle, Hourglass, ScanLine, LogOut, AlertCircle, X, Eye, RefreshCw, View } from 'lucide-react';
+import { Camera, QrCode, Receipt, IndianRupee, MessageSquare, Bell, ScrollText, Star, Loader2, XCircle, Home, BarChart3, PlayCircle, CheckCircle, Hourglass, ScanLine, LogOut, AlertCircle, X, Eye, RefreshCw, View, Wifi, Copy } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { getStudentByEmail, getAlertsForStudent, addCheckIn, addCheckOut, getActiveCheckIn, getAttendanceForDate, getStudentByCustomId } from '@/services/student-service';
+import { getStudentByEmail, getAlertsForStudent, addCheckIn, addCheckOut, getActiveCheckIn, getAttendanceForDate, getStudentByCustomId, getWifiConfiguration } from '@/services/student-service';
 import type { AlertItem } from '@/types/communication';
-import type { Student, AttendanceRecord, FeeStatus, Shift } from '@/types/student';
+import type { Student, AttendanceRecord, FeeStatus, Shift, WifiConfig } from '@/types/student';
 import { format, parseISO, differenceInMilliseconds, isValid, differenceInMinutes, differenceInHours } from 'date-fns';
 import { Html5QrcodeScanner, Html5QrcodeSupportedFormats, Html5QrcodeScanType } from 'html5-qrcode';
 import { setupPushNotifications } from '@/lib/notification-setup';
@@ -56,6 +56,7 @@ type DashboardTileProps = {
   hasNew?: boolean;
   isUrgent?: boolean;
   disabled?: boolean;
+  children?: React.ReactNode; // Added children prop
 };
 
 const DashboardTile: React.FC<DashboardTileProps> = ({ 
@@ -72,6 +73,7 @@ const DashboardTile: React.FC<DashboardTileProps> = ({
   hasNew = false,
   isUrgent = false,
   disabled = false,
+  children
 }) => {
   const content = (
     <Card className={cn(
@@ -127,6 +129,8 @@ const DashboardTile: React.FC<DashboardTileProps> = ({
               isPrimaryAction ? 'text-primary-foreground/80' : 'text-muted-foreground text-center',
             )}>{description}</p>}
           </>
+        ) : children ? (
+          <div className="w-full">{children}</div>
         ) : (
           description && <p className={cn(
             "break-words text-center",
@@ -213,7 +217,9 @@ export default function MemberDashboardPage() {
   const [isProcessingQr, setIsProcessingQr] = React.useState(false);
   const html5QrcodeScannerRef = React.useRef<Html5QrcodeScanner | null>(null);
 
-
+  const [wifiConfig, setWifiConfig] = React.useState<WifiConfig[]>([]);
+  const [isLoadingWifi, setIsLoadingWifi] = React.useState(false);
+  const [isWifiDialogOpen, setIsWifiDialogOpen] = React.useState(false);
   const [currentStudent, setCurrentStudent] = React.useState<Student | null>(null);
   const [studentId, setStudentId] = React.useState<string | null>(null);
   const [studentFirstName, setStudentFirstName] = React.useState<string | null>(null);
@@ -319,6 +325,21 @@ export default function MemberDashboardPage() {
       setCurrentStudent(null);
     }
   }, [user, toast]);
+  
+  const handleOpenWifiDialog = async () => {
+    setIsWifiDialogOpen(true);
+    setIsLoadingWifi(true);
+    setWifiConfig([]);
+    try {
+        const wifiData = await getWifiConfiguration();
+        setWifiConfig(wifiData);
+    } catch (error) {
+        console.error("Failed to fetch WiFi details on demand:", error);
+        toast({ title: "Error", description: "Could not load WiFi details.", variant: "destructive" });
+    } finally {
+        setIsLoadingWifi(false);
+    }
+  };
 
 
   React.useEffect(() => {
@@ -560,6 +581,14 @@ export default function MemberDashboardPage() {
     }
   };
 
+  const handleCopy = (text: string) => {
+    navigator.clipboard.writeText(text).then(() => {
+      toast({ title: "Copied!", description: "Password copied to clipboard." });
+    }, (err) => {
+      toast({ title: "Copy Failed", description: "Could not copy password.", variant: "destructive" });
+    });
+  };
+
   const generateCoreActionTiles = (): DashboardTileProps[] => {
     let payFeesTileDesc = "Settle your outstanding dues.";
     let payFeesIsUrgent = false;
@@ -628,23 +657,6 @@ export default function MemberDashboardPage() {
   };
 
   const coreActionTiles = generateCoreActionTiles();
-
-
-  const otherResourcesTiles: DashboardTileProps[] = [
-    {
-      title: "Library Rules",
-      description: "Familiarize yourself with guidelines.",
-      icon: ScrollText,
-      href: "/member/rules",
-    },
-    {
-      title: "Rate Us",
-      description: "Love our space? Let others know!",
-      icon: Star,
-      href: "https://g.page/r/CS-yYFo4JxNXEBM/review", // Corrected Rate Us link
-      external: true,
-    },
-  ];
 
   const defaultWelcomeName = user?.email?.split('@')[0] || 'Member';
   const pageTitleText = isLoadingStudentData && !studentFirstName
@@ -822,13 +834,78 @@ export default function MemberDashboardPage() {
 
       <div className="my-8 border-t border-border"></div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-        {otherResourcesTiles.map((tile) => (
-          <DashboardTile key={tile.title} {...tile} />
-        ))}
+      <div className="grid grid-cols-2 gap-4 sm:gap-6">
+        <DashboardTile
+            title="Library Rules"
+            description="Familiarize yourself with guidelines."
+            icon={ScrollText}
+            href="/member/rules"
+        />
+        <Dialog open={isWifiDialogOpen} onOpenChange={setIsWifiDialogOpen}>
+          <DialogTrigger asChild>
+            <button onClick={handleOpenWifiDialog} className="block w-full h-full text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-lg">
+                <DashboardTile
+                  title="WiFi Details"
+                  description="View network credentials."
+                  icon={Wifi}
+                  isLoadingStatistic={isLoadingWifi && isWifiDialogOpen}
+                />
+            </button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <ShadcnDialogTitle>Library WiFi Details</ShadcnDialogTitle>
+              <DialogDescription>
+                Connect to the library's network using the credentials below.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="py-4 space-y-4 max-h-[60vh] overflow-y-auto">
+              {isLoadingWifi ? (
+                <div className="flex justify-center items-center h-24">
+                  <Loader2 className="h-6 w-6 animate-spin"/>
+                </div>
+              ) : wifiConfig.length > 0 ? (
+                wifiConfig.map(wifi => (
+                    <div key={wifi.id} className="p-4 border rounded-lg bg-muted/50 space-y-3">
+                        <div className="space-y-1">
+                            <p className="text-xs text-muted-foreground font-semibold">SSID</p>
+                            <p className="text-sm font-semibold">{wifi.ssid}</p>
+                        </div>
+                        {wifi.password && (
+                            <div className="space-y-1">
+                                <p className="text-xs text-muted-foreground font-semibold">Password</p>
+                                <div className="flex items-center gap-2">
+                                    <p className="text-sm font-mono font-semibold flex-1 break-all">{wifi.password}</p>
+                                    <Button variant="outline" size="sm" onClick={() => handleCopy(wifi.password!)}>
+                                    <Copy className="h-3 w-3 mr-1" />
+                                    Copy
+                                    </Button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                ))
+              ) : (
+                <p className="text-center text-muted-foreground">No WiFi networks are currently configured.</p>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
+      </div>
+      <div className="mt-4 sm:mt-6">
+        <DashboardTile
+            title="Rate Us"
+            description="Love our space? Let others know!"
+            icon={Star}
+            href="https://g.page/r/CS-yYFo4JxNXEBM/review"
+            external={true}
+            className="w-full"
+        />
       </div>
     </>
   );
 }
+
+    
 
     

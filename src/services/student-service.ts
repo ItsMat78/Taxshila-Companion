@@ -1,5 +1,4 @@
 
-
 import {
   db,
   collection,
@@ -27,7 +26,7 @@ import {
   auth,
   setDoc,
 } from '@/lib/firebase';
-import type { Student, Shift, FeeStatus, PaymentRecord, ActivityStatus, AttendanceRecord, FeeStructure, AttendanceImportData, PaymentImportData, CheckedInStudentInfo } from '@/types/student';
+import type { Student, Shift, FeeStatus, PaymentRecord, ActivityStatus, AttendanceRecord, FeeStructure, AttendanceImportData, PaymentImportData, CheckedInStudentInfo, WifiConfig } from '@/types/student';
 import type { FeedbackItem, FeedbackType, FeedbackStatus, AlertItem } from '@/types/communication';
 import { format, parseISO, differenceInDays, isPast, addMonths, startOfDay, isValid, addDays, isAfter, getHours, getMinutes, isWithinInterval, startOfMonth, endOfMonth, parse, differenceInMilliseconds } from 'date-fns';
 import { ALL_SEAT_NUMBERS } from '@/config/seats';
@@ -50,6 +49,8 @@ const FEEDBACK_COLLECTION = "feedbackItems";
 const ALERTS_COLLECTION = "alertItems";
 const APP_CONFIG_COLLECTION = "appConfiguration";
 const FEE_SETTINGS_DOC_ID = "feeSettings";
+const WIFI_SETTINGS_DOC_ID = "wifiSettings";
+
 
 // Simplified Admin User type for Firestore interaction
 interface AdminUserFirestore {
@@ -840,6 +841,12 @@ export async function calculateMonthlyStudyHours(customStudentId: string, monthD
 
 // --- Communication Service Functions (Feedback & Alerts) ---
 async function triggerNotification(type: 'alert' | 'feedback', payload: any) {
+  // Use __GENERAL__ as a special marker for general alerts.
+  if (type === 'alert' && payload.studentId === '__GENERAL__') {
+      console.log(`[StudentService] General alert created (ID: ${payload.id}). Not sending individual push notifications.`);
+      return;
+  }
+  
   console.log(`[StudentService] Calling API to send notification. Type: ${type}`);
   try {
     const response = await fetch('/api/send-notification', {
@@ -930,6 +937,10 @@ export async function sendAlertToStudent(
   originalFeedbackId?: string,
   originalFeedbackMessageSnippet?: string
 ): Promise<AlertItem> {
+    if (customStudentId === '__GENERAL__') {
+        return sendGeneralAlert(title, message, type);
+    }
+
     const newAlertDataForFirestore: any = {
         studentId: customStudentId,
         title,
@@ -1395,6 +1406,28 @@ export async function updateProfilePicture(firestoreId: string, role: 'admin' | 
   return base64Url;
 }
 
+export async function getWifiConfiguration(): Promise<WifiConfig[]> {
+  const wifiSettingsDocRef = doc(db, APP_CONFIG_COLLECTION, WIFI_SETTINGS_DOC_ID);
+  const docSnap = await getDoc(wifiSettingsDocRef);
+  if (docSnap.exists() && docSnap.data().configurations) {
+    return docSnap.data().configurations as WifiConfig[];
+  }
+  return [];
+}
+
+export async function updateWifiConfiguration(configurations: WifiConfig[]): Promise<void> {
+  const wifiSettingsDocRef = doc(db, APP_CONFIG_COLLECTION, WIFI_SETTINGS_DOC_ID);
+  // Clean the data before sending it to Firestore
+  const cleanedConfigurations = configurations.map(config => {
+    const cleanedConfig: Partial<WifiConfig> = { id: config.id, ssid: config.ssid };
+    if (config.password) {
+      cleanedConfig.password = config.password;
+    }
+    // Omit notes if it's undefined or empty
+    return cleanedConfig;
+  });
+  await setDoc(wifiSettingsDocRef, { configurations: cleanedConfigurations });
+}
 
 
 declare module '@/types/student' {
