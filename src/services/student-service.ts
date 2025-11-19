@@ -27,7 +27,7 @@ import {
   auth,
   setDoc,
 } from '@/lib/firebase';
-import type { Student, Shift, FeeStatus, PaymentRecord, ActivityStatus, AttendanceRecord, FeeStructure, AttendanceImportData, PaymentImportData, CheckedInStudentInfo } from '@/types/student';
+import type { Student, Shift, FeeStatus, PaymentRecord, ActivityStatus, AttendanceRecord, FeeStructure, AttendanceImportData, PaymentImportData, CheckedInStudentInfo, WifiConfig } from '@/types/student';
 import type { FeedbackItem, FeedbackType, FeedbackStatus, AlertItem } from '@/types/communication';
 import { format, parseISO, differenceInDays, isPast, addMonths, startOfDay, isValid, addDays, isAfter, getHours, getMinutes, isWithinInterval, startOfMonth, endOfMonth, parse, differenceInMilliseconds } from 'date-fns';
 import { ALL_SEAT_NUMBERS } from '@/config/seats';
@@ -50,6 +50,8 @@ const FEEDBACK_COLLECTION = "feedbackItems";
 const ALERTS_COLLECTION = "alertItems";
 const APP_CONFIG_COLLECTION = "appConfiguration";
 const FEE_SETTINGS_DOC_ID = "feeSettings";
+const WIFI_SETTINGS_DOC_ID = "wifiSettings";
+
 
 // Simplified Admin User type for Firestore interaction
 interface AdminUserFirestore {
@@ -1395,6 +1397,19 @@ export async function updateProfilePicture(firestoreId: string, role: 'admin' | 
   return base64Url;
 }
 
+export async function getWifiConfiguration(): Promise<WifiConfig[]> {
+  const wifiSettingsDocRef = doc(db, APP_CONFIG_COLLECTION, WIFI_SETTINGS_DOC_ID);
+  const docSnap = await getDoc(wifiSettingsDocRef);
+  if (docSnap.exists() && docSnap.data().configurations) {
+    return docSnap.data().configurations as WifiConfig[];
+  }
+  return [];
+}
+
+export async function updateWifiConfiguration(configurations: WifiConfig[]): Promise<void> {
+  const wifiSettingsDocRef = doc(db, APP_CONFIG_COLLECTION, WIFI_SETTINGS_DOC_ID);
+  await setDoc(wifiSettingsDocRef, { configurations });
+}
 
 
 declare module '@/types/student' {

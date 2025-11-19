@@ -49,6 +49,14 @@ export interface FeeStructure {
   fullDayFee: number;
 }
 
+export interface WifiConfig {
+  id: string;
+  ssid: string;
+  password?: string;
+  notes?: string;
+}
+
+
 // For CSV Import
 export interface AttendanceImportData {
   'Student ID': string; // Match CSV header exactly
@@ -66,5 +74,3 @@ export interface PaymentImportData {
 }
 
 export type CheckedInStudentInfo = Student & { checkInTime: string; isOutsideShift: boolean; };
-
-    

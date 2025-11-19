@@ -26,11 +26,11 @@ import {
 import { Alert, AlertDescription, AlertTitle as ShadcnAlertTitle } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/auth-context';
-import { Camera, QrCode, Receipt, IndianRupee, MessageSquare, Bell, ScrollText, Star, Loader2, XCircle, Home, BarChart3, PlayCircle, CheckCircle, Hourglass, ScanLine, LogOut, AlertCircle, X, Eye, RefreshCw, View } from 'lucide-react';
+import { Camera, QrCode, Receipt, IndianRupee, MessageSquare, Bell, ScrollText, Star, Loader2, XCircle, Home, BarChart3, PlayCircle, CheckCircle, Hourglass, ScanLine, LogOut, AlertCircle, X, Eye, RefreshCw, View, Wifi, Copy } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { getStudentByEmail, getAlertsForStudent, addCheckIn, addCheckOut, getActiveCheckIn, getAttendanceForDate, getStudentByCustomId } from '@/services/student-service';
+import { getStudentByEmail, getAlertsForStudent, addCheckIn, addCheckOut, getActiveCheckIn, getAttendanceForDate, getStudentByCustomId, getWifiConfiguration } from '@/services/student-service';
 import type { AlertItem } from '@/types/communication';
-import type { Student, AttendanceRecord, FeeStatus, Shift } from '@/types/student';
+import type { Student, AttendanceRecord, FeeStatus, Shift, WifiConfig } from '@/types/student';
 import { format, parseISO, differenceInMilliseconds, isValid, differenceInMinutes, differenceInHours } from 'date-fns';
 import { Html5QrcodeScanner, Html5QrcodeSupportedFormats, Html5QrcodeScanType } from 'html5-qrcode';
 import { setupPushNotifications } from '@/lib/notification-setup';
@@ -56,6 +56,7 @@ type DashboardTileProps = {
   hasNew?: boolean;
   isUrgent?: boolean;
   disabled?: boolean;
+  children?: React.ReactNode; // Added children prop
 };
 
 const DashboardTile: React.FC<DashboardTileProps> = ({ 
@@ -72,6 +73,7 @@ const DashboardTile: React.FC<DashboardTileProps> = ({
   hasNew = false,
   isUrgent = false,
   disabled = false,
+  children
 }) => {
   const content = (
     <Card className={cn(
@@ -127,6 +129,8 @@ const DashboardTile: React.FC<DashboardTileProps> = ({
               isPrimaryAction ? 'text-primary-foreground/80' : 'text-muted-foreground text-center',
             )}>{description}</p>}
           </>
+        ) : children ? (
+          <div className="w-full">{children}</div>
         ) : (
           description && <p className={cn(
             "break-words text-center",
@@ -213,7 +217,8 @@ export default function MemberDashboardPage() {
   const [isProcessingQr, setIsProcessingQr] = React.useState(false);
   const html5QrcodeScannerRef = React.useRef<Html5QrcodeScanner | null>(null);
 
-
+  const [wifiConfig, setWifiConfig] = React.useState<WifiConfig[]>([]);
+  const [isLoadingWifi, setIsLoadingWifi] = React.useState(true);
   const [currentStudent, setCurrentStudent] = React.useState<Student | null>(null);
   const [studentId, setStudentId] = React.useState<string | null>(null);
   const [studentFirstName, setStudentFirstName] = React.useState<string | null>(null);
@@ -257,6 +262,7 @@ export default function MemberDashboardPage() {
 
         setIsLoadingStudentData(true);
         setIsLoadingCurrentSession(true);
+        setIsLoadingWifi(true);
 
         setStudentFirstName(null);
         setStudentId(null);
@@ -265,6 +271,7 @@ export default function MemberDashboardPage() {
         setStudentFeeStatus(null);
         setStudentNextDueDate(null);
         setCurrentStudent(null);
+        setWifiConfig([]);
 
       let studentDetailsFetchedSuccessfully = false;
       try {
@@ -286,13 +293,16 @@ export default function MemberDashboardPage() {
           const [
             alerts,
             activeCheckInData,
+            wifiData
           ] = await Promise.all([
             getAlertsForStudent(studentDetails.studentId),
             getActiveCheckIn(studentDetails.studentId),
+            getWifiConfiguration(),
           ]);
 
           setHasUnreadAlerts(alerts.some(alert => !alert.isRead));
           setActiveCheckInRecord(activeCheckInData || null);
+          setWifiConfig(wifiData);
 
         } else {
             toast({ title: "Error", description: "Could not find your student record.", variant: "destructive" });
@@ -303,20 +313,21 @@ export default function MemberDashboardPage() {
       } finally {
         setIsLoadingStudentData(false);
         setIsLoadingCurrentSession(false);
+        setIsLoadingWifi(false);
         if (isManualRefresh) setIsRefreshing(false);
         if (!studentDetailsFetchedSuccessfully) {
             setStudentFirstName(null); setStudentId(null);
             setHasUnreadAlerts(false); setActiveCheckInRecord(null);
             setStudentFeeStatus(null); setStudentNextDueDate(null);
-            setCurrentStudent(null);
+            setCurrentStudent(null); setWifiConfig([]);
         }
       }
     } else {
-      setIsLoadingStudentData(false); setIsLoadingCurrentSession(false);
+      setIsLoadingStudentData(false); setIsLoadingCurrentSession(false); setIsLoadingWifi(false);
       setStudentFirstName(null); setStudentId(null);
       setHasUnreadAlerts(false); setActiveCheckInRecord(null);
       setStudentFeeStatus(null); setStudentNextDueDate(null);
-      setCurrentStudent(null);
+      setCurrentStudent(null); setWifiConfig([]);
     }
   }, [user, toast]);
 
@@ -560,6 +571,14 @@ export default function MemberDashboardPage() {
     }
   };
 
+  const handleCopy = (text: string) => {
+    navigator.clipboard.writeText(text).then(() => {
+      toast({ title: "Copied!", description: "Password copied to clipboard." });
+    }, (err) => {
+      toast({ title: "Copy Failed", description: "Could not copy password.", variant: "destructive" });
+    });
+  };
+
   const generateCoreActionTiles = (): DashboardTileProps[] => {
     let payFeesTileDesc = "Settle your outstanding dues.";
     let payFeesIsUrgent = false;
@@ -628,7 +647,6 @@ export default function MemberDashboardPage() {
   };
 
   const coreActionTiles = generateCoreActionTiles();
-
 
   const otherResourcesTiles: DashboardTileProps[] = [
     {
@@ -826,9 +844,36 @@ export default function MemberDashboardPage() {
         {otherResourcesTiles.map((tile) => (
           <DashboardTile key={tile.title} {...tile} />
         ))}
+         <DashboardTile
+            title="WiFi Details"
+            icon={Wifi}
+            isLoadingStatistic={isLoadingWifi}
+        >
+          {wifiConfig.length > 0 ? (
+            <div className="space-y-3 text-left w-full px-2">
+              {wifiConfig.map(wifi => (
+                <div key={wifi.id}>
+                  <p className="text-xs text-muted-foreground">Network (SSID)</p>
+                  <p className="font-semibold text-sm">{wifi.ssid}</p>
+                  {wifi.password && (
+                    <>
+                      <p className="text-xs text-muted-foreground mt-1">Password</p>
+                      <div className="flex items-center gap-2">
+                        <p className="font-semibold text-sm flex-1 break-all">{wifi.password}</p>
+                        <Button variant="outline" size="sm" onClick={() => handleCopy(wifi.password!)}>
+                          <Copy className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : (
+             <p className="text-xs text-muted-foreground text-center">No WiFi networks configured.</p>
+          )}
+        </DashboardTile>
       </div>
     </>
   );
 }
-
-    

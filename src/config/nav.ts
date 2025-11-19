@@ -25,6 +25,7 @@ import {
   BadgeIndianRupee,
   User,
   QrCode,
+  Wifi,
 } from 'lucide-react';
 import { NavItem } from '@/types/nav';
 
@@ -159,6 +160,12 @@ export const mainNav: NavItem[] = [
             roles: ['admin'],
         },
         {
+            title: 'WiFi Management',
+            href: '/admin/settings/wifi',
+            icon: Wifi,
+            roles: ['admin'],
+        },
+        {
             title: 'Data Management',
             href: '/admin/data-management',
             icon: Database,
@@ -211,5 +218,3 @@ export const mainNav: NavItem[] = [
     roles: ['member'],
   },
 ];
-
-    
