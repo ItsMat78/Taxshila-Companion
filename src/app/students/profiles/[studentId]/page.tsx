@@ -534,7 +534,7 @@ export default function StudentDetailPage() {
                 (monthlyStudyData.length > 0 && monthlyStudyData.some(d => d.hours > 0)) ? (
                     <div className="min-h-[300px] w-full">
                         <div className="md:hidden">
-                            <StudyGrid data={monthlyStudyData} month={viewedMonth} onDayClick={(day) => { setSelectedCalendarDate(day); setShowAttendanceOverview(true); }}/>
+                           <StudyGrid data={monthlyStudyData} month={viewedMonth} onDayClick={(day) => { setSelectedCalendarDate(day); setShowAttendanceOverview(true); }}/>
                         </div>
                         <div className="hidden md:block">
                             <ResponsiveContainer width="100%" height={300}>
@@ -647,5 +647,7 @@ export default function StudentDetailPage() {
     </>
   );
 }
+
+    
 
     
