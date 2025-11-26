@@ -93,38 +93,53 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       }
       
       const registerOneSignalPlayerId = async () => {
-        const median = (window as any).median;
-        if (median?.onesignal?.onesignalInfo && typeof median.onesignal.onesignalInfo === 'function') {
+        const checkInterval = 2000; // Check every 2 seconds
+        const maxDuration = 60000; // Stop checking after 60 seconds
+        let elapsedTime = 0;
+
+        const intervalId = setInterval(async () => {
+          elapsedTime += checkInterval;
+          const median = (window as any).median;
+
+          // Try the new getOnesignalId() method
+          if (median?.getOnesignalId && typeof median.getOnesignalId === 'function') {
             try {
-                console.log("[AppLayout] Median bridge detected. Awaiting OneSignal info...");
-                const oneSignalInfo = await median.onesignal.onesignalInfo();
-                const playerId = oneSignalInfo?.oneSignalUserId;
+              console.log("[AppLayout] Found median.getOnesignalId(). Trying to get Player ID...");
+              const playerId = await median.getOnesignalId();
 
-                if (playerId) {
-                    console.log("[AppLayout] Median OneSignal Player ID retrieved:", playerId);
-                    const savedPlayerId = localStorage.getItem('oneSignalPlayerId');
+              if (playerId && typeof playerId === 'string') {
+                  console.log("[AppLayout] OneSignal Player ID retrieved via getOnesignalId():", playerId);
+                  const savedPlayerId = localStorage.getItem('oneSignalPlayerId');
 
-                    if (savedPlayerId !== playerId) {
-                        await saveOneSignalPlayerId(user.firestoreId, user.role, playerId);
-                        localStorage.setItem('oneSignalPlayerId', playerId);
-                        console.log("[AppLayout] Player ID saved to Firestore and localStorage.");
-                    } else {
-                        console.log("[AppLayout] OneSignal Player ID is already saved and up-to-date.");
-                    }
-                } else {
-                    console.warn("[AppLayout] Median bridge `onesignalInfo` did not return a Player ID.");
-                }
+                  if (savedPlayerId !== playerId) {
+                      await saveOneSignalPlayerId(user.firestoreId, user.role, playerId);
+                      localStorage.setItem('oneSignalPlayerId', playerId);
+                      console.log("[AppLayout] Player ID saved to Firestore and localStorage.");
+                  } else {
+                      console.log("[AppLayout] OneSignal Player ID is already saved and up-to-date.");
+                  }
+                  clearInterval(intervalId); // Stop polling once we succeed
+                  return;
+              } else {
+                 console.warn("[AppLayout] median.getOnesignalId() was called but did not return a valid Player ID. Will retry.");
+              }
             } catch (err) {
-                console.error("[AppLayout] Error calling Median OneSignal bridge:", err);
+               console.error("[AppLayout] Error calling median.getOnesignalId():", err);
             }
-        } else {
-            console.log("[AppLayout] Median.co bridge not found. This is normal in a regular web browser.");
-        }
+          } else {
+            console.log("[AppLayout] Polling: median.getOnesignalId() not found yet.");
+          }
+
+          if (elapsedTime >= maxDuration) {
+              console.error("[AppLayout] Timed out waiting for Median bridge to become available.");
+              clearInterval(intervalId);
+          }
+        }, checkInterval);
+
+        return () => clearInterval(intervalId);
       };
 
-      // Run the check after a short delay to give the median bridge time to initialize
-      const timerId = setTimeout(registerOneSignalPlayerId, 3000);
-      return () => clearTimeout(timerId);
+      registerOneSignalPlayerId();
     }
   }, [user]);
   // --- End Notification Logic ---
