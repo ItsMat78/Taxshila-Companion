@@ -26,12 +26,7 @@ import { format, parseISO, isValid, differenceInMilliseconds, startOfMonth, endO
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { BarChart, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Bar } from 'recharts';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
 
 const DEFAULT_PROFILE_PLACEHOLDER = "https://placehold.co/100x100.png";
@@ -78,52 +73,51 @@ const StudyGrid = ({ data, month, onDayClick }: { data: { date: string; hours: n
     const weekdays = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
     return (
-        <TooltipProvider>
-            <div className="flex flex-col items-center justify-center gap-2 w-full">
-                <div className="grid grid-cols-7 gap-1.5 w-full">
-                    {weekdays.map((day, index) => (
-                        <div key={`${day}-${index}`} className="text-xs text-center font-semibold text-muted-foreground">{day}</div>
-                    ))}
-                </div>
-                <div className="grid grid-cols-7 gap-1.5 w-full">
-                    {daysInGrid.map((day) => {
-                        const dateString = format(day, 'yyyy-MM-dd');
-                        const hours = studyDataMap.get(dateString) ?? 0;
-                        const isCurrentMonth = isSameMonth(day, month);
+        <div className="flex flex-col items-center justify-center gap-2 w-full">
+            <div className="grid grid-cols-7 gap-1.5 w-full">
+                {weekdays.map((day, index) => (
+                    <div key={`${day}-${index}`} className="text-xs text-center font-semibold text-muted-foreground">{day}</div>
+                ))}
+            </div>
+            <div className="grid grid-cols-7 gap-1.5 w-full">
+                {daysInGrid.map((day) => {
+                    const dateString = format(day, 'yyyy-MM-dd');
+                    const hours = studyDataMap.get(dateString) ?? 0;
+                    const isCurrentMonth = isSameMonth(day, month);
 
-                        return (
-                            <Tooltip key={dateString} delayDuration={100}>
-                                <TooltipTrigger asChild>
-                                    <button 
-                                      onClick={() => { onDayClick(day); }}
-                                      className={cn(
-                                        "aspect-square w-full rounded-sm cursor-pointer focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:z-10", 
+                    return (
+                        <Popover key={dateString}>
+                            <PopoverTrigger asChild>
+                                <button
+                                    onClick={() => onDayClick(day)}
+                                    className={cn(
+                                        "aspect-square w-full rounded-sm cursor-pointer focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:z-10",
                                         getIntensityClass(hours),
                                         isCurrentMonth ? "border border-border" : "opacity-50",
                                         isToday(day) && "ring-2 ring-offset-2 ring-accent"
-                                    )} />
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                    <p className="text-sm font-semibold">{format(day, 'MMM d, yyyy')}</p>
-                                    <p className="text-xs">
-                                        {Math.floor(hours)}h {Math.round((hours % 1) * 60)}m of study
-                                    </p>
-                                </TooltipContent>
-                            </Tooltip>
-                        );
-                    })}
-                </div>
-                <div className="flex items-center gap-2 text-xs text-muted-foreground mt-2">
-                    <span>Less</span>
-                    <div className="h-3 w-3 rounded-sm bg-muted/30" title="0 hours" />
-                    <div className="h-3 w-3 rounded-sm bg-primary/20" title="< 3 hours" />
-                    <div className="h-3 w-3 rounded-sm bg-primary/50" title="< 6 hours" />
-                    <div className="h-3 w-3 rounded-sm bg-primary/70" title="< 9 hours" />
-                    <div className="h-3 w-3 rounded-sm bg-primary" title="> 9 hours" />
-                    <span>More</span>
-                </div>
+                                    )}
+                                />
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-2 text-center">
+                                <p className="text-sm font-semibold">{format(day, 'MMM d, yyyy')}</p>
+                                <p className="text-xs">
+                                    {Math.floor(hours)}h {Math.round((hours % 1) * 60)}m of study
+                                </p>
+                            </PopoverContent>
+                        </Popover>
+                    );
+                })}
             </div>
-        </TooltipProvider>
+            <div className="flex items-center gap-2 text-xs text-muted-foreground mt-2">
+                <span>Less</span>
+                <div className="h-3 w-3 rounded-sm bg-muted/30" title="0 hours" />
+                <div className="h-3 w-3 rounded-sm bg-primary/20" title="< 3 hours" />
+                <div className="h-3 w-3 rounded-sm bg-primary/50" title="< 6 hours" />
+                <div className="h-3 w-3 rounded-sm bg-primary/70" title="< 9 hours" />
+                <div className="h-3 w-3 rounded-sm bg-primary" title="> 9 hours" />
+                <span>More</span>
+            </div>
+        </div>
     );
 };
 
@@ -647,7 +641,3 @@ export default function StudentDetailPage() {
     </>
   );
 }
-
-    
-
-    
