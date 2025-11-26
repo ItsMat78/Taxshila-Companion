@@ -92,54 +92,39 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           setupPushNotifications(user.firestoreId, user.role);
       }
       
-      // Median.co OneSignal Player ID Registration with robust polling
-      let pollInterval: NodeJS.Timeout | null = null;
-      let attempts = 0;
-      const maxAttempts = 30; // Poll for up to 60 seconds
-
-      const pollForMedianBridge = () => {
-        attempts++;
+      const registerOneSignalPlayerId = async () => {
         const median = (window as any).median;
-
         if (median?.onesignal?.onesignalInfo && typeof median.onesignal.onesignalInfo === 'function') {
-          console.log("[AppLayout] Median.co OneSignal bridge detected. Attempting to get Player ID.");
-          if (pollInterval) clearInterval(pollInterval); // Stop polling
+            try {
+                console.log("[AppLayout] Median bridge detected. Awaiting OneSignal info...");
+                const oneSignalInfo = await median.onesignal.onesignalInfo();
+                const playerId = oneSignalInfo?.oneSignalUserId;
 
-          median.onesignal.onesignalInfo().then((oneSignalInfo: { oneSignalUserId?: string }) => {
-            const playerId = oneSignalInfo.oneSignalUserId;
-            if (playerId) {
-              console.log("[AppLayout] Median OneSignal Player ID retrieved:", playerId);
-              const savedPlayerId = localStorage.getItem('oneSignalPlayerId');
+                if (playerId) {
+                    console.log("[AppLayout] Median OneSignal Player ID retrieved:", playerId);
+                    const savedPlayerId = localStorage.getItem('oneSignalPlayerId');
 
-              if (savedPlayerId !== playerId) {
-                 saveOneSignalPlayerId(user.firestoreId, user.role, playerId)
-                  .then(() => localStorage.setItem('oneSignalPlayerId', playerId))
-                  .catch(err => console.error("Failed to save OneSignal Player ID:", err));
-              } else {
-                console.log("[AppLayout] OneSignal Player ID is already saved and up-to-date.");
-              }
-            } else {
-              console.warn("[AppLayout] Median bridge `onesignalInfo` did not return a Player ID on first successful call.");
+                    if (savedPlayerId !== playerId) {
+                        await saveOneSignalPlayerId(user.firestoreId, user.role, playerId);
+                        localStorage.setItem('oneSignalPlayerId', playerId);
+                        console.log("[AppLayout] Player ID saved to Firestore and localStorage.");
+                    } else {
+                        console.log("[AppLayout] OneSignal Player ID is already saved and up-to-date.");
+                    }
+                } else {
+                    console.warn("[AppLayout] Median bridge `onesignalInfo` did not return a Player ID.");
+                }
+            } catch (err) {
+                console.error("[AppLayout] Error calling Median OneSignal bridge:", err);
             }
-          }).catch((err: any) => {
-             console.error("[AppLayout] Error calling Median OneSignal bridge:", err);
-          });
-
-        } else if (attempts >= maxAttempts) {
-          console.log("[AppLayout] Median.co bridge not found after", maxAttempts, "attempts. Stopping poll.");
-          if (pollInterval) clearInterval(pollInterval);
+        } else {
+            console.log("[AppLayout] Median.co bridge not found. This is normal in a regular web browser.");
         }
       };
 
-      // Start polling for the median object
-      pollInterval = setInterval(pollForMedianBridge, 2000); // Check every 2 seconds
-
-      // Cleanup on component unmount
-      return () => {
-        if (pollInterval) {
-          clearInterval(pollInterval);
-        }
-      };
+      // Run the check after a short delay to give the median bridge time to initialize
+      const timerId = setTimeout(registerOneSignalPlayerId, 3000);
+      return () => clearTimeout(timerId);
     }
   }, [user]);
   // --- End Notification Logic ---
