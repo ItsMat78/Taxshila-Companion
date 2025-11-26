@@ -1,4 +1,5 @@
 
+
 "use server";
 
 import { getMessaging } from '@/lib/firebase-admin';
@@ -81,7 +82,7 @@ async function sendNotificationToStudent(studentId: string, payload: Notificatio
         method: "POST",
         headers: {
           "Content-Type": "application/json; charset=utf-8",
-          "Authorization": `Basic ${ONE_SIGNAL_REST_API_KEY}`
+          "Authorization": `Key ${ONE_SIGNAL_REST_API_KEY}`
         },
         body: JSON.stringify(oneSignalMessage)
       });
@@ -145,15 +146,20 @@ async function sendNotificationToAllAdmins(payload: NotificationPayload): Promis
               web_url: payload.click_action || 'https://taxshila-companion.web.app'
           };
           try {
-              await fetch("https://onesignal.com/api/v1/notifications", {
+              const response = await fetch("https://onesignal.com/api/v1/notifications", {
                   method: "POST",
                   headers: {
                       "Content-Type": "application/json; charset=utf-8",
-                      "Authorization": `Basic ${ONE_SIGNAL_REST_API_KEY}`
+                      "Authorization": `Key ${ONE_SIGNAL_REST_API_KEY}`
                   },
                   body: JSON.stringify(oneSignalMessage)
               });
-              console.log(`[Notification Service] Sent OneSignal notification to admin ${admin.email}.`);
+               if (response.ok) {
+                console.log(`[Notification Service] Successfully sent OneSignal notification for admin ${admin.email}.`);
+              } else {
+                const responseData = await response.json();
+                console.error(`[Notification Service] Failed to send OneSignal notification for admin ${admin.email}:`, responseData);
+              }
           } catch(e) { console.error(`Error sending OneSignal to ${admin.email}`, e)}
       }
   }
