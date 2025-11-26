@@ -39,6 +39,7 @@ import {
   updateProfile,
 } from 'firebase/auth';
 import { getAuth } from 'firebase-admin/auth';
+import { Admin } from '@/types/auth';
 
 
 // --- Collections ---
@@ -59,6 +60,7 @@ interface AdminUserFirestore {
   name: string;
   role: 'admin';
   fcmTokens?: string[];
+  oneSignalPlayerIds?: string[];
   theme?: string; // Added for storing user's preferred theme
 }
 
@@ -79,6 +81,7 @@ const studentFromDoc = (docSnapshot: any): Student => {
       date: p.date instanceof Timestamp ? format(p.date.toDate(), 'yyyy-MM-dd') : p.date,
     })),
     fcmTokens: data.fcmTokens || [], // Ensure fcmTokens is an array
+    oneSignalPlayerIds: data.oneSignalPlayerIds || [],
     theme: data.theme || 'light-default', // Add theme with a default
     uid: data.uid,
   } as Student;
@@ -90,6 +93,7 @@ const adminUserFromDoc = (docSnapshot: any): AdminUserFirestore => {
     ...data,
     firestoreId: docSnapshot.id,
     fcmTokens: data.fcmTokens || [],
+    oneSignalPlayerIds: data.oneSignalPlayerIds || [],
     theme: data.theme || 'light-default', // Add theme with a default
   } as AdminUserFirestore;
 }
@@ -1429,6 +1433,23 @@ export async function updateWifiConfiguration(configurations: WifiConfig[]): Pro
   await setDoc(wifiSettingsDocRef, { configurations: cleanedConfigurations });
 }
 
+export async function saveOneSignalPlayerId(firestoreId: string, role: 'admin' | 'member', playerId: string): Promise<void> {
+  if (!firestoreId || !role || !playerId) {
+    console.error("Missing required data to save OneSignal Player ID.");
+    return;
+  }
+  const collectionName = role === 'admin' ? ADMINS_COLLECTION : STUDENTS_COLLECTION;
+  const userDocRef = doc(db, collectionName, firestoreId);
+  try {
+    await updateDoc(userDocRef, {
+      oneSignalPlayerIds: arrayUnion(playerId)
+    });
+    console.log(`Successfully saved OneSignal Player ID ${playerId} for user ${firestoreId}`);
+  } catch (error) {
+    console.error(`Failed to save OneSignal Player ID for user ${firestoreId}:`, error);
+  }
+}
+
 
 declare module '@/types/student' {
   interface Student {
@@ -1445,8 +1466,3 @@ declare module '@/types/communication' {
     firestoreId?: string;
   }
 }
-
-
-
-
-    

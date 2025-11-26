@@ -23,9 +23,21 @@ export interface Student {
   amountDue?: string; 
   paymentHistory?: PaymentRecord[];
   profilePictureUrl?: string;
-  fcmTokens?: string[]; // Added for storing FCM tokens
-  theme?: string; // Added for storing user's preferred theme
+  fcmTokens?: string[]; // For Firebase Web Push
+  oneSignalPlayerIds?: string[]; // For OneSignal App Push
+  theme?: string;
 }
+
+export interface Admin {
+  firestoreId: string;
+  email: string;
+  name: string;
+  role: 'admin';
+  fcmTokens?: string[];
+  oneSignalPlayerIds?: string[];
+  theme?: string;
+}
+
 
 export interface PaymentRecord {
   paymentId: string;

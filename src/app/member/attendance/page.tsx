@@ -18,13 +18,8 @@ import { useAuth } from '@/contexts/auth-context';
 import { getStudentByEmail, getAttendanceForDate, getStudentByCustomId, getAttendanceForDateRange } from '@/services/student-service';
 import type { Student, AttendanceRecord } from '@/types/student';
 import { format, parseISO, isValid, differenceInMilliseconds, startOfMonth, endOfMonth, eachDayOfInterval, addMonths, subMonths, isAfter, isToday, getHours, getMinutes, getDay, addDays, startOfWeek, endOfWeek, isSameMonth } from 'date-fns';
-import { BarChart, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Bar } from 'recharts';
-import {
-  Tooltip as ShadcnTooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip"
+import { BarChart, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Bar } from 'recharts';
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from '@/lib/utils';
 
 
@@ -70,52 +65,50 @@ const StudyGrid = ({ data, month, onDayClick }: { data: { date: string; hours: n
 
 
     return (
-        <TooltipProvider>
-            <div className="flex flex-col items-center justify-center gap-2 w-full">
-                <div className="grid grid-cols-7 gap-1.5 w-full">
-                    {weekdays.map((day, index) => (
-                        <div key={`${day}-${index}`} className="text-xs text-center font-semibold text-muted-foreground">{day}</div>
-                    ))}
-                </div>
-                <div className="grid grid-cols-7 gap-1.5 w-full">
-                    {daysInGrid.map((day) => {
-                        const dateString = format(day, 'yyyy-MM-dd');
-                        const hours = studyDataMap.get(dateString) ?? 0;
-                        const isCurrentMonth = isSameMonth(day, month);
-
-                        return (
-                            <ShadcnTooltip key={dateString} delayDuration={100}>
-                                <TooltipTrigger asChild>
-                                    <button 
-                                      onClick={() => onDayClick(day)}
-                                      className={cn(
-                                        "aspect-square w-full rounded-sm cursor-pointer focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:z-10", 
-                                        getIntensityClass(hours),
-                                        isCurrentMonth ? "border border-border" : "opacity-50",
-                                        isToday(day) && "ring-2 ring-offset-2 ring-accent"
-                                    )} />
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                    <p className="text-sm font-semibold">{format(day, 'MMM d, yyyy')}</p>
-                                    <p className="text-xs">
-                                        {Math.floor(hours)}h {Math.round((hours % 1) * 60)}m of study
-                                    </p>
-                                </TooltipContent>
-                            </ShadcnTooltip>
-                        );
-                    })}
-                </div>
-                <div className="flex items-center gap-2 text-xs text-muted-foreground mt-2">
-                    <span>Less</span>
-                    <div className="h-3 w-3 rounded-sm bg-muted/30" title="0 hours" />
-                    <div className="h-3 w-3 rounded-sm bg-primary/20" title="< 3 hours" />
-                    <div className="h-3 w-3 rounded-sm bg-primary/50" title="< 6 hours" />
-                    <div className="h-3 w-3 rounded-sm bg-primary/70" title="< 9 hours" />
-                    <div className="h-3 w-3 rounded-sm bg-primary" title="> 9 hours" />
-                    <span>More</span>
-                </div>
+        <div className="flex flex-col items-center justify-center gap-2 w-full">
+            <div className="grid grid-cols-7 gap-1.5 w-full">
+                {weekdays.map((day, index) => (
+                    <div key={`${day}-${index}`} className="text-xs text-center font-semibold text-muted-foreground">{day}</div>
+                ))}
             </div>
-        </TooltipProvider>
+            <div className="grid grid-cols-7 gap-1.5 w-full">
+                {daysInGrid.map((day) => {
+                    const dateString = format(day, 'yyyy-MM-dd');
+                    const hours = studyDataMap.get(dateString) ?? 0;
+                    const isCurrentMonth = isSameMonth(day, month);
+
+                    return (
+                        <Popover key={dateString}>
+                            <PopoverTrigger asChild>
+                                <button
+                                    onClick={() => onDayClick(day)}
+                                    className={cn(
+                                    "aspect-square w-full rounded-sm cursor-pointer focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:z-10", 
+                                    getIntensityClass(hours),
+                                    isCurrentMonth ? "border border-border" : "opacity-50",
+                                    isToday(day) && "ring-2 ring-offset-2 ring-accent"
+                                )} />
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-2 text-center">
+                                <p className="text-sm font-semibold">{format(day, 'MMM d, yyyy')}</p>
+                                <p className="text-xs">
+                                    {Math.floor(hours)}h {Math.round((hours % 1) * 60)}m of study
+                                </p>
+                            </PopoverContent>
+                        </Popover>
+                    );
+                })}
+            </div>
+            <div className="flex items-center gap-2 text-xs text-muted-foreground mt-2">
+                <span>Less</span>
+                <div className="h-3 w-3 rounded-sm bg-muted/30" title="0 hours" />
+                <div className="h-3 w-3 rounded-sm bg-primary/20" title="< 3 hours" />
+                <div className="h-3 w-3 rounded-sm bg-primary/50" title="< 6 hours" />
+                <div className="h-3 w-3 rounded-sm bg-primary/70" title="< 9 hours" />
+                <div className="h-3 w-3 rounded-sm bg-primary" title="> 9 hours" />
+                <span>More</span>
+            </div>
+        </div>
     );
 };
 
@@ -390,7 +383,7 @@ export default function MemberAttendancePage() {
                                             width={50}
                                             tickFormatter={(value) => `${value}h`}
                                         />
-                                        <Tooltip
+                                        <RechartsTooltip
                                             cursor={{ fill: 'hsl(var(--muted))', radius: 4 }}
                                             content={<ChartTooltipContent />}
                                         />
@@ -484,5 +477,3 @@ export default function MemberAttendancePage() {
     </>
   );
 }
-
-    

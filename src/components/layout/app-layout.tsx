@@ -18,6 +18,7 @@ import { useNotificationContext } from '@/contexts/notification-context';
 import { useTheme } from "next-themes";
 import { useNotificationCounts } from '@/hooks/use-notification-counts';
 import { setupPushNotifications } from '@/lib/notification-setup';
+import { saveOneSignalPlayerId } from '@/services/student-service';
 
 function NotificationIconArea() {
   const { user } = useAuth();
@@ -69,7 +70,6 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   React.useEffect(() => {
     if (prevPathnameRef.current !== pathname) {
       setIsRouteLoading(true);
-      prevPathnameRef.current = pathname;
       const timer = setTimeout(() => {
         setIsRouteLoading(false);
       }, 250);
@@ -83,17 +83,40 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     }
   }, [user, theme, setTheme]);
   
-  // --- New Robust Notification Setup ---
+  // --- Robust Notification Setup ---
   React.useEffect(() => {
     if (user && user.firestoreId && user.role) {
-      // Check if permission has already been granted but not explicitly denied
+      // Firebase Web Push Setup
       if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
-          console.log("[AppLayout] Notification permission already granted. Setting up push notifications silently.");
+          console.log("[AppLayout] Notification permission already granted. Setting up Firebase push notifications silently.");
           setupPushNotifications(user.firestoreId, user.role);
+      }
+      
+      // OneSignal Player ID Registration for Median.co
+      if (typeof window !== 'undefined' && (window as any).OneSignal) {
+        console.log("[AppLayout] OneSignal SDK detected. Attempting to register Player ID.");
+        (window as any).OneSignal.push(function() {
+          (window as any).OneSignal.getUserId(function(playerId: string | null | undefined) {
+            if (playerId) {
+              console.log("[AppLayout] OneSignal Player ID:", playerId);
+              // Check against local storage to prevent redundant writes
+              const savedPlayerId = localStorage.getItem('oneSignalPlayerId');
+              if (savedPlayerId !== playerId) {
+                 saveOneSignalPlayerId(user.firestoreId, user.role, playerId)
+                  .then(() => localStorage.setItem('oneSignalPlayerId', playerId))
+                  .catch(err => console.error("Failed to save OneSignal Player ID:", err));
+              } else {
+                console.log("[AppLayout] OneSignal Player ID is already saved and up-to-date.");
+              }
+            } else {
+                console.warn("[AppLayout] OneSignal.getUserId() returned null or undefined.");
+            }
+          });
+        });
       }
     }
   }, [user]);
-  // --- End New Logic ---
+  // --- End Notification Logic ---
 
 
   const isPublicPath = pathname.startsWith('/login');
