@@ -92,14 +92,16 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           setupPushNotifications(user.firestoreId, user.role);
       }
       
-      // OneSignal Player ID Registration for Median.co
-      if (typeof window !== 'undefined' && (window as any).OneSignal) {
-        console.log("[AppLayout] OneSignal SDK detected. Attempting to register Player ID.");
-        (window as any).OneSignal.push(function() {
-          (window as any).OneSignal.getUserId(function(playerId: string | null | undefined) {
+      // Median.co OneSignal Player ID Registration
+      const median = (window as any).median;
+      if (median?.onesignal?.onesignalInfo) {
+        console.log("[AppLayout] Median.co OneSignal bridge detected. Attempting to get Player ID.");
+        
+        const getPlayerId = () => {
+          median.onesignal.onesignalInfo().then((oneSignalInfo: { oneSignalUserId?: string }) => {
+            const playerId = oneSignalInfo.oneSignalUserId;
             if (playerId) {
-              console.log("[AppLayout] OneSignal Player ID:", playerId);
-              // Check against local storage to prevent redundant writes
+              console.log("[AppLayout] Median OneSignal Player ID retrieved:", playerId);
               const savedPlayerId = localStorage.getItem('oneSignalPlayerId');
               if (savedPlayerId !== playerId) {
                  saveOneSignalPlayerId(user.firestoreId, user.role, playerId)
@@ -109,10 +111,15 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 console.log("[AppLayout] OneSignal Player ID is already saved and up-to-date.");
               }
             } else {
-                console.warn("[AppLayout] OneSignal.getUserId() returned null or undefined.");
+              console.warn("[AppLayout] Median bridge `onesignalInfo` did not return a Player ID. Retrying in 10 seconds...");
+              setTimeout(getPlayerId, 10000); // Retry if the ID isn't available yet
             }
+          }).catch((err: any) => {
+             console.error("[AppLayout] Error calling Median OneSignal bridge:", err);
           });
-        });
+        };
+
+        getPlayerId(); // Initial call
       }
     }
   }, [user]);
