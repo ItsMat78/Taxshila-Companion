@@ -4,7 +4,7 @@
 
 import { getMessaging } from '@/lib/firebase-admin';
 import type { Student, Admin } from '@/types/student';
-import { getStudentByCustomId, getAdminByEmail } from '@/services/student-service';
+import { getStudentByCustomId, getAllStudents } from '@/services/student-service';
 import { getDb } from '@/lib/firebase-admin';
 import type { AlertItem } from '@/types/communication';
 
@@ -165,6 +165,68 @@ async function sendNotificationToAllAdmins(payload: NotificationPayload): Promis
   }
 }
 
+async function sendNotificationToAllStudents(payload: NotificationPayload): Promise<void> {
+  console.log(`[Notification Service] Sending general alert to ALL students.`);
+  const allStudents = await getAllStudents();
+  const activeStudents = allStudents.filter(s => s.activityStatus === 'Active');
+  
+  if (activeStudents.length === 0) {
+    console.warn('[Notification Service] No active students found to send general alert.');
+    return;
+  }
+
+  const allFcmTokens = activeStudents.flatMap(s => s.fcmTokens || []);
+  const allOneSignalPlayerIds = activeStudents.flatMap(s => s.oneSignalPlayerIds || []);
+  
+  // --- 1. Firebase (FCM) Logic ---
+  if (allFcmTokens.length > 0) {
+    console.log(`[Notification Service] Found ${allFcmTokens.length} total FCM tokens.`);
+    const fcmMessage = {
+      tokens: allFcmTokens,
+      notification: { title: payload.title, body: payload.body },
+      webpush: { 
+        notification: { icon: payload.icon || '/logo.png' },
+        fcmOptions: { link: payload.click_action || '/' } 
+      },
+    };
+    try {
+      await getMessaging().sendEachForMulticast(fcmMessage);
+      console.log(`[Notification Service] Sent general alert via FCM.`);
+    } catch(e) { console.error(`Error sending general alert via FCM`, e)}
+  }
+
+  // --- 2. OneSignal Logic ---
+  const ONE_SIGNAL_APP_ID = process.env.ONE_SIGNAL_APP_ID;
+  const ONE_SIGNAL_REST_API_KEY = process.env.ONE_SIGNAL_REST_API_KEY;
+
+  if (allOneSignalPlayerIds.length > 0 && ONE_SIGNAL_APP_ID && ONE_SIGNAL_REST_API_KEY) {
+    console.log(`[Notification Service] Found ${allOneSignalPlayerIds.length} total OneSignal Player IDs.`);
+    const oneSignalMessage = {
+      app_id: ONE_SIGNAL_APP_ID,
+      include_player_ids: allOneSignalPlayerIds,
+      headings: { "en": payload.title },
+      contents: { "en": payload.body },
+      web_url: payload.click_action || 'https://taxshila-companion.web.app'
+    };
+    try {
+      const response = await fetch("https://onesignal.com/api/v1/notifications", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json; charset=utf-8",
+          "Authorization": `Key ${ONE_SIGNAL_REST_API_KEY}`
+        },
+        body: JSON.stringify(oneSignalMessage)
+      });
+      if (response.ok) {
+        console.log(`[Notification Service] Successfully sent general alert via OneSignal.`);
+      } else {
+        const responseData = await response.json();
+        console.error(`[Notification Service] Failed to send general OneSignal notification:`, responseData);
+      }
+    } catch(e) { console.error(`Error sending general OneSignal alert`, e)}
+  }
+}
+
 /**
  * Triggers a notification based on a newly created alert item.
  * This function will be called from an API route.
@@ -177,7 +239,7 @@ export async function triggerAlertNotification(alert: AlertItem): Promise<void> 
     title: alert.title,
     body: alert.message,
     icon: '/logo.png',
-    click_action: alert.studentId ? '/member/alerts' : '/admin/alerts/history',
+    click_action: alert.studentId && alert.studentId !== '__GENERAL__' ? '/member/alerts' : '/admin/alerts/history',
   };
 
   try {
@@ -185,10 +247,8 @@ export async function triggerAlertNotification(alert: AlertItem): Promise<void> 
       // It's a targeted alert for a student
       await sendNotificationToStudent(alert.studentId, payload);
     } else {
-      // This is a general alert. The logic to send to ALL students would be complex and resource-intensive.
-      // A better approach is using FCM topics, but for now, we will not send push notifications for general alerts.
-      // They will appear in the member's alert inbox when they open the app.
-      console.log(`[Notification Service] General alert created (ID: ${alert.id}). Push notifications are not sent for general alerts.`);
+      // It's a general alert for all students
+      await sendNotificationToAllStudents(payload);
     }
   } catch (error) {
       console.error(`[Notification Service] Failed to trigger alert notification for alert ${alert.id}. Error:`, error);
