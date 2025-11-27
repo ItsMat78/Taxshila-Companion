@@ -8,6 +8,7 @@ import {
   getStudentByIdentifier, 
   getAdminByEmail, 
   updateUserTheme,
+  removeOneSignalPlayerId, // Import the new function
 } from '@/services/student-service';
 import type { Student } from '@/types/student';
 import type { Admin } from '@/types/auth';
@@ -162,6 +163,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const logout = async () => {
+    try {
+        if (user) {
+            // 1. Retrieve the ID for the CURRENT user before we delete it
+            const storageKey = `oneSignalPlayerId_${user.firestoreId}`;
+            const playerId = localStorage.getItem(storageKey);
+
+            // 2. Remove it from Firestore (Fire & Forget)
+            if (playerId) {
+                // We don't await this because we don't want to block the logout UI
+                removeOneSignalPlayerId(user.firestoreId, user.role, playerId)
+                    .catch(err => console.error("Failed to remove OneSignal ID:", err));
+                
+                // 3. Clean up LocalStorage
+                localStorage.removeItem(storageKey);
+            }
+        }
+    } catch (error) {
+        console.error("Error during OneSignal ID cleanup on logout:", error);
+    }
+
     setUser(null);
     localStorage.removeItem('taxshilaUser');
     setTheme('light-default');

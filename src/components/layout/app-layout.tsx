@@ -96,63 +96,63 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       // 2. Median / OneSignal Native Push Logic
       const registerOneSignalPlayerId = async () => {
         const checkInterval = 2000; 
-        const maxDuration = 30000; // 30 seconds is usually enough
+        const maxDuration = 30000;
         let elapsedTime = 0;
 
         const intervalId = setInterval(async () => {
           elapsedTime += checkInterval;
-          
-          // Cast window to any to avoid TS errors
           const median = (window as any).median;
 
-          // CHECK: Does the correct API function exist?
+          // CHECK: Look for the specific 'info' function
           if (median?.onesignal?.info) {
             try {
-              console.log("[AppLayout] Found median.onesignal.info. Fetching data...");
-              
-              // CALL THE CORRECT API
               const data = await median.onesignal.info();
-              console.log("[AppLayout] Raw Median OneSignal Data:", data);
-              // --- 🚨 ADD THIS TEMPORARY DEBUG ALERT 🚨 ---
-              alert("DEBUG ONE_SIGNAL DATA:\n" + JSON.stringify(data, null, 2)); 
-              // --------------------------------------------
+              
+              // --- THE FIX: Access the nested 'subscription.id' ---
+              // The JSON shows data.subscription.id is the correct path for the Device ID
+              const subscriptionId = data.subscription?.id;
+              
+              // Fallback to legacy ID if the new structure isn't present
+              const legacyId = data.oneSignalId || data.oneSignalUserId; 
 
-              // EXTRACT THE CORRECT ID (Subscription ID is preferred for SDK 5.0+)
-              // Note: Median usually returns keys like 'oneSignalSubscriptionId' or 'oneSignalUserId'
-              const subscriptionId = data.oneSignalSubscriptionId;
-              const legacyId = data.oneSignalUserId; // The "b6a6..." ID that failed
-
-              // We strictly want the Subscription ID if available, otherwise fallback (though fallback might be unsubscribed)
+              // Prioritize Subscription ID
               const targetId = subscriptionId || legacyId;
 
               if (targetId) {
                   const savedPlayerId = localStorage.getItem('oneSignalPlayerId');
 
-                  // Only write to Firestore if it's a NEW ID
-                  if (savedPlayerId !== targetId) {
-                      console.log(`[AppLayout] Saving new Subscription ID to Firestore: ${targetId}`);
-                      await saveOneSignalPlayerId(user.firestoreId, user.role, targetId);
-                      localStorage.setItem('oneSignalPlayerId', targetId);
-                  } else {
+                  // Inside registerOneSignalPlayerId...
+
+if (targetId) {
+  // 🔴 OLD: const savedPlayerId = localStorage.getItem('oneSignalPlayerId');
+  
+  // 🟢 NEW: Make the key unique to the CURRENT user
+  const storageKey = `oneSignalPlayerId_${user.firestoreId}`;
+  const savedPlayerId = localStorage.getItem(storageKey);
+
+  if (savedPlayerId !== targetId) {
+      console.log(`[AppLayout] Saving ID for ${user.role}: ${targetId}`);
+      await saveOneSignalPlayerId(user.firestoreId, user.role, targetId);
+      
+      // Save using the unique key
+      localStorage.setItem(storageKey, targetId);
+  }
+  } else {
                       console.log("[AppLayout] ID already up to date in localStorage.");
                   }
 
-                  // Success! Stop the loop.
-                  clearInterval(intervalId);
+                  clearInterval(intervalId); // Success
               }
             } catch (err) {
                console.error("[AppLayout] Error calling median.onesignal.info():", err);
             }
           } 
           
-          // Stop if time is up
           if (elapsedTime >= maxDuration) {
-              console.warn("[AppLayout] Timed out waiting for OneSignal bridge.");
               clearInterval(intervalId);
           }
         }, checkInterval);
 
-        // Cleanup function
         return () => clearInterval(intervalId);
       };
 

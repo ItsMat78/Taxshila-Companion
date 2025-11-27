@@ -1455,6 +1455,20 @@ export async function saveOneSignalPlayerId(firestoreId: string, role: 'admin' |
   }
 }
 
+export async function removeOneSignalPlayerId(firestoreId: string, role: string, playerId: string): Promise<void> {
+  const collectionName = role === 'admin' ? 'admins' : 'students';
+  const userDocRef = doc(db, collectionName, firestoreId);
+  try {
+    await updateDoc(userDocRef, {
+      oneSignalPlayerIds: arrayRemove(playerId)
+    });
+    console.log(`[Student Service] Removed OneSignal ID ${playerId} for user ${firestoreId}`);
+  } catch (error) {
+    console.error(`[Student Service] Failed to remove OneSignal ID ${playerId} for user ${firestoreId}:`, error);
+    // We don't re-throw here as it's a "fire-and-forget" operation during logout
+  }
+}
+
 
 declare module '@/types/student' {
   interface Student {
