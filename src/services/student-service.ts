@@ -40,6 +40,7 @@ import {
 } from 'firebase/auth';
 import { getAuth } from 'firebase-admin/auth';
 import { Admin } from '@/types/auth';
+import { medianLogger } from '@/lib/median-logger.tsx';
 
 
 // --- Collections ---
@@ -845,13 +846,7 @@ export async function calculateMonthlyStudyHours(customStudentId: string, monthD
 
 // --- Communication Service Functions (Feedback & Alerts) ---
 async function triggerNotification(type: 'alert' | 'feedback', payload: any) {
-  // Use __GENERAL__ as a special marker for general alerts.
-  if (type === 'alert' && payload.studentId === '__GENERAL__') {
-      console.log(`[StudentService] General alert created (ID: ${payload.id}). Not sending individual push notifications.`);
-      return;
-  }
-  
-  console.log(`[StudentService] Calling API to send notification. Type: ${type}`);
+  medianLogger.log(`Calling API to send notification. Type: ${type}`);
   try {
     const response = await fetch('/api/send-notification', {
       method: 'POST',
@@ -861,13 +856,15 @@ async function triggerNotification(type: 'alert' | 'feedback', payload: any) {
 
     if (!response.ok) {
       const errorResult = await response.json();
-      throw new Error(errorResult.error || 'API call for notification failed.');
+      const errorMessage = errorResult.error || 'API call for notification failed.';
+      medianLogger.log(`API Error: ${errorMessage}`);
+      throw new Error(errorMessage);
     }
-    console.log(`[StudentService] API call for alert notification finished.`);
+    medianLogger.log(`API call for notification successful.`);
   } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
+    medianLogger.log(`Notification trigger failed: ${errorMessage}`);
     console.error(`[StudentService] Failed to trigger alert notification for type ${type}. Alert was saved, but push notification may have failed.`, error);
-    // We don't re-throw here so that the client-side operation can still succeed
-    // The error is logged, and the user won't see a confusing failure message if the primary action (e.g., saving a feedback) was successful.
   }
 }
 
@@ -877,6 +874,7 @@ export async function submitFeedback(
   message: string,
   type: FeedbackType
 ): Promise<FeedbackItem> {
+  medianLogger.log(`Submitting feedback for ${studentName || 'Anonymous'}`);
   const newFeedbackData = {
     studentId: studentId || null,
     studentName: studentName || null,
@@ -886,6 +884,7 @@ export async function submitFeedback(
     status: "Open" as FeedbackStatus,
   };
   const docRef = await addDoc(collection(db, FEEDBACK_COLLECTION), newFeedbackData);
+  medianLogger.log(`Feedback saved with ID: ${docRef.id}.`);
   
   // Trigger admin notification in the background
   triggerNotification('feedback', { studentName: studentName || 'Anonymous', feedbackType: type });
@@ -915,6 +914,7 @@ export async function updateFeedbackStatus(feedbackId: string, status: FeedbackS
 }
 
 export async function sendGeneralAlert(title: string, message: string, type: AlertItem['type']): Promise<AlertItem> {
+    medianLogger.log(`Creating general alert: "${title}"`);
     const newAlertData = {
         title,
         message,
@@ -924,11 +924,13 @@ export async function sendGeneralAlert(title: string, message: string, type: Ale
         studentId: null,
     };
     const docRef = await addDoc(collection(db, ALERTS_COLLECTION), newAlertData);
+    medianLogger.log(`General alert saved with ID: ${docRef.id}. Now triggering notifications.`);
+    
     const newDocSnap = await getDoc(docRef);
     const alertItem = alertItemFromDoc(newDocSnap);
-
-    // This type of alert would need a different mechanism to notify all users (e.g., topics)
-    // For now, we are not triggering individual notifications for general alerts.
+    
+    // Trigger notifications for ALL active students
+    triggerNotification('alert', alertItem);
     
     return alertItem;
 }
@@ -944,7 +946,8 @@ export async function sendAlertToStudent(
     if (customStudentId === '__GENERAL__') {
         return sendGeneralAlert(title, message, type);
     }
-
+    
+    medianLogger.log(`Creating targeted alert for ${customStudentId}: "${title}"`);
     const newAlertDataForFirestore: any = {
         studentId: customStudentId,
         title,
@@ -957,6 +960,8 @@ export async function sendAlertToStudent(
     if (originalFeedbackMessageSnippet) newAlertDataForFirestore.originalFeedbackMessageSnippet = originalFeedbackMessageSnippet;
 
     const docRef = await addDoc(collection(db, ALERTS_COLLECTION), newAlertDataForFirestore);
+    medianLogger.log(`Targeted alert saved with ID: ${docRef.id}. Now triggering notification.`);
+    
     const newDocSnap = await getDoc(docRef);
     const alertItem = alertItemFromDoc(newDocSnap);
     
