@@ -113,6 +113,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               // CALL THE CORRECT API
               const data = await median.onesignal.info();
               console.log("[AppLayout] Raw Median OneSignal Data:", data);
+              // --- 🚨 ADD THIS TEMPORARY DEBUG ALERT 🚨 ---
+              alert("DEBUG ONE_SIGNAL DATA:\n" + JSON.stringify(data, null, 2)); 
+              // --------------------------------------------
 
               // EXTRACT THE CORRECT ID (Subscription ID is preferred for SDK 5.0+)
               // Note: Median usually returns keys like 'oneSignalSubscriptionId' or 'oneSignalUserId'
