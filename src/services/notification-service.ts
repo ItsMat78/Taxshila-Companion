@@ -8,11 +8,12 @@ import { FieldValue } from 'firebase-admin/firestore'; // Import FieldValue for 
 import type { AlertItem } from '@/types/communication';
 
 // --- Configuration ---
-const DEFAULT_ICON = '/logo.png';
 const DEFAULT_LINK = '/';
 const FALLBACK_DOMAIN = 'https://taxshilacompanion.vercel.app';
 const ONE_SIGNAL_BATCH_SIZE = 2000; 
 const FCM_BATCH_SIZE = 500;         
+// 🔴 CHANGE THIS: Make sure it is a full URL
+const DEFAULT_ICON = `${FALLBACK_DOMAIN}/logo.png`;
 
 interface NotificationPayload {
   title: string;
@@ -116,11 +117,17 @@ async function sendOneSignalBatch(playerIds: string[], payload: NotificationPayl
   const targetUrl = relativePath.startsWith('http') 
     ? relativePath 
     : `${FALLBACK_DOMAIN}${relativePath}`;
-
+  // 1. Prepare the Icon URL (Must be Absolute)
+  let iconUrl = payload.icon || DEFAULT_ICON;
+  if (iconUrl.startsWith('/')) {
+      iconUrl = `${FALLBACK_DOMAIN}${iconUrl}`;
+  }
   const chunks = [];
   for (let i = 0; i < playerIds.length; i += ONE_SIGNAL_BATCH_SIZE) {
     chunks.push(playerIds.slice(i, i + ONE_SIGNAL_BATCH_SIZE));
   }
+
+  
 
   await Promise.all(chunks.map(async (idChunk) => {
     try {
@@ -136,6 +143,7 @@ async function sendOneSignalBatch(playerIds: string[], payload: NotificationPayl
           headings: { "en": payload.title },
           contents: { "en": payload.body },
           data: { targetUrl: targetUrl }, 
+          large_icon: iconUrl,
         })
       });
 
