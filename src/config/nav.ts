@@ -26,6 +26,7 @@ import {
   User,
   QrCode,
   Wifi,
+  Notebook,
 } from 'lucide-react';
 import { NavItem } from '@/types/nav';
 
@@ -146,6 +147,12 @@ export const mainNav: NavItem[] = [
         roles: ['admin'],
       },
     ],
+  },
+  {
+    title: 'Admin Notes',
+    href: '/admin/notes',
+    icon: Notebook,
+    roles: ['admin'],
   },
   {
     title: 'Settings',
