@@ -86,63 +86,76 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   // --- Robust Notification Setup ---
   React.useEffect(() => {
     if (user && user.firestoreId && user.role) {
-      // Firebase Web Push Setup
+      
+      // 1. Firebase Web Push (Keep existing logic)
       if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
-          console.log("[AppLayout] Notification permission already granted. Setting up Firebase push notifications silently.");
+          // console.log("[AppLayout] Web Push Setup..."); 
           setupPushNotifications(user.firestoreId, user.role);
       }
       
+      // 2. Median / OneSignal Native Push Logic
       const registerOneSignalPlayerId = async () => {
-        const checkInterval = 2000; // Check every 2 seconds
-        const maxDuration = 60000; // Stop checking after 60 seconds
+        const checkInterval = 2000; 
+        const maxDuration = 30000; // 30 seconds is usually enough
         let elapsedTime = 0;
 
         const intervalId = setInterval(async () => {
           elapsedTime += checkInterval;
+          
+          // Cast window to any to avoid TS errors
           const median = (window as any).median;
 
-          // Try the new getOnesignalId() method
-          if (median?.getOnesignalId && typeof median.getOnesignalId === 'function') {
+          // CHECK: Does the correct API function exist?
+          if (median?.onesignal?.info) {
             try {
-              console.log("[AppLayout] Found median.getOnesignalId(). Trying to get Player ID...");
-              const playerId = await median.getOnesignalId();
+              console.log("[AppLayout] Found median.onesignal.info. Fetching data...");
+              
+              // CALL THE CORRECT API
+              const data = await median.onesignal.info();
+              console.log("[AppLayout] Raw Median OneSignal Data:", data);
 
-              if (playerId && typeof playerId === 'string') {
-                  console.log("[AppLayout] OneSignal Player ID retrieved via getOnesignalId():", playerId);
+              // EXTRACT THE CORRECT ID (Subscription ID is preferred for SDK 5.0+)
+              // Note: Median usually returns keys like 'oneSignalSubscriptionId' or 'oneSignalUserId'
+              const subscriptionId = data.oneSignalSubscriptionId;
+              const legacyId = data.oneSignalUserId; // The "b6a6..." ID that failed
+
+              // We strictly want the Subscription ID if available, otherwise fallback (though fallback might be unsubscribed)
+              const targetId = subscriptionId || legacyId;
+
+              if (targetId) {
                   const savedPlayerId = localStorage.getItem('oneSignalPlayerId');
 
-                  if (savedPlayerId !== playerId) {
-                      await saveOneSignalPlayerId(user.firestoreId, user.role, playerId);
-                      localStorage.setItem('oneSignalPlayerId', playerId);
-                      console.log("[AppLayout] Player ID saved to Firestore and localStorage.");
+                  // Only write to Firestore if it's a NEW ID
+                  if (savedPlayerId !== targetId) {
+                      console.log(`[AppLayout] Saving new Subscription ID to Firestore: ${targetId}`);
+                      await saveOneSignalPlayerId(user.firestoreId, user.role, targetId);
+                      localStorage.setItem('oneSignalPlayerId', targetId);
                   } else {
-                      console.log("[AppLayout] OneSignal Player ID is already saved and up-to-date.");
+                      console.log("[AppLayout] ID already up to date in localStorage.");
                   }
-                  clearInterval(intervalId); // Stop polling once we succeed
-                  return;
-              } else {
-                 console.warn("[AppLayout] median.getOnesignalId() was called but did not return a valid Player ID. Will retry.");
+
+                  // Success! Stop the loop.
+                  clearInterval(intervalId);
               }
             } catch (err) {
-               console.error("[AppLayout] Error calling median.getOnesignalId():", err);
+               console.error("[AppLayout] Error calling median.onesignal.info():", err);
             }
-          } else {
-            console.log("[AppLayout] Polling: median.getOnesignalId() not found yet.");
-          }
-
+          } 
+          
+          // Stop if time is up
           if (elapsedTime >= maxDuration) {
-              console.error("[AppLayout] Timed out waiting for Median bridge to become available.");
+              console.warn("[AppLayout] Timed out waiting for OneSignal bridge.");
               clearInterval(intervalId);
           }
         }, checkInterval);
 
+        // Cleanup function
         return () => clearInterval(intervalId);
       };
 
       registerOneSignalPlayerId();
     }
   }, [user]);
-  // --- End Notification Logic ---
 
 
   const isPublicPath = pathname.startsWith('/login');
