@@ -4,14 +4,15 @@ import { getMessaging } from '@/lib/firebase-admin';
 import type { Student, Admin } from '@/types/student';
 import { getStudentByCustomId, getAllStudents } from '@/services/student-service';
 import { getDb } from '@/lib/firebase-admin';
+import { FieldValue } from 'firebase-admin/firestore'; // Import FieldValue for arrayRemove
 import type { AlertItem } from '@/types/communication';
 
 // --- Configuration ---
 const DEFAULT_ICON = '/logo.png';
 const DEFAULT_LINK = '/';
 const FALLBACK_DOMAIN = 'https://taxshilacompanion.vercel.app';
-const ONE_SIGNAL_BATCH_SIZE = 2000; // Safe limit for REST API
-const FCM_BATCH_SIZE = 500;         // Strict Firebase limit
+const ONE_SIGNAL_BATCH_SIZE = 2000; 
+const FCM_BATCH_SIZE = 500;         
 
 interface NotificationPayload {
   title: string;
@@ -21,24 +22,73 @@ interface NotificationPayload {
 }
 
 // ==========================================
-// 1. HELPER FUNCTIONS (The Core Logic)
+// 1. CLEANUP HELPER (The Advanced Fix)
 // ==========================================
 
 /**
- * Sends FCM notifications in strict batches of 500 to avoid "Number of tokens exceeds 500" error.
+ * Locates users possessing the invalid IDs and removes them from Firestore.
+ * checks both 'students' and 'admins' collections.
  */
+async function cleanupInvalidOneSignalIds(invalidIds: string[]) {
+  if (!invalidIds || invalidIds.length === 0) return;
+
+  console.log(`[Notification Service] 🧹 Cleaning up ${invalidIds.length} invalid OneSignal IDs...`);
+  const db = getDb();
+
+  // We process each ID individually to ensure we find the correct user owner
+  // This runs in the background so it won't slow down the response significantly
+  const cleanupPromises = invalidIds.map(async (invalidId) => {
+    try {
+      // 1. Try to find the user in 'students'
+      const studentQuery = await db.collection('students')
+        .where('oneSignalPlayerIds', 'array-contains', invalidId)
+        .get();
+
+      if (!studentQuery.empty) {
+        studentQuery.forEach(doc => {
+          doc.ref.update({
+            oneSignalPlayerIds: FieldValue.arrayRemove(invalidId)
+          });
+          console.log(`[Notification Service] Removed dead ID ${invalidId} from Student ${doc.id}`);
+        });
+        return; // Found in students, stop looking
+      }
+
+      // 2. If not found, try 'admins'
+      const adminQuery = await db.collection('admins')
+        .where('oneSignalPlayerIds', 'array-contains', invalidId)
+        .get();
+
+      if (!adminQuery.empty) {
+        adminQuery.forEach(doc => {
+          doc.ref.update({
+            oneSignalPlayerIds: FieldValue.arrayRemove(invalidId)
+          });
+          console.log(`[Notification Service] Removed dead ID ${invalidId} from Admin ${doc.id}`);
+        });
+      }
+      
+    } catch (err) {
+      console.error(`[Notification Service] Failed to cleanup ID ${invalidId}:`, err);
+    }
+  });
+
+  await Promise.all(cleanupPromises);
+}
+
+// ==========================================
+// 2. SENDING HELPERS
+// ==========================================
+
 async function sendFcmBatch(tokens: string[], payload: NotificationPayload) {
   if (!tokens.length) return;
-
   const messaging = getMessaging();
   const chunks = [];
 
-  // Split tokens into chunks of 500
   for (let i = 0; i < tokens.length; i += FCM_BATCH_SIZE) {
     chunks.push(tokens.slice(i, i + FCM_BATCH_SIZE));
   }
 
-  // Send all chunks in parallel
   await Promise.all(chunks.map(async (tokenChunk) => {
     try {
       await messaging.sendEachForMulticast({
@@ -56,18 +106,12 @@ async function sendFcmBatch(tokens: string[], payload: NotificationPayload) {
   }));
 }
 
-/**
- * Sends OneSignal notifications using the REST API.
- * Uses `data.targetUrl` specifically for Median.co apps.
- */
 async function sendOneSignalBatch(playerIds: string[], payload: NotificationPayload) {
   const APP_ID = process.env.ONE_SIGNAL_APP_ID;
   const API_KEY = process.env.ONE_SIGNAL_REST_API_KEY;
 
   if (!playerIds.length || !APP_ID || !API_KEY) return;
 
-  // Determine the Target URL (Deep Link)
-  // If the payload path is relative (e.g., "/member/alerts"), we prepend the domain for safety
   const relativePath = payload.click_action || DEFAULT_LINK;
   const targetUrl = relativePath.startsWith('http') 
     ? relativePath 
@@ -91,19 +135,23 @@ async function sendOneSignalBatch(playerIds: string[], payload: NotificationPayl
           include_player_ids: idChunk,
           headings: { "en": payload.title },
           contents: { "en": payload.body },
-          
-          // --- MEDIAN.CO CRITICAL CONFIG ---
-          // Use 'data' instead of 'web_url' to keep the user inside the app
           data: { targetUrl: targetUrl }, 
-          // --------------------------------
         })
       });
 
+      const responseData = await response.json();
+
+      // --- 🚨 DETECT AND CLEANUP DEAD IDS 🚨 ---
+      if (responseData.invalid_player_ids && Array.isArray(responseData.invalid_player_ids)) {
+         // Don't await this, let it run in background to keep API fast
+         cleanupInvalidOneSignalIds(responseData.invalid_player_ids).catch(e => console.error(e));
+      }
+      // ----------------------------------------
+
       if (!response.ok) {
-        const errorData = await response.json();
-        console.error('[Notification Service] OneSignal API Error:', errorData);
+        console.error('[Notification Service] OneSignal API Error:', responseData);
       } else {
-        console.log(`[Notification Service] OneSignal batch sent to ${idChunk.length} devices.`);
+        console.log(`[Notification Service] OneSignal batch sent. Recipients: ${responseData.recipients}`);
       }
     } catch (error) {
       console.error('[Notification Service] OneSignal Fetch Error:', error);
@@ -112,11 +160,11 @@ async function sendOneSignalBatch(playerIds: string[], payload: NotificationPayl
 }
 
 // ==========================================
-// 2. EXPORTED FUNCTIONS
+// 3. EXPORTED FUNCTIONS
 // ==========================================
 
 export async function sendNotificationToStudent(studentId: string, payload: NotificationPayload): Promise<void> {
-  console.log(`[Notification Service] Sending to student: ${studentId}`);
+  // console.log(`[Notification Service] Sending to student: ${studentId}`);
   const student = await getStudentByCustomId(studentId);
   
   if (!student) {
@@ -124,7 +172,6 @@ export async function sendNotificationToStudent(studentId: string, payload: Noti
       return;
   }
 
-  // Run both providers in parallel
   await Promise.all([
     sendFcmBatch(student.fcmTokens || [], payload),
     sendOneSignalBatch(student.oneSignalPlayerIds || [], payload)
@@ -132,13 +179,12 @@ export async function sendNotificationToStudent(studentId: string, payload: Noti
 }
 
 export async function sendNotificationToAllAdmins(payload: NotificationPayload): Promise<void> {
-  console.log('[Notification Service] Sending to all admins.');
+  // console.log('[Notification Service] Sending to all admins.');
   const db = getDb();
   const adminsSnapshot = await db.collection('admins').get();
   
   if (adminsSnapshot.empty) return;
 
-  // Aggregate ALL admin tokens first (Performance optimization)
   const allFcmTokens: string[] = [];
   const allOneSignalIds: string[] = [];
 
@@ -148,7 +194,6 @@ export async function sendNotificationToAllAdmins(payload: NotificationPayload):
     if (admin.oneSignalPlayerIds) allOneSignalIds.push(...admin.oneSignalPlayerIds);
   });
 
-  // Send efficiently
   await Promise.all([
     sendFcmBatch(allFcmTokens, payload),
     sendOneSignalBatch(allOneSignalIds, payload)
@@ -158,7 +203,6 @@ export async function sendNotificationToAllAdmins(payload: NotificationPayload):
 export async function sendNotificationToAllStudents(payload: NotificationPayload): Promise<void> {
   console.log(`[Notification Service] Sending general alert to ALL students.`);
   
-  // NOTE: For very large datasets (>5000), consider using Firestore streams instead of getting all docs
   const allStudents = await getAllStudents();
   const activeStudents = allStudents.filter(s => s.activityStatus === 'Active');
   
@@ -167,22 +211,17 @@ export async function sendNotificationToAllStudents(payload: NotificationPayload
     return;
   }
 
-  // Flatten all tokens into single arrays
   const allFcmTokens = activeStudents.flatMap(s => s.fcmTokens || []);
   const allOneSignalIds = activeStudents.flatMap(s => s.oneSignalPlayerIds || []);
 
   console.log(`[Notification Service] Targets: ${allFcmTokens.length} FCM, ${allOneSignalIds.length} OneSignal.`);
 
-  // Send using the chunking helpers
   await Promise.all([
     sendFcmBatch(allFcmTokens, payload),
     sendOneSignalBatch(allOneSignalIds, payload)
   ]);
 }
 
-/**
- * Triggered by API when an alert is created.
- */
 export async function triggerAlertNotification(alert: AlertItem): Promise<void> {
   console.log(`[Notification Service] Trigger: Alert ${alert.id}`);
   
@@ -203,13 +242,9 @@ export async function triggerAlertNotification(alert: AlertItem): Promise<void> 
     }
   } catch (error) {
     console.error(`[Notification Service] Failed to trigger alert ${alert.id}:`, error);
-    // throw error; // Optional: Uncomment if you want the API call to fail 
   }
 }
 
-/**
- * Triggered by API when feedback is submitted.
- */
 export async function triggerAdminFeedbackNotification(studentName: string, feedbackType: string): Promise<void> {
     const payload: NotificationPayload = {
         title: 'New Feedback Submitted',
