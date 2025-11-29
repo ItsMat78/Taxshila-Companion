@@ -14,7 +14,6 @@ const themeColors: Record<string, string> = {
     'dark-rose': '#1C1519',
 };
 
-// Interface for TypeScript to understand the Median object
 interface Median {
   statusbar: {
     set: (options: { style?: 'light' | 'dark'; color?: string; overlay?: boolean }) => void;
@@ -36,20 +35,16 @@ export function DynamicThemeColor() {
     }
 
     // 2. Median.co Native App Update
-    // We check for 'window.median' to ensure we are inside the native app
     const median = (window as any).median as Median | undefined;
 
     if (median) {
-      // Determine contrast: 
-      // If theme is 'light-xxx', we want DARK text (style: 'dark')
-      // If theme is 'dark-xxx', we want LIGHT text (style: 'light')
       const isLightTheme = theme.startsWith('light');
-      const textStyle = isLightTheme ? 'dark' : 'light';
+      const textStyle = isLightTheme ? 'light' : 'dark';
 
       median.statusbar.set({
-        color: currentColor, // <--- This sets the BACKGROUND color
-        style: textStyle,    // <--- This ensures text is visible on that background
-        overlay: false       // Ensures web content doesn't go under the status bar
+        color: currentColor,
+        style: textStyle, 
+        overlay: false
       });
     }
   }, [theme]);
