@@ -1,4 +1,3 @@
-
 "use client"
 
 import * as React from 'react';
@@ -15,16 +14,45 @@ const themeColors: Record<string, string> = {
     'dark-rose': '#1C1519',
 };
 
+// Interface for TypeScript to understand the Median object
+interface Median {
+  statusbar: {
+    set: (options: { style?: 'light' | 'dark'; color?: string; overlay?: boolean }) => void;
+  };
+}
+
 export function DynamicThemeColor() {
   const { theme } = useTheme();
   
   React.useEffect(() => {
+    if (!theme || !themeColors[theme]) return;
+
+    const currentColor = themeColors[theme];
+
+    // 1. PWA / Browser Update
     const metaThemeColor = document.querySelector('meta[name="theme-color"]');
-    if (metaThemeColor && theme && themeColors[theme]) {
-      metaThemeColor.setAttribute('content', themeColors[theme]);
+    if (metaThemeColor) {
+      metaThemeColor.setAttribute('content', currentColor);
+    }
+
+    // 2. Median.co Native App Update
+    // We check for 'window.median' to ensure we are inside the native app
+    const median = (window as any).median as Median | undefined;
+
+    if (median) {
+      // Determine contrast: 
+      // If theme is 'light-xxx', we want DARK text (style: 'dark')
+      // If theme is 'dark-xxx', we want LIGHT text (style: 'light')
+      const isLightTheme = theme.startsWith('light');
+      const textStyle = isLightTheme ? 'dark' : 'light';
+
+      median.statusbar.set({
+        color: currentColor, // <--- This sets the BACKGROUND color
+        style: textStyle,    // <--- This ensures text is visible on that background
+        overlay: false       // Ensures web content doesn't go under the status bar
+      });
     }
   }, [theme]);
 
-  // This component no longer renders anything to the DOM, it only handles the effect.
   return null;
 }
