@@ -512,7 +512,7 @@
 
 .female-only-seat {
   outline: 3px solid #EC4899; /* pink-500 */
-  outline-offset: 1px;
+  outline-offset: 0px;
 }
 
 /* New Animation for Gradient Sweep */
