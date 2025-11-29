@@ -1,6 +1,5 @@
-
-
 "use client";
+
 import * as React from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -19,6 +18,18 @@ import { useTheme } from "next-themes";
 import { useNotificationCounts } from '@/hooks/use-notification-counts';
 import { setupPushNotifications } from '@/lib/notification-setup';
 import { saveOneSignalPlayerId } from '@/services/student-service';
+
+// --- THEME COLORS CONFIGURATION ---
+const themeColors: Record<string, string> = {
+    'light-default': '#D6D5D8',
+    'light-mint': '#E2F1EB', 
+    'light-sunrise': '#FEF4E7', 
+    'light-sakura': '#FAEAF0', 
+    'dark-default': '#000000', 
+    'dark-midnight': '#141822', 
+    'dark-forest': '#121912', 
+    'dark-rose': '#1C1519', 
+};
 
 function NotificationIconArea() {
   const { user } = useAuth();
@@ -58,7 +69,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const prevPathnameRef = React.useRef(pathname);
   const { toast } = useToast();
   const { refreshNotifications } = useNotificationContext();
-  const { theme, setTheme } = useTheme();
+  const { theme, setTheme, resolvedTheme } = useTheme(); // Added resolvedTheme for system mode support
 
   React.useEffect(() => {
     const isPublicPath = pathname.startsWith('/login');
@@ -83,17 +94,44 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     }
   }, [user, theme, setTheme]);
   
-  // --- Robust Notification Setup ---
+  // --- 1. STATUS BAR COLOR LOGIC (Median Native) ---
+  React.useEffect(() => {
+    // Determine the safe "Fallback" theme (guaranteed string)
+    const fallbackTheme = resolvedTheme === 'dark' ? 'dark-default' : 'light-default';
+
+    // Check if the current 'theme' is valid and exists in our colors map
+    const activeTheme = (theme && themeColors[theme]) ? theme : fallbackTheme;
+    const color = themeColors[activeTheme];
+
+    if (color) {
+        // A. Update Browser Meta Tag
+        const metaThemeColor = document.querySelector('meta[name="theme-color"]');
+        if (metaThemeColor) {
+            metaThemeColor.setAttribute('content', color);
+        }
+
+        // B. Update Median Native Status Bar
+        const median = (window as any).median;
+        if (median?.statusbar) {
+            median.statusbar.setBackgroundColor({ color: color });
+            
+            // Contrast Logic: Dark themes need Light text (White)
+            const isDark = activeTheme.startsWith('dark');
+            median.statusbar.setStyle({ style: isDark ? 'light' : 'dark' });
+        }
+    }
+  }, [theme, resolvedTheme]); // Re-run when theme changes
+
+  // --- 2. ROBUST NOTIFICATION SETUP ---
   React.useEffect(() => {
     if (user && user.firestoreId && user.role) {
       
-      // 1. Firebase Web Push (Keep existing logic)
+      // A. Firebase Web Push (Keep existing logic)
       if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
-          // console.log("[AppLayout] Web Push Setup..."); 
           setupPushNotifications(user.firestoreId, user.role);
       }
       
-      // 2. Median / OneSignal Native Push Logic
+      // B. Median / OneSignal Native Push Logic
       const registerOneSignalPlayerId = async () => {
         const checkInterval = 2000; 
         const maxDuration = 30000;
@@ -109,7 +147,6 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               const data = await median.onesignal.info();
               
               // --- THE FIX: Access the nested 'subscription.id' ---
-              // The JSON shows data.subscription.id is the correct path for the Device ID
               const subscriptionId = data.subscription?.id;
               
               // Fallback to legacy ID if the new structure isn't present
@@ -119,25 +156,17 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               const targetId = subscriptionId || legacyId;
 
               if (targetId) {
-                  const savedPlayerId = localStorage.getItem('oneSignalPlayerId');
+                  // Make the key unique to the CURRENT user to avoid "second user" bugs
+                  const storageKey = `oneSignalPlayerId_${user.firestoreId}`;
+                  const savedPlayerId = localStorage.getItem(storageKey);
 
-                  // Inside registerOneSignalPlayerId...
-
-if (targetId) {
-  // 🔴 OLD: const savedPlayerId = localStorage.getItem('oneSignalPlayerId');
-  
-  // 🟢 NEW: Make the key unique to the CURRENT user
-  const storageKey = `oneSignalPlayerId_${user.firestoreId}`;
-  const savedPlayerId = localStorage.getItem(storageKey);
-
-  if (savedPlayerId !== targetId) {
-      console.log(`[AppLayout] Saving ID for ${user.role}: ${targetId}`);
-      await saveOneSignalPlayerId(user.firestoreId, user.role, targetId);
-      
-      // Save using the unique key
-      localStorage.setItem(storageKey, targetId);
-  }
-  } else {
+                  if (savedPlayerId !== targetId) {
+                      console.log(`[AppLayout] Saving ID for ${user.role}: ${targetId}`);
+                      await saveOneSignalPlayerId(user.firestoreId, user.role, targetId);
+                      
+                      // Save using the unique key
+                      localStorage.setItem(storageKey, targetId);
+                  } else {
                       console.log("[AppLayout] ID already up to date in localStorage.");
                   }
 
@@ -192,7 +221,8 @@ if (targetId) {
         <TopProgressBar isLoading={isRouteLoading} />
         <AppSidebarContent />
         <SidebarInset>
-          <header className="sticky top-0 z-10 flex h-14 items-center gap-4 border-b bg-background/80 px-4 backdrop-blur-sm sm:h-16 sm:px-6 md:hidden">
+          {/* Header with Safe Area padding for Overlay Mode */}
+          <header className="sticky top-0 z-10 flex min-h-14 items-center gap-4 border-b bg-background/80 px-4 pt-[env(safe-area-inset-top)] backdrop-blur-sm sm:min-h-16 sm:px-6 md:hidden">
             <SidebarTrigger asChild>
               <Button size="icon" variant="outline" className="md:hidden">
                 <PanelLeft className="h-5 w-5" />
