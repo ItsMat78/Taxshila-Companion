@@ -1,4 +1,3 @@
-
 "use client"
 
 import * as React from 'react';
@@ -19,19 +18,36 @@ export function DynamicThemeColor() {
   const { theme } = useTheme();
   
   React.useEffect(() => {
-    const metaThemeColor = document.querySelector('meta[name="theme-color"]');
-    if (metaThemeColor && theme && themeColors[theme]) {
-      metaThemeColor.setAttribute('content', themeColors[theme]);
+    // Safety check: ensure theme exists and we have a color for it
+    if (theme && themeColors[theme]) {
+        const color = themeColors[theme];
+
+        // --- 1. PWA / Mobile Browser Logic (Existing) ---
+        const metaThemeColor = document.querySelector('meta[name="theme-color"]');
+        if (metaThemeColor) {
+            metaThemeColor.setAttribute('content', color);
+        }
+
+        // --- 2. Median Native App Logic (New) ---
+        const median = (window as any).median;
+        if (median?.statusbar) {
+            // Set the background color
+            median.statusbar.setBackgroundColor({ color: color });
+
+            // Set the text color (contrast)
+            // Logic: If theme name starts with 'dark', use 'light' text (white). 
+            // Otherwise use 'dark' text (black).
+            const isDarkTheme = theme.startsWith('dark');
+            median.statusbar.setStyle({ style: isDarkTheme ? 'light' : 'dark' });
+        }
     }
   }, [theme]);
 
-  // Initial render on the server can have a placeholder or default color
-  // But the useEffect will correct it on the client side.
-  // We will manage the initial meta tag directly in the head.
+  // Initial render setup
   return (
     <meta
         name="theme-color"
-        content={theme ? themeColors[theme] : themeColors['light-default']}
+        content={theme && themeColors[theme] ? themeColors[theme] : themeColors['light-default']}
     />
   );
 }
