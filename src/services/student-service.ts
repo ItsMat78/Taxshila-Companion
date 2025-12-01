@@ -1,4 +1,5 @@
 
+
 import {
   db,
   collection,
@@ -461,6 +462,8 @@ export async function updateStudent(customStudentId: string, studentUpdateData: 
     payload.feeStatus = 'N/A';
     payload.amountDue = 'N/A';
     payload.leftDate = format(new Date(), 'yyyy-MM-dd');
+    payload.fcmTokens = []; // Clear FCM tokens
+    payload.oneSignalPlayerIds = []; // Clear OneSignal Player IDs
   } else if (studentUpdateData.activityStatus === 'Active' && studentToUpdate.activityStatus === 'Left') {
     if (!payload.seatNumber || !ALL_SEAT_NUMBERS.includes(payload.seatNumber)) {
         throw new Error("A valid seat must be selected to re-activate a student.");

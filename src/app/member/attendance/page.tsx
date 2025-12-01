@@ -195,6 +195,7 @@ export default function MemberAttendancePage() {
 
       recordsForMonth.forEach(record => {
         if (!record || !record.checkInTime) return;
+        
         const checkInDate = parseISO(record.checkInTime);
         if (!isValid(checkInDate)) return;
 
@@ -205,6 +206,7 @@ export default function MemberAttendancePage() {
         if (record.checkOutTime && isValid(parseISO(record.checkOutTime))) {
           sessionEndDate = parseISO(record.checkOutTime);
         } else {
+          // No checkout time, calculate based on shift end
           let shiftEndHour = 21;
           let shiftEndMinute = 30;
 
@@ -222,9 +224,11 @@ export default function MemberAttendancePage() {
             sessionEndDate = shiftEndTimeOnDate;
           }
         }
+        
         if (isAfter(sessionEndDate, checkInDate)) {
           totalMilliseconds += differenceInMilliseconds(sessionEndDate, checkInDate);
         }
+
         const dateKey = format(checkInDate, 'yyyy-MM-dd');
         dailyHoursMap.set(dateKey, (dailyHoursMap.get(dateKey) || 0) + totalMilliseconds);
       });
