@@ -210,7 +210,7 @@ const motivationalQuotes = [
 
 
 export default function MemberDashboardPage() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const { toast } = useToast();
   const [isScannerOpen, setIsScannerOpen] = React.useState(false);
   const [hasCameraPermission, setHasCameraPermission] = React.useState<boolean | null>(null);
@@ -282,6 +282,16 @@ export default function MemberDashboardPage() {
         }
 
         if (studentDetails) {
+          if (studentDetails.activityStatus === 'Left') {
+            toast({
+              title: "Account Inactive",
+              description: "Your account is no longer active. You have been logged out.",
+              variant: "destructive",
+            });
+            logout();
+            return;
+          }
+
           studentDetailsFetchedSuccessfully = true;
           setCurrentStudent(studentDetails);
           setStudentId(studentDetails.studentId);
@@ -324,7 +334,7 @@ export default function MemberDashboardPage() {
       setStudentFeeStatus(null); setStudentNextDueDate(null);
       setCurrentStudent(null);
     }
-  }, [user, toast]);
+  }, [user, toast, logout]);
   
   const handleOpenWifiDialog = async () => {
     setIsWifiDialogOpen(true);

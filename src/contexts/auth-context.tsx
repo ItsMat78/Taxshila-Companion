@@ -121,7 +121,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         } else {
              const studentRecord = userRecord as Student;
              if (studentRecord.activityStatus !== 'Active') {
-                toast({ title: "Login Failed", description: "This account is no longer active.", variant: "destructive" });
+                toast({ title: "Login Failed", description: "This account is no longer active. Please contact an admin.", variant: "destructive" });
                 await signOut(auth);
                 setIsLoading(false);
                 return null;
