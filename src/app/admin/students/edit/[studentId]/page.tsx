@@ -490,7 +490,29 @@ export default function EditStudentPage() {
   const onPictureSelect = () => {
     setIsDirtyOverride(true);
   };
+  
+  const newDueDateForPayment = React.useMemo(() => {
+    if (!studentData?.nextDueDate) return format(addMonths(new Date(), 1), 'yyyy-MM-dd');
+    const baseDate = isValid(parseISO(studentData.nextDueDate)) ? parseISO(studentData.nextDueDate) : new Date();
+    return format(addMonths(baseDate, 1), 'yyyy-MM-dd');
+  }, [studentData?.nextDueDate]);
+  
+  const getAmountDueDisplay = () => {
+    if (!studentData) return "Calculating...";
+    if (studentData.amountDue && studentData.amountDue !== "Rs. 0" && studentData.amountDue !== "N/A") {
+      return studentData.amountDue;
+    }
+    if (feeStructure) {
+      switch (studentData.shift) {
+        case 'morning': return `Rs. ${feeStructure.morningFee}`;
+        case 'evening': return `Rs. ${feeStructure.eveningFee}`;
+        case 'fullday': return `Rs. ${feeStructure.fullDayFee}`;
+      }
+    }
+    return "Calculating...";
+  };
 
+  const amountDueDisplay = getAmountDueDisplay();
 
   if (isLoading) {
     return (
@@ -522,29 +544,7 @@ export default function EditStudentPage() {
       </div>
     );
   }
-
-  const getAmountDueDisplay = () => {
-    if (studentData.amountDue && studentData.amountDue !== "Rs. 0" && studentData.amountDue !== "N/A") {
-      return studentData.amountDue;
-    }
-    if (feeStructure) {
-      switch (studentData.shift) {
-        case 'morning': return `Rs. ${feeStructure.morningFee}`;
-        case 'evening': return `Rs. ${feeStructure.eveningFee}`;
-        case 'fullday': return `Rs. ${feeStructure.fullDayFee}`;
-      }
-    }
-    return "Calculating...";
-  };
-
-  const amountDueDisplay = getAmountDueDisplay();
   
-  const newDueDateForPayment = React.useMemo(() => {
-    const baseDate = (studentData.nextDueDate && isValid(parseISO(studentData.nextDueDate))) ? parseISO(studentData.nextDueDate) : new Date();
-    return format(addMonths(baseDate, 1), 'yyyy-MM-dd');
-  }, [studentData.nextDueDate]);
-
-
   const isSaveDisabled = isSaving || isDeleting || isLoadingSeats || (!isStudentLeft && !form.formState.isDirty && !isDirtyOverride && !form.getValues("newPassword"));
 
   return (
@@ -694,7 +694,7 @@ export default function EditStudentPage() {
                             </PopoverContent>
                             </Popover>
                             <FormDescription>
-                                {isStudentLeft && "This field is ignored for 'Left' students unless they are re-activated."}
+                                {isStudentLeft && `Student's next due date is ${studentData.nextDueDate ? format(parseISO(studentData.nextDueDate), 'PP') : 'not set'}. Re-activating will set a new due date.`}
                             </FormDescription>
                             <FormMessage />
                         </FormItem>
@@ -880,3 +880,5 @@ export default function EditStudentPage() {
     </>
   );
 }
+
+    
