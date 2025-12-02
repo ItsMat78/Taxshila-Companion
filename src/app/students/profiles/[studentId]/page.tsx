@@ -428,11 +428,8 @@ export default function StudentDetailPage() {
                 <div className="pt-2 border-t mt-4 flex flex-wrap gap-2">
                     <DateBox date={student.registrationDate} label="Registered" />
                     <DateBox date={student.lastPaymentDate} label="Last Paid" />
-                    {student.activityStatus === 'Left' ? (
-                       <DateBox date={student.leftDate} label="Date Left" />
-                    ) : (
-                       <DateBox date={student.nextDueDate} label="Next Due" />
-                    )}
+                    <DateBox date={student.nextDueDate} label="Next Due" />
+                    {student.activityStatus === 'Left' && <DateBox date={student.leftDate} label="Date Left" />}
                 </div>
               </CardContent>
             </Card>

@@ -45,8 +45,9 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Save, ClipboardCheck, Loader2, UserX, UserCheck, KeyRound, Trash2, CalendarDays, User, Settings, AlertTriangle, Armchair } from 'lucide-react';
+import { ArrowLeft, Save, ClipboardCheck, Loader2, UserX, UserCheck, KeyRound, Trash2, CalendarDays, User, Settings, AlertTriangle, Armchair, Info } from 'lucide-react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { getStudentById, updateStudent, getAvailableSeats, recordStudentPayment, getFeeStructure } from '@/services/student-service';
@@ -582,12 +583,16 @@ export default function EditStudentPage() {
                 
                 <div>
                   <h3 className="text-lg font-medium flex items-center mb-2"><Settings className="mr-2 h-5 w-5" />Configuration</h3>
-                  <p className="text-sm text-muted-foreground mb-4">
-                      Fee Status: <span className="font-semibold">{studentData.feeStatus}</span>.
-                      Activity Status: <span className={`font-semibold ${isStudentLeft ? 'text-destructive' : 'text-green-600'}`}>{studentData.activityStatus}</span>.
-                      {isStudentLeft && " Update details and select a shift & seat to re-activate."}
-                  </p>
                   <div className="space-y-4">
+                    {isStudentLeft && (
+                        <Alert variant="destructive">
+                            <Info className="h-4 w-4" />
+                            <AlertTitle>Student is Marked as Left</AlertTitle>
+                            <AlertDescription>
+                                To re-activate this student, select a new shift and seat, then click "Save and Re-activate". Their due date will be reset to today, {format(new Date(), 'PP')}.
+                            </AlertDescription>
+                        </Alert>
+                    )}
                      <FormField control={form.control} name="shift" render={({ field }) => (
                         <FormItem className="space-y-3"><FormLabel>Shift Selection</FormLabel>
                         <FormControl>
@@ -635,8 +640,6 @@ export default function EditStudentPage() {
                                 ))}
                             </SelectContent>
                             </Select>
-                            {isStudentLeft && <FormDescription>Student is Left. Selecting a shift and new seat is required to re-activate.</FormDescription>}
-                            {!isStudentLeft && studentData.seatNumber && studentData.shift !== selectedShift && form.getValues("seatNumber") !== studentData.seatNumber && <FormDescription>Shift changed. Select a new seat for the {selectedShift} shift.</FormDescription>}
                             <FormMessage />
                         </FormItem>
                         )}
