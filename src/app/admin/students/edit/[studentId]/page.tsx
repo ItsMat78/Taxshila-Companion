@@ -195,7 +195,6 @@ export default function EditStudentPage() {
     return "Calculating...";
   };
 
-  // Must be called before early returns
   const newDueDateForPayment = React.useMemo(() => {
     if (!studentData?.nextDueDate) return format(addMonths(new Date(), 1), 'yyyy-MM-dd');
     const baseDate = isValid(parseISO(studentData.nextDueDate)) ? parseISO(studentData.nextDueDate) : new Date();
@@ -291,13 +290,16 @@ export default function EditStudentPage() {
     setIsReactivateConfirmOpen(false); // Close dialog on submit
 
     let payload: Partial<Student> = {};
-    let successMessage: string;
+    let successMessages: string[] = [];
     let wasReactivated = false;
-    let passwordUpdated = false;
 
     if (data.newPassword && data.newPassword.length >= 6 && data.newPassword === data.confirmNewPassword) {
       payload.password = data.newPassword;
-      passwordUpdated = true;
+      successMessages.push("Password has been updated.");
+    }
+    
+    if (data.name !== studentData.name) {
+        successMessages.push("Name has been updated.");
     }
 
 
@@ -322,7 +324,7 @@ export default function EditStudentPage() {
         nextDueDate: format(new Date(), 'yyyy-MM-dd'),
         leftDate: undefined,
       };
-      successMessage = `${data.name} has been re-activated.`;
+      successMessages = [`${data.name} has been re-activated.`];
       wasReactivated = true;
     } else { 
       payload = {
@@ -336,11 +338,9 @@ export default function EditStudentPage() {
         idCardFileName: data.idCardFileName,
         nextDueDate: data.nextDueDate ? format(data.nextDueDate, 'yyyy-MM-dd') : undefined,
       };
-      successMessage = `${data.name}'s details have been updated.`;
-    }
-    
-    if (passwordUpdated) {
-        successMessage += wasReactivated ? " Their password has also been updated." : " Password has also been updated.";
+      if(successMessages.length === 0) {
+        successMessages.push(`${data.name}'s details have been updated.`);
+      }
     }
 
     try {
@@ -361,16 +361,9 @@ export default function EditStudentPage() {
         });
         setIsDirtyOverride(false); 
         
-        let toastDescription = successMessage;
-        if(wasReactivated) {
-          // No automatic alert for re-activation
-        } else if (payload.activityStatus === 'Left') {
-          toastDescription = `${updatedStudent.name} is now marked as Left. An alert has been sent.`;
-        }
-        
         toast({
           title: wasReactivated ? "Student Re-activated" : "Changes Saved",
-          description: toastDescription,
+          description: successMessages.join(' '),
         });
       } else {
          toast({ title: "Error", description: "Failed to save changes.", variant: "destructive"});

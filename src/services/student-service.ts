@@ -379,6 +379,12 @@ export async function updateStudent(customStudentId: string, studentUpdateData: 
     if (studentUpdateData.password) {
         authUpdatePayload.password = studentUpdateData.password;
         authNeedsUpdate = true;
+        sendAlertToStudent(
+            customStudentId,
+            "Security Alert: Password Changed",
+            `Hi ${studentToUpdate.name}, your password was changed by an admin. If you did not authorize this, please contact support immediately.`,
+            "warning"
+        );
     }
     
     if (studentUpdateData.activityStatus === 'Left' && studentToUpdate.activityStatus === 'Active') {
@@ -428,6 +434,16 @@ export async function updateStudent(customStudentId: string, studentUpdateData: 
   delete payload.studentId;
   delete payload.id;
   delete payload.password; // Ensure password is not written to Firestore
+
+  // Send name change alert if applicable
+  if (payload.name && payload.name !== studentToUpdate.name) {
+    sendAlertToStudent(
+        customStudentId,
+        "Profile Update: Name Changed",
+        `Hi there, your name has been updated by an admin from "${studentToUpdate.name}" to "${payload.name}".`,
+        "info"
+    );
+  }
 
   const newShift = payload.shift;
   
