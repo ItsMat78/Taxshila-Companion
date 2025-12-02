@@ -121,7 +121,7 @@ const DateBox = ({ date, label }: { date?: string; label: string }) => {
   
   if (!parsedDate) {
     return (
-      <div className="flex-1 text-center p-2 rounded-md bg-muted/50 min-w-[70px] border">
+      <div className="flex-1 text-center p-2 rounded-md bg-background min-w-[70px] border">
         <div className="text-xs text-muted-foreground">{label}</div>
         <div className="text-lg font-bold">N/A</div>
       </div>
@@ -129,7 +129,7 @@ const DateBox = ({ date, label }: { date?: string; label: string }) => {
   }
   
   return (
-    <div className="flex-1 text-center p-2 rounded-md bg-muted/50 min-w-[70px] border">
+    <div className="flex-1 text-center p-2 rounded-md bg-background min-w-[70px] border">
       <div className="text-xs text-muted-foreground">{label}</div>
       <div className="text-lg font-bold">{format(parsedDate, 'd')}</div>
       <div className="text-xs font-medium text-primary">{format(parsedDate, 'MMM')}</div>
@@ -518,6 +518,8 @@ export default function EditStudentPage() {
     setIsDirtyOverride(true);
   };
   
+  const isSaveDisabled = isSaving || isDeleting || isLoadingSeats || (!isStudentLeft && !form.formState.isDirty && !isDirtyOverride && !form.getValues("newPassword"));
+
   if (isLoading) {
     return (
       <>
@@ -549,8 +551,6 @@ export default function EditStudentPage() {
     );
   }
   
-  const isSaveDisabled = isSaving || isDeleting || isLoadingSeats || (!isStudentLeft && !form.formState.isDirty && !isDirtyOverride && !form.getValues("newPassword"));
-
   return (
     <>
       <PageTitle title={`Edit Student: ${studentData.name}`} description={`Modifying details for Student ID: ${studentId}`}>
