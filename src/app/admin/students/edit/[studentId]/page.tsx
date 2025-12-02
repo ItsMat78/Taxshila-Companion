@@ -64,6 +64,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useNotificationContext } from '@/contexts/notification-context';
 import { ProfilePictureUploader } from '@/components/admin/edit-student/profile-picture-uploader';
 import { Separator } from '@/components/ui/separator';
+import { Label } from '@/components/ui/label';
+
 
 const studentEditFormSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
@@ -174,6 +176,29 @@ export default function EditStudentPage() {
 
   const selectedShift = form.watch("shift");
   const isStudentLeft = studentData?.activityStatus === 'Left';
+
+  const newDueDateForPayment = React.useMemo(() => {
+    if (!studentData?.nextDueDate) return format(addMonths(new Date(), 1), 'yyyy-MM-dd');
+    const baseDate = isValid(parseISO(studentData.nextDueDate)) ? parseISO(studentData.nextDueDate) : new Date();
+    return format(addMonths(baseDate, 1), 'yyyy-MM-dd');
+  }, [studentData?.nextDueDate]);
+  
+  const getAmountDueDisplay = () => {
+    if (!studentData) return "Calculating...";
+    if (studentData.amountDue && studentData.amountDue !== "Rs. 0" && studentData.amountDue !== "N/A") {
+      return studentData.amountDue;
+    }
+    if (feeStructure) {
+      switch (studentData.shift) {
+        case 'morning': return `Rs. ${feeStructure.morningFee}`;
+        case 'evening': return `Rs. ${feeStructure.eveningFee}`;
+        case 'fullday': return `Rs. ${feeStructure.fullDayFee}`;
+      }
+    }
+    return "Calculating...";
+  };
+
+  const amountDueDisplay = getAmountDueDisplay();
 
   const fetchStudentDetails = React.useCallback(async (currentStudentId: string) => {
     setIsLoading(true);
@@ -491,29 +516,6 @@ export default function EditStudentPage() {
     setIsDirtyOverride(true);
   };
   
-  const newDueDateForPayment = React.useMemo(() => {
-    if (!studentData?.nextDueDate) return format(addMonths(new Date(), 1), 'yyyy-MM-dd');
-    const baseDate = isValid(parseISO(studentData.nextDueDate)) ? parseISO(studentData.nextDueDate) : new Date();
-    return format(addMonths(baseDate, 1), 'yyyy-MM-dd');
-  }, [studentData?.nextDueDate]);
-  
-  const getAmountDueDisplay = () => {
-    if (!studentData) return "Calculating...";
-    if (studentData.amountDue && studentData.amountDue !== "Rs. 0" && studentData.amountDue !== "N/A") {
-      return studentData.amountDue;
-    }
-    if (feeStructure) {
-      switch (studentData.shift) {
-        case 'morning': return `Rs. ${feeStructure.morningFee}`;
-        case 'evening': return `Rs. ${feeStructure.eveningFee}`;
-        case 'fullday': return `Rs. ${feeStructure.fullDayFee}`;
-      }
-    }
-    return "Calculating...";
-  };
-
-  const amountDueDisplay = getAmountDueDisplay();
-
   if (isLoading) {
     return (
       <>
@@ -880,5 +882,7 @@ export default function EditStudentPage() {
     </>
   );
 }
+
+    
 
     
