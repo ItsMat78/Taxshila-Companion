@@ -52,7 +52,7 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { getStudentById, updateStudent, getAvailableSeats, recordStudentPayment, getFeeStructure } from '@/services/student-service';
 import type { Student, Shift, FeeStructure, PaymentRecord } from '@/types/student';
-import { format, parseISO, isValid } from 'date-fns';
+import { format, parseISO, isValid, addMonths } from 'date-fns';
 import { Calendar } from '@/components/ui/calendar'
 import {
   Popover,
@@ -538,6 +538,12 @@ export default function EditStudentPage() {
   };
 
   const amountDueDisplay = getAmountDueDisplay();
+  
+  const newDueDateForPayment = React.useMemo(() => {
+    const baseDate = (studentData.nextDueDate && isValid(parseISO(studentData.nextDueDate))) ? parseISO(studentData.nextDueDate) : new Date();
+    return format(addMonths(baseDate, 1), 'yyyy-MM-dd');
+  }, [studentData.nextDueDate]);
+
 
   const isSaveDisabled = isSaving || isDeleting || isLoadingSeats || (!isStudentLeft && !form.formState.isDirty && !isDirtyOverride && !form.getValues("newPassword"));
 
@@ -775,19 +781,27 @@ export default function EditStudentPage() {
                         <AlertDialogHeader>
                             <AlertDialogTitle>Confirm Payment for {studentData.name}?</AlertDialogTitle>
                             <AlertDialogDescription>
-                                This will mark the current due amount of <strong>{amountDueDisplay}</strong> as paid and advance the due date by one month. Please select the payment method used.
+                                This will mark the current due amount of <strong>{amountDueDisplay}</strong> as paid. Please review the due date change below.
                             </AlertDialogDescription>
                         </AlertDialogHeader>
+                        <div className="py-2 text-sm">
+                            <div className="flex justify-around items-center gap-2 my-4">
+                                <DateBox date={studentData.nextDueDate} label="Old Due Date" />
+                                <ArrowRight className="h-6 w-6 text-muted-foreground flex-shrink-0" />
+                                <DateBox date={newDueDateForPayment} label="New Due Date" />
+                            </div>
+                        </div>
                         <div className="py-4">
-                        <RadioGroup defaultValue="Cash" onValueChange={(value) => setPaymentMethod(value as PaymentRecord['method'])}>
-                            <div className="flex items-center space-x-2">
-                                <RadioGroupItem value="Cash" id="payment-cash" />
-                                <FormLabel htmlFor="payment-cash">Cash</FormLabel>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                                <RadioGroupItem value="Online" id="payment-online" />
-                                <FormLabel htmlFor="payment-online">Online (UPI/Card)</FormLabel>
-                            </div>
+                            <Label className="mb-2 block">Payment Method</Label>
+                            <RadioGroup defaultValue="Cash" onValueChange={(value) => setPaymentMethod(value as PaymentRecord['method'])}>
+                                <div className="flex items-center space-x-2">
+                                    <RadioGroupItem value="Cash" id="payment-cash" />
+                                    <FormLabel htmlFor="payment-cash">Cash</FormLabel>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                    <RadioGroupItem value="Online" id="payment-online" />
+                                    <FormLabel htmlFor="payment-online">Online (UPI/Card)</FormLabel>
+                                </div>
                             </RadioGroup>
                         </div>
                         <AlertDialogFooter>
