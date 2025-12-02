@@ -52,7 +52,7 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { getStudentById, updateStudent, getAvailableSeats, recordStudentPayment, getFeeStructure } from '@/services/student-service';
 import type { Student, Shift, FeeStructure, PaymentRecord } from '@/types/student';
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { Calendar } from '@/components/ui/calendar'
 import {
   Popover,
@@ -172,7 +172,7 @@ export default function EditStudentPage() {
           shift: student.shift,
           seatNumber: student.activityStatus === 'Left' ? null : student.seatNumber,
           idCardFileName: student.idCardFileName || "",
-          nextDueDate: student.nextDueDate ? new Date(student.nextDueDate) : undefined,
+          nextDueDate: student.nextDueDate ? parseISO(student.nextDueDate) : undefined,
           newPassword: "", 
           confirmNewPassword: "",
         });
@@ -268,8 +268,8 @@ export default function EditStudentPage() {
         activityStatus: 'Active', 
         registrationDate: studentData.registrationDate, 
         idCardFileName: data.idCardFileName,
-        nextDueDate: data.nextDueDate ? format(data.nextDueDate, 'yyyy-MM-dd') : undefined,
-        leftDate: undefined, // Clear left date on reactivation
+        nextDueDate: format(new Date(), 'yyyy-MM-dd'),
+        leftDate: undefined,
       };
       successMessage = `${data.name} has been re-activated.`;
       wasReactivated = true;
@@ -304,7 +304,7 @@ export default function EditStudentPage() {
             shift: updatedStudent.shift,
             seatNumber: updatedStudent.activityStatus === 'Left' ? null : updatedStudent.seatNumber,
             idCardFileName: updatedStudent.idCardFileName || "",
-            nextDueDate: updatedStudent.nextDueDate ? new Date(updatedStudent.nextDueDate) : undefined,
+            nextDueDate: updatedStudent.nextDueDate ? parseISO(updatedStudent.nextDueDate) : undefined,
             newPassword: "", 
             confirmNewPassword: ""
         });
@@ -387,7 +387,7 @@ export default function EditStudentPage() {
             shift: updatedStudent.shift,
             seatNumber: null,
             idCardFileName: updatedStudent.idCardFileName || "",
-            nextDueDate: updatedStudent.nextDueDate ? new Date(updatedStudent.nextDueDate) : undefined,
+            nextDueDate: updatedStudent.nextDueDate ? parseISO(updatedStudent.nextDueDate) : undefined,
             newPassword: "", 
             confirmNewPassword: ""
         });
@@ -540,7 +540,7 @@ export default function EditStudentPage() {
       </PageTitle>
 
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSaveChanges)}>
+        <form>
           <Card className="shadow-lg">
             <CardContent className="p-6 grid grid-cols-1 md:grid-cols-3 gap-8">
               {/* Left Column for Picture */}
@@ -584,15 +584,6 @@ export default function EditStudentPage() {
                 <div>
                   <h3 className="text-lg font-medium flex items-center mb-2"><Settings className="mr-2 h-5 w-5" />Configuration</h3>
                   <div className="space-y-4">
-                    {isStudentLeft && (
-                        <Alert variant="destructive">
-                            <Info className="h-4 w-4" />
-                            <AlertTitle>Student is Marked as Left</AlertTitle>
-                            <AlertDescription>
-                                To re-activate this student, select a new shift and seat, then click "Save and Re-activate". Their due date will be reset to today, {format(new Date(), 'PP')}.
-                            </AlertDescription>
-                        </Alert>
-                    )}
                      <FormField control={form.control} name="shift" render={({ field }) => (
                         <FormItem className="space-y-3"><FormLabel>Shift Selection</FormLabel>
                         <FormControl>
@@ -670,11 +661,14 @@ export default function EditStudentPage() {
                                 mode="single"
                                 selected={field.value}
                                 onSelect={field.onChange}
-                                disabled={isSaving || isDeleting}
+                                disabled={isSaving || isDeleting || isStudentLeft}
                                 initialFocus
                                 />
                             </PopoverContent>
                             </Popover>
+                            <FormDescription>
+                                {isStudentLeft && "This field is ignored for 'Left' students unless they are re-activated."}
+                            </FormDescription>
                             <FormMessage />
                         </FormItem>
                         )}
@@ -703,10 +697,38 @@ export default function EditStudentPage() {
               </div>
             </CardContent>
             <CardFooter className="flex flex-col sm:flex-row items-center gap-2 p-6 bg-muted/30 border-t">
-               <Button type="submit" className="w-full sm:w-auto" disabled={isSaveDisabled}>
-                  {isSaving && !isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : (isStudentLeft ? <UserCheck className="mr-2 h-4 w-4" /> : <Save className="mr-2 h-4 w-4" />)}
-                  {isStudentLeft ? "Save and Re-activate" : "Save Changes"}
-              </Button>
+               {isStudentLeft ? (
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button type="button" className="w-full sm:w-auto" disabled={isSaveDisabled}>
+                      <UserCheck className="mr-2 h-4 w-4" /> Save and Re-activate
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Confirm Student Re-activation</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        You are about to re-activate this student. This will set their fee status to 'Due' and their next payment date will be reset.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <div className="py-2 text-sm">
+                      <p>The student's new due date will be set to <strong>today, {format(new Date(), 'PP')}</strong>.</p>
+                    </div>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction onClick={form.handleSubmit(onSaveChanges)}>
+                        {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                        Confirm Re-activation
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+               ) : (
+                <Button type="submit" onClick={form.handleSubmit(onSaveChanges)} className="w-full sm:w-auto" disabled={isSaveDisabled}>
+                  {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                  Save Changes
+                </Button>
+               )}
 
               <div className="w-full sm:w-auto sm:ml-auto flex flex-col sm:flex-row gap-2">
                  <AlertDialog open={isConfirmPaymentOpen} onOpenChange={setIsConfirmPaymentOpen}>
