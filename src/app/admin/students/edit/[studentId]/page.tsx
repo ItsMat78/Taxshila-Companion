@@ -43,7 +43,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { useToast } from "@/hooks/use-toast";
@@ -445,7 +444,7 @@ export default function EditStudentPage() {
         refreshNotifications(); // Refresh sidebar counts
         toast({
           title: "Student Marked as Left",
-          description: `${updatedStudent.name} is now marked as Left. Their seat is available. An alert has been sent.`,
+          description: `${updatedStudent.name} is now marked as Left. Their seat is available and an alert has been sent.`,
         });
         if (selectedShift) {
            setIsLoadingSeats(true);

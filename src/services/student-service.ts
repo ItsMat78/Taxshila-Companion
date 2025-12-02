@@ -462,8 +462,17 @@ export async function updateStudent(customStudentId: string, studentUpdateData: 
     payload.feeStatus = 'N/A';
     payload.amountDue = 'N/A';
     payload.leftDate = format(new Date(), 'yyyy-MM-dd');
-    payload.fcmTokens = []; // Clear FCM tokens
-    payload.oneSignalPlayerIds = []; // Clear OneSignal Player IDs
+    payload.fcmTokens = [];
+    payload.oneSignalPlayerIds = [];
+
+    // Trigger alert for student being marked as left
+    sendAlertToStudent(
+        customStudentId,
+        "Account Status Update",
+        `Hi ${studentToUpdate.name}, your account has been marked as inactive by an admin. Your seat has been unassigned and access to services may be limited.`,
+        "warning"
+    );
+
   } else if (studentUpdateData.activityStatus === 'Active' && studentToUpdate.activityStatus === 'Left') {
     if (!payload.seatNumber || !ALL_SEAT_NUMBERS.includes(payload.seatNumber)) {
         throw new Error("A valid seat must be selected to re-activate a student.");
