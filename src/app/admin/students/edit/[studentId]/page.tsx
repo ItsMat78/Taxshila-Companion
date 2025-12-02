@@ -158,6 +158,8 @@ export default function EditStudentPage() {
   const [isReactivateConfirmOpen, setIsReactivateConfirmOpen] = React.useState(false);
   const [feeStructure, setFeeStructure] = React.useState<FeeStructure | null>(null);
   const [paymentMethod, setPaymentMethod] = React.useState<PaymentRecord['method']>('Cash');
+  const seatNumberRef = React.useRef<HTMLDivElement>(null);
+
 
   const form = useForm<StudentEditFormValues>({
     resolver: zodResolver(studentEditFormSchema),
@@ -518,6 +520,21 @@ export default function EditStudentPage() {
     setIsDirtyOverride(true);
   };
   
+  const handleReactivateClick = () => {
+    if (!form.getValues("seatNumber")) {
+      toast({
+        title: "Seat Required",
+        description: "Please select a new seat for the student before re-activating.",
+        variant: "destructive",
+      });
+      form.setError("seatNumber", { type: "manual", message: "A seat must be selected to re-activate." });
+      seatNumberRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    } else {
+      setIsReactivateConfirmOpen(true);
+    }
+  };
+
+
   const isSaveDisabled = isSaving || isDeleting || isLoadingSeats || (!isStudentLeft && !form.formState.isDirty && !isDirtyOverride && !form.getValues("newPassword"));
 
   if (isLoading) {
@@ -631,7 +648,7 @@ export default function EditStudentPage() {
                     )} />
                     
                     <FormField control={form.control} name="seatNumber" render={({ field }) => (
-                        <FormItem>
+                        <FormItem ref={seatNumberRef}>
                           <div className="flex items-center justify-between">
                             <FormLabel>Seat Number</FormLabel>
                             {!isStudentLeft && field.value && (
@@ -731,7 +748,7 @@ export default function EditStudentPage() {
                {isStudentLeft ? (
                 <AlertDialog open={isReactivateConfirmOpen} onOpenChange={setIsReactivateConfirmOpen}>
                   <AlertDialogTrigger asChild>
-                    <Button type="button" className="w-full sm:w-auto" disabled={isSaveDisabled}>
+                    <Button type="button" onClick={handleReactivateClick} className="w-full sm:w-auto" disabled={isSaveDisabled}>
                       <UserCheck className="mr-2 h-4 w-4" /> Save and Re-activate
                     </Button>
                   </AlertDialogTrigger>
