@@ -176,12 +176,6 @@ export default function EditStudentPage() {
 
   const selectedShift = form.watch("shift");
   const isStudentLeft = studentData?.activityStatus === 'Left';
-
-  const newDueDateForPayment = React.useMemo(() => {
-    if (!studentData?.nextDueDate) return format(addMonths(new Date(), 1), 'yyyy-MM-dd');
-    const baseDate = isValid(parseISO(studentData.nextDueDate)) ? parseISO(studentData.nextDueDate) : new Date();
-    return format(addMonths(baseDate, 1), 'yyyy-MM-dd');
-  }, [studentData?.nextDueDate]);
   
   const getAmountDueDisplay = () => {
     if (!studentData) return "Calculating...";
@@ -199,6 +193,12 @@ export default function EditStudentPage() {
   };
 
   const amountDueDisplay = getAmountDueDisplay();
+  
+  const newDueDateForPayment = React.useMemo(() => {
+    if (!studentData?.nextDueDate) return format(addMonths(new Date(), 1), 'yyyy-MM-dd');
+    const baseDate = isValid(parseISO(studentData.nextDueDate)) ? parseISO(studentData.nextDueDate) : new Date();
+    return format(addMonths(baseDate, 1), 'yyyy-MM-dd');
+  }, [studentData?.nextDueDate]);
 
   const fetchStudentDetails = React.useCallback(async (currentStudentId: string) => {
     setIsLoading(true);
@@ -882,7 +882,3 @@ export default function EditStudentPage() {
     </>
   );
 }
-
-    
-
-    
