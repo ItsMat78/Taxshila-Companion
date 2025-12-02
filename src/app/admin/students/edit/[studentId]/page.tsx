@@ -47,12 +47,12 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Save, ClipboardCheck, Loader2, UserX, UserCheck, KeyRound, Trash2, CalendarDays, User, Settings, AlertTriangle, Armchair, Info } from 'lucide-react';
+import { ArrowLeft, Save, ClipboardCheck, Loader2, UserX, UserCheck, KeyRound, Trash2, CalendarDays, User, Settings, AlertTriangle, Armchair, Info, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { getStudentById, updateStudent, getAvailableSeats, recordStudentPayment, getFeeStructure } from '@/services/student-service';
 import type { Student, Shift, FeeStructure, PaymentRecord } from '@/types/student';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, isValid } from 'date-fns';
 import { Calendar } from '@/components/ui/calendar'
 import {
   Popover,
@@ -112,6 +112,27 @@ const getShiftColorClass = (shift: Shift | undefined) => {
     case 'fullday': return 'bg-seat-fullday text-seat-fullday-foreground border-yellow-300 dark:border-yellow-700';
     default: return 'bg-gray-100 text-gray-800 border-gray-300';
   }
+};
+
+const DateBox = ({ date, label }: { date?: string; label: string }) => {
+  const parsedDate = date && isValid(parseISO(date)) ? parseISO(date) : null;
+  
+  if (!parsedDate) {
+    return (
+      <div className="flex-1 text-center p-2 rounded-md bg-muted/50 min-w-[70px]">
+        <div className="text-xs text-muted-foreground">{label}</div>
+        <div className="text-lg font-bold">N/A</div>
+      </div>
+    );
+  }
+  
+  return (
+    <div className="flex-1 text-center p-2 rounded-md bg-muted/50 min-w-[70px]">
+      <div className="text-xs text-muted-foreground">{label}</div>
+      <div className="text-lg font-bold">{format(parsedDate, 'd')}</div>
+      <div className="text-xs font-medium text-primary">{format(parsedDate, 'MMM')}</div>
+    </div>
+  );
 };
 
 
@@ -708,11 +729,15 @@ export default function EditStudentPage() {
                     <AlertDialogHeader>
                       <AlertDialogTitle>Confirm Student Re-activation</AlertDialogTitle>
                       <AlertDialogDescription>
-                        You are about to re-activate this student. This will set their fee status to 'Due' and their next payment date will be reset.
+                        This will re-activate the student and set their fee status to 'Due'. Please review the date change below.
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <div className="py-2 text-sm">
-                      <p>The student's new due date will be set to <strong>today, {format(new Date(), 'PP')}</strong>.</p>
+                       <div className="flex justify-around items-center gap-2 my-4">
+                          <DateBox date={studentData.nextDueDate} label="Old Due Date" />
+                          <ArrowRight className="h-6 w-6 text-muted-foreground flex-shrink-0" />
+                          <DateBox date={new Date().toISOString()} label="New Due Date" />
+                       </div>
                     </div>
                     <AlertDialogFooter>
                       <AlertDialogCancel>Cancel</AlertDialogCancel>
