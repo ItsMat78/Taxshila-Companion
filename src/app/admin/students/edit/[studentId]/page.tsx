@@ -746,35 +746,35 @@ export default function EditStudentPage() {
             </CardContent>
             <CardFooter className="flex flex-col sm:flex-row items-center gap-2 p-6 bg-muted/30 border-t">
                {isStudentLeft ? (
-                <AlertDialog open={isReactivateConfirmOpen} onOpenChange={setIsReactivateConfirmOpen}>
-                  <AlertDialogTrigger asChild>
-                    <Button type="button" onClick={handleReactivateClick} className="w-full sm:w-auto" disabled={isSaveDisabled}>
-                      <UserCheck className="mr-2 h-4 w-4" /> Save and Re-activate
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Confirm Student Re-activation</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        This will re-activate the student and set their fee status to 'Due'. Please review the date change below.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <div className="py-2 text-sm">
-                       <div className="flex justify-around items-center gap-2 my-4">
-                          <DateBox date={studentData.nextDueDate} label="Old Due Date" />
-                          <ArrowRight className="h-6 w-6 text-muted-foreground flex-shrink-0" />
-                          <DateBox date={new Date().toISOString()} label="New Due Date" />
-                       </div>
-                    </div>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction onClick={form.handleSubmit(onSaveChanges)}>
-                        {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                        Confirm Re-activation
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
+                <>
+                  <Button type="button" onClick={handleReactivateClick} className="w-full sm:w-auto" disabled={isSaveDisabled}>
+                    <UserCheck className="mr-2 h-4 w-4" /> Save and Re-activate
+                  </Button>
+                  <AlertDialog open={isReactivateConfirmOpen} onOpenChange={setIsReactivateConfirmOpen}>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Confirm Student Re-activation</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          This will re-activate the student and set their fee status to 'Due'. Please review the date change below.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <div className="py-2 text-sm">
+                        <div className="flex justify-around items-center gap-2 my-4">
+                            <DateBox date={studentData.nextDueDate} label="Old Due Date" />
+                            <ArrowRight className="h-6 w-6 text-muted-foreground flex-shrink-0" />
+                            <DateBox date={new Date().toISOString()} label="New Due Date" />
+                        </div>
+                      </div>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={form.handleSubmit(onSaveChanges)}>
+                          {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                          Confirm Re-activation
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </>
                ) : (
                 <Button type="submit" onClick={form.handleSubmit(onSaveChanges)} className="w-full sm:w-auto" disabled={isSaveDisabled}>
                   {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
