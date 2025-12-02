@@ -45,13 +45,14 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Save, ClipboardCheck, Loader2, UserX, UserCheck, KeyRound, Trash2, CalendarDays, User, Settings, AlertTriangle, Armchair } from 'lucide-react';
+import { ArrowLeft, Save, ClipboardCheck, Loader2, UserX, UserCheck, KeyRound, Trash2, CalendarDays, User, Settings, AlertTriangle, Armchair, Info, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { getStudentById, updateStudent, getAvailableSeats, recordStudentPayment, getFeeStructure } from '@/services/student-service';
 import type { Student, Shift, FeeStructure, PaymentRecord } from '@/types/student';
-import { format } from 'date-fns';
+import { format, parseISO, isValid, addMonths } from 'date-fns';
 import { Calendar } from '@/components/ui/calendar'
 import {
   Popover,
@@ -63,6 +64,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useNotificationContext } from '@/contexts/notification-context';
 import { ProfilePictureUploader } from '@/components/admin/edit-student/profile-picture-uploader';
 import { Separator } from '@/components/ui/separator';
+import { Label } from '@/components/ui/label';
+
 
 const studentEditFormSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
@@ -113,6 +116,27 @@ const getShiftColorClass = (shift: Shift | undefined) => {
   }
 };
 
+const DateBox = ({ date, label }: { date?: string; label: string }) => {
+  const parsedDate = date && isValid(parseISO(date)) ? parseISO(date) : null;
+  
+  if (!parsedDate) {
+    return (
+      <div className="flex-1 text-center p-2 rounded-md bg-background min-w-[70px] border">
+        <div className="text-xs text-muted-foreground">{label}</div>
+        <div className="text-lg font-bold">N/A</div>
+      </div>
+    );
+  }
+  
+  return (
+    <div className="flex-1 text-center p-2 rounded-md bg-background min-w-[70px] border">
+      <div className="text-xs text-muted-foreground">{label}</div>
+      <div className="text-lg font-bold">{format(parsedDate, 'd')}</div>
+      <div className="text-xs font-medium text-primary">{format(parsedDate, 'MMM')}</div>
+    </div>
+  );
+};
+
 
 export default function EditStudentPage() {
   const { toast } = useToast();
@@ -131,8 +155,11 @@ export default function EditStudentPage() {
 
   const [isConfirmPaymentOpen, setIsConfirmPaymentOpen] = React.useState(false);
   const [isConfirmMarkLeftOpen, setIsConfirmMarkLeftOpen] = React.useState(false);
+  const [isReactivateConfirmOpen, setIsReactivateConfirmOpen] = React.useState(false);
   const [feeStructure, setFeeStructure] = React.useState<FeeStructure | null>(null);
   const [paymentMethod, setPaymentMethod] = React.useState<PaymentRecord['method']>('Cash');
+  const seatNumberRef = React.useRef<HTMLDivElement>(null);
+
 
   const form = useForm<StudentEditFormValues>({
     resolver: zodResolver(studentEditFormSchema),
@@ -152,7 +179,30 @@ export default function EditStudentPage() {
 
   const selectedShift = form.watch("shift");
   const isStudentLeft = studentData?.activityStatus === 'Left';
+  
+  const getAmountDueDisplay = () => {
+    if (!studentData) return "Calculating...";
+    if (studentData.amountDue && studentData.amountDue !== "Rs. 0" && studentData.amountDue !== "N/A") {
+      return studentData.amountDue;
+    }
+    if (feeStructure) {
+      switch (studentData.shift) {
+        case 'morning': return `Rs. ${feeStructure.morningFee}`;
+        case 'evening': return `Rs. ${feeStructure.eveningFee}`;
+        case 'fullday': return `Rs. ${feeStructure.fullDayFee}`;
+      }
+    }
+    return "Calculating...";
+  };
 
+  const newDueDateForPayment = React.useMemo(() => {
+    if (!studentData?.nextDueDate) return format(addMonths(new Date(), 1), 'yyyy-MM-dd');
+    const baseDate = isValid(parseISO(studentData.nextDueDate)) ? parseISO(studentData.nextDueDate) : new Date();
+    return format(addMonths(baseDate, 1), 'yyyy-MM-dd');
+  }, [studentData?.nextDueDate]);
+
+  const amountDueDisplay = getAmountDueDisplay();
+  
   const fetchStudentDetails = React.useCallback(async (currentStudentId: string) => {
     setIsLoading(true);
     try {
@@ -171,7 +221,7 @@ export default function EditStudentPage() {
           shift: student.shift,
           seatNumber: student.activityStatus === 'Left' ? null : student.seatNumber,
           idCardFileName: student.idCardFileName || "",
-          nextDueDate: student.nextDueDate ? new Date(student.nextDueDate) : undefined,
+          nextDueDate: student.nextDueDate ? parseISO(student.nextDueDate) : undefined,
           newPassword: "", 
           confirmNewPassword: "",
         });
@@ -237,15 +287,19 @@ export default function EditStudentPage() {
   async function onSaveChanges(data: StudentEditFormValues) {
     if (!studentId || !studentData) return;
     setIsSaving(true);
+    setIsReactivateConfirmOpen(false); // Close dialog on submit
 
     let payload: Partial<Student> = {};
-    let successMessage: string;
+    let successMessages: string[] = [];
     let wasReactivated = false;
-    let passwordUpdated = false;
 
     if (data.newPassword && data.newPassword.length >= 6 && data.newPassword === data.confirmNewPassword) {
       payload.password = data.newPassword;
-      passwordUpdated = true;
+      successMessages.push("Password has been updated.");
+    }
+    
+    if (data.name !== studentData.name) {
+        successMessages.push("Name has been updated.");
     }
 
 
@@ -267,10 +321,10 @@ export default function EditStudentPage() {
         activityStatus: 'Active', 
         registrationDate: studentData.registrationDate, 
         idCardFileName: data.idCardFileName,
-        nextDueDate: data.nextDueDate ? format(data.nextDueDate, 'yyyy-MM-dd') : undefined,
-        leftDate: undefined, // Clear left date on reactivation
+        nextDueDate: format(new Date(), 'yyyy-MM-dd'),
+        leftDate: undefined,
       };
-      successMessage = `${data.name} has been re-activated.`;
+      successMessages = [`${data.name} has been re-activated.`];
       wasReactivated = true;
     } else { 
       payload = {
@@ -284,11 +338,9 @@ export default function EditStudentPage() {
         idCardFileName: data.idCardFileName,
         nextDueDate: data.nextDueDate ? format(data.nextDueDate, 'yyyy-MM-dd') : undefined,
       };
-      successMessage = `${data.name}'s details have been updated.`;
-    }
-    
-    if (passwordUpdated) {
-        successMessage += wasReactivated ? " Their password has also been updated." : " Password has also been updated.";
+      if(successMessages.length === 0) {
+        successMessages.push(`${data.name}'s details have been updated.`);
+      }
     }
 
     try {
@@ -303,14 +355,15 @@ export default function EditStudentPage() {
             shift: updatedStudent.shift,
             seatNumber: updatedStudent.activityStatus === 'Left' ? null : updatedStudent.seatNumber,
             idCardFileName: updatedStudent.idCardFileName || "",
-            nextDueDate: updatedStudent.nextDueDate ? new Date(updatedStudent.nextDueDate) : undefined,
+            nextDueDate: updatedStudent.nextDueDate ? parseISO(updatedStudent.nextDueDate) : undefined,
             newPassword: "", 
             confirmNewPassword: ""
         });
         setIsDirtyOverride(false); 
+        
         toast({
           title: wasReactivated ? "Student Re-activated" : "Changes Saved",
-          description: successMessage,
+          description: successMessages.join(' '),
         });
       } else {
          toast({ title: "Error", description: "Failed to save changes.", variant: "destructive"});
@@ -386,7 +439,7 @@ export default function EditStudentPage() {
             shift: updatedStudent.shift,
             seatNumber: null,
             idCardFileName: updatedStudent.idCardFileName || "",
-            nextDueDate: updatedStudent.nextDueDate ? new Date(updatedStudent.nextDueDate) : undefined,
+            nextDueDate: updatedStudent.nextDueDate ? parseISO(updatedStudent.nextDueDate) : undefined,
             newPassword: "", 
             confirmNewPassword: ""
         });
@@ -394,7 +447,7 @@ export default function EditStudentPage() {
         refreshNotifications(); // Refresh sidebar counts
         toast({
           title: "Student Marked as Left",
-          description: `${updatedStudent.name} is now marked as Left. Their seat is available. An alert has been sent.`,
+          description: `${updatedStudent.name} is now marked as Left. Their seat is available and an alert has been sent.`,
         });
         if (selectedShift) {
            setIsLoadingSeats(true);
@@ -468,7 +521,23 @@ export default function EditStudentPage() {
   const onPictureSelect = () => {
     setIsDirtyOverride(true);
   };
+  
+  const handleReactivateClick = () => {
+    if (!form.getValues("seatNumber")) {
+      toast({
+        title: "Seat Required",
+        description: "Please select a new seat for the student before re-activating.",
+        variant: "destructive",
+      });
+      form.setError("seatNumber", { type: "manual", message: "A seat must be selected to re-activate." });
+      seatNumberRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    } else {
+      setIsReactivateConfirmOpen(true);
+    }
+  };
 
+
+  const isSaveDisabled = isSaving || isDeleting || isLoadingSeats || (!isStudentLeft && !form.formState.isDirty && !isDirtyOverride && !form.getValues("newPassword"));
 
   if (isLoading) {
     return (
@@ -500,25 +569,7 @@ export default function EditStudentPage() {
       </div>
     );
   }
-
-  const getAmountDueDisplay = () => {
-    if (studentData.amountDue && studentData.amountDue !== "Rs. 0" && studentData.amountDue !== "N/A") {
-      return studentData.amountDue;
-    }
-    if (feeStructure) {
-      switch (studentData.shift) {
-        case 'morning': return `Rs. ${feeStructure.morningFee}`;
-        case 'evening': return `Rs. ${feeStructure.eveningFee}`;
-        case 'fullday': return `Rs. ${feeStructure.fullDayFee}`;
-      }
-    }
-    return "Calculating...";
-  };
-
-  const amountDueDisplay = getAmountDueDisplay();
-
-  const isSaveDisabled = isSaving || isDeleting || isLoadingSeats || (!isStudentLeft && !form.formState.isDirty && !isDirtyOverride && !form.getValues("newPassword"));
-
+  
   return (
     <>
       <PageTitle title={`Edit Student: ${studentData.name}`} description={`Modifying details for Student ID: ${studentId}`}>
@@ -539,7 +590,7 @@ export default function EditStudentPage() {
       </PageTitle>
 
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSaveChanges)}>
+        <form>
           <Card className="shadow-lg">
             <CardContent className="p-6 grid grid-cols-1 md:grid-cols-3 gap-8">
               {/* Left Column for Picture */}
@@ -582,11 +633,6 @@ export default function EditStudentPage() {
                 
                 <div>
                   <h3 className="text-lg font-medium flex items-center mb-2"><Settings className="mr-2 h-5 w-5" />Configuration</h3>
-                  <p className="text-sm text-muted-foreground mb-4">
-                      Fee Status: <span className="font-semibold">{studentData.feeStatus}</span>.
-                      Activity Status: <span className={`font-semibold ${isStudentLeft ? 'text-destructive' : 'text-green-600'}`}>{studentData.activityStatus}</span>.
-                      {isStudentLeft && " Update details and select a shift & seat to re-activate."}
-                  </p>
                   <div className="space-y-4">
                      <FormField control={form.control} name="shift" render={({ field }) => (
                         <FormItem className="space-y-3"><FormLabel>Shift Selection</FormLabel>
@@ -604,7 +650,7 @@ export default function EditStudentPage() {
                     )} />
                     
                     <FormField control={form.control} name="seatNumber" render={({ field }) => (
-                        <FormItem>
+                        <FormItem ref={seatNumberRef}>
                           <div className="flex items-center justify-between">
                             <FormLabel>Seat Number</FormLabel>
                             {!isStudentLeft && field.value && (
@@ -635,8 +681,6 @@ export default function EditStudentPage() {
                                 ))}
                             </SelectContent>
                             </Select>
-                            {isStudentLeft && <FormDescription>Student is Left. Selecting a shift and new seat is required to re-activate.</FormDescription>}
-                            {!isStudentLeft && studentData.seatNumber && studentData.shift !== selectedShift && form.getValues("seatNumber") !== studentData.seatNumber && <FormDescription>Shift changed. Select a new seat for the {selectedShift} shift.</FormDescription>}
                             <FormMessage />
                         </FormItem>
                         )}
@@ -667,11 +711,14 @@ export default function EditStudentPage() {
                                 mode="single"
                                 selected={field.value}
                                 onSelect={field.onChange}
-                                disabled={isSaving || isDeleting}
+                                disabled={isSaving || isDeleting || isStudentLeft}
                                 initialFocus
                                 />
                             </PopoverContent>
                             </Popover>
+                            <FormDescription>
+                                {isStudentLeft && `Student's next due date is ${studentData.nextDueDate ? format(parseISO(studentData.nextDueDate), 'PP') : 'not set'}.`}
+                            </FormDescription>
                             <FormMessage />
                         </FormItem>
                         )}
@@ -700,10 +747,42 @@ export default function EditStudentPage() {
               </div>
             </CardContent>
             <CardFooter className="flex flex-col sm:flex-row items-center gap-2 p-6 bg-muted/30 border-t">
-               <Button type="submit" className="w-full sm:w-auto" disabled={isSaveDisabled}>
-                  {isSaving && !isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : (isStudentLeft ? <UserCheck className="mr-2 h-4 w-4" /> : <Save className="mr-2 h-4 w-4" />)}
-                  {isStudentLeft ? "Save and Re-activate" : "Save Changes"}
-              </Button>
+               {isStudentLeft ? (
+                <>
+                   <Button type="button" onClick={handleReactivateClick} className="w-full sm:w-auto" disabled={isSaving || isDeleting || isLoadingSeats}>
+                        <UserCheck className="mr-2 h-4 w-4" /> Save and Re-activate
+                   </Button>
+                  <AlertDialog open={isReactivateConfirmOpen} onOpenChange={setIsReactivateConfirmOpen}>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Confirm Student Re-activation</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          This will re-activate the student and set their fee status to 'Due'. Please review the date change below.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <div className="py-2 text-sm">
+                        <div className="flex justify-around items-center gap-2 my-4">
+                            <DateBox date={studentData.nextDueDate} label="Old Due Date" />
+                            <ArrowRight className="h-6 w-6 text-muted-foreground flex-shrink-0" />
+                            <DateBox date={new Date().toISOString()} label="New Due Date" />
+                        </div>
+                      </div>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={form.handleSubmit(onSaveChanges)}>
+                          {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                          Confirm Re-activation
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </>
+               ) : (
+                <Button type="submit" onClick={form.handleSubmit(onSaveChanges)} className="w-full sm:w-auto" disabled={isSaveDisabled}>
+                  {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                  Save Changes
+                </Button>
+               )}
 
               <div className="w-full sm:w-auto sm:ml-auto flex flex-col sm:flex-row gap-2">
                  <AlertDialog open={isConfirmPaymentOpen} onOpenChange={setIsConfirmPaymentOpen}>
@@ -725,19 +804,27 @@ export default function EditStudentPage() {
                         <AlertDialogHeader>
                             <AlertDialogTitle>Confirm Payment for {studentData.name}?</AlertDialogTitle>
                             <AlertDialogDescription>
-                                This will mark the current due amount of <strong>{amountDueDisplay}</strong> as paid and advance the due date by one month. Please select the payment method used.
+                                This will mark the current due amount of <strong>{amountDueDisplay}</strong> as paid. Please review the due date change below.
                             </AlertDialogDescription>
                         </AlertDialogHeader>
+                        <div className="py-2 text-sm">
+                            <div className="flex justify-around items-center gap-2 my-4">
+                                <DateBox date={studentData.nextDueDate} label="Old Due Date" />
+                                <ArrowRight className="h-6 w-6 text-muted-foreground flex-shrink-0" />
+                                <DateBox date={newDueDateForPayment} label="New Due Date" />
+                            </div>
+                        </div>
                         <div className="py-4">
-                        <RadioGroup defaultValue="Cash" onValueChange={(value) => setPaymentMethod(value as PaymentRecord['method'])}>
-                            <div className="flex items-center space-x-2">
-                                <RadioGroupItem value="Cash" id="payment-cash" />
-                                <FormLabel htmlFor="payment-cash">Cash</FormLabel>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                                <RadioGroupItem value="Online" id="payment-online" />
-                                <FormLabel htmlFor="payment-online">Online (UPI/Card)</FormLabel>
-                            </div>
+                            <Label className="mb-2 block">Payment Method</Label>
+                            <RadioGroup defaultValue="Cash" onValueChange={(value) => setPaymentMethod(value as PaymentRecord['method'])}>
+                                <div className="flex items-center space-x-2">
+                                    <RadioGroupItem value="Cash" id="payment-cash" />
+                                    <Label htmlFor="payment-cash" className="font-normal">Cash</Label>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                    <RadioGroupItem value="Online" id="payment-online" />
+                                    <Label htmlFor="payment-online" className="font-normal">Online (UPI/Card)</Label>
+                                </div>
                             </RadioGroup>
                         </div>
                         <AlertDialogFooter>

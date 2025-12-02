@@ -379,6 +379,12 @@ export async function updateStudent(customStudentId: string, studentUpdateData: 
     if (studentUpdateData.password) {
         authUpdatePayload.password = studentUpdateData.password;
         authNeedsUpdate = true;
+        sendAlertToStudent(
+            customStudentId,
+            "Security Alert: Password Changed",
+            `Hi ${studentToUpdate.name}, your password was changed by an admin. If you did not authorize this, please contact support immediately.`,
+            "warning"
+        );
     }
     
     if (studentUpdateData.activityStatus === 'Left' && studentToUpdate.activityStatus === 'Active') {
@@ -429,6 +435,16 @@ export async function updateStudent(customStudentId: string, studentUpdateData: 
   delete payload.id;
   delete payload.password; // Ensure password is not written to Firestore
 
+  // Send name change alert if applicable
+  if (payload.name && payload.name !== studentToUpdate.name) {
+    sendAlertToStudent(
+        customStudentId,
+        "Profile Update: Name Changed",
+        `Hi there, your name has been updated by an admin from "${studentToUpdate.name}" to "${payload.name}".`,
+        "info"
+    );
+  }
+
   const newShift = payload.shift;
   
   if (newShift && newShift !== studentToUpdate.shift && studentToUpdate.feeStatus === 'Paid' && studentToUpdate.nextDueDate && isValid(parseISO(studentToUpdate.nextDueDate)) && isAfter(parseISO(studentToUpdate.nextDueDate), new Date())) {
@@ -462,8 +478,17 @@ export async function updateStudent(customStudentId: string, studentUpdateData: 
     payload.feeStatus = 'N/A';
     payload.amountDue = 'N/A';
     payload.leftDate = format(new Date(), 'yyyy-MM-dd');
-    payload.fcmTokens = []; // Clear FCM tokens
-    payload.oneSignalPlayerIds = []; // Clear OneSignal Player IDs
+    payload.fcmTokens = [];
+    payload.oneSignalPlayerIds = [];
+
+    // Trigger alert for student being marked as left
+    sendAlertToStudent(
+        customStudentId,
+        "Account Status Update",
+        `Hi ${studentToUpdate.name}, your account has been marked as inactive by an admin. Your seat has been unassigned and access to services may be limited.`,
+        "warning"
+    );
+
   } else if (studentUpdateData.activityStatus === 'Active' && studentToUpdate.activityStatus === 'Left') {
     if (!payload.seatNumber || !ALL_SEAT_NUMBERS.includes(payload.seatNumber)) {
         throw new Error("A valid seat must be selected to re-activate a student.");
