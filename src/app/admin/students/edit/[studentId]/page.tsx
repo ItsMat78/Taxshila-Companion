@@ -43,6 +43,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
+  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { useToast } from "@/hooks/use-toast";
@@ -194,14 +195,15 @@ export default function EditStudentPage() {
     return "Calculating...";
   };
 
-  const amountDueDisplay = getAmountDueDisplay();
-  
+  // Must be called before early returns
   const newDueDateForPayment = React.useMemo(() => {
     if (!studentData?.nextDueDate) return format(addMonths(new Date(), 1), 'yyyy-MM-dd');
     const baseDate = isValid(parseISO(studentData.nextDueDate)) ? parseISO(studentData.nextDueDate) : new Date();
     return format(addMonths(baseDate, 1), 'yyyy-MM-dd');
   }, [studentData?.nextDueDate]);
 
+  const amountDueDisplay = getAmountDueDisplay();
+  
   const fetchStudentDetails = React.useCallback(async (currentStudentId: string) => {
     setIsLoading(true);
     try {
@@ -358,9 +360,17 @@ export default function EditStudentPage() {
             confirmNewPassword: ""
         });
         setIsDirtyOverride(false); 
+        
+        let toastDescription = successMessage;
+        if(wasReactivated) {
+          // No automatic alert for re-activation
+        } else if (payload.activityStatus === 'Left') {
+          toastDescription = `${updatedStudent.name} is now marked as Left. An alert has been sent.`;
+        }
+        
         toast({
           title: wasReactivated ? "Student Re-activated" : "Changes Saved",
-          description: successMessage,
+          description: toastDescription,
         });
       } else {
          toast({ title: "Error", description: "Failed to save changes.", variant: "destructive"});
@@ -746,9 +756,9 @@ export default function EditStudentPage() {
             <CardFooter className="flex flex-col sm:flex-row items-center gap-2 p-6 bg-muted/30 border-t">
                {isStudentLeft ? (
                 <>
-                  <Button type="button" onClick={handleReactivateClick} className="w-full sm:w-auto" disabled={isSaveDisabled}>
-                    <UserCheck className="mr-2 h-4 w-4" /> Save and Re-activate
-                  </Button>
+                   <Button type="button" onClick={handleReactivateClick} className="w-full sm:w-auto" disabled={isSaving || isDeleting || isLoadingSeats}>
+                        <UserCheck className="mr-2 h-4 w-4" /> Save and Re-activate
+                   </Button>
                   <AlertDialog open={isReactivateConfirmOpen} onOpenChange={setIsReactivateConfirmOpen}>
                     <AlertDialogContent>
                       <AlertDialogHeader>
