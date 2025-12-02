@@ -121,7 +121,7 @@ const DateBox = ({ date, label }: { date?: string; label: string }) => {
   
   if (!parsedDate) {
     return (
-      <div className="flex-1 text-center p-2 rounded-md bg-muted/50 min-w-[70px]">
+      <div className="flex-1 text-center p-2 rounded-md bg-muted/50 min-w-[70px] border">
         <div className="text-xs text-muted-foreground">{label}</div>
         <div className="text-lg font-bold">N/A</div>
       </div>
@@ -129,7 +129,7 @@ const DateBox = ({ date, label }: { date?: string; label: string }) => {
   }
   
   return (
-    <div className="flex-1 text-center p-2 rounded-md bg-muted/50 min-w-[70px]">
+    <div className="flex-1 text-center p-2 rounded-md bg-muted/50 min-w-[70px] border">
       <div className="text-xs text-muted-foreground">{label}</div>
       <div className="text-lg font-bold">{format(parsedDate, 'd')}</div>
       <div className="text-xs font-medium text-primary">{format(parsedDate, 'MMM')}</div>
@@ -155,6 +155,7 @@ export default function EditStudentPage() {
 
   const [isConfirmPaymentOpen, setIsConfirmPaymentOpen] = React.useState(false);
   const [isConfirmMarkLeftOpen, setIsConfirmMarkLeftOpen] = React.useState(false);
+  const [isReactivateConfirmOpen, setIsReactivateConfirmOpen] = React.useState(false);
   const [feeStructure, setFeeStructure] = React.useState<FeeStructure | null>(null);
   const [paymentMethod, setPaymentMethod] = React.useState<PaymentRecord['method']>('Cash');
 
@@ -284,6 +285,7 @@ export default function EditStudentPage() {
   async function onSaveChanges(data: StudentEditFormValues) {
     if (!studentId || !studentData) return;
     setIsSaving(true);
+    setIsReactivateConfirmOpen(false); // Close dialog on submit
 
     let payload: Partial<Student> = {};
     let successMessage: string;
@@ -696,7 +698,7 @@ export default function EditStudentPage() {
                             </PopoverContent>
                             </Popover>
                             <FormDescription>
-                                {isStudentLeft && `Student's next due date is ${studentData.nextDueDate ? format(parseISO(studentData.nextDueDate), 'PP') : 'not set'}. Re-activating will set a new due date.`}
+                                {isStudentLeft && `Student's next due date is ${studentData.nextDueDate ? format(parseISO(studentData.nextDueDate), 'PP') : 'not set'}.`}
                             </FormDescription>
                             <FormMessage />
                         </FormItem>
@@ -727,7 +729,7 @@ export default function EditStudentPage() {
             </CardContent>
             <CardFooter className="flex flex-col sm:flex-row items-center gap-2 p-6 bg-muted/30 border-t">
                {isStudentLeft ? (
-                <AlertDialog>
+                <AlertDialog open={isReactivateConfirmOpen} onOpenChange={setIsReactivateConfirmOpen}>
                   <AlertDialogTrigger asChild>
                     <Button type="button" className="w-full sm:w-auto" disabled={isSaveDisabled}>
                       <UserCheck className="mr-2 h-4 w-4" /> Save and Re-activate
@@ -798,11 +800,11 @@ export default function EditStudentPage() {
                             <RadioGroup defaultValue="Cash" onValueChange={(value) => setPaymentMethod(value as PaymentRecord['method'])}>
                                 <div className="flex items-center space-x-2">
                                     <RadioGroupItem value="Cash" id="payment-cash" />
-                                    <FormLabel htmlFor="payment-cash">Cash</FormLabel>
+                                    <Label htmlFor="payment-cash" className="font-normal">Cash</Label>
                                 </div>
                                 <div className="flex items-center space-x-2">
                                     <RadioGroupItem value="Online" id="payment-online" />
-                                    <FormLabel htmlFor="payment-online">Online (UPI/Card)</FormLabel>
+                                    <Label htmlFor="payment-online" className="font-normal">Online (UPI/Card)</Label>
                                 </div>
                             </RadioGroup>
                         </div>
