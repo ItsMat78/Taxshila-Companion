@@ -184,7 +184,7 @@ export default function AdminLoginPage() {
           </div>
         </Card>
         
-        <Link href="/" legacyBehavior>
+        <Link href="/home" legacyBehavior>
           <Button variant="outline" className="bg-background/70 backdrop-blur-md">
             <Home className="mr-2 h-4 w-4" /> Go to Home Page
           </Button>
