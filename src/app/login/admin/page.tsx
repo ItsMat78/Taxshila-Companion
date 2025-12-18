@@ -7,13 +7,14 @@ import { useRouter } from 'next/navigation';
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
+import Link from 'next/link';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useAuth } from '@/contexts/auth-context';
-import { Loader2, Download, Smartphone } from 'lucide-react';
+import { Loader2, Download, Smartphone, Home } from 'lucide-react';
 import { LoggingInDialog } from '@/components/shared/logging-in-dialog';
 import { useToast } from '@/hooks/use-toast';
 
@@ -182,6 +183,13 @@ export default function AdminLoginPage() {
             </CardContent>
           </div>
         </Card>
+        
+        <Link href="/" legacyBehavior>
+          <Button variant="outline" className="bg-background/70 backdrop-blur-md">
+            <Home className="mr-2 h-4 w-4" /> Go to Home Page
+          </Button>
+        </Link>
+
 
         {/* --- PWA Install Button --- */}
         {canInstallPWA && deferredPrompt && (
