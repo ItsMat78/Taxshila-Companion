@@ -293,18 +293,18 @@ export default function HomePage() {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
               {pricingTiers.map((tier) => (
-                <Card key={tier.name} className={cn("overflow-hidden flex flex-col shadow-lg hover:shadow-2xl hover:-translate-y-2 transition-all duration-300", tier.gradient)}>
-                    <div className={cn("relative p-4 h-24 w-full bg-card/20")}>
+                <Card key={tier.name} className="overflow-hidden flex flex-col shadow-lg hover:shadow-2xl hover:-translate-y-2 transition-all duration-300">
+                    <div className={cn("relative p-4 h-24 w-full", tier.gradient)}>
                         {tier.vector}
                     </div>
-                    <div className="p-6 flex flex-col flex-grow">
+                    <div className="p-6 flex flex-col flex-grow bg-card">
                         <CardHeader className="p-0">
                             <CardTitle className="text-2xl text-foreground">{tier.name}</CardTitle>
                             <div className="flex items-baseline">
                                 <span className="text-4xl font-bold text-foreground">{tier.price}</span>
                                 <span className="ml-1 text-muted-foreground">{tier.period}</span>
                             </div>
-                            <CardDescription className="pt-2">{tier.description}</CardDescription>
+                            <CardDescription className="pt-2 min-h-[40px]">{tier.description}</CardDescription>
                         </CardHeader>
                         <CardContent className="p-0 pt-6 flex-grow">
                             <ul className="space-y-2">
@@ -316,7 +316,7 @@ export default function HomePage() {
                                 ))}
                             </ul>
                         </CardContent>
-                        <CardFooter className="p-0 pt-6">
+                        <CardFooter className="p-0 pt-6 mt-auto">
                             <Link href="/login" passHref className="w-full">
                                 <Button className="w-full">Select Plan</Button>
                             </Link>
