@@ -16,13 +16,24 @@ import {
 import { Check, MapPin, Phone, Mail, ArrowRight, Wifi, Wind, Thermometer, Users, Newspaper, Lock, Droplets, ShieldCheck, UserCircle, Locate } from 'lucide-react';
 import placeholderImages from '@/lib/placeholder-images.json';
 
+const COVER_IMAGE_URL = '/cover.png';
+const LOGO_URL = '/logo.png';
+
+
 // --- Header Component ---
 function HomePageHeader() {
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-14 items-center">
         <div className="mr-4 flex">
-          <Link href="/" className="mr-6 flex items-center space-x-2">
+          <Link href="/home" className="mr-6 flex items-center space-x-2">
+             <Image
+                src={LOGO_URL}
+                alt="Taxshila Companion Logo"
+                width={32}
+                height={32}
+                className="h-8 w-auto object-contain"
+              />
             <span className="font-bold">Taxshila Companion</span>
           </Link>
         </div>
@@ -171,15 +182,23 @@ export default function HomePage() {
       {/* Hero Section */}
       <section className="relative h-[60vh] min-h-[400px] w-full flex items-center justify-center text-center text-white overflow-hidden">
         <Image
-          src={placeholderImages.homePage.hero.src}
-          alt={placeholderImages.homePage.hero.alt}
+          src={COVER_IMAGE_URL}
+          alt="A modern and quiet library interior, perfect for studying."
           fill
           className="object-cover"
-          data-ai-hint={placeholderImages.homePage.hero.aiHint}
+          data-ai-hint="library interior"
           priority
         />
         <div className="absolute inset-0 bg-black/50" />
-        <div className="relative z-10 p-4 max-w-3xl">
+        <div className="relative z-10 p-4 max-w-3xl flex flex-col items-center">
+          <Image
+            src={LOGO_URL}
+            alt="Taxshila Companion Logo"
+            width={128}
+            height={128}
+            className="h-24 w-auto sm:h-32 object-contain mb-4 drop-shadow-lg"
+            data-ai-hint="logo brand"
+          />
           <h1 className="text-4xl md:text-6xl font-headline font-bold tracking-tight drop-shadow-md">
             Your Modern Study Sanctuary
           </h1>
@@ -253,7 +272,9 @@ export default function HomePage() {
                   </ul>
                 </CardContent>
                 <CardFooter>
-                  <Button className="w-full">Select Plan</Button>
+                   <Link href="/login" passHref className="w-full">
+                     <Button className="w-full">Select Plan</Button>
+                   </Link>
                 </CardFooter>
               </Card>
             ))}
@@ -326,7 +347,7 @@ export default function HomePage() {
         <div className="container mx-auto px-4 py-6 flex flex-col sm:flex-row justify-between items-center text-sm text-muted-foreground">
           <p>&copy; {new Date().getFullYear()} Taxshila Companion. All rights reserved.</p>
           <div className="flex gap-4 mt-4 sm:mt-0">
-            <Link href="/login" className="hover:text-primary">Admin Login</Link>
+            <Link href="/login/admin" className="hover:text-primary">Admin Login</Link>
           </div>
         </div>
       </footer>
