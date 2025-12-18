@@ -26,9 +26,9 @@ const LOGO_URL = '/logo.png';
 function HomePageHeader() {
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container flex h-14 items-center">
-        <div className="mr-4 flex">
-          <Link href="/home" className="mr-6 flex items-center space-x-2">
+      <div className="container flex h-14 items-center justify-between">
+        <div className="flex items-center">
+          <Link href="/home" className="flex items-center space-x-2">
              <Image
                 src={LOGO_URL}
                 alt="Taxshila Companion Logo"
@@ -39,7 +39,7 @@ function HomePageHeader() {
             <span className="font-bold text-lg ml-2">Taxshila Companion</span>
           </Link>
         </div>
-        <div className="flex flex-1 items-center justify-end space-x-2">
+        <div className="flex items-center space-x-2">
           {/* Contact Dialog */}
           <Dialog>
             <DialogTrigger asChild>
@@ -293,11 +293,11 @@ export default function HomePage() {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
               {pricingTiers.map((tier) => (
-                <Card key={tier.name} className="overflow-hidden flex flex-col shadow-lg hover:shadow-2xl hover:-translate-y-2 transition-all duration-300">
-                    <div className={cn("relative p-4 h-24 w-full", tier.gradient)}>
+                <Card key={tier.name} className="flex flex-col shadow-lg hover:shadow-2xl hover:-translate-y-2 transition-all duration-300">
+                    <div className={cn("p-4 h-24 w-full rounded-t-lg", tier.gradient)}>
                         {tier.vector}
                     </div>
-                    <div className="p-6 flex flex-col flex-grow bg-card">
+                    <div className="p-6 flex flex-col flex-grow bg-card rounded-b-lg">
                         <CardHeader className="p-0">
                             <CardTitle className="text-2xl text-foreground">{tier.name}</CardTitle>
                             <div className="flex items-baseline">
