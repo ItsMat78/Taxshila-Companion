@@ -1,0 +1,36 @@
+{
+  "homePage": {
+    "hero": {
+      "src": "https://picsum.photos/seed/libraryHero/1600/900",
+      "alt": "A modern and quiet library interior, perfect for studying.",
+      "aiHint": "library interior"
+    },
+    "gallery": [
+      {
+        "src": "https://picsum.photos/seed/gallery1/500/500",
+        "alt": "Students studying at individual desks in the library.",
+        "aiHint": "students studying"
+      },
+      {
+        "src": "https://picsum.photos/seed/gallery2/500/500",
+        "alt": "A close-up of a well-lit study desk with books and a laptop.",
+        "aiHint": "study desk"
+      },
+      {
+        "src": "https://picsum.photos/seed/gallery3/500/500",
+        "alt": "A comfortable chair and reading area in the library.",
+        "aiHint": "reading area"
+      },
+      {
+        "src": "https://picsum.photos/seed/gallery4/500/500",
+        "alt": "The exterior of the Taxshila library building.",
+        "aiHint": "library exterior"
+      }
+    ],
+    "map": {
+      "src": "https://picsum.photos/seed/mapPlaceholder/800/600",
+      "alt": "A placeholder map showing the location of the library.",
+      "aiHint": "city map"
+    }
+  }
+}
