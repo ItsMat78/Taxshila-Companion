@@ -59,10 +59,10 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const { refreshNotifications } = useNotificationContext();
   const { theme, setTheme } = useTheme();
 
-  const isPublicPath = pathname === '/' || pathname.startsWith('/login') || pathname === '/home';
+  const isPublicPath = pathname === '/home' || pathname.startsWith('/login');
 
   React.useEffect(() => {
-    if (!isAuthLoading && !user && !isPublicPath) {
+    if (!isAuthLoading && !user && !isPublicPath && pathname !== '/') {
       router.replace('/login');
     }
   }, [user, isAuthLoading, pathname, router, isPublicPath]);
