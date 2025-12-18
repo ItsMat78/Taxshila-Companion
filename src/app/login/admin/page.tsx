@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from 'react';
@@ -40,7 +39,7 @@ interface BeforeInstallPromptEvent extends Event {
 
 export default function AdminLoginPage() {
   const router = useRouter();
-  const { login } = useAuth();
+  const { login, user, isLoading: isAuthLoading } = useAuth();
   const { toast } = useToast();
   const [isLoggingIn, setIsLoggingIn] = React.useState(false);
   const [showLoggingInDialog, setShowLoggingInDialog] = React.useState(false);
@@ -48,6 +47,13 @@ export default function AdminLoginPage() {
   // --- PWA Install State ---
   const [deferredPrompt, setDeferredPrompt] = React.useState<BeforeInstallPromptEvent | null>(null);
   const [canInstallPWA, setCanInstallPWA] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!isAuthLoading && user) {
+        const destination = user.role === 'admin' ? '/admin/dashboard' : '/member/dashboard';
+        router.replace(destination);
+    }
+  }, [user, isAuthLoading, router]);
 
   React.useEffect(() => {
     const handleBeforeInstallPrompt = (e: Event) => {
@@ -117,6 +123,15 @@ export default function AdminLoginPage() {
       });
       setIsLoggingIn(false);
     }
+  }
+
+  if (isAuthLoading || user) {
+    return (
+        <div className="flex min-h-screen w-full flex-col items-center justify-center bg-background">
+            <Loader2 className="h-12 w-12 animate-spin text-primary" />
+            <p className="mt-4 text-muted-foreground">Initializing...</p>
+        </div>
+    );
   }
 
   return (
