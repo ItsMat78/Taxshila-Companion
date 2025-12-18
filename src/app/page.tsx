@@ -37,7 +37,7 @@ interface BeforeInstallPromptEvent extends Event {
   prompt(): Promise<void>;
 }
 
-export default function AdminLoginPage() {
+export default function RootLoginPage() {
   const router = useRouter();
   const { login, user, isLoading: isAuthLoading } = useAuth();
   const { toast } = useToast();
@@ -102,15 +102,7 @@ export default function AdminLoginPage() {
       const loggedInUser = await login(data.identifier, data.password);
       if (loggedInUser) {
         setShowLoggingInDialog(true);
-        setTimeout(() => {
-          if (loggedInUser.role === 'admin') {
-            router.replace('/admin/dashboard');
-          } else if (loggedInUser.role === 'member') {
-            router.replace('/member/dashboard');
-          } else {
-            router.replace('/home');
-          }
-        }, 700);
+        // The useEffect hook will handle the redirect
       } else {
         setIsLoggingIn(false);
       }

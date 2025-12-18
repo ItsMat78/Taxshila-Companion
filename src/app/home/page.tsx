@@ -1,4 +1,3 @@
-
 "use client";
 
 import Image from 'next/image';
@@ -104,7 +103,7 @@ function ModernHeader() {
             </DialogContent>
           </Dialog>
 
-          <Link href="/login" passHref>
+          <Link href="/" passHref>
             <Button className="rounded-full px-6 shadow-lg shadow-primary/25 hover:shadow-primary/40 transition-all hover:scale-105 font-semibold">
               Login
             </Button>
@@ -285,7 +284,7 @@ export default function HomePage() {
                 <CardContent className="relative z-10 p-8 flex flex-col items-center">
                   <h3 className="text-2xl md:text-3xl font-bold mb-2">Ready to join the elite?</h3>
                   <p className="text-primary-foreground/90 mb-6 text-lg max-w-md">Your best work happens here. Start your journey today.</p>
-                  <Link href="/login" className="w-full sm:w-auto">
+                  <Link href="/" className="w-full sm:w-auto">
                     <Button variant="secondary" size="lg" className="rounded-full font-bold px-8 shadow-lg hover:shadow-xl hover:scale-105 transition-all w-full sm:w-auto">
                       Get Started Now
                     </Button>
@@ -345,7 +344,7 @@ export default function HomePage() {
                           <span className="text-muted-foreground ml-2 font-medium">/month</span>
                         </div>
                       </div>
-                      <Link href="/login" className="w-full">
+                      <Link href="/" className="w-full">
                         <Button 
                           className="w-full font-bold rounded-xl h-12 text-base shadow-md transition-all hover:scale-[1.02]"
                           variant={tier.highlight ? "default" : "outline"}
