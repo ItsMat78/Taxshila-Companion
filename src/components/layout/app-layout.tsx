@@ -1,5 +1,4 @@
 
-
 "use client";
 import * as React from 'react';
 import { usePathname, useRouter } from 'next/navigation';
@@ -60,12 +59,13 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const { refreshNotifications } = useNotificationContext();
   const { theme, setTheme } = useTheme();
 
+  const isPublicPath = pathname === '/' || pathname.startsWith('/login') || pathname === '/home';
+
   React.useEffect(() => {
-    const isPublicPath = pathname.startsWith('/login');
     if (!isAuthLoading && !user && !isPublicPath) {
       router.replace('/login');
     }
-  }, [user, isAuthLoading, pathname, router]);
+  }, [user, isAuthLoading, pathname, router, isPublicPath]);
 
   React.useEffect(() => {
     if (prevPathnameRef.current !== pathname) {
@@ -73,6 +73,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       const timer = setTimeout(() => {
         setIsRouteLoading(false);
       }, 250);
+      prevPathnameRef.current = pathname;
       return () => clearTimeout(timer);
     }
   }, [pathname]);
@@ -160,8 +161,6 @@ if (targetId) {
     }
   }, [user]);
 
-
-  const isPublicPath = pathname.startsWith('/login');
 
   if (isAuthLoading && !isPublicPath) {
     return (

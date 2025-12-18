@@ -98,7 +98,7 @@ export default function AdminLoginPage() {
         setShowLoggingInDialog(true);
         setTimeout(() => {
           if (loggedInUser.role === 'admin') {
-            router.replace('/');
+            router.replace('/admin/dashboard');
           } else if (loggedInUser.role === 'member') {
             router.replace('/member/dashboard');
           } else {
@@ -184,7 +184,7 @@ export default function AdminLoginPage() {
           </div>
         </Card>
         
-        <Link href="/home" legacyBehavior>
+        <Link href="/" legacyBehavior>
           <Button variant="outline" className="bg-background/70 backdrop-blur-md">
             <Home className="mr-2 h-4 w-4" /> Go to Home Page
           </Button>
@@ -216,3 +216,5 @@ export default function AdminLoginPage() {
     </>
   )
 }
+
+    

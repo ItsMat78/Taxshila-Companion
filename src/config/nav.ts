@@ -34,7 +34,7 @@ export const mainNav: NavItem[] = [
   // Admin Routes
   {
     title: 'Dashboard',
-    href: '/',
+    href: '/admin/dashboard',
     icon: LayoutDashboard,
     roles: ['admin'],
   },
@@ -225,3 +225,5 @@ export const mainNav: NavItem[] = [
     roles: ['member'],
   },
 ];
+
+    

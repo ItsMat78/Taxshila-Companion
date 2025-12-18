@@ -15,7 +15,7 @@ export default function LoginPageRedirect() {
     if (!isLoading) {
       if (user) {
         // If user is already logged in, redirect them to their respective dashboard
-        const destination = user.role === 'admin' ? '/' : '/member/dashboard';
+        const destination = user.role === 'admin' ? '/admin/dashboard' : '/member/dashboard';
         router.replace(destination);
       } else {
         // If no user, redirect to the specific admin login page
@@ -32,3 +32,5 @@ export default function LoginPageRedirect() {
     </div>
   );
 }
+
+    
