@@ -18,9 +18,8 @@ export default function LoginPageRedirect() {
         const destination = user.role === 'admin' ? '/admin/dashboard' : '/member/dashboard';
         router.replace(destination);
       } else {
-        // If no user, redirect to the specific admin login page
-        // This is the main public entry point for login.
-        router.replace('/login/admin');
+        const destination = '/login/admin';
+        router.replace(destination);
       }
     }
   }, [router, user, isLoading]);
