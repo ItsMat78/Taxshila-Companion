@@ -3,6 +3,7 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
+import * as React from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import {
@@ -13,12 +14,12 @@ import {
   DialogTrigger,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { Check, MapPin, Phone, Mail, ArrowRight, Wifi, Wind, Thermometer, Users, Newspaper, Lock, Droplets, ShieldCheck, UserCircle, Locate } from 'lucide-react';
+import { Check, MapPin, Phone, Mail, ArrowRight, Wifi, Wind, Thermometer, Droplets, ShieldCheck, UserCircle, Locate, Loader2 } from 'lucide-react';
 import placeholderImages from '@/lib/placeholder-images.json';
+import { getFeeStructureForHomepage, type FeeStructure } from '@/services/student-service';
 
 const COVER_IMAGE_URL = '/cover.png';
 const LOGO_URL = '/logo.png';
-
 
 // --- Header Component ---
 function HomePageHeader() {
@@ -34,7 +35,7 @@ function HomePageHeader() {
                 height={32}
                 className="h-8 w-auto object-contain"
               />
-            <span className="font-bold">Taxshila Companion</span>
+            <span className="font-bold text-lg ml-2">Taxshila Companion</span>
           </Link>
         </div>
         <div className="flex flex-1 items-center justify-end space-x-2">
@@ -105,8 +106,6 @@ function HomePageHeader() {
   );
 }
 
-
-// --- Updated Feature List ---
 const featureList = [
   {
     icon: Wifi,
@@ -124,21 +123,6 @@ const featureList = [
     description: "Ergonomic chairs and spacious desks for long study sessions."
   },
   {
-    icon: Users,
-    title: "Discussion Area",
-    description: "A dedicated space for group studies and collaborative work."
-  },
-  {
-    icon: Newspaper,
-    title: "Newspapers & Magazines",
-    description: "Stay updated with the latest news and current affairs."
-  },
-  {
-    icon: Lock,
-    title: "Locker Facility",
-    description: "Secure personal storage for your books and belongings."
-  },
-  {
     icon: Droplets,
     title: "Purified Drinking Water",
     description: "Stay hydrated with clean and safe drinking water available."
@@ -150,37 +134,55 @@ const featureList = [
   }
 ];
 
-const pricingTiers = [
+
+export default function HomePage() {
+  const [feeStructure, setFeeStructure] = React.useState<FeeStructure | null>(null);
+  const [isLoadingFees, setIsLoadingFees] = React.useState(true);
+  
+  React.useEffect(() => {
+    async function fetchFees() {
+      try {
+        const fees = await getFeeStructureForHomepage();
+        setFeeStructure(fees);
+      } catch (error) {
+        console.error("Failed to fetch fee structure for homepage:", error);
+      } finally {
+        setIsLoadingFees(false);
+      }
+    }
+    fetchFees();
+  }, []);
+
+  const pricingTiers = feeStructure ? [
     {
         name: "Morning Shift",
-        price: "₹600",
+        price: `Rs. ${feeStructure.morningFee}`,
         period: "/ month",
         description: "Ideal for early birds who are most productive in the morning.",
         features: ["7 AM - 2 PM access", "All standard amenities included"],
     },
     {
         name: "Evening Shift",
-        price: "₹600",
+        price: `Rs. ${feeStructure.eveningFee}`,
         period: "/ month",
         description: "Perfect for students and professionals working late.",
         features: ["2 PM - 9:30 PM access", "All standard amenities included"],
     },
     {
         name: "Full Day",
-        price: "₹1000",
+        price: `Rs. ${feeStructure.fullDayFee}`,
         period: "/ month",
         description: "For the most dedicated, providing access throughout the day.",
         features: ["7 AM - 9:30 PM access", "All standard amenities included", "Priority seat selection"],
     }
-];
+  ] : [];
 
-export default function HomePage() {
   return (
     <div className="bg-background text-foreground">
       <HomePageHeader />
 
       {/* Hero Section */}
-      <section className="relative h-[60vh] min-h-[400px] w-full flex items-center justify-center text-center text-white overflow-hidden">
+       <section className="relative h-[60vh] min-h-[400px] w-full flex items-center justify-center text-center text-white overflow-hidden">
         <Image
           src={COVER_IMAGE_URL}
           alt="A modern and quiet library interior, perfect for studying."
@@ -190,26 +192,28 @@ export default function HomePage() {
           priority
         />
         <div className="absolute inset-0 bg-black/50" />
-        <div className="relative z-10 p-4 max-w-3xl flex flex-col items-center">
+        <div className="relative z-10 p-4 max-w-4xl flex flex-col md:flex-row items-center gap-8 text-left">
           <Image
             src={LOGO_URL}
             alt="Taxshila Companion Logo"
-            width={128}
-            height={128}
-            className="h-24 w-auto sm:h-32 object-contain mb-4 drop-shadow-lg"
+            width={160}
+            height={160}
+            className="h-32 w-auto sm:h-40 object-contain drop-shadow-lg flex-shrink-0"
             data-ai-hint="logo brand"
           />
-          <h1 className="text-4xl md:text-6xl font-headline font-bold tracking-tight drop-shadow-md">
-            Your Modern Study Sanctuary
-          </h1>
-          <p className="mt-4 text-lg md:text-xl max-w-xl mx-auto text-white/90 drop-shadow-sm">
-            Discover a peaceful, well-equipped space designed to help you focus, learn, and achieve your academic goals.
-          </p>
-          <Link href="/login" passHref>
-            <Button size="lg" className="mt-8 text-lg">
-              Join Now <ArrowRight className="ml-2 h-5 w-5" />
-            </Button>
-          </Link>
+          <div>
+            <h1 className="text-4xl md:text-5xl font-headline font-bold tracking-tight drop-shadow-md">
+              Your Modern Study Sanctuary
+            </h1>
+            <p className="mt-4 text-lg md:text-xl text-white/90 drop-shadow-sm">
+              Discover a peaceful, well-equipped space designed to help you focus, learn, and achieve your academic goals.
+            </p>
+            <Link href="/login" passHref>
+              <Button size="lg" className="mt-6 text-lg">
+                Join Now <ArrowRight className="ml-2 h-5 w-5" />
+              </Button>
+            </Link>
+          </div>
         </div>
       </section>
 
@@ -222,7 +226,7 @@ export default function HomePage() {
               We provide everything you need for an uninterrupted and productive study session.
             </p>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
             {featureList.map((feature, index) => {
               const Icon = feature.icon;
               return (
@@ -250,35 +254,41 @@ export default function HomePage() {
               Choose a plan that fits your schedule. Simple, affordable, and flexible.
             </p>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-            {pricingTiers.map((tier) => (
-              <Card key={tier.name} className="flex flex-col shadow-lg hover:scale-105 transition-transform duration-300">
-                <CardHeader>
-                  <CardTitle className="text-2xl">{tier.name}</CardTitle>
-                  <div className="flex items-baseline">
-                    <span className="text-4xl font-bold">{tier.price}</span>
-                    <span className="ml-1 text-muted-foreground">{tier.period}</span>
-                  </div>
-                  <CardDescription>{tier.description}</CardDescription>
-                </CardHeader>
-                <CardContent className="flex-grow">
-                  <ul className="space-y-2">
-                    {tier.features.map((feature) => (
-                      <li key={feature} className="flex items-center">
-                        <Check className="h-4 w-4 mr-2 text-green-500" />
-                        <span>{feature}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </CardContent>
-                <CardFooter>
-                   <Link href="/login" passHref className="w-full">
-                     <Button className="w-full">Select Plan</Button>
-                   </Link>
-                </CardFooter>
-              </Card>
-            ))}
-          </div>
+          {isLoadingFees ? (
+            <div className="flex justify-center items-center h-48">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+              {pricingTiers.map((tier) => (
+                <Card key={tier.name} className="flex flex-col shadow-lg hover:scale-105 transition-transform duration-300">
+                  <CardHeader>
+                    <CardTitle className="text-2xl">{tier.name}</CardTitle>
+                    <div className="flex items-baseline">
+                      <span className="text-4xl font-bold">{tier.price}</span>
+                      <span className="ml-1 text-muted-foreground">{tier.period}</span>
+                    </div>
+                    <CardDescription>{tier.description}</CardDescription>
+                  </CardHeader>
+                  <CardContent className="flex-grow">
+                    <ul className="space-y-2">
+                      {tier.features.map((feature) => (
+                        <li key={feature} className="flex items-center">
+                          <Check className="h-4 w-4 mr-2 text-green-500" />
+                          <span>{feature}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </CardContent>
+                  <CardFooter>
+                    <Link href="/login" passHref className="w-full">
+                      <Button className="w-full">Select Plan</Button>
+                    </Link>
+                  </CardFooter>
+                </Card>
+              ))}
+            </div>
+          )}
         </section>
 
         {/* Gallery Section */}

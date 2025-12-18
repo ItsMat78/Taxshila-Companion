@@ -190,6 +190,17 @@ export async function getFeeStructure(): Promise<FeeStructure> {
   }
 }
 
+// New function specifically for the homepage
+export async function getFeeStructureForHomepage(): Promise<FeeStructure> {
+  // This function can be called from a client component without 'use server' issues
+  // as long as the main getFeeStructure is marked with 'use server' implicitly or explicitly
+  // if it performs server-only actions. In this case, it's just reading from Firestore,
+  // which is fine from both client and server components with correct rules.
+  // For this project structure, it is safe to call it.
+  return getFeeStructure();
+}
+
+
 export async function updateFeeStructure(newFees: Partial<FeeStructure>): Promise<void> {
   const feeSettingsDocRef = doc(db, APP_CONFIG_COLLECTION, FEE_SETTINGS_DOC_ID);
   const dataToUpdate: Partial<FeeStructure> = {};
@@ -379,12 +390,6 @@ export async function updateStudent(customStudentId: string, studentUpdateData: 
     if (studentUpdateData.password) {
         authUpdatePayload.password = studentUpdateData.password;
         authNeedsUpdate = true;
-        sendAlertToStudent(
-            customStudentId,
-            "Security Alert: Password Changed",
-            `Hi ${studentToUpdate.name}, your password was changed by an admin. If you did not authorize this, please contact support immediately.`,
-            "warning"
-        );
     }
     
     if (studentUpdateData.activityStatus === 'Left' && studentToUpdate.activityStatus === 'Active') {
@@ -444,6 +449,16 @@ export async function updateStudent(customStudentId: string, studentUpdateData: 
         "info"
     );
   }
+   // Send password change alert
+  if (payload.password) {
+    sendAlertToStudent(
+      customStudentId,
+      "Security Alert: Password Changed",
+      `Hi ${studentToUpdate.name}, your password was changed by an admin. If you did not authorize this, please contact support immediately.`,
+      "warning"
+    );
+  }
+
 
   const newShift = payload.shift;
   
