@@ -17,6 +17,7 @@ import {
 import { Check, MapPin, Phone, Mail, ArrowRight, Wifi, Wind, Thermometer, Droplets, ShieldCheck, UserCircle, Locate, Loader2 } from 'lucide-react';
 import placeholderImages from '@/lib/placeholder-images.json';
 import { getFeeStructureForHomepage, type FeeStructure } from '@/services/student-service';
+import { cn } from '@/lib/utils';
 
 const COVER_IMAGE_URL = '/cover.png';
 const LOGO_URL = '/logo.png';
@@ -134,6 +135,32 @@ const featureList = [
   }
 ];
 
+const shiftVectors = {
+    morning: (
+        <svg viewBox="0 0 100 60" className="absolute inset-0 z-0 w-full h-full object-cover" preserveAspectRatio="xMidYMid slice">
+          <path d="M-5,65 l25,-20 l15,10 l25,-20 l15,10 l25,-20 v25 h-105 z" fill="hsl(var(--primary)/0.1)" />
+          <path d="M-5,65 l30,-25 l15,10 l20,-15 l15,10 l25,-20 v25 h-105 z" fill="hsl(var(--primary)/0.2)" />
+          <circle cx="80" cy="15" r="8" fill="hsl(var(--accent))" />
+        </svg>
+      ),
+      evening: (
+        <svg viewBox="0 0 100 60" className="absolute inset-0 z-0 w-full h-full object-cover" preserveAspectRatio="xMidYMid slice">
+          <path d="M-5,65 l15,-40 l15,40 z" fill="hsl(var(--primary)/0.1)" />
+          <path d="M15,65 l15,-35 l15,35 z" fill="hsl(var(--primary)/0.2)" />
+          <path d="M35,65 l15,-45 l15,45 z" fill="hsl(var(--primary)/0.15)" />
+          <circle cx="85" cy="15" r="8" fill="hsl(var(--background))" />
+          <circle cx="20" cy="10" r="1.5" fill="hsl(var(--background))" />
+          <circle cx="45" cy="20" r="1" fill="hsl(var(--background))" />
+        </svg>
+      ),
+      fullday: (
+         <svg viewBox="0 0 100 60" className="absolute inset-0 z-0 w-full h-full object-cover" preserveAspectRatio="xMidYMid slice">
+          <path d="M-5,35 C30,50 70,50 105,35 V65 H-5 z" fill="hsl(var(--accent)/0.1)" />
+          <path d="M-5,40 C30,55 70,55 105,40 V65 H-5 z" fill="hsl(var(--accent)/0.2)" />
+          <circle cx="20" cy="20" r="10" fill="hsl(var(--primary))" />
+        </svg>
+      ),
+}
 
 export default function HomePage() {
   const [feeStructure, setFeeStructure] = React.useState<FeeStructure | null>(null);
@@ -160,6 +187,8 @@ export default function HomePage() {
         period: "/ month",
         description: "Ideal for early birds who are most productive in the morning.",
         features: ["7 AM - 2 PM access", "All standard amenities included"],
+        vector: shiftVectors.morning,
+        gradient: 'from-orange-50 to-sky-100 dark:from-orange-900/10 dark:to-sky-900/20'
     },
     {
         name: "Evening Shift",
@@ -167,6 +196,8 @@ export default function HomePage() {
         period: "/ month",
         description: "Perfect for students and professionals working late.",
         features: ["2 PM - 9:30 PM access", "All standard amenities included"],
+        vector: shiftVectors.evening,
+        gradient: 'from-indigo-100 to-slate-200 dark:from-indigo-900/20 dark:to-slate-900/30'
     },
     {
         name: "Full Day",
@@ -174,6 +205,8 @@ export default function HomePage() {
         period: "/ month",
         description: "For the most dedicated, providing access throughout the day.",
         features: ["7 AM - 9:30 PM access", "All standard amenities included", "Priority seat selection"],
+        vector: shiftVectors.fullday,
+        gradient: 'from-yellow-50 to-amber-100 dark:from-yellow-900/10 dark:to-amber-900/20'
     }
   ] : [];
 
@@ -226,25 +259,24 @@ export default function HomePage() {
               We provide everything you need for an uninterrupted and productive study session.
             </p>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
+          <div className="max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-8">
             {featureList.map((feature, index) => {
               const Icon = feature.icon;
               return (
-                <Card key={index} className="text-center shadow-md hover:shadow-lg transition-shadow hover:-translate-y-1">
-                  <CardHeader>
-                    <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary mb-2">
-                      <Icon className="h-6 w-6" />
-                    </div>
-                    <CardTitle className="text-lg">{feature.title}</CardTitle>
-                  </CardHeader>
-                  <CardContent className="pt-0">
-                    <p className="text-sm text-muted-foreground">{feature.description}</p>
-                  </CardContent>
-                </Card>
+                <div key={index} className="flex items-start gap-4">
+                  <div className="flex-shrink-0 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
+                    <Icon className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold font-headline">{feature.title}</h3>
+                    <p className="text-muted-foreground mt-1">{feature.description}</p>
+                  </div>
+                </div>
               );
             })}
           </div>
         </section>
+
 
         {/* Pricing Section */}
         <section id="pricing" className="mb-16 md:mb-24">
@@ -261,31 +293,34 @@ export default function HomePage() {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
               {pricingTiers.map((tier) => (
-                <Card key={tier.name} className="flex flex-col shadow-lg hover:scale-105 transition-transform duration-300">
-                  <CardHeader>
-                    <CardTitle className="text-2xl">{tier.name}</CardTitle>
-                    <div className="flex items-baseline">
-                      <span className="text-4xl font-bold">{tier.price}</span>
-                      <span className="ml-1 text-muted-foreground">{tier.period}</span>
-                    </div>
-                    <CardDescription>{tier.description}</CardDescription>
-                  </CardHeader>
-                  <CardContent className="flex-grow">
-                    <ul className="space-y-2">
-                      {tier.features.map((feature) => (
-                        <li key={feature} className="flex items-center">
-                          <Check className="h-4 w-4 mr-2 text-green-500" />
-                          <span>{feature}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </CardContent>
-                  <CardFooter>
-                    <Link href="/login" passHref className="w-full">
-                      <Button className="w-full">Select Plan</Button>
-                    </Link>
-                  </CardFooter>
-                </Card>
+                <div key={tier.name} className={cn("relative p-4 rounded-lg overflow-hidden border-2 border-primary/10 bg-gradient-to-br flex flex-col shadow-lg hover:shadow-2xl hover:-translate-y-2 transition-all duration-300", tier.gradient)}>
+                  {tier.vector}
+                  <div className="relative z-10 flex flex-col flex-grow">
+                    <CardHeader>
+                      <CardTitle className="text-2xl text-foreground">{tier.name}</CardTitle>
+                      <div className="flex items-baseline">
+                        <span className="text-4xl font-bold text-foreground">{tier.price}</span>
+                        <span className="ml-1 text-muted-foreground">{tier.period}</span>
+                      </div>
+                      <CardDescription>{tier.description}</CardDescription>
+                    </CardHeader>
+                    <CardContent className="flex-grow">
+                      <ul className="space-y-2">
+                        {tier.features.map((feature) => (
+                          <li key={feature} className="flex items-center">
+                            <Check className="h-4 w-4 mr-2 text-green-500" />
+                            <span className="text-muted-foreground">{feature}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </CardContent>
+                    <CardFooter>
+                      <Link href="/login" passHref className="w-full">
+                        <Button className="w-full">Select Plan</Button>
+                      </Link>
+                    </CardFooter>
+                  </div>
+                </div>
               ))}
             </div>
           )}
