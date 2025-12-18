@@ -137,14 +137,14 @@ const featureList = [
 
 const shiftVectors = {
     morning: (
-        <svg viewBox="0 0 100 60" className="absolute inset-0 z-0 w-full h-full object-cover" preserveAspectRatio="xMidYMid slice">
+        <svg viewBox="0 0 100 60" className="w-full h-auto object-cover" preserveAspectRatio="xMidYMid slice">
           <path d="M-5,65 l25,-20 l15,10 l25,-20 l15,10 l25,-20 v25 h-105 z" fill="hsl(var(--primary)/0.1)" />
           <path d="M-5,65 l30,-25 l15,10 l20,-15 l15,10 l25,-20 v25 h-105 z" fill="hsl(var(--primary)/0.2)" />
           <circle cx="80" cy="15" r="8" fill="hsl(var(--accent))" />
         </svg>
       ),
       evening: (
-        <svg viewBox="0 0 100 60" className="absolute inset-0 z-0 w-full h-full object-cover" preserveAspectRatio="xMidYMid slice">
+        <svg viewBox="0 0 100 60" className="w-full h-auto object-cover" preserveAspectRatio="xMidYMid slice">
           <path d="M-5,65 l15,-40 l15,40 z" fill="hsl(var(--primary)/0.1)" />
           <path d="M15,65 l15,-35 l15,35 z" fill="hsl(var(--primary)/0.2)" />
           <path d="M35,65 l15,-45 l15,45 z" fill="hsl(var(--primary)/0.15)" />
@@ -154,7 +154,7 @@ const shiftVectors = {
         </svg>
       ),
       fullday: (
-         <svg viewBox="0 0 100 60" className="absolute inset-0 z-0 w-full h-full object-cover" preserveAspectRatio="xMidYMid slice">
+         <svg viewBox="0 0 100 60" className="w-full h-auto object-cover" preserveAspectRatio="xMidYMid slice">
           <path d="M-5,35 C30,50 70,50 105,35 V65 H-5 z" fill="hsl(var(--accent)/0.1)" />
           <path d="M-5,40 C30,55 70,55 105,40 V65 H-5 z" fill="hsl(var(--accent)/0.2)" />
           <circle cx="20" cy="20" r="10" fill="hsl(var(--primary))" />
@@ -293,34 +293,36 @@ export default function HomePage() {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
               {pricingTiers.map((tier) => (
-                <div key={tier.name} className={cn("relative p-4 rounded-lg overflow-hidden border-2 border-primary/10 bg-gradient-to-br flex flex-col shadow-lg hover:shadow-2xl hover:-translate-y-2 transition-all duration-300", tier.gradient)}>
-                  {tier.vector}
-                  <div className="relative z-10 flex flex-col flex-grow">
-                    <CardHeader>
-                      <CardTitle className="text-2xl text-foreground">{tier.name}</CardTitle>
-                      <div className="flex items-baseline">
-                        <span className="text-4xl font-bold text-foreground">{tier.price}</span>
-                        <span className="ml-1 text-muted-foreground">{tier.period}</span>
-                      </div>
-                      <CardDescription>{tier.description}</CardDescription>
-                    </CardHeader>
-                    <CardContent className="flex-grow">
-                      <ul className="space-y-2">
-                        {tier.features.map((feature) => (
-                          <li key={feature} className="flex items-center">
-                            <Check className="h-4 w-4 mr-2 text-green-500" />
-                            <span className="text-muted-foreground">{feature}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </CardContent>
-                    <CardFooter>
-                      <Link href="/login" passHref className="w-full">
-                        <Button className="w-full">Select Plan</Button>
-                      </Link>
-                    </CardFooter>
-                  </div>
-                </div>
+                <Card key={tier.name} className={cn("overflow-hidden flex flex-col shadow-lg hover:shadow-2xl hover:-translate-y-2 transition-all duration-300", tier.gradient)}>
+                    <div className={cn("relative p-4 h-24 w-full bg-card/20")}>
+                        {tier.vector}
+                    </div>
+                    <div className="p-6 flex flex-col flex-grow">
+                        <CardHeader className="p-0">
+                            <CardTitle className="text-2xl text-foreground">{tier.name}</CardTitle>
+                            <div className="flex items-baseline">
+                                <span className="text-4xl font-bold text-foreground">{tier.price}</span>
+                                <span className="ml-1 text-muted-foreground">{tier.period}</span>
+                            </div>
+                            <CardDescription className="pt-2">{tier.description}</CardDescription>
+                        </CardHeader>
+                        <CardContent className="p-0 pt-6 flex-grow">
+                            <ul className="space-y-2">
+                                {tier.features.map((feature) => (
+                                <li key={feature} className="flex items-center">
+                                    <Check className="h-4 w-4 mr-2 text-green-500" />
+                                    <span className="text-muted-foreground">{feature}</span>
+                                </li>
+                                ))}
+                            </ul>
+                        </CardContent>
+                        <CardFooter className="p-0 pt-6">
+                            <Link href="/login" passHref className="w-full">
+                                <Button className="w-full">Select Plan</Button>
+                            </Link>
+                        </CardFooter>
+                    </div>
+                </Card>
               ))}
             </div>
           )}
