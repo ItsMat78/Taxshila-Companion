@@ -59,11 +59,11 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const { refreshNotifications } = useNotificationContext();
   const { theme, setTheme } = useTheme();
 
-  const isPublicPath = pathname === '/home' || pathname.startsWith('/login');
+  const isPublicPath = pathname === '/home';
 
   React.useEffect(() => {
     if (!isAuthLoading && !user && !isPublicPath && pathname !== '/') {
-      router.replace('/login');
+      router.replace('/');
     }
   }, [user, isAuthLoading, pathname, router, isPublicPath]);
 
@@ -172,10 +172,6 @@ if (targetId) {
     );
   }
   
-  if (!user && !isPublicPath) {
-    return null;
-  }
-
   if (isPublicPath) {
     return (
       <>
@@ -213,5 +209,18 @@ if (targetId) {
     );
   }
 
+  // If not authenticated and not a public path, show the login page (which is at the root)
+  if (!user && pathname === '/') {
+    return (
+       <>
+        <TopProgressBar isLoading={isRouteLoading} />
+        {children}
+      </>
+    );
+  }
+
+  // Fallback for edge cases, might show a brief blank screen before redirect.
   return null;
 }
+
+    
