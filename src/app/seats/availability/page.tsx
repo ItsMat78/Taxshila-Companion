@@ -25,7 +25,7 @@ import { getStudentSeatAssignments, getTodaysActiveAttendanceRecords, processChe
 import type { Student, Shift, StudentSeatAssignment, CheckedInStudentInfo } from '@/types/student';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 
 type SeatStatusKey = "available" | "morning" | "evening" | "fullday" | "split";
@@ -69,21 +69,22 @@ const getInitials = (name?: string) => {
 }
 
 const SeatLayout = [
-    ['10', 'Wall', 'Wall', 'Wall', 'Wall', 'Wall', 'Wall', 'Wall', 'Wall', 'Wall', 'Wall'],
-    ['11', '84', 'Gap', 'Wall', 'Wall', 'Wall', 'Wall', 'Wall', 'Wall', 'Wall', 'Wall'],
-    ['12', '23', 'Gap', 'Wall', 'Wall', 'Wall', 'Wall', 'Wall', 'Wall', 'Wall', 'Wall'],
-    ['13', '22', 'Gap', 'Wall', 'Wall', 'Wall', 'Wall', 'Wall', 'Wall', '40', '49'],
-    ['14', '21', 'Gap', '24', '31', 'Gap', '32', '39', 'Gap', '41', '48'],
-    ['15', '20', 'Gap', '25', '30', 'Gap', '33', '38', 'Gap', '42', '47'],
-    ['16', '19', 'Gap', '26', '29', 'Gap', '34', '37', 'Gap', '43', '46'],
-    ['17', '18', 'Gap', '27', '28', 'Gap', '35', '36', 'Gap', '44', '45'],
-    ['Gap', 'Gap', 'Gap', 'Gap', 'Gap', 'Gap', 'Gap', 'Gap', 'Gap', 'Gap', 'Gap'],
-    ['Gap', 'Gap', 'Gap', '58', '59', 'Gap', '68', '69', 'Gap', '78', '79'],
-    ['Gap', '53', 'Gap', '57', '60', 'Gap', '67', '70', 'Gap', '77', '80'],
-    ['Gap', '52', 'Gap', '56', '61', 'Gap', '66', '71', 'Gap', '76', '81'],
-    ['Gap', '51', 'Gap', '55', '62', 'Gap', '65', '72', 'Gap', '75', '82'],
-    ['Gap', '50', 'Gap', '54', '63', 'Gap', '64', '73', 'Gap', '74', '83']
+    '10',  'Wall', 'Wall', 'Wall', 'Wall', 'Wall', 'Wall', 'Wall', 'Wall', 'Wall', 'Wall',
+    '11',  '84',   'Gap',  'Wall', 'Wall', 'Wall', 'Wall', 'Wall', 'Wall', 'Wall', 'Wall',
+    '12',  '23',   'Gap',  'Wall', 'Wall', 'Wall', 'Wall', 'Wall', 'Wall', 'Wall', 'Wall',
+    '13',  '22',   'Gap',  'Wall', 'Wall', 'Wall', 'Wall', 'Wall', 'Wall', '40',   '49',
+    '14',  '21',   'Gap',  '24',   '31',   'Gap',  '32',   '39',   'Gap',  '41',   '48',
+    '15',  '20',   'Gap',  '25',   '30',   'Gap',  '33',   '38',   'Gap',  '42',   '47',
+    '16',  '19',   'Gap',  '26',   '29',   'Gap',  '34',   '37',   'Gap',  '43',   '46',
+    '17',  '18',   'Gap',  '27',   '28',   'Gap',  '35',   '36',   'Gap',  '44',   '45',
+    'Gap', 'Gap',  'Gap',  'Gap',  'Gap',  'Gap',  'Gap',  'Gap',  'Gap',  'Gap',  'Gap',
+    'Gap', 'Gap',  'Gap',  '58',   '59',   'Gap',  '68',   '69',   'Gap',  '78',   '79',
+    'Gap', '53',   'Gap',  '57',   '60',   'Gap',  '67',   '70',   'Gap',  '77',   '80',
+    'Gap', '52',   'Gap',  '56',   '61',   'Gap',  '66',   '71',   'Gap',  '76',   '81',
+    'Gap', '51',   'Gap',  '55',   '62',   'Gap',  '65',   '72',   'Gap',  '75',   '82',
+    'Gap', '50',   'Gap',  '54',   '63',   'Gap',  '64',   '73',   'Gap',  '74',   '83'
 ];
+
 
 
 export default function SeatAvailabilityPage() {
@@ -222,12 +223,12 @@ export default function SeatAvailabilityPage() {
                                         </div>
                                     </div>
                                     <div className="flex items-center gap-2">
-                                        <Link href={`/students/profiles/${student.studentId}`} passHref>
+                                        <Link href={`/students/profiles/${student.studentId}`} passHref legacyBehavior>
                                             <Button variant="outline" size="sm" className="flex-1">
                                                 <User className="mr-1 h-3 w-3" /> Profile
                                             </Button>
                                         </Link>
-                                        <Link href={`/admin/students/edit/${student.studentId}`} passHref>
+                                        <Link href={`/admin/students/edit/${student.studentId}`} passHref legacyBehavior>
                                             <Button variant="outline" size="sm" className="flex-1">
                                                 <Edit className="mr-1 h-3 w-3" /> Edit
                                             </Button>
@@ -288,7 +289,7 @@ export default function SeatAvailabilityPage() {
               <CardDescription>Visual representation of seat occupancy. Click a seat for more details.</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mb-4 text-xs sm:text-sm">
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mb-4 text-xs sm:text-sm">
                  <div className="flex items-center flex-shrink-0">
                   <CheckCircle2 className="h-4 w-4 flex-shrink-0 mr-1.5 text-green-500" />
                   <span>Currently In</span>
@@ -314,16 +315,18 @@ export default function SeatAvailabilityPage() {
                   <span>Split Shift</span>
                 </div>
               </div>
-              <div className="grid grid-cols-11 gap-1.5 mx-auto max-w-fit">
-                {SeatLayout.flat().map((item, index) => {
-                    if (item === 'Gap' || item === 'Wall') {
-                        return <div key={`wall-${index}`} className="h-10 w-10 sm:h-12 sm:w-12 bg-muted/40 rounded-sm"></div>;
-                    }
-                    if (item === null) {
-                        return null; 
-                    }
-                    return renderSeat(item);
-                })}
+              <div className="relative w-full overflow-x-auto pb-4">
+              <div className="grid grid-cols-11 gap-1.5 w-max mx-auto px-2">
+                    {SeatLayout.map((item, index) => {
+                        if (item === 'Gap' || item === 'Wall') {
+                            return <div key={`wall-${index}`} className="h-10 w-10 sm:h-12 sm:w-12 bg-muted/40 rounded-sm"></div>;
+                        }
+                        if (item === null) {
+                            return null; 
+                        }
+                        return renderSeat(item);
+                    })}
+                </div>
               </div>
             </CardContent>
           </Card>

@@ -495,6 +495,10 @@
   100% { transform: translateX(100%) scaleX(0.5); }
 }
 
+/* Ensure images and grids don't push the layout */
+* {
+  min-width: 0;
+}
 .animate-top-progress-bar {
   animation: indeterminate-progress 1.5s ease-in-out infinite;
   transform-origin: left;
