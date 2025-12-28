@@ -315,8 +315,8 @@ export default function SeatAvailabilityPage() {
                   <span>Split Shift</span>
                 </div>
               </div>
-              <div className="w-full overflow-x-auto">
-                <div className="grid grid-cols-11 gap-1.5 min-w-[600px] pb-4">
+              <div className="relative w-full overflow-x-auto pb-4">
+              <div className="grid grid-cols-11 gap-1.5 w-max mx-auto px-2">
                     {SeatLayout.map((item, index) => {
                         if (item === 'Gap' || item === 'Wall') {
                             return <div key={`wall-${index}`} className="h-10 w-10 sm:h-12 sm:w-12 bg-muted/40 rounded-sm"></div>;
