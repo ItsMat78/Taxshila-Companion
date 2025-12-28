@@ -86,6 +86,7 @@ const SeatLayout = [
 ];
 
 
+
 export default function SeatAvailabilityPage() {
   const { toast } = useToast();
   const [seatAssignments, setSeatAssignments] = React.useState<StudentSeatAssignment[]>([]);
@@ -314,7 +315,7 @@ export default function SeatAvailabilityPage() {
                   <span>Split Shift</span>
                 </div>
               </div>
-              <div className="overflow-x-auto w-full">
+              <div className="relative w-full overflow-x-auto">
                 <div className="grid grid-cols-11 gap-1.5 min-w-[600px] pb-4">
                     {SeatLayout.map((item, index) => {
                         if (item === 'Gap' || item === 'Wall') {
