@@ -64,15 +64,18 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
   React.useEffect(() => {
     // This effect handles redirects for protected routes
-    if (!isAuthLoading && !user && !isPublicPath && pathname !== '/') {
-      router.replace('/');
-    }
-    
-    // This effect handles redirects for logged-in users who land on a non-dashboard page
-    // Crucially, it IGNORES the root page ('/'), allowing the login page to manage its own flow.
-    if (!isAuthLoading && user && pathname === '/') {
+    // And for logged-in users landing on pages they shouldn't
+    if (!isAuthLoading) {
+      if (!user && !isPublicPath && pathname !== '/') {
+        router.replace('/');
+      }
+      
+      // CRITICAL FIX: Only redirect a logged-in user if they are NOT on the login page.
+      // This prevents the AppLayout from interfering with the login page's own flow.
+      if (user && pathname !== '/' && !pathname.startsWith('/member') && !pathname.startsWith('/admin')) {
         const destination = user.role === 'admin' ? '/admin/dashboard' : '/member/dashboard';
         router.replace(destination);
+      }
     }
   }, [user, isAuthLoading, pathname, router, isPublicPath]);
 
@@ -181,7 +184,8 @@ if (targetId) {
     );
   }
   
-  if (isPublicPath) {
+  // If we are on a public path, or on the login page itself, just render the children.
+  if (isPublicPath || pathname === '/') {
     return (
       <>
         <TopProgressBar isLoading={isRouteLoading} />
@@ -190,6 +194,7 @@ if (targetId) {
     );
   }
   
+  // If we have a user and we're not on a public path, render the main app layout.
   if (user) {
     return (
       <SidebarProvider defaultOpen>
@@ -218,16 +223,6 @@ if (targetId) {
     );
   }
 
-  // If not authenticated and not a public path, show the login page (which is at the root)
-  if (!user && pathname === '/') {
-    return (
-       <>
-        <TopProgressBar isLoading={isRouteLoading} />
-        {children}
-      </>
-    );
-  }
-
-  // Fallback for edge cases, might show a brief blank screen before redirect.
+  // Fallback for edge cases (e.g., waiting for redirect), renders nothing.
   return null;
 }

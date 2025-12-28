@@ -50,6 +50,7 @@ export default function RootLoginPage() {
   const [canInstallPWA, setCanInstallPWA] = React.useState(false);
 
   React.useEffect(() => {
+    // This effect now correctly handles the delayed redirect AFTER the dialog is shown.
     if (showLoggingInDialog && user) {
       const timer = setTimeout(() => {
         const destination = user.role === 'admin' ? '/admin/dashboard' : '/member/dashboard';
@@ -104,8 +105,10 @@ export default function RootLoginPage() {
     try {
       const loggedInUser = await login(data.identifier, data.password);
       if (loggedInUser) {
+        // This is the only place we set this to true now.
         setShowLoggingInDialog(true);
       } else {
+        // If login fails, just stop the spinner.
         setIsLoggingIn(false);
       }
     } catch (error) {
@@ -119,6 +122,7 @@ export default function RootLoginPage() {
     }
   }
   
+  // Only show the full-page loader on initial page load if auth state is unknown.
   if (isAuthLoading) {
     return (
         <div className="flex min-h-screen w-full flex-col items-center justify-center bg-background">
@@ -128,12 +132,16 @@ export default function RootLoginPage() {
     );
   }
 
-  if (user) {
-    return <LoggingInDialog isOpen={true} />;
+  // If we already have a user but the dialog isn't showing yet, render the dialog.
+  // This handles cases where the user is already logged in and lands on this page.
+  if (user && !showLoggingInDialog) {
+     setShowLoggingInDialog(true);
   }
-
+  
+  // Render the login form or the dialog. The redirect is handled by the useEffect.
   return (
     <>
+      {showLoggingInDialog && <LoggingInDialog isOpen={true} />}
       <div
         style={{ backgroundImage: `url(${COVER_IMAGE_URL})` }}
         className="min-h-screen flex flex-col items-center justify-center bg-cover bg-center p-4 gap-6"
@@ -221,7 +229,6 @@ export default function RootLoginPage() {
           </Card>
         )}
       </div>
-      <LoggingInDialog isOpen={showLoggingInDialog} />
     </>
   )
 }
