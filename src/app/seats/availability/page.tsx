@@ -28,7 +28,6 @@ import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 
-type ShiftView = Shift | 'fullday_occupied';
 type SeatStatusKey = "available" | "morning" | "evening" | "fullday" | "split";
 
 const SEAT_STYLES: Record<SeatStatusKey, { bgClass: string; textClass: string; borderClass: string; icon?: React.ElementType }> = {
@@ -70,7 +69,7 @@ const getInitials = (name?: string) => {
 }
 
 const SeatLayout = [
-    ['10', null, null, null, null, null, null, null, null, null, null],
+    ['10', 'Wall', 'Wall', 'Wall', 'Wall', 'Wall', 'Wall', 'Wall', 'Wall', 'Wall', 'Wall'],
     ['11', '84', 'Gap', 'Wall', 'Wall', 'Wall', 'Wall', 'Wall', 'Wall', 'Wall', 'Wall'],
     ['12', '23', 'Gap', 'Wall', 'Wall', 'Wall', 'Wall', 'Wall', 'Wall', 'Wall', 'Wall'],
     ['13', '22', 'Gap', 'Wall', 'Wall', 'Wall', 'Wall', 'Wall', 'Wall', '40', '49'],
@@ -317,14 +316,11 @@ export default function SeatAvailabilityPage() {
               </div>
               <div className="grid grid-cols-11 gap-1.5 mx-auto max-w-fit">
                 {SeatLayout.flat().map((item, index) => {
-                    if (item === 'Gap') {
-                        return <div key={`gap-${index}`} className="h-10 w-10 sm:h-12 sm:w-12"></div>;
-                    }
-                    if (item === 'Wall') {
+                    if (item === 'Gap' || item === 'Wall') {
                         return <div key={`wall-${index}`} className="h-10 w-10 sm:h-12 sm:w-12 bg-muted/40 rounded-sm"></div>;
                     }
                     if (item === null) {
-                        return null; // Empty cell from the first row
+                        return null; 
                     }
                     return renderSeat(item);
                 })}
@@ -336,4 +332,3 @@ export default function SeatAvailabilityPage() {
     </>
   );
 }
-
