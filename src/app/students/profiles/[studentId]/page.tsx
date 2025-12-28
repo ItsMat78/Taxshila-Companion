@@ -1,5 +1,3 @@
-
-
 "use client";
 
 import * as React from 'react';
@@ -342,7 +340,7 @@ export default function StudentDetailPage() {
     return (
       <>
         <PageTitle title="Student Not Found" description={`No student found with ID: ${studentId}`} >
-          <Link href="/students/list" passHref legacyBehavior>
+          <Link href="/students/list">
             <Button variant="outline">
               <ArrowLeft className="mr-2 h-4 w-4" />
               Back to Student List
@@ -364,13 +362,13 @@ export default function StudentDetailPage() {
     <>
       <PageTitle title={`Student Profile: ${student.name}`} description={`Details for student ID: ${studentId}`} >
         <div className="flex items-center space-x-2">
-          <Link href={`/admin/students/edit/${student.studentId}`} passHref legacyBehavior>
+          <Link href={`/admin/students/edit/${student.studentId}`}>
             <Button variant="outline">
               <Edit className="mr-2 h-4 w-4" />
               Edit Student
             </Button>
           </Link>
-          <Link href="/students/list" passHref legacyBehavior>
+          <Link href="/students/list">
             <Button variant="outline">
               <ArrowLeft className="mr-2 h-4 w-4" />
               Back to Student List
@@ -601,8 +599,8 @@ export default function StudentDetailPage() {
                     </Button>
                 </div>
             ) : (
-              <div className="flex flex-col items-stretch gap-6 md:flex-row md:items-start">
-                <div className="w-full flex justify-center md:w-auto">
+              <div className="flex flex-col md:flex-row gap-6">
+                <div className="w-full md:w-auto">
                   <Calendar
                     mode="single"
                     selected={selectedCalendarDate}

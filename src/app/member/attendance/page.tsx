@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from 'react';
@@ -428,8 +427,8 @@ export default function MemberAttendancePage() {
                         <span className="text-sm font-medium">Show Calendar</span>
                     </Button>
                 ) : (
-                    <div className="flex flex-col md:flex-row items-center md:items-start gap-6">
-                        <div className="w-full md:w-auto flex justify-center">
+                    <div className="flex flex-col md:flex-row gap-6">
+                        <div className="w-full md:w-auto">
                             <CalendarIconComponent
                                 mode="single"
                                 selected={date}
