@@ -118,7 +118,7 @@ export default function RootLoginPage() {
     }
   }
 
-  if (isAuthLoading || user) {
+  if (isAuthLoading || (user && !showLoggingInDialog)) {
     return (
         <div className="flex min-h-screen w-full flex-col items-center justify-center bg-background">
             <Loader2 className="h-12 w-12 animate-spin text-primary" />
