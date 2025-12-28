@@ -64,15 +64,15 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
   React.useEffect(() => {
     // This effect handles redirects for protected routes
-    // And for logged-in users landing on pages they shouldn't
     if (!isAuthLoading) {
+      // If the user is not logged in and trying to access a protected page, redirect to login.
       if (!user && !isPublicPath && pathname !== '/') {
         router.replace('/');
       }
       
-      // CRITICAL FIX: Only redirect a logged-in user if they are NOT on the login page.
-      // This prevents the AppLayout from interfering with the login page's own flow.
-      if (user && pathname !== '/' && !pathname.startsWith('/member') && !pathname.startsWith('/admin')) {
+      // If the user IS logged in and they land on the login page, redirect them to their dashboard.
+      // This is the only redirection that should happen for an authenticated user.
+      if (user && pathname === '/') {
         const destination = user.role === 'admin' ? '/admin/dashboard' : '/member/dashboard';
         router.replace(destination);
       }
