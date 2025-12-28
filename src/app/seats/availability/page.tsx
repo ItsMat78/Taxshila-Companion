@@ -25,7 +25,7 @@ import { getStudentSeatAssignments, getTodaysActiveAttendanceRecords, processChe
 import type { Student, Shift, StudentSeatAssignment, CheckedInStudentInfo } from '@/types/student';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 
 type SeatStatusKey = "available" | "morning" | "evening" | "fullday" | "split";
@@ -314,16 +314,18 @@ export default function SeatAvailabilityPage() {
                   <span>Split Shift</span>
                 </div>
               </div>
-              <div className="grid grid-cols-11 gap-1.5 mx-auto max-w-fit">
-                {SeatLayout.flat().map((item, index) => {
-                    if (item === 'Gap' || item === 'Wall') {
-                        return <div key={`wall-${index}`} className="h-10 w-10 sm:h-12 sm:w-12 bg-muted/40 rounded-sm"></div>;
-                    }
-                    if (item === null) {
-                        return null; 
-                    }
-                    return renderSeat(item);
-                })}
+              <div className="w-full overflow-x-auto pb-4">
+                <div className="grid grid-cols-11 gap-1.5 min-w-[500px]">
+                  {SeatLayout.flat().map((item, index) => {
+                      if (item === 'Gap' || item === 'Wall') {
+                          return <div key={`wall-${index}`} className="h-10 w-10 sm:h-12 sm:w-12 bg-muted/40 rounded-sm"></div>;
+                      }
+                      if (item === null) {
+                          return null; 
+                      }
+                      return renderSeat(item);
+                  })}
+                </div>
               </div>
             </CardContent>
           </Card>
