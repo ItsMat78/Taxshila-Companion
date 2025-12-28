@@ -43,12 +43,9 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { useAuth } from '@/contexts/auth-context';
-import { useRouter, usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { getStudentSeatAssignments, getAllStudents, getAvailableSeats, getAllAttendanceRecords, calculateMonthlyRevenue, getTodaysActiveAttendanceRecords, processCheckedInStudentsFromSnapshot, refreshAllStudentFeeStatuses, sendShiftWarningAlert } from '@/services/student-service';
 import type { Student, Shift, AttendanceRecord, CheckedInStudentInfo, StudentSeatAssignment } from '@/types/student';
-import type { FeedbackItem } from '@/types/communication';
 import { format, parseISO, isToday, getHours, getMinutes } from 'date-fns';
 import { useNotificationCounts } from '@/hooks/use-notification-counts';
 import { useFinancialCounts } from '@/hooks/use-financial-counts';
@@ -191,7 +188,7 @@ const CheckedInStudentCard = ({ student, onWarn, isWarning }: { student: Checked
 };
 
 
-function AdminDashboardContent() {
+export default function AdminDashboardPage() {
   const [isLoadingDashboardStats, setIsLoadingDashboardStats] = React.useState(true);
   const [isLoadingAvailabilityStats, setIsLoadingAvailabilityStats] = React.useState(true);
   const [isLoadingCheckedInStudents, setIsLoadingCheckedInStudents] = React.useState(true);
@@ -469,43 +466,3 @@ function AdminDashboardContent() {
     </>
   );
 }
-
-export default function MainPage() {
-  const { user, isLoading } = useAuth();
-  const router = useRouter();
-  const pathname = usePathname();
-
-  React.useEffect(() => {
-    if (!isLoading && user) {
-      if (user.role === 'member') {
-        router.replace('/member/dashboard');
-      } else if (user.role === 'admin' && pathname === '/') {
-        router.replace('/admin/dashboard');
-      }
-    } else if (!isLoading && !user) {
-      // If not loading and no user, stay on the current public page (e.g., '/')
-      // or redirect to login if they try to access a protected route,
-      // which is handled by AppLayout.
-    }
-  }, [user, isLoading, router, pathname]);
-
-  if (isLoading) {
-    return (
-      <div className="flex min-h-screen w-full flex-col items-center justify-center bg-background">
-        <Loader2 className="h-12 w-12 animate-spin text-primary" />
-        <p className="mt-4 text-muted-foreground">Initializing...</p>
-      </div>
-    );
-  }
-
-  if (user && user.role === 'admin') {
-    return <AdminDashboardContent />;
-  }
-
-  // For unauthenticated users, the root page is the homepage.
-  // The logic in AppLayout handles redirection for other protected routes.
-  // This component will render its content (from the top-level HomePage component in this file) for the '/' route.
-  return null;
-}
-
-    

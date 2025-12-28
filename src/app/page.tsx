@@ -50,12 +50,11 @@ export default function RootLoginPage() {
   const [canInstallPWA, setCanInstallPWA] = React.useState(false);
 
   React.useEffect(() => {
-    // This effect handles the delayed redirect AFTER the dialog is shown.
     if (showLoggingInDialog && user) {
       const timer = setTimeout(() => {
         const destination = user.role === 'admin' ? '/admin/dashboard' : '/member/dashboard';
         router.replace(destination);
-      }, 1500); // Wait 1.5 seconds before redirecting
+      }, 1500); 
 
       return () => clearTimeout(timer);
     }
@@ -64,9 +63,9 @@ export default function RootLoginPage() {
 
   React.useEffect(() => {
     const handleBeforeInstallPrompt = (e: Event) => {
-      e.preventDefault(); // Prevent the mini-infobar from appearing on mobile
+      e.preventDefault();
       setDeferredPrompt(e as BeforeInstallPromptEvent);
-      setCanInstallPWA(true); // Show the install button
+      setCanInstallPWA(true);
       console.log("beforeinstallprompt event fired and captured.");
     };
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
@@ -80,9 +79,7 @@ export default function RootLoginPage() {
       console.log("Deferred prompt not available.");
       return;
     }
-    // Show the install prompt
     deferredPrompt.prompt();
-    // Wait for the user to respond to the prompt
     const { outcome } = await deferredPrompt.userChoice;
     if (outcome === 'accepted') {
       console.log('User accepted the PWA installation');
@@ -90,7 +87,6 @@ export default function RootLoginPage() {
     } else {
       console.log('User dismissed the PWA installation');
     }
-    // We've used the prompt, and can't use it again, disable the button
     setDeferredPrompt(null);
     setCanInstallPWA(false);
   };
@@ -109,10 +105,7 @@ export default function RootLoginPage() {
       const loggedInUser = await login(data.identifier, data.password);
       if (loggedInUser) {
         setShowLoggingInDialog(true);
-        // The useEffect hook will handle the redirect now
       } else {
-        // If login fails, login() in AuthContext will show a toast.
-        // We just need to reset the form state.
         setIsLoggingIn(false);
       }
     } catch (error) {
@@ -126,7 +119,7 @@ export default function RootLoginPage() {
     }
   }
   
-  if (isAuthLoading && !user) {
+  if (isAuthLoading) {
     return (
         <div className="flex min-h-screen w-full flex-col items-center justify-center bg-background">
             <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -135,14 +128,8 @@ export default function RootLoginPage() {
     );
   }
 
-  // Don't render login form if user is already logged in and we are about to redirect
   if (user) {
-     return (
-        <div className="flex min-h-screen w-full flex-col items-center justify-center bg-background">
-            <Loader2 className="h-12 w-12 animate-spin text-primary" />
-            <p className="mt-4 text-muted-foreground">Loading Dashboard...</p>
-        </div>
-    );
+    return <LoggingInDialog isOpen={true} />;
   }
 
   return (
@@ -214,10 +201,6 @@ export default function RootLoginPage() {
           </div>
         </Card>
         
-        
-
-
-        {/* --- PWA Install Button --- */}
         {canInstallPWA && deferredPrompt && (
           <Card className="w-full max-w-md md:max-w-sm shadow-xl bg-background/80 backdrop-blur-md rounded-lg">
             <CardContent className="p-3 flex flex-col items-center text-center">
