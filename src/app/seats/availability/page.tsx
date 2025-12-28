@@ -287,8 +287,8 @@ export default function SeatAvailabilityPage() {
               <CardTitle>Seat Layout</CardTitle>
               <CardDescription>Visual representation of seat occupancy. Click a seat for more details.</CardDescription>
             </CardHeader>
-            <CardContent className="overflow-x-auto">
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mb-4 text-xs sm:text-sm">
+            <CardContent>
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mb-4 text-xs sm:text-sm">
                  <div className="flex items-center flex-shrink-0">
                   <CheckCircle2 className="h-4 w-4 flex-shrink-0 mr-1.5 text-green-500" />
                   <span>Currently In</span>
@@ -314,16 +314,18 @@ export default function SeatAvailabilityPage() {
                   <span>Split Shift</span>
                 </div>
               </div>
-              <div className="grid grid-cols-11 gap-1.5 min-w-[600px] pb-4">
-                  {SeatLayout.map((item, index) => {
-                      if (item === 'Gap' || item === 'Wall') {
-                          return <div key={`wall-${index}`} className="h-10 w-10 sm:h-12 sm:w-12 bg-muted/40 rounded-sm"></div>;
-                      }
-                      if (item === null) {
-                          return null; 
-                      }
-                      return renderSeat(item);
-                  })}
+              <div className="overflow-x-auto w-full">
+                <div className="grid grid-cols-11 gap-1.5 min-w-[600px] pb-4">
+                    {SeatLayout.map((item, index) => {
+                        if (item === 'Gap' || item === 'Wall') {
+                            return <div key={`wall-${index}`} className="h-10 w-10 sm:h-12 sm:w-12 bg-muted/40 rounded-sm"></div>;
+                        }
+                        if (item === null) {
+                            return null; 
+                        }
+                        return renderSeat(item);
+                    })}
+                </div>
               </div>
             </CardContent>
           </Card>
