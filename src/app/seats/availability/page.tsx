@@ -133,6 +133,10 @@ export default function SeatAvailabilityPage() {
   const isSeatCurrentlyOccupied = (seatNumber: string): boolean => {
     return checkedInStudents.some(s => s.seatNumber === seatNumber);
   };
+  
+  const isStudentOnSeatCheckedIn = (studentId: string): boolean => {
+    return checkedInStudents.some(s => s.studentId === studentId);
+  };
 
   return (
     <>
@@ -236,52 +240,58 @@ export default function SeatAvailabilityPage() {
                           <div className="p-3">
                               <h4 className="font-semibold text-md mb-2 border-b pb-2 text-center">Seat {seatNum}</h4>
                               <div className="space-y-3">
-                                  {studentsOnThisSeat.map(student => (
-                                      <div key={student.studentId} className="space-y-2 border-b pb-3 last:border-b-0 last:pb-0">
-                                          <div className="flex items-center gap-3">
-                                              <Dialog>
-                                                <DialogTrigger asChild>
-                                                  <div className="cursor-pointer relative group flex-shrink-0">
-                                                    <Avatar className="h-10 w-10 border">
-                                                        <AvatarImage src={student.profilePictureUrl || undefined} alt={student.name} data-ai-hint="profile person" />
-                                                        <AvatarFallback>{getInitials(student.name)}</AvatarFallback>
-                                                    </Avatar>
-                                                     <div className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                                        <View className="text-white h-5 w-5"/>
-                                                    </div>
+                                  {studentsOnThisSeat.map(student => {
+                                      const isStudentCheckedIn = isStudentOnSeatCheckedIn(student.studentId);
+                                      return (
+                                          <div key={student.studentId} className="space-y-2 border-b pb-3 last:border-b-0 last:pb-0">
+                                              <div className="flex items-center gap-3">
+                                                  <Dialog>
+                                                    <DialogTrigger asChild>
+                                                      <div className="cursor-pointer relative group flex-shrink-0">
+                                                        <Avatar className="h-10 w-10 border">
+                                                            <AvatarImage src={student.profilePictureUrl || undefined} alt={student.name} data-ai-hint="profile person" />
+                                                            <AvatarFallback>{getInitials(student.name)}</AvatarFallback>
+                                                        </Avatar>
+                                                         <div className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                                            <View className="text-white h-5 w-5"/>
+                                                        </div>
+                                                      </div>
+                                                    </DialogTrigger>
+                                                    <DialogContent className="max-w-md w-auto p-2">
+                                                        <Image
+                                                            src={student.profilePictureUrl || "https://placehold.co/400x400.png"}
+                                                            alt={`${student.name}'s profile picture`}
+                                                            width={400}
+                                                            height={400}
+                                                            className="rounded-md object-contain max-h-[70vh] w-full h-auto"
+                                                        />
+                                                    </DialogContent>
+                                                  </Dialog>
+                                                  <div className="min-w-0 flex-1">
+                                                      <div className="flex items-center gap-1.5">
+                                                        {isStudentCheckedIn && <span className="block h-2 w-2 rounded-full bg-green-500" title="Currently Checked In"></span>}
+                                                        <p className="text-sm font-medium truncate">{student.name}</p>
+                                                      </div>
+                                                      <p className="text-xs text-muted-foreground capitalize truncate">
+                                                          Shift: {student.shift}
+                                                      </p>
                                                   </div>
-                                                </DialogTrigger>
-                                                <DialogContent className="max-w-md w-auto p-2">
-                                                    <Image
-                                                        src={student.profilePictureUrl || "https://placehold.co/400x400.png"}
-                                                        alt={`${student.name}'s profile picture`}
-                                                        width={400}
-                                                        height={400}
-                                                        className="rounded-md object-contain max-h-[70vh] w-full h-auto"
-                                                    />
-                                                </DialogContent>
-                                              </Dialog>
-                                              <div className="min-w-0 flex-1">
-                                                  <p className="text-sm font-medium truncate">{student.name}</p>
-                                                  <p className="text-xs text-muted-foreground capitalize truncate">
-                                                      Shift: {student.shift}
-                                                  </p>
+                                              </div>
+                                              <div className="flex items-center gap-2">
+                                                  <Link href={`/students/profiles/${student.studentId}`} passHref>
+                                                      <Button variant="outline" size="sm" className="flex-1">
+                                                          <User className="mr-1 h-3 w-3" /> Profile
+                                                      </Button>
+                                                  </Link>
+                                                  <Link href={`/admin/students/edit/${student.studentId}`} passHref>
+                                                      <Button variant="outline" size="sm" className="flex-1">
+                                                          <Edit className="mr-1 h-3 w-3" /> Edit
+                                                      </Button>
+                                                  </Link>
                                               </div>
                                           </div>
-                                          <div className="flex items-center gap-2">
-                                              <Link href={`/students/profiles/${student.studentId}`} passHref>
-                                                  <Button variant="outline" size="sm" className="flex-1">
-                                                      <User className="mr-1 h-3 w-3" /> Profile
-                                                  </Button>
-                                              </Link>
-                                              <Link href={`/admin/students/edit/${student.studentId}`} passHref>
-                                                  <Button variant="outline" size="sm" className="flex-1">
-                                                      <Edit className="mr-1 h-3 w-3" /> Edit
-                                                  </Button>
-                                              </Link>
-                                          </div>
-                                      </div>
-                                  ))}
+                                      )
+                                  })}
                               </div>
                           </div>
                       </PopoverContent>

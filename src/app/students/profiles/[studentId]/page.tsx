@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import * as React from 'react';
@@ -221,21 +222,48 @@ export default function StudentDetailPage() {
     }
   }, [studentId, selectedCalendarDate, showAttendanceOverview, toast]);
 
-  const getDailyStudyDataForMonth = React.useCallback(async (studentId: string, month: Date) => {
+  const getDailyStudyDataForMonth = React.useCallback(async (studentId: string, month: Date, studentShift: Shift) => {
     setIsLoadingMonthlyStudyData(true);
     try {
         const startDate = startOfMonth(month);
         const endDate = endOfMonth(month);
         
-        const recordsForMonth = await getAttendanceForDateRange(studentId, format(startDate, 'yyyy-MM-dd'), format(endDate, 'yyyy-MM-dd'));
+        const recordsInMonth = await getAttendanceForDateRange(studentId, format(startDate, 'yyyy-MM-dd'), format(endDate, 'yyyy-MM-dd'));
         const dailyHoursMap = new Map<string, number>();
 
-        recordsForMonth.forEach(record => {
+        recordsInMonth.forEach(record => {
+            if (!record || !record.checkInTime) return;
+            
+            const checkInDate = parseISO(record.checkInTime);
+            if (!isValid(checkInDate)) return;
+
             let totalMilliseconds = 0;
-            if (record.checkInTime && record.checkOutTime && isValid(parseISO(record.checkInTime)) && isValid(parseISO(record.checkOutTime))) {
-                totalMilliseconds = differenceInMilliseconds(parseISO(record.checkOutTime), parseISO(record.checkInTime));
+            let sessionEndDate: Date;
+            const now = new Date();
+
+            if (record.checkOutTime && isValid(parseISO(record.checkOutTime))) {
+              sessionEndDate = parseISO(record.checkOutTime);
+            } else {
+              let shiftEndHour = 21, shiftEndMinute = 30; // Default full day
+              if (studentShift === 'morning') {
+                shiftEndHour = 14; shiftEndMinute = 0;
+              }
+              
+              const shiftEndTimeOnDate = new Date(checkInDate);
+              shiftEndTimeOnDate.setHours(shiftEndHour, shiftEndMinute, 0, 0);
+
+              if (isToday(checkInDate)) {
+                  sessionEndDate = isAfter(now, shiftEndTimeOnDate) ? shiftEndTimeOnDate : now;
+              } else {
+                  sessionEndDate = shiftEndTimeOnDate;
+              }
             }
-            const dateKey = format(parseISO(record.checkInTime), 'yyyy-MM-dd');
+            
+            if (isAfter(sessionEndDate, checkInDate)) {
+              totalMilliseconds += differenceInMilliseconds(sessionEndDate, checkInDate);
+            }
+
+            const dateKey = format(checkInDate, 'yyyy-MM-dd');
             dailyHoursMap.set(dateKey, (dailyHoursMap.get(dateKey) || 0) + totalMilliseconds);
         });
 
@@ -256,10 +284,10 @@ export default function StudentDetailPage() {
   }, [toast]);
 
   React.useEffect(() => {
-    if (studentId && showMonthlyStudyTime) {
-      getDailyStudyDataForMonth(studentId, viewedMonth);
+    if (student && showMonthlyStudyTime) {
+      getDailyStudyDataForMonth(student.studentId, viewedMonth, student.shift);
     }
-  }, [studentId, viewedMonth, getDailyStudyDataForMonth, showMonthlyStudyTime]);
+  }, [student, viewedMonth, getDailyStudyDataForMonth, showMonthlyStudyTime]);
 
     const handlePrevMonth = () => {
         setViewedMonth((prev) => subMonths(prev, 1));
@@ -463,7 +491,7 @@ export default function StudentDetailPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {student.paymentHistory.slice().reverse().map((payment: PaymentRecord) => (
+                      {student.paymentHistory.slice().reverse().map((payment: PaymentRecord) => ( 
                         <TableRow key={payment.paymentId}>
                           <TableCell className="whitespace-nowrap">{payment.date && isValid(parseISO(payment.date)) ? format(parseISO(payment.date), 'dd-MMM-yy') : 'N/A'}</TableCell>
                           <TableCell className="whitespace-nowrap">{payment.amount}</TableCell>
