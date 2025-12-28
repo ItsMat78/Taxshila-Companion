@@ -226,7 +226,7 @@ export default function HomePage() {
     <div className="min-h-screen bg-background text-foreground font-sans selection:bg-primary/20">
       <ModernHeader />
 
-      <main className="flex-1">
+      <main className="relative flex-1">
         {/* --- Hero Section --- */}
         <section className="relative h-[85vh] min-h-[600px] flex items-center justify-center overflow-hidden">
           <div className="absolute inset-0 z-0">
@@ -266,21 +266,20 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* --- Logo Divider --- */}
-        <section className="py-12 bg-background">
-          <div className="container mx-auto flex justify-center">
+        {/* --- Overlapping Logo --- */}
+        <div className="absolute top-[calc(85vh-50px)] left-1/2 -translate-x-1/2 z-20 h-[100px] w-[100px] bg-background rounded-full p-2 shadow-xl border-4 border-background">
             <Image
-              src={LOGO_URL}
-              alt="Taxshila Digital Library Logo"
-              width={100}
-              height={100}
-              className="object-contain"
+                src={LOGO_URL}
+                alt="Taxshila Digital Library Logo"
+                width={100}
+                height={100}
+                className="object-contain"
             />
-          </div>
-        </section>
+        </div>
+
 
         {/* --- Vibrant Bento Features --- */}
-        <section className="py-24 bg-background relative overflow-hidden">
+        <section className="pt-24 pb-24 bg-background relative overflow-hidden">
           <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-primary/5 via-background to-background pointer-events-none" />
           
           <div className="container px-6 md:px-12 lg:px-20 max-w-7xl mx-auto relative z-10">
@@ -465,4 +464,3 @@ export default function HomePage() {
   );
 }
 
-    
