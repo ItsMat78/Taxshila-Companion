@@ -59,7 +59,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const { refreshNotifications } = useNotificationContext();
   const { theme, setTheme } = useTheme();
 
-  const isPublicPath = pathname === '/home';
+  const publicPaths = ['/home', '/privacy_policy'];
+  const isPublicPath = publicPaths.includes(pathname);
 
   React.useEffect(() => {
     if (!isAuthLoading && !user && !isPublicPath && pathname !== '/') {
@@ -222,5 +223,3 @@ if (targetId) {
   // Fallback for edge cases, might show a brief blank screen before redirect.
   return null;
 }
-
-    
