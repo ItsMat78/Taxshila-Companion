@@ -69,20 +69,20 @@ const getInitials = (name?: string) => {
 }
 
 const SeatLayout = [
-    '10', 'Wall', 'Wall', 'Wall', 'Wall', 'Wall', 'Wall', 'Wall', 'Wall', 'Wall', 'Wall',
-    '11', '84', 'Gap', 'Wall', 'Wall', 'Wall', 'Wall', 'Wall', 'Wall', 'Wall', 'Wall',
-    '12', '23', 'Gap', 'Wall', 'Wall', 'Wall', 'Wall', 'Wall', 'Wall', 'Wall', 'Wall',
-    '13', '22', 'Gap', 'Wall', 'Wall', 'Wall', 'Wall', 'Wall', 'Wall', '40', '49',
-    '14', '21', 'Gap', '24', '31', 'Gap', '32', '39', 'Gap', '41', '48',
-    '15', '20', 'Gap', '25', '30', 'Gap', '33', '38', 'Gap', '42', '47',
-    '16', '19', 'Gap', '26', '29', 'Gap', '34', '37', 'Gap', '43', '46',
-    '17', '18', 'Gap', '27', '28', 'Gap', '35', '36', 'Gap', '44', '45',
-    'Gap', 'Gap', 'Gap', 'Gap', 'Gap', 'Gap', 'Gap', 'Gap', 'Gap', 'Gap', 'Gap',
-    'Gap', 'Gap', 'Gap', '58', '59', 'Gap', '68', '69', 'Gap', '78', '79',
-    'Gap', '53', 'Gap', '57', '60', 'Gap', '67', '70', 'Gap', '77', '80',
-    'Gap', '52', 'Gap', '56', '61', 'Gap', '66', '71', 'Gap', '76', '81',
-    'Gap', '51', 'Gap', '55', '62', 'Gap', '65', '72', 'Gap', '75', '82',
-    'Gap', '50', 'Gap', '54', '63', 'Gap', '64', '73', 'Gap', '74', '83'
+    '10',  'Wall', 'Wall', 'Wall', 'Wall', 'Wall', 'Wall', 'Wall', 'Wall', 'Wall', 'Wall',
+    '11',  '84',   'Gap',  'Wall', 'Wall', 'Wall', 'Wall', 'Wall', 'Wall', 'Wall', 'Wall',
+    '12',  '23',   'Gap',  'Wall', 'Wall', 'Wall', 'Wall', 'Wall', 'Wall', 'Wall', 'Wall',
+    '13',  '22',   'Gap',  'Wall', 'Wall', 'Wall', 'Wall', 'Wall', 'Wall', '40',   '49',
+    '14',  '21',   'Gap',  '24',   '31',   'Gap',  '32',   '39',   'Gap',  '41',   '48',
+    '15',  '20',   'Gap',  '25',   '30',   'Gap',  '33',   '38',   'Gap',  '42',   '47',
+    '16',  '19',   'Gap',  '26',   '29',   'Gap',  '34',   '37',   'Gap',  '43',   '46',
+    '17',  '18',   'Gap',  '27',   '28',   'Gap',  '35',   '36',   'Gap',  '44',   '45',
+    'Gap', 'Gap',  'Gap',  'Gap',  'Gap',  'Gap',  'Gap',  'Gap',  'Gap',  'Gap',  'Gap',
+    'Gap', 'Gap',  'Gap',  '58',   '59',   'Gap',  '68',   '69',   'Gap',  '78',   '79',
+    'Gap', '53',   'Gap',  '57',   '60',   'Gap',  '67',   '70',   'Gap',  '77',   '80',
+    'Gap', '52',   'Gap',  '56',   '61',   'Gap',  '66',   '71',   'Gap',  '76',   '81',
+    'Gap', '51',   'Gap',  '55',   '62',   'Gap',  '65',   '72',   'Gap',  '75',   '82',
+    'Gap', '50',   'Gap',  '54',   '63',   'Gap',  '64',   '73',   'Gap',  '74',   '83'
 ];
 
 
@@ -315,7 +315,7 @@ export default function SeatAvailabilityPage() {
                   <span>Split Shift</span>
                 </div>
               </div>
-              <div className="relative w-full overflow-x-auto">
+              <div className="w-full overflow-x-auto">
                 <div className="grid grid-cols-11 gap-1.5 min-w-[600px] pb-4">
                     {SeatLayout.map((item, index) => {
                         if (item === 'Gap' || item === 'Wall') {
