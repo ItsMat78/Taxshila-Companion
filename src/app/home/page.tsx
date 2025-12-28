@@ -1,3 +1,4 @@
+
 "use client";
 
 import Image from 'next/image';
@@ -24,6 +25,52 @@ import { cn } from '@/lib/utils';
 
 const COVER_IMAGE_URL = '/cover.png';
 const LOGO_URL = '/logo.png';
+
+
+function ContactDialogContent() {
+  return (
+    <>
+      <DialogHeader>
+        <DialogTitle>Get in Touch</DialogTitle>
+        <DialogDescription>
+          We're here to help. Reach out to us or visit us at our location.
+        </DialogDescription>
+      </DialogHeader>
+      <div className="space-y-4 pt-4">
+        <a href="tel:+919450953683" className="flex items-center p-4 rounded-xl bg-secondary/50 hover:bg-secondary transition-colors border">
+          <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center mr-4">
+            <Phone className="h-5 w-5 text-primary" />
+          </div>
+          <div>
+            <p className="text-sm font-medium text-muted-foreground">Phone</p>
+            <p className="font-semibold">+91 9450953683</p>
+          </div>
+        </a>
+        <a href="mailto:taxshilacompanion@gmail.com" className="flex items-center p-4 rounded-xl bg-secondary/50 hover:bg-secondary transition-colors border">
+          <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center mr-4">
+            <Mail className="h-5 w-5 text-primary" />
+          </div>
+          <div>
+            <p className="text-sm font-medium text-muted-foreground">Email</p>
+            <p className="font-semibold">taxshiladigitallibrary@gmail.com</p>
+          </div>
+        </a>
+        <div className="relative h-64 w-full rounded-2xl overflow-hidden transition-all duration-500 border border-border shadow-inner group mt-4">
+          <iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3605.5020189959014!2d83.00187507449463!3d25.35448622531363!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x398e2fedc194747f%3A0x571327385a60b22f!2sTaxshila%20Digital%20Library!5e0!3m2!1sen!2sin!4v1766080131645!5m2!1sen!2sin" width="100%" height="100%" style={{border:0}}></iframe>
+          <div className="absolute inset-0 bg-black/40 group-hover:bg-black/10 transition-colors" />
+          <div className="absolute bottom-3 right-3">
+             <a href="https://maps.app.goo.gl/wJ5J4uW9gKzXjS3x9" target="_blank" rel="noopener noreferrer">
+                <Button size="sm" className="backdrop-blur-md bg-white/10 border border-white/30 text-white hover:bg-white hover:text-black transition-all">
+                    Get Directions
+                </Button>
+            </a>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
 
 function ModernHeader() {
   const [scrolled, setScrolled] = React.useState(false);
@@ -74,32 +121,7 @@ function ModernHeader() {
               </Button>
             </DialogTrigger>
             <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Get in Touch</DialogTitle>
-                <DialogDescription>
-                  We&apos;re here to help. Reach out to us with any questions.
-                </DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4 pt-4">
-                <a href="tel:+919450953683" className="flex items-center p-4 rounded-xl bg-secondary/50 hover:bg-secondary transition-colors border">
-                  <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center mr-4">
-                    <Phone className="h-5 w-5 text-primary" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">Phone</p>
-                    <p className="font-semibold">+91 9450953683</p>
-                  </div>
-                </a>
-                <a href="mailto:taxshilacompanion@gmail.com" className="flex items-center p-4 rounded-xl bg-secondary/50 hover:bg-secondary transition-colors border">
-                  <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center mr-4">
-                    <Mail className="h-5 w-5 text-primary" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">Email</p>
-                    <p className="font-semibold">taxshiladigitallibrary@gmail.com</p>
-                  </div>
-                </a>
-              </div>
+              <ContactDialogContent />
             </DialogContent>
           </Dialog>
 
@@ -180,12 +202,14 @@ export default function HomePage() {
       name: "Morning",
       price: feeStructure.morningFee,
       time: "7:00 AM - 2:00 PM",
+      description: "Perfect for early birds who are most productive at the start of the day.",
       highlight: false,
     },
     {
       name: "Full Day",
       price: feeStructure.fullDayFee,
       time: "7:00 AM - 9:30 PM",
+      description: "Unrestricted access for dedicated aspirants who need maximum study time.",
       highlight: true,
       tag: "Most Popular",
     },
@@ -193,6 +217,7 @@ export default function HomePage() {
       name: "Evening",
       price: feeStructure.eveningFee,
       time: "2:00 PM - 9:30 PM",
+      description: "Ideal for students and professionals who study best in the later hours.",
       highlight: false,
     }
   ] : [];
@@ -275,90 +300,101 @@ export default function HomePage() {
                 </Card>
               ))}
               
-              <Card className="md:col-span-2 lg:col-span-2 bg-primary text-primary-foreground flex flex-col justify-center items-center text-center border-none relative overflow-hidden shadow-2xl shadow-primary/20 group cursor-pointer">
-                <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay" />
-                <div className="absolute -right-20 -bottom-20 opacity-10 transition-transform duration-700 group-hover:rotate-12 group-hover:scale-110">
-                  <UserCircle className="w-64 h-64" />
-                </div>
-                
-                <CardContent className="relative z-10 p-8 flex flex-col items-center">
-                  <h3 className="text-2xl md:text-3xl font-bold mb-2">Ready to join the elite?</h3>
-                  <p className="text-primary-foreground/90 mb-6 text-lg max-w-md">Your best work happens here. Start your journey today.</p>
-                  <Link href="/" className="w-full sm:w-auto">
-                    <Button variant="secondary" size="lg" className="rounded-full font-bold px-8 shadow-lg hover:shadow-xl hover:scale-105 transition-all w-full sm:w-auto">
-                      Get Started Now
-                    </Button>
-                  </Link>
-                </CardContent>
-              </Card>
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Card className="md:col-span-2 lg:col-span-2 bg-primary text-primary-foreground flex flex-col justify-center items-center text-center border-none relative overflow-hidden shadow-2xl shadow-primary/20 group cursor-pointer">
+                    <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay" />
+                    <div className="absolute -right-20 -bottom-20 opacity-10 transition-transform duration-700 group-hover:rotate-12 group-hover:scale-110">
+                      <UserCircle className="w-64 h-64" />
+                    </div>
+                    <CardContent className="relative z-10 p-8 flex flex-col items-center">
+                      <h3 className="text-2xl md:text-3xl font-bold mb-2">Ready to join the elite?</h3>
+                      <p className="text-primary-foreground/90 mb-6 text-lg max-w-md">Your best work happens here. Start your journey today.</p>
+                      <Button variant="secondary" size="lg" className="rounded-full font-bold px-8 shadow-lg hover:shadow-xl hover:scale-105 transition-all w-full sm:w-auto">
+                        Get Started Now
+                      </Button>
+                    </CardContent>
+                  </Card>
+                </DialogTrigger>
+                <DialogContent>
+                  <ContactDialogContent />
+                </DialogContent>
+              </Dialog>
             </div>
           </div>
         </section>
 
         {/* --- Premium Pricing Section --- */}
-        <section className="py-24 bg-secondary/30 border-y relative">
-          <div className="container px-6 md:px-12 lg:px-20 max-w-7xl mx-auto">
-            <div className="flex flex-col md:flex-row justify-between items-end mb-16 gap-6 relative z-0">
-              <div>
-                <h2 className="text-3xl md:text-5xl font-bold mb-4 tracking-tight">Select Your Shift</h2>
-                <p className="text-muted-foreground text-lg md:text-xl">Transparent pricing. Choose the slot that fits your biology.</p>
+        <Dialog>
+          <section className="py-24 bg-secondary/30 border-y relative">
+            <div className="container px-6 md:px-12 lg:px-20 max-w-7xl mx-auto">
+              <div className="flex flex-col md:flex-row justify-between items-end mb-16 gap-6 relative z-0">
+                <div>
+                  <h2 className="text-3xl md:text-5xl font-bold mb-4 tracking-tight">Select Your Shift</h2>
+                  <p className="text-muted-foreground text-lg md:text-xl">Transparent pricing. Choose the slot that fits your biology.</p>
+                </div>
+                <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground bg-background px-4 py-2 rounded-full border shadow-sm">
+                  <Check className="h-4 w-4 text-green-500" /> Includes High-Speed Wi-Fi & AC
+                </div>
               </div>
-              <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground bg-background px-4 py-2 rounded-full border shadow-sm">
-                <Check className="h-4 w-4 text-green-500" /> Includes High-Speed Wi-Fi & AC
-              </div>
-            </div>
 
-            {isLoadingFees ? (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="h-[500px] rounded-3xl bg-muted animate-pulse" />
-                ))}
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-start">
-                {pricingTiers.map((tier) => (
-                  <div 
-                    key={tier.name} 
-                    className={cn(
-                      "relative flex flex-col h-full transition-all duration-500",
-                      tier.highlight && "md:scale-105 z-10"
-                    )}
-                  >
-                    {tier.highlight && (
-                      <div className="absolute -top-4 left-1/2 -translate-x-1/2 z-20">
-                        <Badge className="bg-primary text-primary-foreground hover:bg-primary px-4 py-1.5 text-xs uppercase tracking-widest font-bold shadow-lg shadow-primary/30 flex items-center gap-2 border-2 border-background">
-                          <Crown className="w-3.5 h-3.5 fill-current" />
-                          {tier.tag}
-                        </Badge>
-                      </div>
-                    )}
-                    <div className={cn(
-                      "flex-1 bg-card/60 p-8 rounded-3xl flex flex-col",
-                      tier.highlight && "bg-card shadow-2xl shadow-primary/10 ring-2 ring-primary/50"
-                    )}>
-                      <div className="flex-1">
-                        <h3 className="text-xl font-bold mb-1">{tier.name}</h3>
-                        <p className="text-muted-foreground text-sm mb-6 flex items-center gap-2"><Clock className="w-3.5 h-3.5"/>{tier.time}</p>
-                        <div className="flex items-baseline justify-start mb-6">
-                          <span className="text-5xl font-black tracking-tighter">Rs. {tier.price}</span>
-                          <span className="text-muted-foreground ml-2 font-medium">/month</span>
+              {isLoadingFees ? (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="h-[500px] rounded-3xl bg-muted animate-pulse" />
+                  ))}
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-start">
+                  {pricingTiers.map((tier) => (
+                    <div 
+                      key={tier.name} 
+                      className={cn(
+                        "relative flex flex-col h-full transition-all duration-500",
+                        tier.highlight && "md:scale-105 z-10"
+                      )}
+                    >
+                      {tier.highlight && (
+                        <div className="absolute -top-4 left-1/2 -translate-x-1/2 z-20">
+                          <Badge className="bg-primary text-primary-foreground hover:bg-primary px-4 py-1.5 text-xs uppercase tracking-widest font-bold shadow-lg shadow-primary/30 flex items-center gap-2 border-2 border-background">
+                            <Crown className="w-3.5 h-3.5 fill-current" />
+                            {tier.tag}
+                          </Badge>
                         </div>
+                      )}
+                      <div className={cn(
+                        "flex-1 bg-card/60 p-8 rounded-3xl flex flex-col",
+                        tier.highlight && "bg-card shadow-2xl shadow-primary/10 ring-2 ring-primary/50"
+                      )}>
+                        <div className="flex-1">
+                          <h3 className="text-xl font-bold mb-1">{tier.name}</h3>
+                          <p className="text-muted-foreground text-sm mb-6 flex items-center gap-2"><Clock className="w-3.5 h-3.5"/>{tier.time}</p>
+                          <div className="flex items-baseline justify-start mb-4">
+                            <span className="text-5xl font-black tracking-tighter">Rs. {tier.price}</span>
+                            <span className="text-muted-foreground ml-2 font-medium">/month</span>
+                          </div>
+                          <p className="text-sm text-muted-foreground mb-6 h-12">{tier.description}</p>
+                        </div>
+                        <DialogTrigger asChild>
+                          <Button 
+                            className="w-full font-bold rounded-xl h-12 text-base shadow-md transition-all hover:scale-[1.02]"
+                            variant={tier.highlight ? "default" : "outline"}
+                          >
+                            Choose Plan
+                          </Button>
+                        </DialogTrigger>
                       </div>
-                      <Link href="/" className="w-full">
-                        <Button 
-                          className="w-full font-bold rounded-xl h-12 text-base shadow-md transition-all hover:scale-[1.02]"
-                          variant={tier.highlight ? "default" : "outline"}
-                        >
-                          Choose Plan
-                        </Button>
-                      </Link>
                     </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </section>
+                  ))}
+                </div>
+              )}
+            </div>
+          </section>
+          <DialogContent>
+            <ContactDialogContent />
+          </DialogContent>
+        </Dialog>
+
 
         {/* --- Footer --- */}
         <footer className="bg-[#0f172a] text-white py-16">
@@ -366,7 +402,7 @@ export default function HomePage() {
             <div className="space-y-8">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-white/10 rounded-xl backdrop-blur-sm border border-white/10">
-                   <Image src={LOGO_URL} alt="Logo" width={32} height={32} className="invert brightness-0" />
+                   <Image src={LOGO_URL} alt="Logo" width={32} height={32} />
                 </div>
                 <span className="text-2xl font-bold tracking-tight">Taxshila Digital Library</span>
               </div>
@@ -409,5 +445,3 @@ export default function HomePage() {
     </div>
   );
 }
-
-    
