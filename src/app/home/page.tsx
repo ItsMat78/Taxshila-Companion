@@ -289,7 +289,7 @@ export default function HomePage() {
               <p className="text-muted-foreground text-lg md:text-xl">Premium infrastructure designed for serious aspirants.</p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 auto-rows-[minmax(180px,auto)]">
+            <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-6 auto-rows-[minmax(180px,auto)]">
               {featureList.map((feature, idx) => (
                 <Card 
                   key={idx} 
@@ -315,7 +315,7 @@ export default function HomePage() {
               
               <Dialog>
                 <DialogTrigger asChild>
-                  <Card className="md:col-span-2 lg:col-span-2 bg-primary text-primary-foreground flex flex-col justify-center items-center text-center border-none relative overflow-hidden shadow-2xl shadow-primary/20 group cursor-pointer">
+                  <Card className="col-span-2 lg:col-span-2 bg-primary text-primary-foreground flex flex-col justify-center items-center text-center border-none relative overflow-hidden shadow-2xl shadow-primary/20 group cursor-pointer">
                     <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay" />
                     <div className="absolute -right-20 -bottom-20 opacity-10 transition-transform duration-700 group-hover:rotate-12 group-hover:scale-110">
                       <UserCircle className="w-64 h-64" />
@@ -341,12 +341,12 @@ export default function HomePage() {
         <Dialog>
           <section className="py-24 bg-secondary/30 border-y relative">
             <div className="container px-6 md:px-12 lg:px-20 max-w-7xl mx-auto">
-              <div className="flex flex-col md:flex-row justify-between items-end mb-16 gap-6 relative z-0">
-                <div>
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-16 gap-6 relative z-0">
+                <div className="flex-grow">
                   <h2 className="text-3xl md:text-5xl font-bold mb-4 tracking-tight">Select Your Shift</h2>
                   <p className="text-muted-foreground text-lg md:text-xl">Transparent pricing. Choose the slot that fits your biology.</p>
                 </div>
-                <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground bg-background px-4 py-2 rounded-full border shadow-sm">
+                <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground bg-background px-4 py-2 rounded-full border shadow-sm flex-shrink-0">
                   <Check className="h-4 w-4 text-green-500" /> Includes High-Speed Wi-Fi & AC
                 </div>
               </div>
@@ -433,6 +433,12 @@ export default function HomePage() {
                   </div>
                   <p className="text-sm">+91 9123520131</p>
                 </div>
+                <div className="flex items-center gap-4 group cursor-pointer hover:text-white transition-colors">
+                   <div className="h-10 w-10 rounded-full bg-white/5 flex items-center justify-center shrink-0 group-hover:bg-primary group-hover:text-white transition-colors">
+                    <Mail className="h-5 w-5" />
+                  </div>
+                  <p className="text-sm">taxshiladigitallibrary@gmail.com</p>
+                </div>
               </div>
               
               <div className="pt-6 flex gap-6 text-xs text-gray-500 font-medium border-t border-white/10">
@@ -458,3 +464,5 @@ export default function HomePage() {
     </div>
   );
 }
+
+    
