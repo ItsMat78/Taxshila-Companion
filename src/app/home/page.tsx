@@ -20,7 +20,6 @@ import {
   Wifi, Wind, Thermometer, Droplets, ShieldCheck, 
   UserCircle, Sparkles, Clock, Crown
 } from 'lucide-react';
-import { getFeeStructureForHomepage, type FeeStructure } from '@/services/student-service';
 import { cn } from '@/lib/utils';
 
 const COVER_IMAGE_URL = '/cover.png';
@@ -59,7 +58,7 @@ function ContactDialogContent() {
           <iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3605.5020189959014!2d83.00187507449463!3d25.35448622531363!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x398e2fedc194747f%3A0x571327385a60b22f!2sTaxshila%20Digital%20Library!5e0!3m2!1sen!2sin!4v1766080131645!5m2!1sen!2sin" width="100%" height="100%" style={{border:0}} allowFullScreen loading="lazy" referrerPolicy="no-referrer-when-downgrade"></iframe>
           <div className="absolute bottom-3 right-3">
              <a href="https://www.google.com/maps/place/Taxshila+Digital+Library/@25.3544862,83.0018751,17z/data=!3m1!4b1!4m6!3m5!1s0x398e2fedc194747f:0x571327385a60b22f!8m2!3d25.3544814!4d83.0044447!16s%2Fg%2F11fyb_x1g9?entry=ttu" target="_blank" rel="noopener noreferrer">
-                <Button size="sm" className="backdrop-blur-md bg-white/10 border border-white/30 text-white hover:bg-white hover:text-black transition-all">
+                <Button size="sm" className="backdrop-blur-md bg-background/70 border-border text-foreground hover:bg-accent hover:text-accent-foreground transition-all">
                     Get Directions
                 </Button>
             </a>
@@ -179,34 +178,18 @@ const featureList = [
 ];
 
 export default function HomePage() {
-  const [feeStructure, setFeeStructure] = React.useState<FeeStructure | null>(null);
-  const [isLoadingFees, setIsLoadingFees] = React.useState(true);
   
-  React.useEffect(() => {
-    async function fetchFees() {
-      try {
-        const fees = await getFeeStructureForHomepage();
-        setFeeStructure(fees);
-      } catch (error) {
-        console.error("Failed to fetch fee structure:", error);
-      } finally {
-        setIsLoadingFees(false);
-      }
-    }
-    fetchFees();
-  }, []);
-  
-  const pricingTiers = feeStructure ? [
+  const pricingTiers = [
     {
       name: "Morning",
-      price: feeStructure.morningFee,
+      price: 550,
       time: "7:00 AM - 2:00 PM",
       description: "Perfect for early birds who are most productive at the start of the day.",
       highlight: false,
     },
     {
       name: "Full Day",
-      price: feeStructure.fullDayFee,
+      price: 900,
       time: "7:00 AM - 9:30 PM",
       description: "Unrestricted access for dedicated aspirants who need maximum study time.",
       highlight: true,
@@ -214,12 +197,12 @@ export default function HomePage() {
     },
     {
       name: "Evening",
-      price: feeStructure.eveningFee,
+      price: 550,
       time: "2:00 PM - 9:30 PM",
       description: "Ideal for students and professionals who study best in the later hours.",
       highlight: false,
     }
-  ] : [];
+  ];
 
   return (
     <div className="min-h-screen bg-background text-foreground font-sans selection:bg-primary/20">
@@ -349,13 +332,6 @@ export default function HomePage() {
                 </div>
               </div>
 
-              {isLoadingFees ? (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                  {[1, 2, 3].map((i) => (
-                    <div key={i} className="h-[500px] rounded-3xl bg-muted animate-pulse" />
-                  ))}
-                </div>
-              ) : (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-start">
                   {pricingTiers.map((tier) => (
                     <div 
@@ -398,7 +374,6 @@ export default function HomePage() {
                     </div>
                   ))}
                 </div>
-              )}
             </div>
           </section>
           <DialogContent>
@@ -449,7 +424,7 @@ export default function HomePage() {
               <iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3605.5020189959014!2d83.00187507449463!3d25.35448622531363!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x398e2fedc194747f%3A0x571327385a60b22f!2sTaxshila%20Digital%20Library!5e0!3m2!1sen!2sin!4v1766080131645!5m2!1sen!2sin" width="100%" height="100%" style={{border:0}} allowFullScreen loading="lazy" referrerPolicy="no-referrer-when-downgrade"></iframe>
               <div className="absolute bottom-5 right-5">
                  <a href="https://www.google.com/maps/place/Taxshila+Digital+Library/@25.3544862,83.0018751,17z/data=!3m1!4b1!4m6!3m5!1s0x398e2fedc194747f:0x571327385a60b22f!8m2!3d25.3544814!4d83.0044447!16s%2Fg%2F11fyb_x1g9?entry=ttu" target="_blank" rel="noopener noreferrer">
-                    <Button size="sm" className="backdrop-blur-md bg-white/10 border border-white/30 text-white hover:bg-white hover:text-black transition-all">
+                    <Button size="sm" className="backdrop-blur-md bg-background/70 border-border text-foreground hover:bg-accent hover:text-accent-foreground transition-all">
                         Get Directions
                     </Button>
                 </a>
