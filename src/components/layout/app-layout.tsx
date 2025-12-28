@@ -68,7 +68,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       router.replace('/');
     }
     
-    // This effect handles redirects for logged-in users who land on the root page
+    // This effect handles redirects for logged-in users who land on a non-dashboard page
+    // Crucially, it IGNORES the root page ('/'), allowing the login page to manage its own flow.
     if (!isAuthLoading && user && pathname === '/') {
         const destination = user.role === 'admin' ? '/admin/dashboard' : '/member/dashboard';
         router.replace(destination);
