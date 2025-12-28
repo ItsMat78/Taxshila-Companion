@@ -21,10 +21,10 @@ import {
 } from "@/components/ui/popover";
 import { Button } from '@/components/ui/button';
 import { Label } from "@/components/ui/label";
-import { Armchair, Users, Loader2, Circle, Sunrise, Sunset, Sun, Edit, User, View } from 'lucide-react';
-import { getStudentSeatAssignments } from '@/services/student-service';
+import { Armchair, Users, Loader2, Circle, Sunrise, Sunset, Sun, Edit, User, View, CheckCircle2 } from 'lucide-react';
+import { getStudentSeatAssignments, getTodaysActiveAttendanceRecords, processCheckedInStudentsFromSnapshot } from '@/services/student-service';
 import { ALL_SEAT_NUMBERS as serviceAllSeats } from '@/config/seats';
-import type { Student, Shift, StudentSeatAssignment } from '@/types/student';
+import type { Student, Shift, StudentSeatAssignment, CheckedInStudentInfo } from '@/types/student';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -75,6 +75,7 @@ const getInitials = (name?: string) => {
 export default function SeatAvailabilityPage() {
   const { toast } = useToast();
   const [seatAssignments, setSeatAssignments] = React.useState<StudentSeatAssignment[]>([]);
+  const [checkedInStudents, setCheckedInStudents] = React.useState<CheckedInStudentInfo[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   
   const occupiedMorningStudentsCount = seatAssignments.filter(s => s.shift === 'morning').length;
@@ -94,8 +95,13 @@ export default function SeatAvailabilityPage() {
     const fetchData = async () => {
       setIsLoading(true);
       try {
-        const assignments = await getStudentSeatAssignments();
+        const [assignments, attendanceSnapshot] = await Promise.all([
+          getStudentSeatAssignments(),
+          getTodaysActiveAttendanceRecords()
+        ]);
         setSeatAssignments(assignments);
+        const checkedIn = await processCheckedInStudentsFromSnapshot(attendanceSnapshot, assignments);
+        setCheckedInStudents(checkedIn);
       } catch (error) {
         console.error("Failed to fetch initial data:", error);
         toast({
@@ -122,6 +128,10 @@ export default function SeatAvailabilityPage() {
     if (studentEvening) return 'evening';
 
     return 'available';
+  };
+
+  const isSeatCurrentlyOccupied = (seatNumber: string): boolean => {
+    return checkedInStudents.some(s => s.seatNumber === seatNumber);
   };
 
   return (
@@ -170,6 +180,10 @@ export default function SeatAvailabilityPage() {
             </CardHeader>
             <CardContent>
               <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mb-4 text-xs sm:text-sm">
+                 <div className="flex items-center flex-shrink-0">
+                  <CheckCircle2 className="h-4 w-4 flex-shrink-0 mr-1.5 text-green-500" />
+                  <span>Currently In</span>
+                </div>
                 <div className="flex items-center flex-shrink-0">
                   <Circle className="h-4 w-4 flex-shrink-0 mr-1.5 fill-seat-available text-seat-available" />
                   <span>Available</span>
@@ -198,6 +212,7 @@ export default function SeatAvailabilityPage() {
                   const ShiftIcon = styles.icon;
                   const studentsOnThisSeat = seatAssignments.filter(s => s.seatNumber === seatNum);
                   const isFemaleOnly = (parseInt(seatNum) >= 18 && parseInt(seatNum) <= 27) || (parseInt(seatNum) >= 50 && parseInt(seatNum) <= 58) || (parseInt(seatNum) == 84);
+                  const isCurrentlyOccupied = isSeatCurrentlyOccupied(seatNum);
 
                   return (
                     <Popover key={seatNum}>
@@ -212,6 +227,7 @@ export default function SeatAvailabilityPage() {
                           )}
                           title={studentsOnThisSeat.length > 0 ? `Seat ${seatNum} - Click for details` : `Seat ${seatNum} - Available`}
                         >
+                          {isCurrentlyOccupied && <span className="absolute top-0.5 left-0.5 block h-2 w-2 rounded-full bg-green-500 ring-2 ring-background" />}
                           {ShiftIcon && <ShiftIcon className={cn("absolute top-1 right-1 h-3 w-3", styles.textClass)} />}
                           <span className={cn(styles.textClass)}>{seatNum}</span>
                         </div>
@@ -253,12 +269,12 @@ export default function SeatAvailabilityPage() {
                                               </div>
                                           </div>
                                           <div className="flex items-center gap-2">
-                                              <Link href={`/students/profiles/${student.studentId}`} passHref legacyBehavior>
+                                              <Link href={`/students/profiles/${student.studentId}`} passHref>
                                                   <Button variant="outline" size="sm" className="flex-1">
                                                       <User className="mr-1 h-3 w-3" /> Profile
                                                   </Button>
                                               </Link>
-                                              <Link href={`/admin/students/edit/${student.studentId}`} passHref legacyBehavior>
+                                              <Link href={`/admin/students/edit/${student.studentId}`} passHref>
                                                   <Button variant="outline" size="sm" className="flex-1">
                                                       <Edit className="mr-1 h-3 w-3" /> Edit
                                                   </Button>

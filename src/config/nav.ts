@@ -27,6 +27,7 @@ import {
   QrCode,
   Wifi,
   Notebook,
+  FileText,
 } from 'lucide-react';
 import { NavItem } from '@/types/nav';
 
@@ -219,11 +220,15 @@ export const mainNav: NavItem[] = [
     roles: ['member'],
   },
   {
+    title: 'Privacy Policy',
+    href: '/privacy_policy',
+    icon: FileText,
+    roles: ['member'],
+  },
+  {
     title: 'Submit Feedback',
     href: '/member/feedback',
     icon: MessageSquare,
     roles: ['member'],
   },
 ];
-
-    

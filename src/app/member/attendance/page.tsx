@@ -182,6 +182,11 @@ export default function MemberAttendancePage() {
   }, [fetchStudentData]);
 
   const getDailyStudyDataForMonth = React.useCallback(async (student: Student, month: Date) => {
+    if (!student.shift) {
+        toast({ title: "Shift Not Set", description: "Cannot calculate study hours without a shift.", variant: "destructive" });
+        setIsLoadingMonthlyStudyData(false);
+        return;
+    }
     setIsLoadingMonthlyStudyData(true);
     try {
       const startDate = startOfMonth(month);

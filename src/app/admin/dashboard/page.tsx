@@ -24,6 +24,7 @@ import {
   Shield,
   ListChecks,
   View,
+  ArrowUpDown,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle as ShadcnCardTitle, CardDescription as ShadcnCardDescription, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -52,6 +53,8 @@ import { useFinancialCounts } from '@/hooks/use-financial-counts';
 import { ALL_SEAT_NUMBERS as serviceAllSeats } from '@/config/seats';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+
 
 const staticAdminActionTilesConfig = [
     {
@@ -206,6 +209,8 @@ export default function AdminDashboardPage() {
 
   const { count: openFeedbackCount, isLoadingCount: isLoadingFeedbackCount } = useNotificationCounts();
   const { count: financialCount, isLoadingCount: isLoadingFinancialCount } = useFinancialCounts();
+  
+  const [sortOrder, setSortOrder] = React.useState<'time' | 'seat'>('time');
 
 
   React.useEffect(() => {
@@ -288,6 +293,18 @@ export default function AdminDashboardPage() {
     };
   }, [showCheckedInDialog, baseCheckedInStudents]);
 
+  const sortedStudentsToDisplay = React.useMemo(() => {
+    const students = liveCheckedInStudents.length > 0 ? liveCheckedInStudents : baseCheckedInStudents;
+    return [...students].sort((a, b) => {
+      if (sortOrder === 'seat') {
+        return (parseInt(a.seatNumber || '999') - parseInt(b.seatNumber || '999'));
+      }
+      // Default sort by time
+      return parseISO(a.checkInTime).getTime() - parseISO(b.checkInTime).getTime();
+    });
+  }, [liveCheckedInStudents, baseCheckedInStudents, sortOrder]);
+
+
   const handleWarnStudent = async (studentId: string) => {
     setIsWarningStudentId(studentId);
     try {
@@ -318,9 +335,6 @@ export default function AdminDashboardPage() {
   const allOccupiedSeatNumbers = new Set(activeStudents.filter(s => s.seatNumber).map(s => s.seatNumber));
   const availableForFullDayBookingCount = serviceAllSeats.length - allOccupiedSeatNumbers.size;
 
-
-  const studentsToDisplayInDialog = liveCheckedInStudents.length > 0 ? liveCheckedInStudents : baseCheckedInStudents;
-
   return (
     <>
       <PageTitle title="Admin Dashboard" description="Overview of Taxshila Companion activities." />
@@ -328,7 +342,17 @@ export default function AdminDashboardPage() {
       <Dialog open={showCheckedInDialog} onOpenChange={setShowCheckedInDialog}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <ShadcnDialogTitle className="flex items-center"><LogIn className="mr-2 h-5 w-5" />Students Currently In Library</ShadcnDialogTitle>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+              <ShadcnDialogTitle className="flex items-center"><LogIn className="mr-2 h-5 w-5" />Students Currently In</ShadcnDialogTitle>
+              <ToggleGroup type="single" variant="outline" size="sm" value={sortOrder} onValueChange={(value) => { if (value) setSortOrder(value as 'time' | 'seat') }}>
+                  <ToggleGroupItem value="time" aria-label="Sort by time">
+                      <Clock className="h-4 w-4 mr-1" /> Time
+                  </ToggleGroupItem>
+                  <ToggleGroupItem value="seat" aria-label="Sort by seat number">
+                      <Armchair className="h-4 w-4 mr-1" /> Seat
+                  </ToggleGroupItem>
+              </ToggleGroup>
+            </div>
           </DialogHeader>
           {isLoadingCheckedInStudents && baseCheckedInStudents.length === 0 ? (
             <div className="flex items-center justify-center py-10">
@@ -336,8 +360,8 @@ export default function AdminDashboardPage() {
             </div>
           ) : (
             <div className="max-h-[60vh] overflow-y-auto mt-4 space-y-2">
-              {studentsToDisplayInDialog.length > 0 ? (
-                studentsToDisplayInDialog.map((student) => (
+              {sortedStudentsToDisplay.length > 0 ? (
+                sortedStudentsToDisplay.map((student) => (
                   <CheckedInStudentCard 
                     key={student.studentId} 
                     student={student} 
