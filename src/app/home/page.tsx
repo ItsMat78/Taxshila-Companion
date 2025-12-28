@@ -37,7 +37,7 @@ function ContactDialogContent() {
         </DialogDescription>
       </DialogHeader>
       <div className="space-y-4 pt-4">
-        <a href="tel:+919450953683" className="flex items-center p-4 rounded-xl bg-secondary/50 hover:bg-secondary transition-colors border">
+        <a href="tel:+919123520131" className="flex items-center p-4 rounded-xl bg-secondary/50 hover:bg-secondary transition-colors border">
           <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center mr-4">
             <Phone className="h-5 w-5 text-primary" />
           </div>
@@ -56,10 +56,10 @@ function ContactDialogContent() {
           </div>
         </a>
         <div className="relative h-64 w-full rounded-2xl overflow-hidden transition-all duration-500 border border-border shadow-inner group mt-4">
-        <iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d14423.39499118052!2d83.00390664999999!3d25.342856!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x398e2fedc194747f%3A0x571327385a60b22f!2sTaxshila%20Digital%20Library!5e0!3m2!1sen!2sin!4v1766921852675!5m2!1sen!2sin" width="600" height="450" style={{border:0}} allowFullScreen loading="lazy" referrerPolicy="no-referrer-when-downgrade"></iframe>
+        <iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3605.5020189959014!2d83.00187507449463!3d25.35448622531363!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x398e2fedc194747f%3A0x571327385a60b22f!2sTaxshila%20Digital%20Library!5e0!3m2!1sen!2sin!4v1766080131645!5m2!1sen!2sin" width="600" height="450" style={{border:0}} allowFullScreen loading="lazy" referrerPolicy="no-referrer-when-downgrade"></iframe>
           <div className="absolute inset-0 bg-black/40 group-hover:bg-black/10 transition-colors" />
           <div className="absolute bottom-3 right-3">
-             <a href="https://maps.app.goo.gl/wJ5J4uW9gKzXjS3x9" target="_blank" rel="noopener noreferrer">
+             <a href="https://www.google.com/maps/place/Taxshila+Digital+Library/@25.3544862,83.0018751,17z/data=!3m1!4b1!4m6!3m5!1s0x398e2fedc194747f:0x571327385a60b22f!8m2!3d25.3544814!4d83.0044447!16s%2Fg%2F11fyb_x1g9?entry=ttu" target="_blank" rel="noopener noreferrer">
                 <Button size="sm" className="backdrop-blur-md bg-white/10 border border-white/30 text-white hover:bg-white hover:text-black transition-all">
                     Get Directions
                 </Button>
@@ -247,7 +247,7 @@ export default function HomePage() {
                 className="mb-6 px-4 py-1.5 text-sm bg-white/5 text-white hover:bg-white/10 backdrop-blur-md border-white/20 shadow-[0_0_15px_rgba(255,255,255,0.1)] transition-all hover:scale-105 cursor-default"
               >
                 <Sparkles className="w-3.5 h-3.5 mr-2 text-amber-400 fill-amber-400" />
-                Admissions Open for 2026
+                Admissions Open
               </Badge>
               
               <h1 className="text-5xl md:text-7xl lg:text-8xl font-black tracking-tight text-white mb-8 leading-[1.1] drop-shadow-2xl">
@@ -429,10 +429,10 @@ export default function HomePage() {
             </div>
 
             <div className="relative h-64 w-full rounded-2xl overflow-hidden transition-all duration-500 border border-white/10 shadow-2xl group">
-            <iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d14423.39499118052!2d83.00390664999999!3d25.342856!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x398e2fedc194747f%3A0x571327385a60b22f!2sTaxshila%20Digital%20Library!5e0!3m2!1sen!2sin!4v1766921852675!5m2!1sen!2sin" width="600" height="450" style={{border:0}} allowFullScreen loading="lazy" referrerPolicy="no-referrer-when-downgrade"></iframe>
+            <iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3605.5020189959014!2d83.00187507449463!3d25.35448622531363!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x398e2fedc194747f%3A0x571327385a60b22f!2sTaxshila%20Digital%Library!5e0!3m2!1sen!2sin!4v1766080131645!5m2!1sen!2sin" width="600" height="450" style={{border:0}} allowFullScreen loading="lazy" referrerPolicy="no-referrer-when-downgrade"></iframe>
               <div className="absolute inset-0 bg-black/40 group-hover:bg-black/10 transition-colors" />
               <div className="absolute bottom-5 right-5">
-                 <a href="https://maps.app.goo.gl/wJ5J4uW9gKzXjS3x9" target="_blank" rel="noopener noreferrer">
+                 <a href="https://www.google.com/maps/place/Taxshila+Digital+Library/@25.3544862,83.0018751,17z/data=!3m1!4b1!4m6!3m5!1s0x398e2fedc194747f:0x571327385a60b22f!8m2!3d25.3544814!4d83.0044447!16s%2Fg%2F11fyb_x1g9?entry=ttu" target="_blank" rel="noopener noreferrer">
                     <Button size="sm" className="backdrop-blur-md bg-white/10 border border-white/30 text-white hover:bg-white hover:text-black transition-all">
                         Get Directions
                     </Button>
