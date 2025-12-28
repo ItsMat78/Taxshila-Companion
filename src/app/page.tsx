@@ -1,527 +1,234 @@
 
-
 "use client";
+
 import * as React from 'react';
-import Link from 'next/link';
 import Image from 'next/image';
-import { PageTitle } from '@/components/shared/page-title';
-import {
-  Users,
-  Armchair,
-  IndianRupee,
-  Loader2,
-  UserPlus,
-  CalendarDays,
-  Send as SendIcon,
-  Inbox,
-  Eye,
-  LogIn,
-  CreditCard,
-  History,
-  UserX,
-  Clock,
-  AlertTriangle,
-  Database,
-  Shield,
-  ListChecks,
-  View,
-} from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle as ShadcnCardTitle, CardDescription as ShadcnCardDescription, CardFooter } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle as ShadcnDialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { useAuth } from '@/contexts/auth-context';
-import { useRouter, usePathname } from 'next/navigation';
-import { cn } from '@/lib/utils';
-import { getStudentSeatAssignments, getAllStudents, getAvailableSeats, getAllAttendanceRecords, calculateMonthlyRevenue, getTodaysActiveAttendanceRecords, processCheckedInStudentsFromSnapshot, refreshAllStudentFeeStatuses, sendShiftWarningAlert } from '@/services/student-service';
-import type { Student, Shift, AttendanceRecord, CheckedInStudentInfo, StudentSeatAssignment } from '@/types/student';
-import type { FeedbackItem } from '@/types/communication';
-import { format, parseISO, isToday, getHours, getMinutes } from 'date-fns';
-import { useNotificationCounts } from '@/hooks/use-notification-counts';
-import { useFinancialCounts } from '@/hooks/use-financial-counts';
-import { ALL_SEAT_NUMBERS as serviceAllSeats } from '@/config/seats';
+import { useRouter } from 'next/navigation';
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import Link from 'next/link';
+
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { useAuth } from '@/contexts/auth-context';
+import { Loader2, Download, Smartphone, Home } from 'lucide-react';
+import { LoggingInDialog } from '@/components/shared/logging-in-dialog';
 import { useToast } from '@/hooks/use-toast';
 
-const staticAdminActionTilesConfig = [
-    {
-        href: "/students/list",
-        icon: ListChecks,
-        baseTitle: "Manage Students",
-        description: "View and edit students.",
-    },
-    {
-        href: "/admin/students/register",
-        icon: UserPlus,
-        baseTitle: "Register Student",
-        description: "Add a new member.",
-    },
-    {
-        href: "/attendance/calendar",
-        icon: CalendarDays,
-        baseTitle: "Attendance Overview",
-        description: "View daily check-ins.",
-    },
-    {
-        href: "/admin/fees/due",
-        icon: CreditCard,
-        baseTitle: "Payment Due",
-        description: "View students with fees due.",
-        isFinancialTile: true,
-    },
-    {
-        href: "/admin/fees/payments-history",
-        icon: History,
-        baseTitle: "Payment History",
-        description: "Browse all transactions.",
-    },
-    {
-        href: "/admin/alerts/send",
-        icon: SendIcon,
-        baseTitle: "Send Alert",
-        description: "Broadcast a message.",
-    },
-    {
-        href: "/admin/feedback",
-        icon: Inbox,
-        baseTitle: "View Feedback",
-        description: "Check new messages.",
-        isFeedbackTile: true,
-    },
-    {
-        href: "/seats/availability",
-        icon: Armchair,
-        baseTitle: "Seat Availability",
-        description: "Check hall occupancy.",
-    },
-];
+const COVER_IMAGE_URL = '/cover.png';
+const LOGO_URL = '/logo.png';
 
+const loginFormSchema = z.object({
+  identifier: z.string().min(1, { message: "Email or Phone Number is required." }),
+  password: z.string().min(1, { message: "Password is required." }),
+});
 
-const getInitials = (name?: string) => {
-    if (!name) return 'S';
-    return name.split(' ').map(n => n[0]).join('').substring(0,2).toUpperCase();
+type LoginFormValues = z.infer<typeof loginFormSchema>;
+
+// --- PWA Install Logic ---
+interface BeforeInstallPromptEvent extends Event {
+  readonly platforms: Array<string>;
+  readonly userChoice: Promise<{
+    outcome: 'accepted' | 'dismissed';
+    platform: string;
+  }>;
+  prompt(): Promise<void>;
 }
 
-const getShiftColorClass = (shift: Shift | undefined) => {
-  if (!shift) return 'bg-gray-100 text-gray-800 border-gray-300';
-  switch (shift) {
-    case 'morning': return 'bg-seat-morning text-seat-morning-foreground border-orange-300 dark:border-orange-700';
-    case 'evening': return 'bg-seat-evening text-seat-evening-foreground border-purple-300 dark:border-purple-700';
-    case 'fullday': return 'bg-seat-fullday text-seat-fullday-foreground border-yellow-300 dark:border-yellow-700';
-    default: return 'bg-gray-100 text-gray-800 border-gray-300';
-  }
-};
-
-const CheckedInStudentCard = ({ student, onWarn, isWarning }: { student: CheckedInStudentInfo, onWarn: (studentId: string) => void, isWarning: boolean }) => {
-  return (
-    <Card className="w-full">
-      <CardContent className="p-3 flex items-center justify-between gap-3">
-        <Dialog>
-          <DialogTrigger asChild>
-            <div className="flex items-center gap-3 min-w-0 cursor-pointer group">
-              <Avatar className="h-10 w-10 border flex-shrink-0">
-                <AvatarImage src={student.profilePictureUrl || undefined} alt={student.name} data-ai-hint="profile person" />
-                <AvatarFallback>{getInitials(student.name)}</AvatarFallback>
-              </Avatar>
-              <div className="flex-grow min-w-0">
-                <p className="text-sm font-semibold truncate group-hover:underline">{student.name}</p>
-                <div className="flex items-center gap-2 mt-1">
-                  <div
-                    className={cn(
-                      'h-6 w-6 flex items-center justify-center rounded-md border text-xs font-bold',
-                      getShiftColorClass(student.shift)
-                    )}
-                    title={`Seat ${student.seatNumber}`}
-                  >
-                    {student.seatNumber || '?'}
-                  </div>
-                  <div className="text-xs text-muted-foreground flex items-center">
-                      <LogIn className="h-3 w-3 mr-1 text-green-500" />
-                      {format(parseISO(student.checkInTime), 'p')}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </DialogTrigger>
-          <DialogContent className="max-w-md w-auto p-2">
-            <DialogHeader className="mb-2">
-              <ShadcnDialogTitle>{student.name}</ShadcnDialogTitle>
-            </DialogHeader>
-            <Image
-              src={student.profilePictureUrl || "https://placehold.co/400x400.png"}
-              alt={`${student.name}'s profile picture`}
-              width={400}
-              height={400}
-              className="rounded-md object-contain max-h-[70vh] w-full h-auto"
-            />
-          </DialogContent>
-        </Dialog>
-        {student.isOutsideShift && (
-          <Button
-            size="sm"
-            variant="outline"
-            className="border-yellow-500 text-yellow-600 hover:bg-yellow-500/10 flex-shrink-0"
-            onClick={() => onWarn(student.studentId)}
-            disabled={isWarning}
-          >
-            {isWarning ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <AlertTriangle className="h-4 w-4" />
-            )}
-            <span className="ml-2">Warn</span>
-          </Button>
-        )}
-      </CardContent>
-    </Card>
-  );
-};
-
-
-function AdminDashboardContent() {
-  const [isLoadingDashboardStats, setIsLoadingDashboardStats] = React.useState(true);
-  const [isLoadingAvailabilityStats, setIsLoadingAvailabilityStats] = React.useState(true);
-  const [isLoadingCheckedInStudents, setIsLoadingCheckedInStudents] = React.useState(true);
-  const [isLoadingRevenue, setIsLoadingRevenue] = React.useState(true);
-
-  const [seatAssignments, setSeatAssignments] = React.useState<StudentSeatAssignment[]>([]);
-  const [baseCheckedInStudents, setBaseCheckedInStudents] = React.useState<CheckedInStudentInfo[]>([]);
-  const [liveCheckedInStudents, setLiveCheckedInStudents] = React.useState<CheckedInStudentInfo[]>([]);
-  const [showCheckedInDialog, setShowCheckedInDialog] = React.useState(false);
-  const [monthlyRevenue, setMonthlyRevenue] = React.useState<string | null>(null);
-  const [currentMonthName, setCurrentMonthName] = React.useState<string>(format(new Date(), 'MMMM'));
-
-  const [isWarningStudentId, setIsWarningStudentId] = React.useState<string | null>(null);
+export default function RootLoginPage() {
+  const router = useRouter();
+  const { login, user, isLoading: isAuthLoading } = useAuth();
   const { toast } = useToast();
+  const [isLoggingIn, setIsLoggingIn] = React.useState(false);
+  const [showLoggingInDialog, setShowLoggingInDialog] = React.useState(false);
 
-  const { count: openFeedbackCount, isLoadingCount: isLoadingFeedbackCount } = useNotificationCounts();
-  const { count: financialCount, isLoadingCount: isLoadingFinancialCount } = useFinancialCounts();
+  // --- PWA Install State ---
+  const [deferredPrompt, setDeferredPrompt] = React.useState<BeforeInstallPromptEvent | null>(null);
+  const [canInstallPWA, setCanInstallPWA] = React.useState(false);
+
+  React.useEffect(() => {
+    // This effect now correctly handles the delayed redirect AFTER the dialog is shown.
+    if (showLoggingInDialog && user) {
+      const timer = setTimeout(() => {
+        const destination = user.role === 'admin' ? '/admin/dashboard' : '/member/dashboard';
+        router.replace(destination);
+      }, 1500); 
+
+      return () => clearTimeout(timer);
+    }
+  }, [showLoggingInDialog, user, router]);
 
 
   React.useEffect(() => {
-    const fetchDashboardData = async () => {
-      setIsLoadingDashboardStats(true);
-      setIsLoadingAvailabilityStats(true);
-      setIsLoadingCheckedInStudents(true);
-      setIsLoadingRevenue(true);
-
-      try {
-        await refreshAllStudentFeeStatuses();
-
-        const [
-          seatAssignmentsData,
-          attendanceSnapshot,
-          revenueData,
-        ] = await Promise.all([
-          getStudentSeatAssignments(),
-          getTodaysActiveAttendanceRecords(),
-          calculateMonthlyRevenue(),
-        ]);
-
-        setSeatAssignments(seatAssignmentsData);
-        setMonthlyRevenue(revenueData);
-
-        const checkedInStudents = await processCheckedInStudentsFromSnapshot(attendanceSnapshot, seatAssignmentsData);
-        setBaseCheckedInStudents(checkedInStudents);
-
-      } catch (error) {
-        console.error("Failed to load dashboard stats:", error);
-        setSeatAssignments([]);
-        setBaseCheckedInStudents([]);
-        setMonthlyRevenue("Rs. 0");
-      } finally {
-        setIsLoadingDashboardStats(false);
-        setIsLoadingAvailabilityStats(false);
-        setIsLoadingCheckedInStudents(false);
-        setIsLoadingRevenue(false);
-      }
+    const handleBeforeInstallPrompt = (e: Event) => {
+      e.preventDefault();
+      setDeferredPrompt(e as BeforeInstallPromptEvent);
+      setCanInstallPWA(true);
+      console.log("beforeinstallprompt event fired and captured.");
     };
-    fetchDashboardData();
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    };
   }, []);
 
-  React.useEffect(() => {
-    let intervalId: NodeJS.Timeout | null = null;
-
-    const updateLiveStudentStatus = () => {
-      const now = new Date();
-      const currentHour = getHours(now);
-      const currentMinutes = getMinutes(now);
-
-      setLiveCheckedInStudents(
-        baseCheckedInStudents.map(student => {
-          let currentlyOutsideShift = false;
-          if (student.shift === "morning") { // Morning: 7 AM to 2 PM (14:00)
-            if (currentHour < 7 || currentHour >= 14) {
-              currentlyOutsideShift = true;
-            }
-          } else if (student.shift === "evening") { // Evening: 2 PM (14:00) to 9:30 PM (21:30)
-             if (currentHour < 14 || currentHour > 21 || (currentHour === 21 && currentMinutes > 30)) {
-              currentlyOutsideShift = true;
-            }
-          }
-          return { ...student, isOutsideShift: currentlyOutsideShift };
-        })
-      );
-    };
-
-    if (showCheckedInDialog && baseCheckedInStudents.length > 0) {
-      updateLiveStudentStatus(); 
-      intervalId = setInterval(updateLiveStudentStatus, 30000); 
+  const handleInstallClick = async () => {
+    if (!deferredPrompt) {
+      console.log("Deferred prompt not available.");
+      return;
+    }
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === 'accepted') {
+      console.log('User accepted the PWA installation');
+      toast({ title: "App Installed!", description: "Taxshila Companion has been added to your device." });
     } else {
-      setLiveCheckedInStudents([]); 
+      console.log('User dismissed the PWA installation');
     }
-
-    return () => {
-      if (intervalId) {
-        clearInterval(intervalId);
-      }
-    };
-  }, [showCheckedInDialog, baseCheckedInStudents]);
-
-  const handleWarnStudent = async (studentId: string) => {
-    setIsWarningStudentId(studentId);
-    try {
-      await sendShiftWarningAlert(studentId);
-      toast({
-        title: "Warning Sent",
-        description: `An alert has been sent to the student regarding their shift timing.`
-      });
-    } catch (error) {
-      toast({
-        title: "Error Sending Alert",
-        description: "Could not send the warning alert. Please try again.",
-        variant: "destructive"
-      });
-    } finally {
-      setIsWarningStudentId(null);
-    }
+    setDeferredPrompt(null);
+    setCanInstallPWA(false);
   };
 
-  const activeStudents = seatAssignments.filter(s => s.activityStatus === "Active");
-  const morningShiftStudentCount = activeStudents.filter(s => s.shift === 'morning').length;
-  const eveningShiftStudentCount = activeStudents.filter(s => s.shift === 'evening').length;
-  const fullDayShiftStudentCount = activeStudents.filter(s => s.shift === 'fullday').length;
-  const totalRegisteredStudents = morningShiftStudentCount + eveningShiftStudentCount + fullDayShiftStudentCount;
+  const form = useForm<LoginFormValues>({
+    resolver: zodResolver(loginFormSchema),
+    defaultValues: {
+      identifier: "",
+      password: "",
+    },
+  });
 
-  const occupiedSeatsMorning = new Set(activeStudents.filter(s => s.seatNumber && (s.shift === 'morning' || s.shift === 'fullday')).map(s => s.seatNumber));
-  const occupiedSeatsEvening = new Set(activeStudents.filter(s => s.seatNumber && (s.shift === 'evening' || s.shift === 'fullday')).map(s => s.seatNumber));
-  const allOccupiedSeatNumbers = new Set(activeStudents.filter(s => s.seatNumber).map(s => s.seatNumber));
-  const availableForFullDayBookingCount = serviceAllSeats.length - allOccupiedSeatNumbers.size;
+  async function onSubmit(data: LoginFormValues) {
+    setIsLoggingIn(true);
+    try {
+      const loggedInUser = await login(data.identifier, data.password);
+      if (loggedInUser) {
+        // This is the only place we set this to true now.
+        setShowLoggingInDialog(true);
+      } else {
+        // If login fails, just stop the spinner.
+        setIsLoggingIn(false);
+      }
+    } catch (error) {
+      console.error("Login error:", error);
+      toast({
+        title: "Login Error",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      });
+      setIsLoggingIn(false);
+    }
+  }
+  
+  // Only show the full-page loader on initial page load if auth state is unknown.
+  if (isAuthLoading) {
+    return (
+        <div className="flex min-h-screen w-full flex-col items-center justify-center bg-background">
+            <Loader2 className="h-12 w-12 animate-spin text-primary" />
+            <p className="mt-4 text-muted-foreground">Initializing...</p>
+        </div>
+    );
+  }
 
-
-  const studentsToDisplayInDialog = liveCheckedInStudents.length > 0 ? liveCheckedInStudents : baseCheckedInStudents;
-
+  // If we already have a user but the dialog isn't showing yet, render the dialog.
+  // This handles cases where the user is already logged in and lands on this page.
+  if (user && !showLoggingInDialog) {
+     setShowLoggingInDialog(true);
+  }
+  
+  // Render the login form or the dialog. The redirect is handled by the useEffect.
   return (
     <>
-      <PageTitle title="Admin Dashboard" description="Overview of Taxshila Companion activities." />
-
-      <Dialog open={showCheckedInDialog} onOpenChange={setShowCheckedInDialog}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <ShadcnDialogTitle className="flex items-center"><LogIn className="mr-2 h-5 w-5" />Students Currently In Library</ShadcnDialogTitle>
-          </DialogHeader>
-          {isLoadingCheckedInStudents && baseCheckedInStudents.length === 0 ? (
-            <div className="flex items-center justify-center py-10">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      {showLoggingInDialog && <LoggingInDialog isOpen={true} />}
+      <div
+        style={{ backgroundImage: `url(${COVER_IMAGE_URL})` }}
+        className="min-h-screen flex flex-col items-center justify-center bg-cover bg-center p-4 gap-6"
+      ><Link href="/home">
+      <Button variant="outline" className="bg-background/70 backdrop-blur-md">
+        <Home className="mr-2 h-4 w-4" /> Go to Home Page
+      </Button>
+    </Link>
+        <Card className="w-full max-w-md md:max-w-3xl shadow-xl bg-background/70 backdrop-blur-md rounded-lg flex flex-col md:flex-row max-h-[calc(100vh_-_theme(space.8))] overflow-y-auto">
+          <div className="flex flex-col items-center justify-center px-4 pt-4 pb-0 sm:p-6 sm:pb-2 md:pb-6 md:w-1/3 md:border-r md:border-border/30 md:p-4">
+            <div className="relative w-16 h-auto sm:w-24 md:w-28 mb-2 sm:mb-4 md:mb-0">
+              <Image
+                src={LOGO_URL}
+                alt="Taxshila Companion Logo"
+                width={150}
+                height={150}
+                className="w-full h-auto object-contain"
+                data-ai-hint="logo brand"
+                priority
+              />
             </div>
-          ) : (
-            <div className="max-h-[60vh] overflow-y-auto mt-4 space-y-2">
-              {studentsToDisplayInDialog.length > 0 ? (
-                studentsToDisplayInDialog.map((student) => (
-                  <CheckedInStudentCard 
-                    key={student.studentId} 
-                    student={student} 
-                    onWarn={handleWarnStudent}
-                    isWarning={isWarningStudentId === student.studentId}
+          </div>
+
+          <div className="flex flex-col flex-grow md:w-2/3">
+            <CardHeader className="text-center px-4 pb-4 pt-0 sm:pt-6 sm:px-6 md:px-4 md:pt-4 md:pb-2">
+              <CardTitle className="text-base sm:text-lg md:text-xl font-headline text-foreground">Welcome Back!</CardTitle>
+              <CardDescription className="text-xs sm:text-xs md:text-sm text-foreground/80">Login to Taxshila Companion.</CardDescription>
+            </CardHeader>
+            <CardContent className="px-4 sm:px-6 md:px-4 md:pt-2">
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                  <FormField
+                    control={form.control}
+                    name="identifier"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-xs sm:text-sm">Email or Phone Number</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Enter your email or phone" {...field} className="text-xs sm:text-sm" disabled={isLoggingIn} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
                   />
-                ))
-              ) : (
-                 <div className="text-center text-muted-foreground py-6">
-                    No students are currently checked in.
-                  </div>
-              )}
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
-
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-        <Link href="/students/list" className="block no-underline focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-lg h-full">
-          <Card className="flex flex-col items-center justify-center text-center p-3 w-full h-full shadow-md hover:shadow-lg transition-shadow">
-            <Users className="h-6 w-6 mb-1 text-primary" />
-            <ShadcnCardTitle className="text-sm font-semibold text-card-foreground mb-1">Total Students</ShadcnCardTitle>
-            {isLoadingDashboardStats ? (
-              <Loader2 className="h-5 w-5 animate-spin my-1" />
-            ) : (
-              <div className="text-2xl font-bold text-foreground mb-1">{totalRegisteredStudents}</div>
-            )}
-            <p className="text-xs text-muted-foreground">
-              {isLoadingDashboardStats ? "Loading..." : `M: ${morningShiftStudentCount}, E: ${eveningShiftStudentCount}, FD: ${fullDayShiftStudentCount} active`}
-            </p>
-          </Card>
-        </Link>
-
-        <Card
-          className="flex flex-col items-center justify-center text-center p-3 w-full h-full shadow-md hover:shadow-lg transition-shadow cursor-pointer"
-          onClick={() => setShowCheckedInDialog(true)}
-        >
-          <LogIn className="h-6 w-6 mb-1 text-primary" />
-          <ShadcnCardTitle className="text-sm font-semibold text-card-foreground mb-1">Currently In Library</ShadcnCardTitle>
-          {isLoadingCheckedInStudents ? (
-            <Loader2 className="h-5 w-5 animate-spin my-1" />
-          ) : (
-            <div className="text-2xl font-bold text-foreground mb-1">{baseCheckedInStudents.length}</div>
-          )}
-          <p className="text-xs text-muted-foreground">Active check-ins right now</p>
+                  <FormField
+                    control={form.control}
+                    name="password"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-xs sm:text-sm">Password</FormLabel>
+                        <FormControl>
+                          <Input type="password" placeholder="Enter your password" {...field} className="text-xs sm:text-sm" disabled={isLoggingIn} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <Button type="submit" className="w-full" size="sm" disabled={isLoggingIn}>
+                    {isLoggingIn && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    {isLoggingIn ? 'Logging in...' : 'Login'}
+                  </Button>
+                </form>
+              </Form>
+            </CardContent>
+          </div>
         </Card>
-
-        <Link href="/seats/availability" className="block no-underline focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-lg h-full">
-          <Card className="flex flex-col items-center justify-center text-center p-3 w-full h-full shadow-md hover:shadow-lg transition-shadow">
-            <Armchair className="h-6 w-6 mb-1 text-primary" />
-            <ShadcnCardTitle className="text-sm font-semibold text-card-foreground mb-1">Available Booking Slots</ShadcnCardTitle>
-            <CardContent className="p-0 text-xs text-muted-foreground w-full mt-1 space-y-0.5">
-              {isLoadingDashboardStats ? <Loader2 className="h-5 w-5 animate-spin my-2 mx-auto" /> : (
-                <>
-                  <div className="flex justify-between px-2"><span>Morning Slots:</span> <span className="font-semibold text-foreground">{serviceAllSeats.length - occupiedSeatsMorning.size}</span></div>
-                  <div className="flex justify-between px-2"><span>Evening Slots:</span> <span className="font-semibold text-foreground">{serviceAllSeats.length - occupiedSeatsEvening.size}</span></div>
-                  <div className="flex justify-between px-2"><span>Full Day Slots:</span> <span className="font-semibold text-foreground">{availableForFullDayBookingCount}</span></div>
-                </>
-              )}
+        
+        {canInstallPWA && deferredPrompt && (
+          <Card className="w-full max-w-md md:max-w-sm shadow-xl bg-background/80 backdrop-blur-md rounded-lg">
+            <CardContent className="p-3 flex flex-col items-center text-center">
+              <div className="flex items-center gap-2 mb-1">
+                <Smartphone className="h-5 w-5 text-primary" />
+                <p className="text-sm font-medium text-foreground">
+                  Install Taxshila Companion App
+                </p>
+              </div>
+              <p className="text-xs text-muted-foreground mb-2">
+                Get faster access and an optimized experience by installing the app on your device.
+              </p>
+              <Button onClick={handleInstallClick} className="w-full" size="sm">
+                <Download className="mr-2 h-4 w-4" />
+                Install App
+              </Button>
             </CardContent>
           </Card>
-        </Link>
-
-        <Link href="/admin/fees/revenue-history" className="block no-underline focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-lg h-full">
-          <Card className="flex flex-col items-center justify-center text-center p-3 w-full h-full shadow-md hover:shadow-lg transition-shadow">
-            <IndianRupee className="h-6 w-6 mb-1 text-primary" />
-            <ShadcnCardTitle className="text-sm font-semibold text-card-foreground mb-1">Revenue ({currentMonthName})</ShadcnCardTitle>
-            {isLoadingRevenue ? (
-              <Loader2 className="h-5 w-5 animate-spin my-1" />
-            ) : (
-              <div className="text-2xl font-bold text-foreground mb-1">{monthlyRevenue || "Rs. 0"}</div>
-            )}
-            <p className="text-xs text-muted-foreground">From received payments this month</p>
-          </Card>
-        </Link>
-      </div>
-
-      <div className="my-8 border-t border-border"></div>
-
-      <h2 className="text-lg font-headline font-semibold tracking-tight mb-4">Quick Actions</h2>
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-        {staticAdminActionTilesConfig.map((tileConfig) => {
-          const Icon = tileConfig.icon;
-          let currentTitle = tileConfig.baseTitle;
-          let hasNewBadge = false;
-
-          if (tileConfig.isFeedbackTile) {
-            if (isLoadingFeedbackCount) {
-              currentTitle = "Feedback (Loading...)";
-            } else if (openFeedbackCount > 0) {
-              currentTitle = `View Feedback (${openFeedbackCount} Open)`;
-              hasNewBadge = true;
-            } else {
-              currentTitle = "View Feedback";
-            }
-          }
-
-          if (tileConfig.isFinancialTile) {
-            if (isLoadingFinancialCount) {
-              currentTitle = "Payment Due (Loading...)";
-            } else if (financialCount > 0) {
-              currentTitle = `Payment Due (${financialCount})`;
-              hasNewBadge = true;
-            } else {
-              currentTitle = "Payment Due List";
-            }
-          }
-
-          return (
-            <Link href={tileConfig.href} key={tileConfig.baseTitle} className="block no-underline focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-lg h-full">
-              <Card className={cn(
-                "shadow-md hover:shadow-lg transition-shadow h-full w-full flex flex-col p-3 text-center items-center justify-center relative",
-                hasNewBadge && "border-destructive ring-1 ring-destructive/50"
-              )}>
-                {hasNewBadge && (
-                  <span className="absolute top-2 right-2 block h-2 w-2 rounded-full bg-destructive" />
-                )}
-                <Icon className="h-6 w-6 mb-2 text-primary" />
-                <ShadcnCardTitle className="text-sm font-semibold leading-tight">{currentTitle}</ShadcnCardTitle>
-                <ShadcnCardDescription className="text-xs text-muted-foreground mt-1">{tileConfig.description}</ShadcnCardDescription>
-              </Card>
-            </Link>
-          );
-        })}
+        )}
       </div>
     </>
-  );
+  )
 }
-
-export default function MainPage() {
-  const { user, isLoading } = useAuth();
-  const router = useRouter();
-  const pathname = usePathname();
-
-  React.useEffect(() => {
-    if (!isLoading && user) {
-      if (user.role === 'member') {
-        router.replace('/member/dashboard');
-      }
-    } else if (!isLoading && !user) {
-      router.replace('/login');
-    }
-  }, [user, isLoading, router]);
-
-  if (isLoading || (!isLoading && !user && !pathname.startsWith('/login'))) {
-    return (
-      <div className="flex min-h-screen w-full flex-col items-center justify-center bg-background">
-        <Loader2 className="h-12 w-12 animate-spin text-primary" />
-        <p className="mt-4 text-muted-foreground">Loading dashboard...</p>
-      </div>
-    );
-  }
-
-  if (user && user.role === 'member') {
-    return (
-      <div className="flex min-h-screen w-full flex-col items-center justify-center bg-background">
-        <Loader2 className="h-12 w-12 animate-spin text-primary" />
-        <p className="mt-4 text-muted-foreground">Redirecting...</p>
-      </div>
-    );
-  }
-
-  if (user && user.role === 'admin') {
-    return <AdminDashboardContent />;
-  }
-
-  if (!isLoading && !user && pathname.startsWith('/login')) {
-    // This case can happen if user is on login page and logs out, or directly navigates to login.
-    // We don't want to show a full-page loader here because the login page should render.
-    // The AppLayout handles the redirection if they try to access protected routes without auth.
-    // However, with the current AppLayout, this condition might lead to rendering the loader over the login page.
-     return null;
-  }
-
-  return (
-    <div className="flex min-h-screen w-full flex-col items-center justify-center bg-background">
-      <Loader2 className="h-12 w-12 animate-spin text-primary" />
-      <p className="mt-4 text-muted-foreground">Loading...</p>
-    </div>
-  );
-}
-
-    

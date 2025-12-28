@@ -1,5 +1,4 @@
 
-
 "use client";
 import * as React from 'react';
 import { usePathname, useRouter } from 'next/navigation';
@@ -60,12 +59,25 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const { refreshNotifications } = useNotificationContext();
   const { theme, setTheme } = useTheme();
 
+  const publicPaths = ['/home', '/privacy_policy'];
+  const isPublicPath = publicPaths.includes(pathname);
+
   React.useEffect(() => {
-    const isPublicPath = pathname.startsWith('/login');
-    if (!isAuthLoading && !user && !isPublicPath) {
-      router.replace('/login');
+    // This effect handles redirects for protected routes
+    if (!isAuthLoading) {
+      // If the user is not logged in and trying to access a protected page, redirect to login.
+      if (!user && !isPublicPath && pathname !== '/') {
+        router.replace('/');
+      }
+      
+      // If the user IS logged in and they land on the login page, redirect them to their dashboard.
+      // This is the only redirection that should happen for an authenticated user.
+      if (user && pathname === '/') {
+        const destination = user.role === 'admin' ? '/admin/dashboard' : '/member/dashboard';
+        router.replace(destination);
+      }
     }
-  }, [user, isAuthLoading, pathname, router]);
+  }, [user, isAuthLoading, pathname, router, isPublicPath]);
 
   React.useEffect(() => {
     if (prevPathnameRef.current !== pathname) {
@@ -73,6 +85,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       const timer = setTimeout(() => {
         setIsRouteLoading(false);
       }, 250);
+      prevPathnameRef.current = pathname;
       return () => clearTimeout(timer);
     }
   }, [pathname]);
@@ -161,8 +174,6 @@ if (targetId) {
   }, [user]);
 
 
-  const isPublicPath = pathname.startsWith('/login');
-
   if (isAuthLoading && !isPublicPath) {
     return (
       <div className="flex min-h-screen w-full flex-col items-center justify-center bg-background">
@@ -173,11 +184,8 @@ if (targetId) {
     );
   }
   
-  if (!user && !isPublicPath) {
-    return null;
-  }
-
-  if (isPublicPath) {
+  // If we are on a public path, or on the login page itself, just render the children.
+  if (isPublicPath || pathname === '/') {
     return (
       <>
         <TopProgressBar isLoading={isRouteLoading} />
@@ -186,6 +194,7 @@ if (targetId) {
     );
   }
   
+  // If we have a user and we're not on a public path, render the main app layout.
   if (user) {
     return (
       <SidebarProvider defaultOpen>
@@ -214,5 +223,6 @@ if (targetId) {
     );
   }
 
+  // Fallback for edge cases (e.g., waiting for redirect), renders nothing.
   return null;
 }

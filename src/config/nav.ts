@@ -27,6 +27,7 @@ import {
   QrCode,
   Wifi,
   Notebook,
+  FileText,
 } from 'lucide-react';
 import { NavItem } from '@/types/nav';
 
@@ -34,7 +35,7 @@ export const mainNav: NavItem[] = [
   // Admin Routes
   {
     title: 'Dashboard',
-    href: '/',
+    href: '/admin/dashboard',
     icon: LayoutDashboard,
     roles: ['admin'],
   },
@@ -216,6 +217,12 @@ export const mainNav: NavItem[] = [
     title: 'Library Rules',
     href: '/member/rules',
     icon: BookOpenCheck,
+    roles: ['member'],
+  },
+  {
+    title: 'Privacy Policy',
+    href: '/privacy_policy',
+    icon: FileText,
     roles: ['member'],
   },
   {

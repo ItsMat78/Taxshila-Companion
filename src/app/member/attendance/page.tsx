@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from 'react';
@@ -182,6 +181,11 @@ export default function MemberAttendancePage() {
   }, [fetchStudentData]);
 
   const getDailyStudyDataForMonth = React.useCallback(async (student: Student, month: Date) => {
+    if (!student.shift) {
+        toast({ title: "Shift Not Set", description: "Cannot calculate study hours without a shift.", variant: "destructive" });
+        setIsLoadingMonthlyStudyData(false);
+        return;
+    }
     setIsLoadingMonthlyStudyData(true);
     try {
       const startDate = startOfMonth(month);
@@ -423,8 +427,8 @@ export default function MemberAttendancePage() {
                         <span className="text-sm font-medium">Show Calendar</span>
                     </Button>
                 ) : (
-                    <div className="flex flex-col md:flex-row items-center md:items-start gap-6">
-                        <div className="w-full md:w-auto flex justify-center">
+                    <div className="flex flex-col md:flex-row gap-6">
+                        <div className="w-full md:w-auto">
                             <CalendarIconComponent
                                 mode="single"
                                 selected={date}

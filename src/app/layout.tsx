@@ -48,9 +48,9 @@ export default function RootLayout({
           <DynamicThemeColor />
           <AuthProvider>
             <NotificationProvider>
-              <AppLayout>
-                {children}
-              </AppLayout>
+                <AppLayout>
+                  {children}
+                </AppLayout>
               <Toaster />
             </NotificationProvider>
           </AuthProvider>
@@ -59,3 +59,5 @@ export default function RootLayout({
     </html>
   );
 }
+
+    
