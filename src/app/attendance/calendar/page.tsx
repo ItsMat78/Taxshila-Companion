@@ -126,7 +126,7 @@ export default function AdminAttendanceCalendarPage() {
             </CardTitle>
             <CardDescription>Choose a day to view its attendance.</CardDescription>
           </CardHeader>
-          <CardContent className="flex justify-center">
+          <CardContent>
             <Calendar
               mode="single"
               selected={selectedDate}

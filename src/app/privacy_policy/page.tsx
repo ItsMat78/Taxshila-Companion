@@ -7,15 +7,29 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { ScrollText, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
+import { useAuth } from '@/contexts/auth-context';
 
 export default function PrivacyPolicyPage() {
+  const { user } = useAuth();
+
+  // Determine the correct back path based on user authentication and role
+  const getBackPath = () => {
+    if (!user) {
+      return "/home"; // Not logged in, go to public home
+    }
+    if (user.role === 'admin') {
+      return "/admin/dashboard"; // Admin dashboard
+    }
+    return "/member/dashboard"; // Member dashboard
+  };
+
   return (
     <div className="container max-w-4xl mx-auto py-8 px-4">
       <PageTitle title="Privacy Policy" description="Last updated: July 28, 2024">
-         <Link href="/home" passHref>
+         <Link href={getBackPath()} passHref>
           <Button variant="outline">
             <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Home
+            Back
           </Button>
         </Link>
       </PageTitle>
@@ -96,4 +110,3 @@ export default function PrivacyPolicyPage() {
     </div>
   );
 }
-
