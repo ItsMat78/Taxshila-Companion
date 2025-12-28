@@ -63,8 +63,15 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const isPublicPath = publicPaths.includes(pathname);
 
   React.useEffect(() => {
+    // This effect handles redirects for protected routes
     if (!isAuthLoading && !user && !isPublicPath && pathname !== '/') {
       router.replace('/');
+    }
+    
+    // This effect handles redirects for logged-in users who land on the root page
+    if (!isAuthLoading && user && pathname === '/') {
+        const destination = user.role === 'admin' ? '/admin/dashboard' : '/member/dashboard';
+        router.replace(destination);
     }
   }, [user, isAuthLoading, pathname, router, isPublicPath]);
 

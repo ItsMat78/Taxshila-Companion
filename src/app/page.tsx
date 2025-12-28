@@ -50,11 +50,17 @@ export default function RootLoginPage() {
   const [canInstallPWA, setCanInstallPWA] = React.useState(false);
 
   React.useEffect(() => {
-    if (!isAuthLoading && user) {
+    // This effect handles the delayed redirect AFTER the dialog is shown.
+    if (showLoggingInDialog && user) {
+      const timer = setTimeout(() => {
         const destination = user.role === 'admin' ? '/admin/dashboard' : '/member/dashboard';
         router.replace(destination);
+      }, 1500); // Wait 1.5 seconds before redirecting
+
+      return () => clearTimeout(timer);
     }
-  }, [user, isAuthLoading, router]);
+  }, [showLoggingInDialog, user, router]);
+
 
   React.useEffect(() => {
     const handleBeforeInstallPrompt = (e: Event) => {
@@ -103,8 +109,10 @@ export default function RootLoginPage() {
       const loggedInUser = await login(data.identifier, data.password);
       if (loggedInUser) {
         setShowLoggingInDialog(true);
-        // The useEffect hook will handle the redirect
+        // The useEffect hook will handle the redirect now
       } else {
+        // If login fails, login() in AuthContext will show a toast.
+        // We just need to reset the form state.
         setIsLoggingIn(false);
       }
     } catch (error) {
@@ -127,12 +135,26 @@ export default function RootLoginPage() {
     );
   }
 
+  // Don't render login form if user is already logged in and we are about to redirect
+  if (user) {
+     return (
+        <div className="flex min-h-screen w-full flex-col items-center justify-center bg-background">
+            <Loader2 className="h-12 w-12 animate-spin text-primary" />
+            <p className="mt-4 text-muted-foreground">Loading Dashboard...</p>
+        </div>
+    );
+  }
+
   return (
     <>
       <div
         style={{ backgroundImage: `url(${COVER_IMAGE_URL})` }}
         className="min-h-screen flex flex-col items-center justify-center bg-cover bg-center p-4 gap-6"
-      >
+      ><Link href="/home">
+      <Button variant="outline" className="bg-background/70 backdrop-blur-md">
+        <Home className="mr-2 h-4 w-4" /> Go to Home Page
+      </Button>
+    </Link>
         <Card className="w-full max-w-md md:max-w-3xl shadow-xl bg-background/70 backdrop-blur-md rounded-lg flex flex-col md:flex-row max-h-[calc(100vh_-_theme(space.8))] overflow-y-auto">
           <div className="flex flex-col items-center justify-center px-4 pt-4 pb-0 sm:p-6 sm:pb-2 md:pb-6 md:w-1/3 md:border-r md:border-border/30 md:p-4">
             <div className="relative w-16 h-auto sm:w-24 md:w-28 mb-2 sm:mb-4 md:mb-0">
@@ -192,11 +214,7 @@ export default function RootLoginPage() {
           </div>
         </Card>
         
-        <Link href="/home">
-          <Button variant="outline" className="bg-background/70 backdrop-blur-md">
-            <Home className="mr-2 h-4 w-4" /> Go to Home Page
-          </Button>
-        </Link>
+        
 
 
         {/* --- PWA Install Button --- */}
@@ -206,7 +224,7 @@ export default function RootLoginPage() {
               <div className="flex items-center gap-2 mb-1">
                 <Smartphone className="h-5 w-5 text-primary" />
                 <p className="text-sm font-medium text-foreground">
-                  Install Taxshila Companion App?
+                  Install Taxshila Companion App
                 </p>
               </div>
               <p className="text-xs text-muted-foreground mb-2">
