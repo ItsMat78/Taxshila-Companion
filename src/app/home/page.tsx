@@ -57,7 +57,6 @@ function ContactDialogContent() {
         </a>
         <div className="relative h-64 w-full rounded-2xl overflow-hidden transition-all duration-500 border border-border shadow-inner mt-4">
           <iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3605.5020189959014!2d83.00187507449463!3d25.35448622531363!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x398e2fedc194747f%3A0x571327385a60b22f!2sTaxshila%20Digital%20Library!5e0!3m2!1sen!2sin!4v1766080131645!5m2!1sen!2sin" width="100%" height="100%" style={{border:0}} allowFullScreen loading="lazy" referrerPolicy="no-referrer-when-downgrade"></iframe>
-          <div className="absolute inset-0 bg-black/40 transition-colors" />
           <div className="absolute bottom-3 right-3">
              <a href="https://www.google.com/maps/place/Taxshila+Digital+Library/@25.3544862,83.0018751,17z/data=!3m1!4b1!4m6!3m5!1s0x398e2fedc194747f:0x571327385a60b22f!8m2!3d25.3544814!4d83.0044447!16s%2Fg%2F11fyb_x1g9?entry=ttu" target="_blank" rel="noopener noreferrer">
                 <Button size="sm" className="backdrop-blur-md bg-white/10 border border-white/30 text-white hover:bg-white hover:text-black transition-all">
@@ -448,7 +447,6 @@ export default function HomePage() {
 
             <div className="relative h-64 w-full rounded-2xl overflow-hidden transition-all duration-500 border border-white/10 shadow-2xl">
               <iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3605.5020189959014!2d83.00187507449463!3d25.35448622531363!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x398e2fedc194747f%3A0x571327385a60b22f!2sTaxshila%20Digital%20Library!5e0!3m2!1sen!2sin!4v1766080131645!5m2!1sen!2sin" width="100%" height="100%" style={{border:0}} allowFullScreen loading="lazy" referrerPolicy="no-referrer-when-downgrade"></iframe>
-              <div className="absolute inset-0 bg-black/40 transition-colors" />
               <div className="absolute bottom-5 right-5">
                  <a href="https://www.google.com/maps/place/Taxshila+Digital+Library/@25.3544862,83.0018751,17z/data=!3m1!4b1!4m6!3m5!1s0x398e2fedc194747f:0x571327385a60b22f!8m2!3d25.3544814!4d83.0044447!16s%2Fg%2F11fyb_x1g9?entry=ttu" target="_blank" rel="noopener noreferrer">
                     <Button size="sm" className="backdrop-blur-md bg-white/10 border border-white/30 text-white hover:bg-white hover:text-black transition-all">
