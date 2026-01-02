@@ -1,0 +1,75 @@
+
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+  
+    // Helper functions to check user roles
+    function isAdmin() {
+      return request.auth.token.admin == true;
+    }
+
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+    
+    function isMember() {
+      return request.auth != null && !isAdmin();
+    }
+    
+    // Students Collection
+    // Admins can read/write all. Members can read/update their own doc.
+    match /students/{studentId} {
+      allow read: if isAdmin() || (isMember() && isOwner(resource.data.uid));
+      allow list: if isAdmin();
+      allow create: if isAdmin();
+      allow update: if isAdmin() || (isMember() && isOwner(resource.data.uid) && request.resource.data.keys().hasOnly(['theme', 'profilePictureUrl', 'fcmTokens', 'oneSignalPlayerIds']));
+      allow delete: if isAdmin();
+    }
+    
+    // Admins Collection
+    // Admins can read/list. Writes are handled by secure cloud functions.
+    match /admins/{adminId} {
+      allow read, list: if isAdmin();
+      allow write: if false; // Disallow direct client writes
+    }
+    
+    // Attendance Records
+    // Admins can read all. Members can read their own and create new ones (check-in).
+    match /attendanceRecords/{recordId} {
+      allow read: if isAdmin() || (isMember() && request.auth.uid == resource.data.uid);
+      allow list: if isAdmin();
+      allow create: if isMember(); // Students check themselves in
+      allow update: if isMember() && request.auth.uid == resource.data.uid; // Students check themselves out
+      allow delete: if isAdmin();
+    }
+    
+    // Feedback Items
+    // Admins can read/write all. Members can create new feedback.
+    match /feedbackItems/{feedbackId} {
+      allow read, list: if isAdmin();
+      allow create: if isMember();
+      allow update, delete: if isAdmin();
+    }
+    
+    // Alert Items
+    // Admins can write all. Anyone logged in can read.
+    match /alertItems/{alertId} {
+      allow read: if request.auth != null;
+      allow create, update, delete: if isAdmin();
+    }
+    
+    // Admin Notes
+    // Only admins can read/write.
+    match /adminNotes/{noteId} {
+      allow read, write: if isAdmin();
+    }
+    
+    // App Configuration (Fees, WiFi, etc.)
+    // Admins can write. Anyone logged in can read.
+    match /appConfiguration/{configId} {
+      allow read: if request.auth != null;
+      allow write: if isAdmin();
+    }
+  }
+}
