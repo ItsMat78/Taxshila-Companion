@@ -37,8 +37,8 @@ export default function DataManagementPage() {
 
     const handleReviewerAction = (actionName: string) => {
       toast({
-        title: "Simulated Success!",
-        description: `As a reviewer, the '${actionName}' action was simulated. No data was changed.`,
+        title: "Action Disabled for Reviewer",
+        description: `The '${actionName}' action is disabled in reviewer mode.`,
       });
     }
 
@@ -140,13 +140,13 @@ a.click();
         <div className="space-y-2">
             <Label htmlFor="import-file">{label} (.csv)</Label>
             <div className="flex space-x-2">
-                <Input id="import-file" type="file" accept=".csv" onChange={handleFileChange} className="max-w-xs" />
+                <Input id="import-file" type="file" accept=".csv" onChange={handleFileChange} className="max-w-xs" disabled={isImporting || isReviewer}/>
                 <Button 
                     onClick={() => handleImport(type)} 
-                    disabled={isImporting || !importFile}
+                    disabled={isImporting || !importFile || isReviewer}
                 >
                     {(isImporting && activeImportType === type) ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
-                    Import {label} {isReviewer && '(For Reviewer)'}
+                    Import {label}
                 </Button>
             </div>
         </div>
@@ -163,9 +163,9 @@ a.click();
                         <CardDescription>Create or update user auth accounts for all students in the database. Fixes login issues for students without a valid auth record.</CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <Button onClick={handleUserMigration} disabled={isMigrating}>
+                        <Button onClick={handleUserMigration} disabled={isMigrating || isReviewer}>
                             {isMigrating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                            {isReviewer ? "Sync Data (For Reviewer)" : "Sync Student Auth Data"}
+                            Sync Student Auth Data
                         </Button>
                     </CardContent>
                 </Card>

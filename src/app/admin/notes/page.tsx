@@ -45,6 +45,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { useAuth } from '@/contexts/auth-context';
 
 
 const noteFormSchema = z.object({
@@ -57,10 +58,11 @@ interface NoteCardProps {
     note: AdminNote;
     onEdit: (note: AdminNote) => void;
     onDelete: (noteId: string) => void;
-    isDeleting: boolean;
+    isSubmitting: boolean;
+    isReviewer: boolean;
 }
 
-const NoteCard = ({ note, onEdit, onDelete, isDeleting }: NoteCardProps) => (
+const NoteCard = ({ note, onEdit, onDelete, isSubmitting, isReviewer }: NoteCardProps) => (
     <Card className="shadow-md flex flex-col">
         <CardHeader className="pb-2">
             <CardDescription className="text-xs">
@@ -71,13 +73,13 @@ const NoteCard = ({ note, onEdit, onDelete, isDeleting }: NoteCardProps) => (
             <p className="text-sm whitespace-pre-wrap">{note.content}</p>
         </CardContent>
         <CardFooter className="flex justify-end gap-2 border-t pt-3 mt-auto">
-            <Button variant="ghost" size="icon" onClick={() => onEdit(note)}>
+            <Button variant="ghost" size="icon" onClick={() => onEdit(note)} disabled={isSubmitting || isReviewer}>
                 <Edit className="h-4 w-4" />
             </Button>
             <AlertDialog>
                 <AlertDialogTrigger asChild>
-                    <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive hover:bg-destructive/10" disabled={isDeleting}>
-                        {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                    <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive hover:bg-destructive/10" disabled={isSubmitting || isReviewer}>
+                        {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
                     </Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent>
@@ -89,7 +91,7 @@ const NoteCard = ({ note, onEdit, onDelete, isDeleting }: NoteCardProps) => (
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                         <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={() => onDelete(note.id)} className="bg-destructive hover:bg-destructive/90">
+                        <AlertDialogAction onClick={() => onDelete(note.id)} className="bg-destructive hover:bg-destructive/90" disabled={isReviewer}>
                             Confirm Delete
                         </AlertDialogAction>
                     </AlertDialogFooter>
@@ -100,11 +102,14 @@ const NoteCard = ({ note, onEdit, onDelete, isDeleting }: NoteCardProps) => (
 );
 
 export default function AdminNotesPage() {
+    const { user } = useAuth();
     const { toast } = useToast();
     const [notes, setNotes] = React.useState<AdminNote[]>([]);
     const [isLoading, setIsLoading] = React.useState(true);
     const [isSubmitting, setIsSubmitting] = React.useState(false);
     const [editingNote, setEditingNote] = React.useState<AdminNote | null>(null);
+
+    const isReviewer = user?.email === 'guest-admin@taxshila-auth.com';
 
     const form = useForm<NoteFormValues>({
         resolver: zodResolver(noteFormSchema),
@@ -128,6 +133,13 @@ export default function AdminNotesPage() {
     }, [fetchNotes]);
 
     const handleEditClick = (note: AdminNote) => {
+        if (isReviewer) {
+            toast({
+                title: "Action Disabled for Reviewer",
+                description: "Editing notes is disabled in reviewer mode.",
+            });
+            return;
+        }
         setEditingNote(note);
         form.setValue("content", note.content);
         window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -139,6 +151,13 @@ export default function AdminNotesPage() {
     };
 
     const onSubmit = async (data: NoteFormValues) => {
+        if (isReviewer) {
+            toast({
+                title: "Action Disabled for Reviewer",
+                description: "Saving notes is disabled in reviewer mode.",
+            });
+            return;
+        }
         setIsSubmitting(true);
         try {
             if (editingNote) {
@@ -158,12 +177,22 @@ export default function AdminNotesPage() {
     };
 
     const handleDelete = async (noteId: string) => {
+        if (isReviewer) {
+            toast({
+                title: "Action Disabled for Reviewer",
+                description: "Deleting notes is disabled in reviewer mode.",
+            });
+            return;
+        }
+        setIsSubmitting(true);
         try {
             await deleteAdminNote(noteId);
             toast({ title: "Note Deleted", description: "The note has been permanently removed." });
             fetchNotes();
         } catch (error: any) {
             toast({ title: "Error", description: error.message || "Failed to delete the note.", variant: "destructive" });
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
@@ -193,6 +222,7 @@ export default function AdminNotesPage() {
                                                 placeholder="Type your note here..."
                                                 className="min-h-[100px]"
                                                 {...field}
+                                                disabled={isSubmitting || isReviewer}
                                             />
                                         </FormControl>
                                         <FormMessage />
@@ -201,12 +231,12 @@ export default function AdminNotesPage() {
                             />
                         </CardContent>
                         <CardFooter className="flex gap-2">
-                            <Button type="submit" disabled={isSubmitting}>
+                            <Button type="submit" disabled={isSubmitting || isReviewer}>
                                 {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                                 {editingNote ? 'Save Changes' : 'Save Note'}
                             </Button>
                             {editingNote && (
-                                <Button variant="outline" onClick={handleCancelEdit}>
+                                <Button variant="outline" onClick={handleCancelEdit} disabled={isReviewer}>
                                     Cancel
                                 </Button>
                             )}
@@ -229,7 +259,8 @@ export default function AdminNotesPage() {
                                 note={note}
                                 onEdit={handleEditClick}
                                 onDelete={handleDelete}
-                                isDeleting={isSubmitting}
+                                isSubmitting={isSubmitting}
+                                isReviewer={isReviewer}
                             />
                         ))}
                     </div>

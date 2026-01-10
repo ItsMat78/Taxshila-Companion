@@ -98,7 +98,7 @@ export default function AdminManagementPage() {
     const handleAddAdmin = async (e: React.FormEvent) => {
         e.preventDefault();
         if (isReviewer) {
-            toast({ title: "Simulated Success!", description: "As a reviewer, this action is simulated. No admin was added." });
+            toast({ title: "Action Disabled for Reviewer", description: "Adding new admins is disabled in reviewer mode." });
             return;
         }
         setIsSubmitting(true);
@@ -130,7 +130,7 @@ export default function AdminManagementPage() {
 
     const handleRemoveAdmin = async (uid: string, name: string) => {
         if (isReviewer) {
-            toast({ title: "Simulated Success!", description: `As a reviewer, this action is simulated. ${name} was not removed.` });
+            toast({ title: "Action Disabled for Reviewer", description: `Removing admins is disabled in reviewer mode.` });
             return;
         }
         try {
@@ -167,19 +167,19 @@ export default function AdminManagementPage() {
                         <form onSubmit={handleAddAdmin} className="space-y-4">
                             <div className="space-y-2">
                                 <Label htmlFor="name">Name</Label>
-                                <Input id="name" value={newAdminName} onChange={(e) => setNewAdminName(e.target.value)} placeholder="Full Name" required />
+                                <Input id="name" value={newAdminName} onChange={(e) => setNewAdminName(e.target.value)} placeholder="Full Name" required disabled={isSubmitting || isReviewer}/>
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="email">Email</Label>
-                                <Input id="email" type="email" value={newAdminEmail} onChange={(e) => setNewAdminEmail(e.target.value)} placeholder="admin@example.com" required />
+                                <Input id="email" type="email" value={newAdminEmail} onChange={(e) => setNewAdminEmail(e.target.value)} placeholder="admin@example.com" required disabled={isSubmitting || isReviewer}/>
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="password">Password</Label>
-                                <Input id="password" type="password" value={newAdminPassword} onChange={(e) => setNewAdminPassword(e.target.value)} placeholder="Min. 6 characters" required />
+                                <Input id="password" type="password" value={newAdminPassword} onChange={(e) => setNewAdminPassword(e.target.value)} placeholder="Min. 6 characters" required disabled={isSubmitting || isReviewer}/>
                             </div>
-                            <Button type="submit" disabled={isSubmitting || !user}>
+                            <Button type="submit" disabled={isSubmitting || !user || isReviewer}>
                                 {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UserPlus className="mr-2 h-4 w-4" />}
-                                Add Admin {isReviewer && '(For Reviewer)'}
+                                Add Admin
                             </Button>
                         </form>
                     </CardContent>
@@ -212,7 +212,7 @@ export default function AdminManagementPage() {
                                             <TableCell className="text-right">
                                                 <AlertDialog>
                                                     <AlertDialogTrigger asChild>
-                                                        <Button variant="destructive" size="icon" disabled={!user}>
+                                                        <Button variant="destructive" size="icon" disabled={!user || isReviewer || admin.email === user.email}>
                                                             <Trash2 className="h-4 w-4" />
                                                         </Button>
                                                     </AlertDialogTrigger>
@@ -220,12 +220,12 @@ export default function AdminManagementPage() {
                                                         <AlertDialogHeader>
                                                             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
                                                             <AlertDialogDescription>
-                                                                {isReviewer ? `This would normally permanently remove ${admin.name}. As a reviewer, this is a simulated action.` : `This will permanently remove ${admin.name} as an admin. This action cannot be undone.`}
+                                                                This will permanently remove {admin.name} as an admin. This action cannot be undone.
                                                             </AlertDialogDescription>
                                                         </AlertDialogHeader>
                                                         <AlertDialogFooter>
                                                             <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                            <AlertDialogAction onClick={() => handleRemoveAdmin(admin.uid, admin.name)}>
+                                                            <AlertDialogAction onClick={() => handleRemoveAdmin(admin.uid, admin.name)} disabled={isReviewer}>
                                                                 Confirm
                                                             </AlertDialogAction>
                                                         </AlertDialogFooter>

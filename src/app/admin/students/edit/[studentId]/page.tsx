@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import * as React from 'react';
@@ -162,6 +161,8 @@ export default function EditStudentPage() {
   const [paymentMethod, setPaymentMethod] = React.useState<PaymentRecord['method']>('Cash');
   const seatNumberRef = React.useRef<HTMLDivElement>(null);
 
+  const isReviewer = user?.email === 'guest-admin@taxshila-auth.com';
+
 
   const form = useForm<StudentEditFormValues>({
     resolver: zodResolver(studentEditFormSchema),
@@ -287,6 +288,10 @@ export default function EditStudentPage() {
 
 
   async function onSaveChanges(data: StudentEditFormValues) {
+    if (isReviewer) {
+      toast({ title: "Simulated Success!", description: "As a reviewer, this change was simulated." });
+      return;
+    }
     if (!studentId || !studentData) return;
     setIsSaving(true);
     setIsReactivateConfirmOpen(false); // Close dialog on submit
@@ -382,6 +387,11 @@ export default function EditStudentPage() {
   }
 
   async function handleMarkPaymentPaid() {
+     if (isReviewer) {
+      toast({ title: "Simulated Success!", description: "As a reviewer, this payment was simulated." });
+      setIsConfirmPaymentOpen(false);
+      return;
+    }
     if (!studentId || !studentData || isStudentLeft || !feeStructure) return;
     setIsSaving(true);
     
@@ -424,6 +434,11 @@ export default function EditStudentPage() {
   }
 
   async function handleMarkAsLeft() {
+    if (isReviewer) {
+      toast({ title: "Simulated Success!", description: "As a reviewer, this action was simulated." });
+      setIsConfirmMarkLeftOpen(false);
+      return;
+    }
     if (!studentId || !studentData || isStudentLeft) return;
     setIsSaving(true);
     try {
@@ -475,7 +490,9 @@ export default function EditStudentPage() {
   }
 
   const handleDeleteStudent = async () => {
-    if (!studentId || !studentData) return;
+    // Deletion is a special case and is fully disabled for the reviewer.
+    // My previous change to hide the button was correct for this action.
+    if (isReviewer || !studentId || !studentData) return;
     setIsDeleting(true);
     try {
       const response = await fetch('/api/admin/delete-student', {
@@ -525,6 +542,10 @@ export default function EditStudentPage() {
   };
   
   const handleReactivateClick = () => {
+    if (isReviewer) {
+      toast({ title: "Simulated Success!", description: "As a reviewer, this action was simulated." });
+      return;
+    }
     if (!form.getValues("seatNumber")) {
       toast({
         title: "Seat Required",
@@ -539,7 +560,7 @@ export default function EditStudentPage() {
   };
 
 
-  const isSaveDisabled = isSaving || isDeleting || isLoadingSeats || (!isStudentLeft && !form.formState.isDirty && !isDirtyOverride && !form.getValues("newPassword"));
+  const isSaveDisabled = isSaving || isDeleting || isLoadingSeats || isReviewer || (!isStudentLeft && !form.formState.isDirty && !isDirtyOverride && !form.getValues("newPassword"));
 
   if (isLoading) {
     return (
@@ -602,6 +623,7 @@ export default function EditStudentPage() {
                     currentProfilePictureUrl={studentData.profilePictureUrl}
                     onUploadSuccess={onPictureUploadSuccess}
                     onPictureSelect={onPictureSelect}
+                    isReviewer={isReviewer}
                   />
               </div>
 
@@ -617,16 +639,16 @@ export default function EditStudentPage() {
                           </FormControl>
                       </FormItem>
                       <FormField control={form.control} name="name" render={({ field }) => (
-                          <FormItem><FormLabel>Full Name</FormLabel><FormControl><Input placeholder="Enter student's full name" {...field} disabled={isSaving || isDeleting} /></FormControl><FormMessage /></FormItem>
+                          <FormItem><FormLabel>Full Name</FormLabel><FormControl><Input placeholder="Enter student's full name" {...field} disabled={isSaving || isDeleting || isReviewer} /></FormControl><FormMessage /></FormItem>
                       )} />
                       <FormField control={form.control} name="email" render={({ field }) => (
-                          <FormItem><FormLabel>Email Address (Optional)</FormLabel><FormControl><Input type="email" placeholder="student@example.com" {...field} disabled={isSaving || isDeleting} /></FormControl><FormMessage /></FormItem>
+                          <FormItem><FormLabel>Email Address (Optional)</FormLabel><FormControl><Input type="email" placeholder="student@example.com" {...field} disabled={isSaving || isDeleting || isReviewer} /></FormControl><FormMessage /></FormItem>
                       )} />
                       <FormField control={form.control} name="phone" render={({ field }) => (
-                          <FormItem><FormLabel>Phone Number</FormLabel><FormControl><Input type="tel" placeholder="Enter 10-digit phone number" {...field} disabled={isSaving || isDeleting} /></FormControl><FormMessage /></FormItem>
+                          <FormItem><FormLabel>Phone Number</FormLabel><FormControl><Input type="tel" placeholder="Enter 10-digit phone number" {...field} disabled={isSaving || isDeleting || isReviewer} /></FormControl><FormMessage /></FormItem>
                       )} />
                       <FormField control={form.control} name="address" render={({ field }) => (
-                          <FormItem><FormLabel>Address</FormLabel><FormControl><Input placeholder="Enter address" {...field} disabled={isSaving || isDeleting} /></FormControl><FormMessage /></FormItem>
+                          <FormItem><FormLabel>Address</FormLabel><FormControl><Input placeholder="Enter address" {...field} disabled={isSaving || isDeleting || isReviewer} /></FormControl><FormMessage /></FormItem>
                       )} />
                     </div>
                 </div>
@@ -639,10 +661,10 @@ export default function EditStudentPage() {
                      <FormField control={form.control} name="shift" render={({ field }) => (
                         <FormItem className="space-y-3"><FormLabel>Shift Selection</FormLabel>
                         <FormControl>
-                            <RadioGroup onValueChange={(value) => { field.onChange(value); setIsDirtyOverride(true); }} value={field.value} className="flex flex-col space-y-2" disabled={isSaving || isDeleting}>
+                            <RadioGroup onValueChange={(value) => { field.onChange(value); setIsDirtyOverride(true); }} value={field.value} className="flex flex-col space-y-2" disabled={isSaving || isDeleting || isReviewer}>
                             {shiftOptions.map(option => (
                                 <FormItem key={option.value} className="flex items-center space-x-3 space-y-0">
-                                <FormControl><RadioGroupItem value={option.value} disabled={isSaving || isDeleting} /></FormControl>
+                                <FormControl><RadioGroupItem value={option.value} disabled={isSaving || isDeleting || isReviewer} /></FormControl>
                                 <FormLabel className="font-normal">{option.label}</FormLabel>
                                 </FormItem>
                             ))}
@@ -664,7 +686,7 @@ export default function EditStudentPage() {
                             <Select
                                 onValueChange={(value) => { field.onChange(value); setIsDirtyOverride(true); }}
                                 value={field.value || ""}
-                                disabled={isSaving || isDeleting || isLoadingSeats || !selectedShift}
+                                disabled={isSaving || isDeleting || isLoadingSeats || !selectedShift || isReviewer}
                             >
                             <FormControl>
                                 <SelectTrigger>
@@ -699,6 +721,7 @@ export default function EditStudentPage() {
                                     "w-full sm:w-[240px] pl-3 text-left font-normal",
                                     !field.value && "text-muted-foreground"
                                     )}
+                                    disabled={isReviewer}
                                 >
                                     {field.value ? (
                                     format(field.value, "PPP")
@@ -713,7 +736,7 @@ export default function EditStudentPage() {
                                 mode="single"
                                 selected={field.value}
                                 onSelect={field.onChange}
-                                disabled={isSaving || isDeleting || isStudentLeft}
+                                disabled={isSaving || isDeleting || isStudentLeft || isReviewer}
                                 initialFocus
                                 />
                             </PopoverContent>
@@ -731,14 +754,14 @@ export default function EditStudentPage() {
                         <FormField control={form.control} name="newPassword" render={({ field }) => (
                         <FormItem>
                             <FormLabel className="text-xs text-muted-foreground">New Password</FormLabel>
-                            <FormControl><Input type="password" placeholder="Enter new password (min 6 chars)" {...field} disabled={isSaving || isDeleting} /></FormControl>
+                            <FormControl><Input type="password" placeholder="Enter new password (min 6 chars)" {...field} disabled={isSaving || isDeleting || isReviewer} /></FormControl>
                             <FormMessage />
                         </FormItem>
                         )} />
                         <FormField control={form.control} name="confirmNewPassword" render={({ field }) => (
                         <FormItem>
                             <FormLabel className="text-xs text-muted-foreground">Confirm New Password</FormLabel>
-                            <FormControl><Input type="password" placeholder="Re-enter new password" {...field} disabled={isSaving || isDeleting} /></FormControl>
+                            <FormControl><Input type="password" placeholder="Re-enter new password" {...field} disabled={isSaving || isDeleting || isReviewer} /></FormControl>
                             <FormMessage />
                         </FormItem>
                         )} />
@@ -751,8 +774,8 @@ export default function EditStudentPage() {
             <CardFooter className="flex flex-col sm:flex-row items-center gap-2 p-6 bg-muted/30 border-t">
                {isStudentLeft ? (
                 <>
-                   <Button type="button" onClick={handleReactivateClick} className="w-full sm:w-auto" disabled={isSaving || isDeleting || isLoadingSeats}>
-                        <UserCheck className="mr-2 h-4 w-4" /> Save and Re-activate
+                   <Button type="button" onClick={handleReactivateClick} className="w-full sm:w-auto" disabled={isSaving || isDeleting || isLoadingSeats || isReviewer}>
+                        <UserCheck className="mr-2 h-4 w-4" /> Save and Re-activate {isReviewer && '(For Reviewer)'}
                    </Button>
                   <AlertDialog open={isReactivateConfirmOpen} onOpenChange={setIsReactivateConfirmOpen}>
                     <AlertDialogContent>
@@ -782,7 +805,7 @@ export default function EditStudentPage() {
                ) : (
                 <Button type="submit" onClick={form.handleSubmit(onSaveChanges)} className="w-full sm:w-auto" disabled={isSaveDisabled}>
                   {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                  Save Changes
+                  Save Changes {isReviewer && '(For Reviewer)'}
                 </Button>
                )}
 
@@ -793,13 +816,13 @@ export default function EditStudentPage() {
                             type="button"
                             variant="outline"
                             className="w-full"
-                            disabled={isSaving || isDeleting || studentData.feeStatus === "Paid" || isStudentLeft}
+                            disabled={isSaving || isDeleting || studentData.feeStatus === "Paid" || isStudentLeft || isReviewer}
                             onClick={() => {
                               setPaymentMethod('Cash'); // Default to cash on open
                               setIsConfirmPaymentOpen(true)
                             }}
                         >
-                           <ClipboardCheck className="mr-2 h-4 w-4"/> Mark as Paid
+                           <ClipboardCheck className="mr-2 h-4 w-4"/> Mark as Paid {isReviewer && '(For Reviewer)'}
                         </Button>
                     </AlertDialogTrigger>
                     <AlertDialogContent>
@@ -831,7 +854,7 @@ export default function EditStudentPage() {
                         </div>
                         <AlertDialogFooter>
                             <AlertDialogCancel onClick={() => setIsConfirmPaymentOpen(false)} disabled={isSaving}>Cancel</AlertDialogCancel>
-                            <AlertDialogAction onClick={handleMarkPaymentPaid} disabled={isSaving}>
+                            <AlertDialogAction onClick={handleMarkPaymentPaid} disabled={isSaving || isReviewer}>
                                 {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                                 Confirm Payment
                             </AlertDialogAction>
@@ -845,10 +868,10 @@ export default function EditStudentPage() {
                       type="button"
                       variant="outline"
                         className="w-full"
-                      disabled={isSaving || isDeleting || isStudentLeft}
+                      disabled={isSaving || isDeleting || isStudentLeft || isReviewer}
                       onClick={() => setIsConfirmMarkLeftOpen(true)}
                   >
-                      <UserX className="mr-2 h-4 w-4" /> Mark as Left
+                      <UserX className="mr-2 h-4 w-4" /> Mark as Left {isReviewer && '(For Reviewer)'}
                   </Button>
                   </AlertDialogTrigger>
                   <AlertDialogContent>
@@ -860,7 +883,7 @@ export default function EditStudentPage() {
                   </AlertDialogHeader>
                   <AlertDialogFooter>
                       <AlertDialogCancel onClick={() => setIsConfirmMarkLeftOpen(false)} disabled={isSaving}>Cancel</AlertDialogCancel>
-                      <AlertDialogAction onClick={handleMarkAsLeft} disabled={isSaving}>
+                      <AlertDialogAction onClick={handleMarkAsLeft} disabled={isSaving || isReviewer}>
                       {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                       Confirm
                       </AlertDialogAction>
