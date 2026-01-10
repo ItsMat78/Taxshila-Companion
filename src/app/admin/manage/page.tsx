@@ -54,6 +54,8 @@ export default function AdminManagementPage() {
     const [newAdminEmail, setNewAdminEmail] = React.useState("");
     const [newAdminPassword, setNewAdminPassword] = React.useState("");
 
+    const isReviewer = user?.email === 'guest-admin@taxshila-auth.com';
+
     const getAuthToken = async (): Promise<string | null> => {
         const currentUser = auth.currentUser;
         if (!currentUser) {
@@ -95,6 +97,10 @@ export default function AdminManagementPage() {
 
     const handleAddAdmin = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (isReviewer) {
+            toast({ title: "Simulated Success!", description: "As a reviewer, this action is simulated. No admin was added." });
+            return;
+        }
         setIsSubmitting(true);
         try {
             const token = await getAuthToken();
@@ -123,6 +129,10 @@ export default function AdminManagementPage() {
     };
 
     const handleRemoveAdmin = async (uid: string, name: string) => {
+        if (isReviewer) {
+            toast({ title: "Simulated Success!", description: `As a reviewer, this action is simulated. ${name} was not removed.` });
+            return;
+        }
         try {
             const token = await getAuthToken();
             if (!token) return;
@@ -169,7 +179,7 @@ export default function AdminManagementPage() {
                             </div>
                             <Button type="submit" disabled={isSubmitting || !user}>
                                 {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UserPlus className="mr-2 h-4 w-4" />}
-                                Add Admin
+                                Add Admin {isReviewer && '(For Reviewer)'}
                             </Button>
                         </form>
                     </CardContent>
@@ -210,7 +220,7 @@ export default function AdminManagementPage() {
                                                         <AlertDialogHeader>
                                                             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
                                                             <AlertDialogDescription>
-                                                                This will permanently remove {admin.name} as an admin. This action cannot be undone.
+                                                                {isReviewer ? `This would normally permanently remove ${admin.name}. As a reviewer, this is a simulated action.` : `This will permanently remove ${admin.name} as an admin. This action cannot be undone.`}
                                                             </AlertDialogDescription>
                                                         </AlertDialogHeader>
                                                         <AlertDialogFooter>

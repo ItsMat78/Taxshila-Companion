@@ -17,8 +17,10 @@ import { Label } from "@/components/ui/label";
 import { Loader2, Download, Upload, DatabaseZap } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Papa from 'papaparse'; // Using a robust CSV parser
+import { useAuth } from '@/contexts/auth-context';
 
 export default function DataManagementPage() {
+    const { user } = useAuth();
     const { toast } = useToast();
     const [isMigrating, setIsMigrating] = React.useState(false);
     const [isExporting, setIsExporting] = React.useState(false);
@@ -27,11 +29,24 @@ export default function DataManagementPage() {
     
     const [importFile, setImportFile] = React.useState<File | null>(null);
 
+    const isReviewer = user?.email === 'guest-admin@taxshila-auth.com';
+
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files) setImportFile(e.target.files[0]);
     };
 
+    const handleReviewerAction = (actionName: string) => {
+      toast({
+        title: "Simulated Success!",
+        description: `As a reviewer, the '${actionName}' action was simulated. No data was changed.`,
+      });
+    }
+
     const handleUserMigration = async () => {
+      if (isReviewer) {
+        handleReviewerAction("Sync Student Auth Data");
+        return;
+      }
       setIsMigrating(true);
       try {
           const response = await fetch('/api/admin/migrate-users', { method: 'POST' });
@@ -75,6 +90,11 @@ a.click();
     };
 
     const handleImport = async (type: 'students' | 'attendance' | 'payments') => {
+        if (isReviewer) {
+          handleReviewerAction(`Import ${type}`);
+          return;
+        }
+
         setIsImporting(true);
         setActiveImportType(type);
         if (!importFile) {
@@ -126,7 +146,7 @@ a.click();
                     disabled={isImporting || !importFile}
                 >
                     {(isImporting && activeImportType === type) ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
-                    Import {label}
+                    Import {label} {isReviewer && '(For Reviewer)'}
                 </Button>
             </div>
         </div>
@@ -144,7 +164,8 @@ a.click();
                     </CardHeader>
                     <CardContent>
                         <Button onClick={handleUserMigration} disabled={isMigrating}>
-                            {isMigrating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Sync Student Auth Data"}
+                            {isMigrating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                            {isReviewer ? "Sync Data (For Reviewer)" : "Sync Student Auth Data"}
                         </Button>
                     </CardContent>
                 </Card>
@@ -156,7 +177,8 @@ a.click();
                     </CardHeader>
                     <CardContent>
                         <Button onClick={handleExport} disabled={isExporting}>
-                            {isExporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Export Data as .zip"}
+                            {isExporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                            Export Data as .zip
                         </Button>
                     </CardContent>
                 </Card>

@@ -59,6 +59,7 @@ import {
 } from "@/components/ui/table";
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
+import { useAuth } from '@/contexts/auth-context';
 
 
 const alertFormSchema = z.object({
@@ -186,6 +187,7 @@ function StudentSelectionDialog({ students, onSelectStudents, isLoading, onClose
 
 
 export default function AdminSendAlertPage() {
+  const { user } = useAuth();
   const { toast } = useToast();
   const [isSending, setIsSending] = React.useState(false);
   const [students, setStudents] = React.useState<Student[]>([]);
@@ -193,6 +195,7 @@ export default function AdminSendAlertPage() {
   const [isLoadingStudents, setIsLoadingStudents] = React.useState(true);
   const [isStudentDialogOpen, setIsStudentDialogOpen] = React.useState(false);
 
+  const isReviewer = user?.email === 'guest-admin@taxshila-auth.com';
 
   const form = useForm<AlertFormValues>({
     resolver: zodResolver(alertFormSchema),
@@ -225,6 +228,13 @@ export default function AdminSendAlertPage() {
     }
     fetchStudents();
   }, [toast]);
+
+  const handleReviewerSubmit = () => {
+    toast({
+      title: "Simulated Success!",
+      description: "As a reviewer, this action is simulated and no alert was actually sent.",
+    });
+  };
 
   async function onSubmit(data: AlertFormValues) {
     setIsSending(true);
@@ -457,10 +467,17 @@ export default function AdminSendAlertPage() {
 
             </CardContent>
             <CardFooter>
-              <Button type="submit" className="w-full sm:w-auto" disabled={isSending || !form.formState.isValid}>
-                {isSending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
-                {isSending ? "Sending..." : "Send Alert"}
-              </Button>
+              {isReviewer ? (
+                <Button type="button" onClick={handleReviewerSubmit} className="w-full sm:w-auto">
+                  <Send className="mr-2 h-4 w-4" />
+                  Send Alert (For Reviewer)
+                </Button>
+              ) : (
+                <Button type="submit" className="w-full sm:w-auto" disabled={isSending || !form.formState.isValid}>
+                  {isSending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
+                  {isSending ? "Sending..." : "Send Alert"}
+                </Button>
+              )}
             </CardFooter>
           </form>
         </Form>
