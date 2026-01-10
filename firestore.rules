@@ -43,13 +43,19 @@ service cloud.firestore {
 
     // Admins Collection
     match /admins/{adminId} {
-      // Allow list for login queries by any user
-      allow list: if true;
+      // Allow list for login queries and admin management page
+      allow list: if isAdmin();
       // Only allow admins to read admin documents
       allow read: if isAdmin();
-      // Disallow client-side writes to the admins collection
+      // Disallow client-side writes to the admins collection (managed by API routes)
       allow write: if false;
       allow delete: if isAdmin() && !isReviewer();
+    }
+
+    // Admin Notes Collection
+    match /adminNotes/{noteId} {
+      allow read: if isAdmin();
+      allow create, update, delete: if isAdmin() && !isReviewer();
     }
 
     // Attendance & Feedback
