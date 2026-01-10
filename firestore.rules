@@ -1,3 +1,4 @@
+
 rules_version = '2';
 
 service cloud.firestore {
@@ -54,19 +55,22 @@ service cloud.firestore {
 
     // Admin Notes Collection
     match /adminNotes/{noteId} {
-      allow read: if isAdmin();
+      allow list, read: if isAdmin();
       allow create, update, delete: if isAdmin() && !isReviewer();
     }
 
     // Attendance & Feedback
     match /attendanceRecords/{id} {
-      allow read: if isAdmin() || isSignedIn();
-      allow create, update: if isSignedIn(); 
+      // Admins can read/list all, users can only read/list their own.
+      allow read: if isAdmin() || (isSignedIn() && resource.data.studentId == get(/databases/$(database)/documents/students/$(request.auth.uid)).data.studentId);
+      allow create: if isSignedIn(); 
       allow delete: if isAdmin() && !isReviewer();
     }
 
     match /feedbackItems/{id} {
-      allow create,read : if isSignedIn();
+      // Admins can read all, users can create and read their own.
+      allow create: if isSignedIn();
+      allow read: if isAdmin() || (isSignedIn() && resource.data.studentId == get(/databases/$(database)/documents/students/$(request.auth.uid)).data.studentId);
       allow update, delete: if isAdmin() && !isReviewer();
     }
 
@@ -78,7 +82,8 @@ service cloud.firestore {
     }
 
     match /alertItems/{id} {
-      allow read: if isSignedIn();
+       // Admins can read all. Users can read their own targeted alerts and general alerts.
+      allow read: if isAdmin() || (isSignedIn() && (resource.data.studentId == null || resource.data.studentId == get(/databases/$(database)/documents/students/$(request.auth.uid)).data.studentId));
       allow write: if isAdmin() && !isReviewer();
       allow delete: if isAdmin() && !isReviewer();
     }
