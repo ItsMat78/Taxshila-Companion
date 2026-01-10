@@ -10,15 +10,13 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // Safely checks for Admin status across all possible methods
+    // Safely checks for Admin status.
+    // This now relies EXCLUSIVELY on the custom claim or the reviewer email.
+    // The unreliable `exists()` check has been removed.
     function isAdmin() {
       return isSignedIn() && (
-        // 1. Check Custom Claim (Safe check for undefined)
-        (request.auth.token.get('admin', false) == true) || 
-        // 2. Check if it's the Google Reviewer account
-        (request.auth.token.email == 'guest-admin@taxshila-auth.com') ||
-        // 3. Fallback: Check if UID exists in the 'admins' collection
-        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+        request.auth.token.admin == true ||
+        request.auth.token.email == 'guest-admin@taxshila-auth.com'
       );
     }
 
