@@ -105,8 +105,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     try {
-        await signInWithEmailAndPassword(auth, emailForAuth, passwordAttempt);
-        
+       await signInWithEmailAndPassword(auth, emailForAuth, passwordAttempt);
+       await auth.currentUser.getIdToken(true);
         
         let userData: User;
         if (userRole === 'admin') {
