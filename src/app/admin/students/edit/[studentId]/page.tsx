@@ -65,6 +65,7 @@ import { useNotificationContext } from '@/contexts/notification-context';
 import { ProfilePictureUploader } from '@/components/admin/edit-student/profile-picture-uploader';
 import { Separator } from '@/components/ui/separator';
 import { Label } from '@/components/ui/label';
+import { useAuth } from '@/contexts/auth-context';
 
 
 const studentEditFormSchema = z.object({
@@ -139,6 +140,7 @@ const DateBox = ({ date, label }: { date?: string; label: string }) => {
 
 
 export default function EditStudentPage() {
+  const { user } = useAuth();
   const { toast } = useToast();
   const params = useParams();
   const router = useRouter();
@@ -865,35 +867,37 @@ export default function EditStudentPage() {
                   </AlertDialogFooter>
                   </AlertDialogContent>
               </AlertDialog>
-
-              <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                  <Button
-                      type="button"
-                      variant="destructive"
-                        className="w-full"
-                      disabled={isSaving || isDeleting}
-                  >
-                      <Trash2 className="mr-2 h-4 w-4" /> Delete Student
-                  </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                  <AlertDialogHeader>
-                      <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                      <AlertDialogDescription>
-                      This action cannot be undone. This will permanently delete the student
-                      ({studentData.name} - {studentId}) and all their associated data.
-                      </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                      <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
-                      <AlertDialogAction onClick={handleDeleteStudent} disabled={isDeleting} className="bg-destructive hover:bg-destructive/90">
-                      {isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                      Confirm Delete
-                      </AlertDialogAction>
-                  </AlertDialogFooter>
-                  </AlertDialogContent>
-              </AlertDialog>
+              
+              {user?.email !== 'guest-admin@taxshila-auth.com' && (
+                <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                    <Button
+                        type="button"
+                        variant="destructive"
+                          className="w-full"
+                        disabled={isSaving || isDeleting}
+                    >
+                        <Trash2 className="mr-2 h-4 w-4" /> Delete Student
+                    </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                        This action cannot be undone. This will permanently delete the student
+                        ({studentData.name} - {studentId}) and all their associated data.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleDeleteStudent} disabled={isDeleting} className="bg-destructive hover:bg-destructive/90">
+                        {isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                        Confirm Delete
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
+              )}
               </div>
 
             </CardFooter>
