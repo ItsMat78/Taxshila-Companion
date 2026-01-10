@@ -218,12 +218,12 @@ export function ProfilePictureUploader({
 
           <div className="grid w-full max-w-sm items-center gap-1.5">
             <Label htmlFor="picture">Select File</Label>
-            <Input id="picture" type="file" accept="image/*" onChange={handleFileChange} disabled={isUploading} ref={fileInputRef}/>
+            <Input id="picture" type="file" accept="image/*" onChange={handleFileChange} disabled={isUploading || isReviewer} ref={fileInputRef}/>
           </div>
 
            <Dialog open={isCameraDialogOpen} onOpenChange={setIsCameraDialogOpen}>
             <DialogTrigger asChild>
-                <Button type="button" variant="outline" className="w-full max-w-sm" disabled={isUploading}>
+                <Button type="button" variant="outline" className="w-full max-w-sm" disabled={isUploading || isReviewer}>
                     <Camera className="mr-2 h-4 w-4" /> Open Camera
                 </Button>
             </DialogTrigger>
@@ -251,7 +251,7 @@ export function ProfilePictureUploader({
         </div>
       </CardContent>
       <CardFooter>
-          <Button onClick={handleUpload} disabled={isUploading || !hasUnsavedChanges} className="w-full">
+          <Button onClick={handleUpload} disabled={isUploading || (!hasUnsavedChanges && !isReviewer)} className="w-full">
             {isUploading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/> Uploading...</> : <><Save className="mr-2 h-4 w-4"/>Save Picture {isReviewer && "(For Reviewer)"}</>}
           </Button>
       </CardFooter>
