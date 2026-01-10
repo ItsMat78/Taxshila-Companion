@@ -29,6 +29,7 @@ import { Loader2, Save, Settings, IndianRupee } from 'lucide-react';
 import { getFeeStructure, updateFeeStructure } from '@/services/student-service';
 import type { FeeStructure } from '@/types/student';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useAuth } from '@/contexts/auth-context';
 
 const feeManagementFormSchema = z.object({
   morningFee: z.coerce.number().positive({ message: "Morning fee must be a positive number." }).min(100, {message: "Fee must be at least Rs. 100."}),
@@ -39,10 +40,13 @@ const feeManagementFormSchema = z.object({
 type FeeManagementFormValues = z.infer<typeof feeManagementFormSchema>;
 
 export default function ManageFeesPage() {
+  const { user } = useAuth();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = React.useState(true);
   const [isSaving, setIsSaving] = React.useState(false);
   const [currentFees, setCurrentFees] = React.useState<FeeStructure | null>(null);
+
+  const isReviewer = user?.email === 'guest-admin@taxshila-auth.com';
 
   const form = useForm<FeeManagementFormValues>({
     resolver: zodResolver(feeManagementFormSchema),
@@ -76,6 +80,10 @@ export default function ManageFeesPage() {
   }, [fetchCurrentFees]);
 
   async function onSubmit(data: FeeManagementFormValues) {
+    if (isReviewer) {
+      toast({ title: "Action Disabled", description: "Saving fee structure is disabled for the reviewer account." });
+      return;
+    }
     setIsSaving(true);
     try {
       await updateFeeStructure({
@@ -141,7 +149,7 @@ export default function ManageFeesPage() {
                         Morning Shift Fee (Monthly)
                       </FormLabel>
                       <FormControl>
-                        <Input type="number" placeholder="e.g., 600" {...field} disabled={isSaving} />
+                        <Input type="number" placeholder="e.g., 600" {...field} disabled={isSaving || isReviewer} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -157,7 +165,7 @@ export default function ManageFeesPage() {
                         Evening Shift Fee (Monthly)
                       </FormLabel>
                       <FormControl>
-                        <Input type="number" placeholder="e.g., 600" {...field} disabled={isSaving} />
+                        <Input type="number" placeholder="e.g., 600" {...field} disabled={isSaving || isReviewer} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -173,7 +181,7 @@ export default function ManageFeesPage() {
                         Full Day Shift Fee (Monthly)
                       </FormLabel>
                       <FormControl>
-                        <Input type="number" placeholder="e.g., 1000" {...field} disabled={isSaving} />
+                        <Input type="number" placeholder="e.g., 1000" {...field} disabled={isSaving || isReviewer} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -181,7 +189,7 @@ export default function ManageFeesPage() {
                 />
               </CardContent>
               <CardFooter>
-                <Button type="submit" className="w-full sm:w-auto" disabled={isSaving || !form.formState.isDirty}>
+                <Button type="submit" className="w-full sm:w-auto" disabled={isSaving || !form.formState.isDirty || isReviewer}>
                   {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                   {isSaving ? "Saving..." : "Save Fee Structure"}
                 </Button>

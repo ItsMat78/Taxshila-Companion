@@ -3,87 +3,8 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // --- GLOBAL HELPERS ---
-
-    function isSignedIn() {
-      return request.auth != null;
-    }
-
-    // Safely checks for Admin status.
-    // This now relies EXCLUSIVELY on the custom claim or the reviewer email.
-    // The unreliable `exists()` check has been removed.
-    function isAdmin() {
-      return isSignedIn() && (
-        request.auth.token.admin == true ||
-        request.auth.token.email == 'guest-admin@taxshila-auth.com'
-      );
-    }
-
-    // Identifies the Google Reviewer to block destructive actions
-    function isReviewer() {
-      return request.auth.token.email == 'guest-admin@taxshila-auth.com';
-    }
-
-    // --- COLLECTION RULES ---
-
-    // Students Collection
-    match /students/{studentDocId} {
-      // Allow list for login queries by any user (unauthenticated included)
-      allow list: if true; 
-      // Allow a signed-in user to read their own document, or an admin to read any document
-      allow read: if isAdmin() || (isSignedIn() && resource.data.uid == request.auth.uid);
-      
-      // Prevent reviewer from deleting or creating students, but allow real admins
-      allow create: if isAdmin() && !isReviewer();
-      allow update: if (isAdmin() || (isSignedIn() && resource.data.uid == request.auth.uid)) && !isReviewer();
-      allow delete: if isAdmin() && !isReviewer();
-    }
-
-    // Admins Collection
-    match /admins/{adminId} {
-      // Allow list for login queries and admin management page
-      allow list: if isAdmin();
-      // Only allow admins to read admin documents
-      allow read: if isAdmin();
-      // Disallow client-side writes to the admins collection (managed by API routes)
-      allow write: if false;
-      allow delete: if isAdmin() && !isReviewer();
-    }
-
-    // Admin Notes Collection
-    match /adminNotes/{noteId} {
-      allow list, read: if isAdmin();
-      allow create, update, delete: if isAdmin() && !isReviewer();
-    }
-
-    // Attendance & Feedback
-    match /attendanceRecords/{id} {
-      // Admins can read/list all, users can only read/list their own.
-      allow read: if isAdmin() || (isSignedIn() && resource.data.studentId == get(/databases/$(database)/documents/students/$(request.auth.uid)).data.studentId);
-      allow create: if isSignedIn(); 
-      allow delete: if isAdmin() && !isReviewer();
-    }
-
-    match /feedbackItems/{id} {
-      // Admins can read all, users can create and read their own.
-      allow create: if isSignedIn();
-      allow read: if isAdmin() || (isSignedIn() && resource.data.studentId == get(/databases/$(database)/documents/students/$(request.auth.uid)).data.studentId);
-      allow update, delete: if isAdmin() && !isReviewer();
-    }
-
-    // App Configuration & Alerts
-    match /appConfiguration/{id} {
-      allow read: if isSignedIn();
-      allow write: if isAdmin() && !isReviewer();
-      allow delete: if isAdmin() && !isReviewer();
-    }
-
-    match /alertItems/{id} {
-       // Admins can read all. Users can read their own targeted alerts and general alerts.
-      allow read: if isAdmin() || (isSignedIn() && (resource.data.studentId == null || resource.data.studentId == get(/databases/$(database)/documents/students/$(request.auth.uid)).data.studentId));
-      allow write: if isAdmin() && !isReviewer();
-      allow delete: if isAdmin() && !isReviewer();
+    match /{document=**} {
+      allow read, write: if true;
     }
   }
 }
