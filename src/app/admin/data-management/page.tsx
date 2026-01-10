@@ -10,34 +10,20 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
 import { PageTitle } from '@/components/shared/page-title';
 import { useToast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, Download, Upload, ShieldAlert, AlertTriangle, DatabaseZap } from 'lucide-react';
+import { Loader2, Download, Upload, DatabaseZap } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Papa from 'papaparse'; // Using a robust CSV parser
 
 export default function DataManagementPage() {
     const { toast } = useToast();
-    const [isDeleting, setIsDeleting] = React.useState(false);
     const [isMigrating, setIsMigrating] = React.useState(false);
     const [isExporting, setIsExporting] = React.useState(false);
     const [isImporting, setIsImporting] = React.useState(false);
     const [activeImportType, setActiveImportType] = React.useState<string | null>(null);
-
-    const [deletePassword, setDeletePassword] = React.useState("");
     
     const [importFile, setImportFile] = React.useState<File | null>(null);
 
@@ -129,25 +115,6 @@ a.click();
             }
         });
     };
-
-    const handleDelete = async () => {
-        setIsDeleting(true);
-        try {
-            const response = await fetch('/api/admin/delete-data', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ password: deletePassword }),
-            });
-            const result = await response.json();
-            if (!response.ok) throw new Error(result.error || 'Deletion failed.');
-            toast({ title: "Data Deleted", description: "All application data has been permanently deleted." });
-        } catch (error: any) {
-            toast({ title: "Deletion Failed", description: error.message, variant: "destructive" });
-        } finally {
-            setIsDeleting(false);
-            setDeletePassword("");
-        }
-    };
     
     const renderImportSection = (type: 'students' | 'attendance' | 'payments', label: string) => (
         <div className="space-y-2">
@@ -168,7 +135,7 @@ a.click();
 
     return (
         <>
-            <PageTitle title="Data Management" description="Manage auth records, import, export, and delete system data." />
+            <PageTitle title="Data Management" description="Manage auth records, import, and export system data." />
             <div className="grid gap-6 md:grid-cols-2">
                 <Card>
                     <CardHeader>
@@ -212,48 +179,6 @@ a.click();
                                 <TabsContent value="payments">{renderImportSection('payments', 'Payment History')}</TabsContent>
                             </div>
                         </Tabs>
-                    </CardContent>
-                </Card>
-
-                <Card className="border-red-500/50 md:col-span-2">
-                    <CardHeader>
-                        <CardTitle className="flex items-center text-red-600"><AlertTriangle className="mr-2" />Danger Zone</CardTitle>
-                        <CardDescription>This is an irreversible action. Please proceed with extreme caution.</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                                <Button variant="destructive">Delete All Application Data</Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                                <AlertDialogHeader>
-                                    <AlertDialogTitle className="flex items-center"><ShieldAlert className="mr-2"/>Are you absolutely sure?</AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                        This will permanently delete all data, including students, attendance, and payments. This cannot be undone. Enter the admin password to confirm.
-                                    </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <div className="py-4">
-                                    <Label htmlFor="delete-password">Admin Password</Label>
-                                    <Input
-                                        id="delete-password"
-                                        type="password"
-                                        value={deletePassword}
-                                        onChange={(e) => setDeletePassword(e.target.value)}
-                                        placeholder="Enter admin password to enable deletion"
-                                    />
-                                </div>
-                                <AlertDialogFooter>
-                                    <AlertDialogCancel onClick={() => setDeletePassword("")}>Cancel</AlertDialogCancel>
-                                    <AlertDialogAction
-                                        onClick={handleDelete}
-                                        disabled={!deletePassword || isDeleting}
-                                        className="bg-red-600 hover:bg-red-700"
-                                    >
-                                        {isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Confirm Deletion"}
-                                    </AlertDialogAction>
-                                </AlertDialogFooter>
-                            </AlertDialogContent>
-                        </AlertDialog>
                     </CardContent>
                 </Card>
             </div>

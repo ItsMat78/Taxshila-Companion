@@ -49,29 +49,32 @@ service cloud.firestore {
       allow read: if isAdmin();
       // Disallow client-side writes to the admins collection
       allow write: if false;
+      allow delete: if isAdmin() && !isReviewer();
     }
 
     // Attendance & Feedback
     match /attendanceRecords/{id} {
-      allow read: if isAdmin() || (isSignedIn() && resource.data.uid == request.auth.uid);
-      allow create: if isSignedIn(); 
-      allow update, delete: if isAdmin() && !isReviewer();
+      allow read: if isAdmin() || isSignedIn();
+      allow create, update: if isSignedIn(); 
+      allow delete: if isAdmin() && !isReviewer();
     }
 
     match /feedbackItems/{id} {
-      allow create: if isSignedIn();
-      allow read, update, delete: if isAdmin() && !isReviewer();
+      allow create,read : if isSignedIn();
+      allow update, delete: if isAdmin() && !isReviewer();
     }
 
     // App Configuration & Alerts
     match /appConfiguration/{id} {
       allow read: if isSignedIn();
       allow write: if isAdmin() && !isReviewer();
+      allow delete: if isAdmin() && !isReviewer();
     }
 
     match /alertItems/{id} {
       allow read: if isSignedIn();
       allow write: if isAdmin() && !isReviewer();
+      allow delete: if isAdmin() && !isReviewer();
     }
   }
 }
