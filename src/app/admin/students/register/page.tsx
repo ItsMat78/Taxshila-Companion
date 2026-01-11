@@ -42,6 +42,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { useCallback } from 'react';
 import { Label } from '@/components/ui/label';
+import { useAuth } from '@/contexts/auth-context';
 
 
 const studentFormSchema = z.object({
@@ -104,6 +105,7 @@ const resizeImage = (file: File): Promise<string> => new Promise((resolve, rejec
 
 
 export default function StudentRegisterPage() {
+  const { user } = useAuth();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [availableSeatOptions, setAvailableSeatOptions] = React.useState<string[]>([]);
@@ -116,6 +118,8 @@ export default function StudentRegisterPage() {
   const [hasCameraPermission, setHasCameraPermission] = React.useState(true);
   const videoRef = React.useRef<HTMLVideoElement>(null);
   const canvasRef = React.useRef<HTMLCanvasElement>(null);
+  
+  const isReviewer = user?.email === 'guest-admin@taxshila-auth.com';
 
   const form = useForm<StudentFormValues>({
     resolver: zodResolver(studentFormSchema),
@@ -243,6 +247,12 @@ export default function StudentRegisterPage() {
     }
   };
 
+  const handleReviewerSubmit = () => {
+    toast({
+      title: "Simulated Success!",
+      description: "As a reviewer, this action is simulated and no student was registered.",
+    });
+  };
 
   async function onSubmit(data: StudentFormValues) {
     setIsSubmitting(true);
@@ -314,13 +324,13 @@ export default function StudentRegisterPage() {
                             type="file"
                             accept="image/jpeg,image/png,image/webp"
                             onChange={handleProfilePictureChange}
-                            disabled={isSubmitting}
+                            disabled={isSubmitting || isReviewer}
                             ref={fileInputRef}
                         />
                       </FormControl>
                        <Dialog open={isCameraDialogOpen} onOpenChange={setIsCameraDialogOpen}>
                           <DialogTrigger asChild>
-                              <Button type="button" variant="outline" className="w-full" disabled={isSubmitting}>
+                              <Button type="button" variant="outline" className="w-full" disabled={isSubmitting || isReviewer}>
                                   <Camera className="mr-2 h-4 w-4" /> Open Camera
                               </Button>
                           </DialogTrigger>
@@ -355,27 +365,27 @@ export default function StudentRegisterPage() {
               </FormItem>
 
               <FormField control={form.control} name="name" render={({ field }) => (
-                <FormItem><FormLabel>Full Name</FormLabel><FormControl><Input placeholder="Enter student's full name" {...field} disabled={isSubmitting} /></FormControl><FormMessage /></FormItem>
+                <FormItem><FormLabel>Full Name</FormLabel><FormControl><Input placeholder="Enter student's full name" {...field} disabled={isSubmitting || isReviewer} /></FormControl><FormMessage /></FormItem>
               )} />
               <FormField control={form.control} name="email" render={({ field }) => (
-                <FormItem><FormLabel>Email Address (Optional)</FormLabel><FormControl><Input type="email" placeholder="student@example.com" {...field} disabled={isSubmitting} /></FormControl><FormMessage /></FormItem>
+                <FormItem><FormLabel>Email Address (Optional)</FormLabel><FormControl><Input type="email" placeholder="student@example.com" {...field} disabled={isSubmitting || isReviewer} /></FormControl><FormMessage /></FormItem>
               )} />
               <FormField control={form.control} name="phone" render={({ field }) => (
-                <FormItem><FormLabel>Phone Number</FormLabel><FormControl><Input type="tel" placeholder="Enter 10-digit phone number" {...field} disabled={isSubmitting} /></FormControl><FormMessage /></FormItem>
+                <FormItem><FormLabel>Phone Number</FormLabel><FormControl><Input type="tel" placeholder="Enter 10-digit phone number" {...field} disabled={isSubmitting || isReviewer} /></FormControl><FormMessage /></FormItem>
               )} />
               <FormField control={form.control} name="password" render={({ field }) => (
-                <FormItem><FormLabel>Password</FormLabel><FormControl><Input type="password" placeholder="Enter initial password (min. 6 characters)" {...field} disabled={isSubmitting} /></FormControl><FormMessage /></FormItem>
+                <FormItem><FormLabel>Password</FormLabel><FormControl><Input type="password" placeholder="Enter initial password (min. 6 characters)" {...field} disabled={isSubmitting || isReviewer} /></FormControl><FormMessage /></FormItem>
               )} />
               <FormField control={form.control} name="address" render={({ field }) => (
-                <FormItem><FormLabel>Address</FormLabel><FormControl><Input placeholder="Enter address" {...field} disabled={isSubmitting} /></FormControl><FormMessage /></FormItem>
+                <FormItem><FormLabel>Address</FormLabel><FormControl><Input placeholder="Enter address" {...field} disabled={isSubmitting || isReviewer} /></FormControl><FormMessage /></FormItem>
               )} />
               <FormField control={form.control} name="shift" render={({ field }) => (
                 <FormItem className="space-y-3"><FormLabel>Shift Selection</FormLabel>
                   <FormControl>
-                    <RadioGroup onValueChange={field.onChange} value={field.value} className="flex flex-col space-y-2" disabled={isSubmitting}>
+                    <RadioGroup onValueChange={field.onChange} value={field.value} className="flex flex-col space-y-2" disabled={isSubmitting || isReviewer}>
                       {shiftOptions.map(option => (
                         <FormItem key={option.value} className="flex items-center space-x-3 space-y-0">
-                          <FormControl><RadioGroupItem value={option.value} disabled={isSubmitting} /></FormControl>
+                          <FormControl><RadioGroupItem value={option.value} disabled={isSubmitting || isReviewer} /></FormControl>
                           <FormLabel className="font-normal">{option.label}</FormLabel>
                         </FormItem>
                       ))}
@@ -392,7 +402,7 @@ export default function StudentRegisterPage() {
                     <Select
                       onValueChange={field.onChange}
                       value={field.value}
-                      disabled={isSubmitting || isLoadingSeats || !selectedShift}
+                      disabled={isSubmitting || isLoadingSeats || !selectedShift || isReviewer}
                     >
                       <FormControl>
                         <SelectTrigger>
@@ -419,10 +429,17 @@ export default function StudentRegisterPage() {
               />
             </CardContent>
             <CardFooter>
-              <Button type="submit" className="w-full sm:w-auto" disabled={isSubmitting || isLoadingSeats || !selectedShift}>
-                {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UserPlus className="mr-2 h-4 w-4" />}
-                {isSubmitting ? "Registering..." : "Register Student"}
-              </Button>
+              {isReviewer ? (
+                <Button type="button" onClick={handleReviewerSubmit} className="w-full sm:w-auto">
+                  <UserPlus className="mr-2 h-4 w-4" />
+                  Register Student (For Reviewer)
+                </Button>
+              ) : (
+                <Button type="submit" className="w-full sm:w-auto" disabled={isSubmitting || isLoadingSeats || !selectedShift}>
+                  {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UserPlus className="mr-2 h-4 w-4" />}
+                  {isSubmitting ? "Registering..." : "Register Student"}
+                </Button>
+              )}
             </CardFooter>
           </form>
         </Form>
