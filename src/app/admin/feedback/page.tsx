@@ -45,17 +45,21 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useAuth } from '@/contexts/auth-context';
+
 
 interface FeedbackResponseDialogProps {
   feedbackItem: FeedbackItem | null;
   isOpen: boolean;
   onClose: () => void;
   onSendResponse: (feedbackId: string, responseMessage: string, originalMessage: string) => Promise<void>;
+  isReviewer: boolean;
 }
 
-function FeedbackResponseDialog({ feedbackItem, isOpen, onClose, onSendResponse }: FeedbackResponseDialogProps) {
+function FeedbackResponseDialog({ feedbackItem, isOpen, onClose, onSendResponse, isReviewer }: FeedbackResponseDialogProps) {
   const [responseMessage, setResponseMessage] = React.useState("");
   const [isSending, setIsSending] = React.useState(false);
+  const { toast } = useToast();
 
   React.useEffect(() => {
     if (isOpen) {
@@ -64,8 +68,21 @@ function FeedbackResponseDialog({ feedbackItem, isOpen, onClose, onSendResponse 
   }, [isOpen]);
 
   if (!feedbackItem) return null;
+  
+  const handleSimulatedSubmit = () => {
+    toast({
+        title: "Simulated Success!",
+        description: "As a reviewer, this action is simulated and no response was sent.",
+    });
+    onClose();
+  };
 
   const handleSubmitResponse = async () => {
+    if (isReviewer) {
+      handleSimulatedSubmit();
+      return;
+    }
+
     if (!responseMessage.trim()) {
       return;
     }
@@ -102,15 +119,15 @@ function FeedbackResponseDialog({ feedbackItem, isOpen, onClose, onSendResponse 
               onChange={(e) => setResponseMessage(e.target.value)}
               placeholder="Type your response here..."
               className="min-h-[100px]"
-              disabled={isSending}
+              disabled={isSending || isReviewer}
             />
           </div>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose} disabled={isSending}>Cancel</Button>
-          <Button onClick={handleSubmitResponse} disabled={isSending || !responseMessage.trim()}>
+          <Button onClick={handleSubmitResponse} disabled={isSending || !responseMessage.trim() || isReviewer}>
             {isSending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
-            Send Response & Resolve
+            {isReviewer ? "Send (For Reviewer)" : "Send Response & Resolve"}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -140,12 +157,13 @@ const getFeedbackStatusBadge = (status: FeedbackStatus, size: "sm" | "xs" = "sm"
 };
 
 // Mobile Card Item
-const FeedbackCardItem = ({ item, onOpenResponseDialog, onArchiveFeedback, updatingFeedbackId, selectedFeedbackForResponse }: {
+const FeedbackCardItem = ({ item, onOpenResponseDialog, onArchiveFeedback, updatingFeedbackId, selectedFeedbackForResponse, isReviewer }: {
   item: FeedbackItem;
   onOpenResponseDialog: (item: FeedbackItem) => void;
   onArchiveFeedback: (id: string) => void;
   updatingFeedbackId: string | null;
   selectedFeedbackForResponse: FeedbackItem | null;
+  isReviewer: boolean;
 }) => (
   <Card className="w-full shadow-md">
     <CardHeader className="pb-2">
@@ -172,7 +190,7 @@ const FeedbackCardItem = ({ item, onOpenResponseDialog, onArchiveFeedback, updat
           variant="outline"
           size="sm"
           onClick={() => onOpenResponseDialog(item)}
-          disabled={updatingFeedbackId === item.id}
+          disabled={updatingFeedbackId === item.id || isReviewer}
           className="px-2 sm:px-3"
         >
           {updatingFeedbackId === item.id && selectedFeedbackForResponse?.id === item.id ? (
@@ -188,7 +206,7 @@ const FeedbackCardItem = ({ item, onOpenResponseDialog, onArchiveFeedback, updat
           variant="ghost"
           size="sm"
           onClick={() => onArchiveFeedback(item.id)}
-          disabled={updatingFeedbackId === item.id && selectedFeedbackForResponse?.id !== item.id}
+          disabled={updatingFeedbackId === item.id && selectedFeedbackForResponse?.id !== item.id || isReviewer}
           className="text-muted-foreground hover:text-destructive px-2 sm:px-3"
         >
           {updatingFeedbackId === item.id && selectedFeedbackForResponse?.id !== item.id ? (
@@ -205,6 +223,7 @@ const FeedbackCardItem = ({ item, onOpenResponseDialog, onArchiveFeedback, updat
 
 
 export default function AdminFeedbackPage() {
+  const { user } = useAuth();
   const { toast } = useToast();
   const { refreshNotifications, refreshKey } = useNotificationContext();
   const [allFeedbackList, setAllFeedbackList] = React.useState<FeedbackItem[]>([]);
@@ -214,6 +233,8 @@ export default function AdminFeedbackPage() {
 
   const [isResponseDialogOpen, setIsResponseDialogOpen] = React.useState(false);
   const [selectedFeedbackForResponse, setSelectedFeedbackForResponse] = React.useState<FeedbackItem | null>(null);
+  
+  const isReviewer = user?.email === 'guest-admin@taxshila-auth.com';
 
   const fetchFeedback = React.useCallback(async () => {
     setIsLoading(true);
@@ -237,6 +258,14 @@ export default function AdminFeedbackPage() {
   }, [allFeedbackList, filterStatus]);
 
   const handleUpdateStatus = async (feedbackId: string, status: FeedbackStatus, responseMessage?: string, originalMessage?: string) => {
+    if (isReviewer) {
+      toast({
+        title: "Simulated Success!",
+        description: `As a reviewer, feedback status was simulated to be '${status}'.`,
+      });
+      return;
+    }
+
     setUpdatingFeedbackId(feedbackId);
     try {
       await updateFeedbackStatusService(feedbackId, status);
@@ -342,6 +371,7 @@ export default function AdminFeedbackPage() {
                       onArchiveFeedback={handleArchiveFeedback}
                       updatingFeedbackId={updatingFeedbackId}
                       selectedFeedbackForResponse={selectedFeedbackForResponse}
+                      isReviewer={isReviewer}
                     />
                   ))
                 )}
@@ -385,7 +415,7 @@ export default function AdminFeedbackPage() {
                                 variant="outline"
                                 size="sm"
                                 onClick={() => handleOpenResponseDialog(item)}
-                                disabled={updatingFeedbackId === item.id}
+                                disabled={updatingFeedbackId === item.id || isReviewer}
                               >
                                 {updatingFeedbackId === item.id && selectedFeedbackForResponse?.id === item.id ? (
                                   <Loader2 className="mr-1 h-3 w-3 animate-spin" />
@@ -400,7 +430,7 @@ export default function AdminFeedbackPage() {
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => handleArchiveFeedback(item.id)}
-                                disabled={updatingFeedbackId === item.id && selectedFeedbackForResponse?.id !== item.id}
+                                disabled={updatingFeedbackId === item.id && selectedFeedbackForResponse?.id !== item.id || isReviewer}
                                 className="text-muted-foreground hover:text-destructive"
                               >
                                 {updatingFeedbackId === item.id && selectedFeedbackForResponse?.id !== item.id ? (
@@ -430,6 +460,7 @@ export default function AdminFeedbackPage() {
             setSelectedFeedbackForResponse(null);
         }}
         onSendResponse={handleSendAndResolve}
+        isReviewer={isReviewer}
       />
     </>
   );

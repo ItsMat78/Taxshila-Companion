@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import { Button } from "@/components/ui/button";
@@ -20,6 +19,7 @@ interface ProfilePictureUploaderProps {
   currentProfilePictureUrl?: string;
   onUploadSuccess: (newUrl: string) => void;
   onPictureSelect: () => void;
+  isReviewer: boolean;
 }
 
 const MAX_IMAGE_DIMENSION = 500; // Max width/height in pixels
@@ -64,6 +64,7 @@ export function ProfilePictureUploader({
   currentProfilePictureUrl,
   onUploadSuccess,
   onPictureSelect,
+  isReviewer,
 }: ProfilePictureUploaderProps) {
   const [base64Preview, setBase64Preview] = useState<string | null>(currentProfilePictureUrl || null);
   const [isUploading, setIsUploading] = useState(false);
@@ -152,6 +153,13 @@ export function ProfilePictureUploader({
   };
 
   const handleUpload = async () => {
+    if (isReviewer) {
+      toast({
+        title: "Simulated Success!",
+        description: "As a reviewer, the profile picture update was simulated.",
+      });
+      return;
+    }
     if (!base64Preview || !base64Preview.startsWith('data:image')) {
        toast({ title: "No New Image", description: "Please select or capture a new photo.", variant: "destructive" });
       return;
@@ -210,12 +218,12 @@ export function ProfilePictureUploader({
 
           <div className="grid w-full max-w-sm items-center gap-1.5">
             <Label htmlFor="picture">Select File</Label>
-            <Input id="picture" type="file" accept="image/*" onChange={handleFileChange} disabled={isUploading} ref={fileInputRef}/>
+            <Input id="picture" type="file" accept="image/*" onChange={handleFileChange} disabled={isUploading || isReviewer} ref={fileInputRef}/>
           </div>
 
            <Dialog open={isCameraDialogOpen} onOpenChange={setIsCameraDialogOpen}>
             <DialogTrigger asChild>
-                <Button type="button" variant="outline" className="w-full max-w-sm" disabled={isUploading}>
+                <Button type="button" variant="outline" className="w-full max-w-sm" disabled={isUploading || isReviewer}>
                     <Camera className="mr-2 h-4 w-4" /> Open Camera
                 </Button>
             </DialogTrigger>
@@ -243,8 +251,8 @@ export function ProfilePictureUploader({
         </div>
       </CardContent>
       <CardFooter>
-          <Button onClick={handleUpload} disabled={isUploading || !hasUnsavedChanges} className="w-full">
-            {isUploading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/> Uploading...</> : <><Save className="mr-2 h-4 w-4"/>Save Picture</>}
+          <Button onClick={handleUpload} disabled={isUploading || (!hasUnsavedChanges && !isReviewer)} className="w-full">
+            {isUploading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/> Uploading...</> : <><Save className="mr-2 h-4 w-4"/>Save Picture {isReviewer && "(For Reviewer)"}</>}
           </Button>
       </CardFooter>
     </Card>

@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import * as React from 'react';
@@ -65,6 +64,7 @@ import { useNotificationContext } from '@/contexts/notification-context';
 import { ProfilePictureUploader } from '@/components/admin/edit-student/profile-picture-uploader';
 import { Separator } from '@/components/ui/separator';
 import { Label } from '@/components/ui/label';
+import { useAuth } from '@/contexts/auth-context';
 
 
 const studentEditFormSchema = z.object({
@@ -139,6 +139,7 @@ const DateBox = ({ date, label }: { date?: string; label: string }) => {
 
 
 export default function EditStudentPage() {
+  const { user } = useAuth();
   const { toast } = useToast();
   const params = useParams();
   const router = useRouter();
@@ -159,6 +160,8 @@ export default function EditStudentPage() {
   const [feeStructure, setFeeStructure] = React.useState<FeeStructure | null>(null);
   const [paymentMethod, setPaymentMethod] = React.useState<PaymentRecord['method']>('Cash');
   const seatNumberRef = React.useRef<HTMLDivElement>(null);
+
+  const isReviewer = user?.email === 'guest-admin@taxshila-auth.com';
 
 
   const form = useForm<StudentEditFormValues>({
@@ -536,6 +539,12 @@ export default function EditStudentPage() {
     }
   };
 
+  const handleReviewerAction = (actionName: string) => {
+    toast({
+        title: "Simulated Success!",
+        description: `As a reviewer, the '${actionName}' action was simulated successfully.`,
+    });
+  };
 
   const isSaveDisabled = isSaving || isDeleting || isLoadingSeats || (!isStudentLeft && !form.formState.isDirty && !isDirtyOverride && !form.getValues("newPassword"));
 
@@ -600,6 +609,7 @@ export default function EditStudentPage() {
                     currentProfilePictureUrl={studentData.profilePictureUrl}
                     onUploadSuccess={onPictureUploadSuccess}
                     onPictureSelect={onPictureSelect}
+                    isReviewer={isReviewer}
                   />
               </div>
 
@@ -697,6 +707,7 @@ export default function EditStudentPage() {
                                     "w-full sm:w-[240px] pl-3 text-left font-normal",
                                     !field.value && "text-muted-foreground"
                                     )}
+                                    disabled={isSaving || isDeleting || isStudentLeft}
                                 >
                                     {field.value ? (
                                     format(field.value, "PPP")
@@ -748,152 +759,152 @@ export default function EditStudentPage() {
             </CardContent>
             <CardFooter className="flex flex-col sm:flex-row items-center gap-2 p-6 bg-muted/30 border-t">
                {isStudentLeft ? (
-                <>
-                   <Button type="button" onClick={handleReactivateClick} className="w-full sm:w-auto" disabled={isSaving || isDeleting || isLoadingSeats}>
-                        <UserCheck className="mr-2 h-4 w-4" /> Save and Re-activate
-                   </Button>
-                  <AlertDialog open={isReactivateConfirmOpen} onOpenChange={setIsReactivateConfirmOpen}>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Confirm Student Re-activation</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          This will re-activate the student and set their fee status to 'Due'. Please review the date change below.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <div className="py-2 text-sm">
-                        <div className="flex justify-around items-center gap-2 my-4">
-                            <DateBox date={studentData.nextDueDate} label="Old Due Date" />
-                            <ArrowRight className="h-6 w-6 text-muted-foreground flex-shrink-0" />
-                            <DateBox date={new Date().toISOString()} label="New Due Date" />
-                        </div>
-                      </div>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={form.handleSubmit(onSaveChanges)}>
-                          {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                          Confirm Re-activation
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                </>
+                  isReviewer ? (
+                    <Button type="button" onClick={() => handleReviewerAction("Re-activate Student")} className="w-full sm:w-auto">
+                        <UserCheck className="mr-2 h-4 w-4" /> Save and Re-activate (For Reviewer)
+                    </Button>
+                  ) : (
+                    <>
+                      <Button type="button" onClick={handleReactivateClick} className="w-full sm:w-auto" disabled={isSaving || isDeleting || isLoadingSeats}>
+                            <UserCheck className="mr-2 h-4 w-4" /> Save and Re-activate
+                      </Button>
+                      <AlertDialog open={isReactivateConfirmOpen} onOpenChange={setIsReactivateConfirmOpen}>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Confirm Student Re-activation</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              This will re-activate the student and set their fee status to 'Due'. Please review the date change below.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <div className="py-2 text-sm">
+                            <div className="flex justify-around items-center gap-2 my-4">
+                                <DateBox date={studentData.nextDueDate} label="Old Due Date" />
+                                <ArrowRight className="h-6 w-6 text-muted-foreground flex-shrink-0" />
+                                <DateBox date={new Date().toISOString()} label="New Due Date" />
+                            </div>
+                          </div>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={form.handleSubmit(onSaveChanges)}>
+                              {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                              Confirm Re-activation
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </>
+                  )
                ) : (
-                <Button type="submit" onClick={form.handleSubmit(onSaveChanges)} className="w-full sm:w-auto" disabled={isSaveDisabled}>
+                <Button type="button" onClick={isReviewer ? () => handleReviewerAction("Save Changes") : form.handleSubmit(onSaveChanges)} className="w-full sm:w-auto" disabled={isSaveDisabled && !isReviewer}>
                   {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                  Save Changes
+                  Save Changes {isReviewer && '(For Reviewer)'}
                 </Button>
                )}
 
               <div className="w-full sm:w-auto sm:ml-auto flex flex-col sm:flex-row gap-2">
-                 <AlertDialog open={isConfirmPaymentOpen} onOpenChange={setIsConfirmPaymentOpen}>
-                    <AlertDialogTrigger asChild>
-                        <Button
-                            type="button"
-                            variant="outline"
-                            className="w-full"
-                            disabled={isSaving || isDeleting || studentData.feeStatus === "Paid" || isStudentLeft}
-                            onClick={() => {
-                              setPaymentMethod('Cash'); // Default to cash on open
-                              setIsConfirmPaymentOpen(true)
-                            }}
-                        >
-                           <ClipboardCheck className="mr-2 h-4 w-4"/> Mark as Paid
+                 {isReviewer ? (
+                    <Button type="button" variant="outline" className="w-full" onClick={() => handleReviewerAction("Mark as Paid")}>
+                        <ClipboardCheck className="mr-2 h-4 w-4"/> Mark as Paid (For Reviewer)
+                    </Button>
+                 ) : (
+                    <AlertDialog open={isConfirmPaymentOpen} onOpenChange={setIsConfirmPaymentOpen}>
+                        <AlertDialogTrigger asChild>
+                            <Button type="button" variant="outline" className="w-full" disabled={isSaving || isDeleting || studentData.feeStatus === "Paid" || isStudentLeft}>
+                                <ClipboardCheck className="mr-2 h-4 w-4"/> Mark as Paid
+                            </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                            <AlertDialogHeader>
+                                <AlertDialogTitle>Confirm Payment for {studentData.name}?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                    This will mark the current due amount of <strong>{amountDueDisplay}</strong> as paid. Please review the due date change below.
+                                </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <div className="py-2 text-sm">
+                                <div className="flex justify-around items-center gap-2 my-4">
+                                    <DateBox date={studentData.nextDueDate} label="Old Due Date" />
+                                    <ArrowRight className="h-6 w-6 text-muted-foreground flex-shrink-0" />
+                                    <DateBox date={newDueDateForPayment} label="New Due Date" />
+                                </div>
+                            </div>
+                            <div className="py-4">
+                                <Label className="mb-2 block">Payment Method</Label>
+                                <RadioGroup defaultValue="Cash" onValueChange={(value) => setPaymentMethod(value as PaymentRecord['method'])}>
+                                    <div className="flex items-center space-x-2">
+                                        <RadioGroupItem value="Cash" id="payment-cash" />
+                                        <Label htmlFor="payment-cash" className="font-normal">Cash</Label>
+                                    </div>
+                                    <div className="flex items-center space-x-2">
+                                        <RadioGroupItem value="Online" id="payment-online" />
+                                        <Label htmlFor="payment-online" className="font-normal">Online (UPI/Card)</Label>
+                                    </div>
+                                </RadioGroup>
+                            </div>
+                            <AlertDialogFooter>
+                                <AlertDialogCancel onClick={() => setIsConfirmPaymentOpen(false)} disabled={isSaving}>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={handleMarkPaymentPaid} disabled={isSaving}>
+                                    {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                                    Confirm Payment
+                                </AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
+                 )}
+
+                {isReviewer ? (
+                    <Button type="button" variant="outline" className="w-full" onClick={() => handleReviewerAction("Mark as Left")}>
+                        <UserX className="mr-2 h-4 w-4" /> Mark as Left (For Reviewer)
+                    </Button>
+                ) : (
+                    <AlertDialog open={isConfirmMarkLeftOpen} onOpenChange={setIsConfirmMarkLeftOpen}>
+                      <AlertDialogTrigger asChild>
+                      <Button type="button" variant="outline" className="w-full" disabled={isSaving || isDeleting || isStudentLeft}>
+                          <UserX className="mr-2 h-4 w-4" /> Mark as Left
+                      </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                      <AlertDialogHeader>
+                          <AlertDialogTitle>Mark {studentData.name} as Left?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                          This will mark the student as inactive and their seat will become available. Are you sure?
+                          </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                          <AlertDialogCancel onClick={() => setIsConfirmMarkLeftOpen(false)} disabled={isSaving}>Cancel</AlertDialogCancel>
+                          <AlertDialogAction onClick={handleMarkAsLeft} disabled={isSaving}>
+                          {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                          Confirm
+                          </AlertDialogAction>
+                      </AlertDialogFooter>
+                      </AlertDialogContent>
+                  </AlertDialog>
+                )}
+              
+                {user?.email !== 'guest-admin@taxshila-auth.com' && (
+                    <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                        <Button type="button" variant="destructive" className="w-full" disabled={isSaving || isDeleting}>
+                            <Trash2 className="mr-2 h-4 w-4" /> Delete Student
                         </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
                         <AlertDialogHeader>
-                            <AlertDialogTitle>Confirm Payment for {studentData.name}?</AlertDialogTitle>
+                            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
                             <AlertDialogDescription>
-                                This will mark the current due amount of <strong>{amountDueDisplay}</strong> as paid. Please review the due date change below.
+                            This action cannot be undone. This will permanently delete the student
+                            ({studentData.name} - {studentId}) and all their associated data.
                             </AlertDialogDescription>
                         </AlertDialogHeader>
-                        <div className="py-2 text-sm">
-                            <div className="flex justify-around items-center gap-2 my-4">
-                                <DateBox date={studentData.nextDueDate} label="Old Due Date" />
-                                <ArrowRight className="h-6 w-6 text-muted-foreground flex-shrink-0" />
-                                <DateBox date={newDueDateForPayment} label="New Due Date" />
-                            </div>
-                        </div>
-                        <div className="py-4">
-                            <Label className="mb-2 block">Payment Method</Label>
-                            <RadioGroup defaultValue="Cash" onValueChange={(value) => setPaymentMethod(value as PaymentRecord['method'])}>
-                                <div className="flex items-center space-x-2">
-                                    <RadioGroupItem value="Cash" id="payment-cash" />
-                                    <Label htmlFor="payment-cash" className="font-normal">Cash</Label>
-                                </div>
-                                <div className="flex items-center space-x-2">
-                                    <RadioGroupItem value="Online" id="payment-online" />
-                                    <Label htmlFor="payment-online" className="font-normal">Online (UPI/Card)</Label>
-                                </div>
-                            </RadioGroup>
-                        </div>
                         <AlertDialogFooter>
-                            <AlertDialogCancel onClick={() => setIsConfirmPaymentOpen(false)} disabled={isSaving}>Cancel</AlertDialogCancel>
-                            <AlertDialogAction onClick={handleMarkPaymentPaid} disabled={isSaving}>
-                                {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                                Confirm Payment
+                            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={handleDeleteStudent} disabled={isDeleting} className="bg-destructive hover:bg-destructive/90">
+                            {isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                            Confirm Delete
                             </AlertDialogAction>
                         </AlertDialogFooter>
-                    </AlertDialogContent>
-                </AlertDialog>
-
-                <AlertDialog open={isConfirmMarkLeftOpen} onOpenChange={setIsConfirmMarkLeftOpen}>
-                  <AlertDialogTrigger asChild>
-                  <Button
-                      type="button"
-                      variant="outline"
-                        className="w-full"
-                      disabled={isSaving || isDeleting || isStudentLeft}
-                      onClick={() => setIsConfirmMarkLeftOpen(true)}
-                  >
-                      <UserX className="mr-2 h-4 w-4" /> Mark as Left
-                  </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                  <AlertDialogHeader>
-                      <AlertDialogTitle>Mark {studentData.name} as Left?</AlertDialogTitle>
-                      <AlertDialogDescription>
-                      This will mark the student as inactive and their seat will become available. Are you sure?
-                      </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                      <AlertDialogCancel onClick={() => setIsConfirmMarkLeftOpen(false)} disabled={isSaving}>Cancel</AlertDialogCancel>
-                      <AlertDialogAction onClick={handleMarkAsLeft} disabled={isSaving}>
-                      {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                      Confirm
-                      </AlertDialogAction>
-                  </AlertDialogFooter>
-                  </AlertDialogContent>
-              </AlertDialog>
-
-              <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                  <Button
-                      type="button"
-                      variant="destructive"
-                        className="w-full"
-                      disabled={isSaving || isDeleting}
-                  >
-                      <Trash2 className="mr-2 h-4 w-4" /> Delete Student
-                  </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                  <AlertDialogHeader>
-                      <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                      <AlertDialogDescription>
-                      This action cannot be undone. This will permanently delete the student
-                      ({studentData.name} - {studentId}) and all their associated data.
-                      </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                      <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
-                      <AlertDialogAction onClick={handleDeleteStudent} disabled={isDeleting} className="bg-destructive hover:bg-destructive/90">
-                      {isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                      Confirm Delete
-                      </AlertDialogAction>
-                  </AlertDialogFooter>
-                  </AlertDialogContent>
-              </AlertDialog>
+                        </AlertDialogContent>
+                    </AlertDialog>
+                )}
               </div>
 
             </CardFooter>

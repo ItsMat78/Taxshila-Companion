@@ -105,11 +105,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     try {
-        await signInWithEmailAndPassword(auth, emailForAuth, passwordAttempt);
-        
+       const userCredential = await signInWithEmailAndPassword(auth, emailForAuth, passwordAttempt);
+       const idToken = await userCredential.user.getIdToken(true);
         
         let userData: User;
         if (userRole === 'admin') {
+            // ** NEW: Heal admin claims after successful login **
+            try {
+                await fetch('/api/admin/verify-and-set-claim', {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${idToken}` }
+                });
+            } catch (claimError) {
+                console.warn("Could not heal admin claims, this might affect permissions.", claimError);
+            }
+
             const adminRecord = userRecord as Admin;
             userData = {
                 email: adminRecord.email,
@@ -189,7 +199,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     
     await signOut(auth).catch(err => console.warn("Firebase sign out error:", err));
     
-    router.push('/login');
+    router.push('/');
   };
 
   const saveThemePreference = React.useCallback(async (newTheme: string) => {
