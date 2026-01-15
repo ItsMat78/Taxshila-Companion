@@ -40,7 +40,7 @@ service cloud.firestore {
 
     // 3. Attendance
     match /attendanceRecords/{id} {
-      allow read, list: if isSignedIn() || isAdmin(); // Corrected Rule
+      allow read, list: if true; // Corrected Rule
       allow create, update: if isSignedIn();
       allow delete: if isAdmin() && !isReviewer();
     }
