@@ -17,7 +17,9 @@ import { format, parseISO } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import type { Shift } from '@/types/student';
-import { auth } from '@/lib/firebase';
+import { useAuth } from '@/contexts/auth-context';
+import { getAuth } from 'firebase/auth';
+import { app as firebaseApp } from '@/lib/firebase';
 
 // Helper function to get color class based on shift
 const getShiftColorClass = (shift: Shift) => {
@@ -72,20 +74,29 @@ const AttendanceRecordCard = ({ record }: { record: DailyAttendanceDetail }) => 
 
 
 export default function AdminAttendanceCalendarPage() {
+  const { user } = useAuth();
   const { toast } = useToast();
   const [selectedDate, setSelectedDate] = React.useState<Date | undefined>(new Date());
   const [dailyAttendance, setDailyAttendance] = React.useState<DailyAttendanceDetail[]>([]);
   const [isLoading, setIsLoading] = React.useState(false);
 
   React.useEffect(() => {
-    if (selectedDate) {
+    if (selectedDate && user) {
       const fetchAttendance = async () => {
         setIsLoading(true);
         setDailyAttendance([]);
         try {
+          const auth = getAuth(firebaseApp);
           const currentUser = auth.currentUser;
+          
           if (!currentUser) {
-            throw new Error("You must be logged in to view attendance.");
+            toast({
+              title: "Authentication Error",
+              description: "Please log in again to view attendance.",
+              variant: "destructive",
+            });
+            setIsLoading(false);
+            return;
           }
           
           const idToken = await currentUser.getIdToken(true);
@@ -117,7 +128,7 @@ export default function AdminAttendanceCalendarPage() {
       };
       fetchAttendance();
     }
-  }, [selectedDate, toast]);
+  }, [selectedDate, user, toast]);
 
   return (
     <>
