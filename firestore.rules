@@ -26,22 +26,21 @@ service cloud.firestore {
 
     // --- COLLECTION RULES ---
 
-    // 1. Admin Notes (The problem child)
+    // 1. Admin Notes
     match /adminNotes/{noteId} {
-      // Allow read if you are an admin OR if the query is just checking for notes
       allow read, list, write: if true;
     }
 
     // 2. Students
     match /students/{studentDocId} {
-      allow list: if true; // Essential for your login lookup logic
+      allow list: if true; // Essential for login lookup logic
       allow read: if isAdmin() || (isSignedIn() && resource.data.get('uid', '') == request.auth.uid);
       allow write: if isSignedIn() ||isAdmin() && !isReviewer();
     }
 
-    // 3. Attendance (Uses your studentId logic)
+    // 3. Attendance
     match /attendanceRecords/{id} {
-      allow read, list: if true; // Safe enough since your code filters by studentId
+      allow read, list: if isSignedIn() || isAdmin(); // Corrected Rule
       allow create, update: if isSignedIn();
       allow delete: if isAdmin() && !isReviewer();
     }
