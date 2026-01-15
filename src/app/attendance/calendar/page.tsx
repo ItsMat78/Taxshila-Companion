@@ -19,6 +19,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import type { Shift } from '@/types/student';
+import { auth } from '@/lib/firebase';
 
 // Helper function to get color class based on shift
 const getShiftColorClass = (shift: Shift) => {
@@ -84,13 +85,25 @@ export default function AdminAttendanceCalendarPage() {
         setIsLoading(true);
         setDailyAttendance([]);
         try {
+          const currentUser = auth.currentUser;
+          if (!currentUser) {
+            throw new Error("You must be logged in to view attendance.");
+          }
+          
+          const idToken = await currentUser.getIdToken();
           const dateString = format(selectedDate, 'yyyy-MM-dd');
-          // Fetch from the new API route
-          const response = await fetch(`/api/admin/attendance?date=${dateString}`);
+          
+          const response = await fetch(`/api/admin/attendance?date=${dateString}`, {
+            headers: {
+              'Authorization': `Bearer ${idToken}`,
+            },
+          });
+          
           if (!response.ok) {
             const errorData = await response.json();
             throw new Error(errorData.error || 'Failed to fetch data.');
           }
+          
           const details = await response.json();
           setDailyAttendance(details);
         } catch (error: any) {

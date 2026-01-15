@@ -31,12 +31,10 @@ async function verifyIsAdmin(request: NextRequest): Promise<boolean> {
 }
 
 export async function GET(request: NextRequest) {
-    // This API route should be protected and only accessible by admins.
-    // For now, we will allow it, but in production, you would add authentication checks.
-    // const isAuthorized = await verifyIsAdmin(request);
-    // if (!isAuthorized) {
-    //     return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
-    // }
+    const isAuthorized = await verifyIsAdmin(request);
+    if (!isAuthorized) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+    }
 
     const { searchParams } = new URL(request.url);
     const date = searchParams.get('date');
