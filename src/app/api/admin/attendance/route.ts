@@ -3,39 +3,23 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { getDailyAttendanceDetails } from '@/services/attendance-service';
 import { getAuth } from '@/lib/firebase-admin';
 
-// Helper to verify the requester is an admin
-async function verifyIsAdmin(request: NextRequest): Promise<boolean> {
+export async function GET(request: NextRequest) {
     const idToken = request.headers.get('Authorization')?.split('Bearer ')[1];
+    
     if (!idToken) {
-        // As a fallback, check cookies for a session token (for direct browser access during dev)
-        const sessionCookie = request.cookies.get('__session');
-        if (sessionCookie?.value) {
-            try {
-                const decodedToken = await getAuth().verifySessionCookie(sessionCookie.value, true);
-                return decodedToken.admin === true;
-            } catch (error) {
-                console.warn("Session cookie verification failed:", error);
-                return false;
-            }
-        }
-        return false;
+        return NextResponse.json({ error: 'Unauthorized: No token provided.' }, { status: 401 });
     }
 
     try {
         const decodedToken = await getAuth().verifyIdToken(idToken);
-        return decodedToken.admin === true;
+        if (!decodedToken.admin) {
+             return NextResponse.json({ error: 'Unauthorized: Not an admin.' }, { status: 403 });
+        }
     } catch (error) {
         console.error("Error verifying admin ID token:", error);
-        return false;
+        return NextResponse.json({ error: 'Unauthorized: Invalid token.' }, { status: 401 });
     }
-}
-
-export async function GET(request: NextRequest) {
-    const isAuthorized = await verifyIsAdmin(request);
-    if (!isAuthorized) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
-    }
-
+    
     const { searchParams } = new URL(request.url);
     const date = searchParams.get('date');
 

@@ -10,13 +10,11 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-  CardFooter,
 } from "@/components/ui/card";
-import { Loader2, CalendarDays, User, Clock, LogIn, LogOut, Users, AlertCircle, Armchair } from 'lucide-react';
+import { Loader2, CalendarDays, User, Clock, LogIn, LogOut, Users, AlertCircle } from 'lucide-react';
 import type { DailyAttendanceDetail } from '@/services/attendance-service';
 import { format, parseISO } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
-import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import type { Shift } from '@/types/student';
 import { auth } from '@/lib/firebase';
@@ -90,7 +88,7 @@ export default function AdminAttendanceCalendarPage() {
             throw new Error("You must be logged in to view attendance.");
           }
           
-          const idToken = await currentUser.getIdToken();
+          const idToken = await currentUser.getIdToken(true);
           const dateString = format(selectedDate, 'yyyy-MM-dd');
           
           const response = await fetch(`/api/admin/attendance?date=${dateString}`, {
