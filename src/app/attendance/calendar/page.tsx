@@ -17,9 +17,15 @@ import { format, parseISO } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import type { Shift } from '@/types/student';
-import { useAuth } from '@/contexts/auth-context';
-import { getAuth } from 'firebase/auth';
-import { app as firebaseApp } from '@/lib/firebase';
+import { getDailyAttendanceDetails } from '@/services/attendance-service';
+
+// This is now a server-side data fetching function called by the client component
+async function fetchAttendanceForDate(date: Date): Promise<DailyAttendanceDetail[]> {
+  const dateString = format(date, 'yyyy-MM-dd');
+  // Directly calling the server function
+  return getDailyAttendanceDetails(dateString);
+}
+
 
 // Helper function to get color class based on shift
 const getShiftColorClass = (shift: Shift) => {
@@ -74,46 +80,18 @@ const AttendanceRecordCard = ({ record }: { record: DailyAttendanceDetail }) => 
 
 
 export default function AdminAttendanceCalendarPage() {
-  const { user } = useAuth();
   const { toast } = useToast();
   const [selectedDate, setSelectedDate] = React.useState<Date | undefined>(new Date());
   const [dailyAttendance, setDailyAttendance] = React.useState<DailyAttendanceDetail[]>([]);
-  const [isLoading, setIsLoading] = React.useState(false);
+  const [isLoading, setIsLoading] = React.useState(true);
 
   React.useEffect(() => {
-    if (selectedDate && user) {
+    if (selectedDate) {
       const fetchAttendance = async () => {
         setIsLoading(true);
         setDailyAttendance([]);
         try {
-          const auth = getAuth(firebaseApp);
-          const currentUser = auth.currentUser;
-          
-          if (!currentUser) {
-            toast({
-              title: "Authentication Error",
-              description: "Please log in again to view attendance.",
-              variant: "destructive",
-            });
-            setIsLoading(false);
-            return;
-          }
-          
-          const idToken = await currentUser.getIdToken(true);
-          const dateString = format(selectedDate, 'yyyy-MM-dd');
-          
-          const response = await fetch(`/api/admin/attendance?date=${dateString}`, {
-            headers: {
-              'Authorization': `Bearer ${idToken}`,
-            },
-          });
-          
-          if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error || 'Failed to fetch data.');
-          }
-          
-          const details = await response.json();
+          const details = await fetchAttendanceForDate(selectedDate);
           setDailyAttendance(details);
         } catch (error: any) {
           console.error("Failed to fetch daily attendance:", error);
@@ -128,7 +106,7 @@ export default function AdminAttendanceCalendarPage() {
       };
       fetchAttendance();
     }
-  }, [selectedDate, user, toast]);
+  }, [selectedDate, toast]);
 
   return (
     <>
