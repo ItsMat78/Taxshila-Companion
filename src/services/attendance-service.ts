@@ -5,13 +5,7 @@
 // It should only be called from server-side code (like API routes).
 
 import { getDb } from '@/lib/firebase-admin'; // Use Admin SDK
-import {
-  collection,
-  getDocs,
-  query,
-  where,
-  Timestamp,
-} from 'firebase-admin/firestore';
+import { Timestamp } from 'firebase-admin/firestore';
 import type { Student, Shift, AttendanceRecord } from '@/types/student';
 import { format, parseISO, isValid } from 'date-fns';
 
@@ -81,16 +75,12 @@ const attendanceRecordFromSnapshot = (docSnapshot: FirebaseFirestore.DocumentSna
 export async function getDailyAttendanceDetails(date: string): Promise<DailyAttendanceDetail[]> {
   const db = getDb(); // Get Admin Firestore instance
 
-  const attendanceQuery = query(
-    collection(db, "attendanceRecords"),
-    where("date", "==", date)
-  );
-
-  const studentsQuery = query(collection(db, "students"));
+  const attendanceQuery = db.collection("attendanceRecords").where("date", "==", date);
+  const studentsQuery = db.collection("students");
 
   const [attendanceSnapshot, studentsSnapshot] = await Promise.all([
-    getDocs(attendanceQuery),
-    getDocs(studentsQuery)
+    attendanceQuery.get(),
+    studentsQuery.get()
   ]);
   
   if (attendanceSnapshot.empty) {
