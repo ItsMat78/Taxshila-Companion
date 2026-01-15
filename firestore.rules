@@ -27,52 +27,44 @@ service cloud.firestore {
 
     // --- COLLECTION-SPECIFIC RULES ---
 
-    // Admins can manage notes. Reviewer can only read.
     match /adminNotes/{noteId} {
-      allow read, list: if isAdmin();
+      allow list, read: if isAdmin();
       allow write: if isAdmin() && !isReviewer();
     }
 
-    // Admins can read any student, members can read their own.
-    // List is public for identifier lookups during login.
     match /students/{studentDocId} {
       allow list: if true;
       allow read: if isAdmin() || isOwner(resource.data.uid);
-      allow create: if true; // Let the backend handle creation logic
+      allow create: if true;
       allow update: if (isAdmin() && !isReviewer()) || isOwner(resource.data.uid);
       allow delete: if isAdmin() && !isReviewer();
     }
 
-    // Admins can see all attendance, members can see their own.
     match /attendanceRecords/{recordId} {
       allow list, read: if isAdmin() || (isSignedIn() && resource.data.studentId == request.auth.token.studentId);
       allow create, update: if isSignedIn();
       allow delete: if isAdmin() && !isReviewer();
     }
 
-    // Admins can manage all feedback, members can read their own responses.
     match /feedbackItems/{feedbackId} {
       allow list, read: if isAdmin() || (isSignedIn() && resource.data.studentId == request.auth.token.studentId);
       allow create: if isSignedIn();
       allow update, delete: if isAdmin() && !isReviewer();
     }
 
-    // Admins can manage alerts. Members can read alerts targeted to them or general ones.
     match /alertItems/{alertId} {
       allow list, read: if isAdmin() || (isSignedIn() && (resource.data.studentId == request.auth.token.studentId || resource.data.studentId == null));
       allow create, update, delete: if isAdmin() && !isReviewer();
     }
 
-    // Admins can manage the application configuration documents.
     match /appConfiguration/{configId} {
       allow read: if isSignedIn();
       allow write: if isAdmin() && !isReviewer();
     }
 
-    // Admins can read the list of other admins, but cannot write to it directly.
     match /admins/{adminId} {
       allow list, read: if isAdmin();
-      allow write: if false; // Should be managed via backend API
+      allow write: if false;
     }
   }
 }
