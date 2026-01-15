@@ -3,8 +3,60 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /{document=**} {
-      allow read, write: if true;
+
+    // --- GLOBAL HELPERS ---
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // This is the most robust version: It checks the Token, the Email, and the Sandbox
+    function isAdmin() {
+      return isSignedIn() && (
+        request.auth.token.get('admin', false) == true || 
+        request.auth.token.email == 'guest-admin@taxshila-auth.com' ||
+        request.auth.token.email == 'kritigrace@gmail.com' ||
+        // Fallback check in the database itself
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    function isReviewer() {
+      return request.auth.token.email == 'guest-admin@taxshila-auth.com';
+    }
+
+    // --- COLLECTION RULES ---
+
+    // 1. Admin Notes
+    match /adminNotes/{noteId} {
+      allow read, list, write: if true;
+    }
+
+    // 2. Students
+    match /students/{studentDocId} {
+      allow list: if true; // Essential for login lookup logic
+      allow read: if isAdmin() || (isSignedIn() && resource.data.get('uid', '') == request.auth.uid);
+      allow write: if isSignedIn() ||isAdmin() && !isReviewer();
+    }
+
+    // 3. Attendance
+    match /attendanceRecords/{id} {
+      allow read, list: if isSignedIn() || isAdmin();
+      allow create, update: if isSignedIn();
+      allow delete: if isAdmin() && !isReviewer();
+    }
+
+    // 4. Everything Else (Feedback, Config, Alerts)
+    match /{collection}/{id} {
+      allow read, list: if isSignedIn() || isAdmin();
+      allow write: if isAdmin() && !isReviewer();
+    }
+
+    // 5. Admins Collection
+    match /admins/{adminId} {
+      allow list: if true;
+      allow read: if isAdmin();
+      allow write: if false; 
     }
   }
 }

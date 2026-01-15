@@ -5,14 +5,6 @@ import * as React from 'react';
 import { PageTitle } from '@/components/shared/page-title';
 import { Calendar } from "@/components/ui/calendar";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-  CardFooter,
-} from "@/components/ui/card";
-import {
   Table,
   TableBody,
   TableCell,
@@ -20,13 +12,21 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Loader2, CalendarDays, User, Clock, LogIn, LogOut, Users, AlertCircle, Armchair } from 'lucide-react';
-import { getDailyAttendanceDetails, type DailyAttendanceDetail } from '@/services/attendance-service';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Loader2, CalendarDays, Clock, LogIn, LogOut, Users, AlertCircle } from 'lucide-react';
+import type { DailyAttendanceDetail } from '@/services/attendance-service';
 import { format, parseISO } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
-import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import type { Shift } from '@/types/student';
+import { getAttendanceForDateAction } from './actions';
+
 
 // Helper function to get color class based on shift
 const getShiftColorClass = (shift: Shift) => {
@@ -57,23 +57,21 @@ const AttendanceRecordCard = ({ record }: { record: DailyAttendanceDetail }) => 
         </div>
       </CardHeader>
       <CardContent className="pb-3 text-sm flex items-center justify-start gap-4">
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-1.5 text-green-600 font-medium">
-              <LogIn className="h-4 w-4" />
-              <span>{format(parseISO(record.checkInTime), 'p')}</span>
-          </div>
-         {record.checkOutTime ? (
-            <div className="flex items-center gap-1.5 text-red-600 font-medium">
-                <LogOut className="h-4 w-4" />
-                <span>{format(parseISO(record.checkOutTime), 'p')}</span>
-            </div>
-         ) : (
-            <div className="flex items-center gap-1.5 text-yellow-600 font-semibold">
-                <Clock className="h-4 w-4" />
-                <span>Active</span>
-            </div>
-         )}
+        <div className="flex items-center gap-1.5 text-green-600 font-medium">
+            <LogIn className="h-4 w-4" />
+            <span>{format(parseISO(record.checkInTime), 'p')}</span>
         </div>
+        {record.checkOutTime ? (
+        <div className="flex items-center gap-1.5 text-red-600 font-medium">
+            <LogOut className="h-4 w-4" />
+            <span>{format(parseISO(record.checkOutTime), 'p')}</span>
+        </div>
+        ) : (
+        <div className="flex items-center gap-1.5 text-yellow-600 font-semibold">
+            <Clock className="h-4 w-4" />
+            <span>Active</span>
+        </div>
+        )}
       </CardContent>
     </Card>
   );
@@ -84,7 +82,7 @@ export default function AdminAttendanceCalendarPage() {
   const { toast } = useToast();
   const [selectedDate, setSelectedDate] = React.useState<Date | undefined>(new Date());
   const [dailyAttendance, setDailyAttendance] = React.useState<DailyAttendanceDetail[]>([]);
-  const [isLoading, setIsLoading] = React.useState(false);
+  const [isLoading, setIsLoading] = React.useState(true);
 
   React.useEffect(() => {
     if (selectedDate) {
@@ -92,14 +90,13 @@ export default function AdminAttendanceCalendarPage() {
         setIsLoading(true);
         setDailyAttendance([]);
         try {
-          const dateString = format(selectedDate, 'yyyy-MM-dd');
-          const details = await getDailyAttendanceDetails(dateString);
+          const details = await getAttendanceForDateAction(selectedDate);
           setDailyAttendance(details);
-        } catch (error) {
+        } catch (error: any) {
           console.error("Failed to fetch daily attendance:", error);
           toast({
             title: "Error",
-            description: "Could not load attendance records for the selected date.",
+            description: error.message || "Could not load attendance records for the selected date.",
             variant: "destructive",
           });
         } finally {
@@ -126,12 +123,12 @@ export default function AdminAttendanceCalendarPage() {
             </CardTitle>
             <CardDescription>Choose a day to view its attendance.</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="flex justify-center">
             <Calendar
               mode="single"
               selected={selectedDate}
               onSelect={setSelectedDate}
-              className="rounded-md border shadow-inner"
+              className="rounded-md border shadow-inner min-w-[280px] sm:min-w-[320px]"
               modifiers={{ today: new Date() }}
               modifiersStyles={{ today: { color: 'hsl(var(--accent-foreground))', backgroundColor: 'hsl(var(--accent))' } }}
             />
