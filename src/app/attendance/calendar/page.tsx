@@ -12,16 +12,8 @@ import {
   CardTitle,
   CardFooter,
 } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { Loader2, CalendarDays, User, Clock, LogIn, LogOut, Users, AlertCircle, Armchair } from 'lucide-react';
-import { getDailyAttendanceDetails, type DailyAttendanceDetail } from '@/services/attendance-service';
+import type { DailyAttendanceDetail } from '@/services/attendance-service';
 import { format, parseISO } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
@@ -93,13 +85,19 @@ export default function AdminAttendanceCalendarPage() {
         setDailyAttendance([]);
         try {
           const dateString = format(selectedDate, 'yyyy-MM-dd');
-          const details = await getDailyAttendanceDetails(dateString);
+          // Fetch from the new API route
+          const response = await fetch(`/api/admin/attendance?date=${dateString}`);
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Failed to fetch data.');
+          }
+          const details = await response.json();
           setDailyAttendance(details);
-        } catch (error) {
+        } catch (error: any) {
           console.error("Failed to fetch daily attendance:", error);
           toast({
             title: "Error",
-            description: "Could not load attendance records for the selected date.",
+            description: error.message || "Could not load attendance records for the selected date.",
             variant: "destructive",
           });
         } finally {

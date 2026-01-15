@@ -1,3 +1,4 @@
+
 rules_version = '2';
 
 service cloud.firestore {
@@ -40,7 +41,7 @@ service cloud.firestore {
 
     // 3. Attendance
     match /attendanceRecords/{id} {
-      allow read, list: if true; // Corrected Rule
+      allow read, list: if isSignedIn() || isAdmin();
       allow create, update: if isSignedIn();
       allow delete: if isAdmin() && !isReviewer();
     }

@@ -1,18 +1,17 @@
 
 "use server";
 
+// IMPORTANT: This file now uses the Firebase Admin SDK for the main function.
+// It should only be called from server-side code (like API routes).
+
+import { getDb } from '@/lib/firebase-admin'; // Use Admin SDK
 import {
-  db,
   collection,
   getDocs,
-  doc,
-  getDoc,
   query,
   where,
   Timestamp,
-  orderBy, // Keep orderBy import for other potential uses, but we'll remove its use in the problematic query
-  limit, // Added limit in case it was intended for student query
-} from '@/lib/firebase';
+} from 'firebase-admin/firestore';
 import type { Student, Shift, AttendanceRecord } from '@/types/student';
 import { format, parseISO, isValid } from 'date-fns';
 
@@ -27,11 +26,11 @@ export interface DailyAttendanceDetail {
 }
 
 // Simplified student data transformation, avoiding import from student-service.ts
-const studentFromSnapshot = (docSnapshot: any): Pick<Student, 'studentId' | 'name' | 'seatNumber' | 'shift' | 'email'> | null => {
+const studentFromSnapshot = (docSnapshot: FirebaseFirestore.DocumentSnapshot): Pick<Student, 'studentId' | 'name' | 'seatNumber' | 'shift' | 'email'> | null => {
   const data = docSnapshot.data();
   if (!data) return null;
   return {
-    studentId: data.studentId, // Assuming student documents have a 'studentId' field matching the custom ID
+    studentId: data.studentId,
     name: data.name,
     seatNumber: data.seatNumber || null,
     shift: data.shift,
@@ -40,7 +39,7 @@ const studentFromSnapshot = (docSnapshot: any): Pick<Student, 'studentId' | 'nam
 };
 
 // Simplified attendance record transformation
-const attendanceRecordFromSnapshot = (docSnapshot: any): Omit<AttendanceRecord, 'date'> & { dateString: string } | null => {
+const attendanceRecordFromSnapshot = (docSnapshot: FirebaseFirestore.DocumentSnapshot): Omit<AttendanceRecord, 'date'> & { dateString: string } | null => {
   const data = docSnapshot.data();
   if (!data) return null;
 
@@ -80,6 +79,8 @@ const attendanceRecordFromSnapshot = (docSnapshot: any): Omit<AttendanceRecord, 
 
 
 export async function getDailyAttendanceDetails(date: string): Promise<DailyAttendanceDetail[]> {
+  const db = getDb(); // Get Admin Firestore instance
+
   const attendanceQuery = query(
     collection(db, "attendanceRecords"),
     where("date", "==", date)
@@ -142,5 +143,3 @@ export async function getDailyAttendanceDetails(date: string): Promise<DailyAtte
     parseISO(a.checkInTime).getTime() - parseISO(b.checkInTime).getTime()
   );
 }
-
-
