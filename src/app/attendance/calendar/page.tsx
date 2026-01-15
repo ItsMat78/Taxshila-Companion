@@ -1,9 +1,16 @@
-
 "use client";
 
 import * as React from 'react';
 import { PageTitle } from '@/components/shared/page-title';
 import { Calendar } from "@/components/ui/calendar";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import {
   Card,
   CardContent,
