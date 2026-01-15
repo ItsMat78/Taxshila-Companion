@@ -19,20 +19,13 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Loader2, CalendarDays, User, Clock, LogIn, LogOut, Users, AlertCircle } from 'lucide-react';
+import { Loader2, CalendarDays, Clock, LogIn, LogOut, Users, AlertCircle } from 'lucide-react';
 import type { DailyAttendanceDetail } from '@/services/attendance-service';
 import { format, parseISO } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import type { Shift } from '@/types/student';
-import { getDailyAttendanceDetails } from '@/services/attendance-service';
-
-// This is now a server-side data fetching function called by the client component
-async function fetchAttendanceForDate(date: Date): Promise<DailyAttendanceDetail[]> {
-  const dateString = format(date, 'yyyy-MM-dd');
-  // Directly calling the server function
-  return getDailyAttendanceDetails(dateString);
-}
+import { getAttendanceForDateAction } from './actions';
 
 
 // Helper function to get color class based on shift
@@ -64,23 +57,21 @@ const AttendanceRecordCard = ({ record }: { record: DailyAttendanceDetail }) => 
         </div>
       </CardHeader>
       <CardContent className="pb-3 text-sm flex items-center justify-start gap-4">
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-1.5 text-green-600 font-medium">
-              <LogIn className="h-4 w-4" />
-              <span>{format(parseISO(record.checkInTime), 'p')}</span>
-          </div>
-         {record.checkOutTime ? (
-            <div className="flex items-center gap-1.5 text-red-600 font-medium">
-                <LogOut className="h-4 w-4" />
-                <span>{format(parseISO(record.checkOutTime), 'p')}</span>
-            </div>
-         ) : (
-            <div className="flex items-center gap-1.5 text-yellow-600 font-semibold">
-                <Clock className="h-4 w-4" />
-                <span>Active</span>
-            </div>
-         )}
+        <div className="flex items-center gap-1.5 text-green-600 font-medium">
+            <LogIn className="h-4 w-4" />
+            <span>{format(parseISO(record.checkInTime), 'p')}</span>
         </div>
+        {record.checkOutTime ? (
+        <div className="flex items-center gap-1.5 text-red-600 font-medium">
+            <LogOut className="h-4 w-4" />
+            <span>{format(parseISO(record.checkOutTime), 'p')}</span>
+        </div>
+        ) : (
+        <div className="flex items-center gap-1.5 text-yellow-600 font-semibold">
+            <Clock className="h-4 w-4" />
+            <span>Active</span>
+        </div>
+        )}
       </CardContent>
     </Card>
   );
@@ -99,7 +90,7 @@ export default function AdminAttendanceCalendarPage() {
         setIsLoading(true);
         setDailyAttendance([]);
         try {
-          const details = await fetchAttendanceForDate(selectedDate);
+          const details = await getAttendanceForDateAction(selectedDate);
           setDailyAttendance(details);
         } catch (error: any) {
           console.error("Failed to fetch daily attendance:", error);
