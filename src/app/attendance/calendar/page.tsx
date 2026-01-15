@@ -131,12 +131,12 @@ export default function AdminAttendanceCalendarPage() {
             </CardTitle>
             <CardDescription>Choose a day to view its attendance.</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="flex justify-center">
             <Calendar
               mode="single"
               selected={selectedDate}
               onSelect={setSelectedDate}
-              className="rounded-md border shadow-inner"
+              className="rounded-md border shadow-inner min-w-[280px] sm:min-w-[320px]"
               modifiers={{ today: new Date() }}
               modifiersStyles={{ today: { color: 'hsl(var(--accent-foreground))', backgroundColor: 'hsl(var(--accent))' } }}
             />
