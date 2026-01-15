@@ -3,17 +3,17 @@
 
 import type { UserRole } from '@/types/auth';
 import * as React from 'react';
-import { useRouter, usePathname } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { 
   getStudentByIdentifier, 
   getAdminByEmail, 
   updateUserTheme,
-  removeOneSignalPlayerId, // Import the new function
+  removeOneSignalPlayerId,
 } from '@/services/student-service';
 import type { Student } from '@/types/student';
 import type { Admin } from '@/types/auth';
 import { useToast } from "@/hooks/use-toast";
-import { getAuth, signInWithEmailAndPassword, signOut } from 'firebase/auth';
+import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, type User as FirebaseUser } from 'firebase/auth';
 import { app as firebaseApp } from '@/lib/firebase';
 import { useTheme } from 'next-themes';
 
@@ -25,11 +25,12 @@ interface User {
   studentId?: string;
   identifierForDisplay?: string;
   theme: string;
+  uid: string; // Ensure UID is always present
 }
 
 interface AuthContextType {
   user: User | null;
-  updateUser: (updatedData: Partial<User>) => void; // New function
+  updateUser: (updatedData: Partial<User>) => void;
   login: (identifier: string, passwordAttempt: string) => Promise<User | null>;
   logout: () => void;
   isLoading: boolean;
@@ -47,22 +48,52 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const auth = getAuth(firebaseApp);
 
   React.useEffect(() => {
-    try {
-      const storedUser = localStorage.getItem('taxshilaUser');
-      if (storedUser) {
-        const parsedUser: User = JSON.parse(storedUser);
-        setUser(parsedUser);
-        if (parsedUser.theme) {
-          setTheme(parsedUser.theme);
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: FirebaseUser | null) => {
+      setIsLoading(true);
+      if (firebaseUser && firebaseUser.email) {
+        // User is signed in, fetch their profile from Firestore
+        let userRecord: Student | Admin | null = null;
+        let userRole: UserRole = 'member';
+        
+        const admin = await getAdminByEmail(firebaseUser.email);
+        if (admin) {
+            userRecord = admin;
+            userRole = 'admin';
+        } else {
+            userRecord = (await getStudentByIdentifier(firebaseUser.email)) ?? null;
         }
+
+        if (userRecord) {
+            const userData: User = {
+                uid: firebaseUser.uid,
+                email: userRecord.email,
+                role: userRole,
+                profilePictureUrl: userRole === 'member' ? (userRecord as Student).profilePictureUrl : undefined,
+                firestoreId: userRecord.firestoreId,
+                studentId: userRole === 'member' ? (userRecord as Student).studentId : undefined,
+                identifierForDisplay: userRecord.name,
+                theme: userRecord.theme || 'light-default',
+            };
+            setUser(userData);
+            localStorage.setItem('taxshilaUser', JSON.stringify(userData)); // Keep for quick initial loads
+            setTheme(userData.theme);
+        } else {
+            // Auth user exists but no DB record, force logout
+            await signOut(auth);
+            setUser(null);
+            localStorage.removeItem('taxshilaUser');
+        }
+      } else {
+        // User is signed out
+        setUser(null);
+        localStorage.removeItem('taxshilaUser');
       }
-    } catch (error) {
-      console.error("Failed to parse user from localStorage", error);
-      localStorage.removeItem('taxshilaUser');
-    } finally {
       setIsLoading(false);
-    }
-  }, [setTheme]);
+    });
+
+    return () => unsubscribe(); // Cleanup subscription on unmount
+  }, [auth, setTheme]);
+
 
   const updateUser = (updatedData: Partial<User>) => {
     setUser(prevUser => {
@@ -78,9 +109,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     let userRecord: Student | Admin | null = null;
     let userRole: UserRole = 'member';
     let emailForAuth: string | undefined = undefined;
-
-    // Clear stale user data from local storage before attempting a new login
-    localStorage.removeItem('taxshilaUser');
 
     if (identifier.includes('@')) {
         const admin = await getAdminByEmail(identifier);
@@ -110,7 +138,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         
         let userData: User;
         if (userRole === 'admin') {
-            // ** NEW: Heal admin claims after successful login **
             try {
                 await fetch('/api/admin/verify-and-set-claim', {
                     method: 'POST',
@@ -122,10 +149,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
             const adminRecord = userRecord as Admin;
             userData = {
+                uid: userCredential.user.uid,
                 email: adminRecord.email,
                 role: 'admin',
                 firestoreId: adminRecord.firestoreId,
-                identifierForDisplay: adminRecord.name, // Use name for display
+                identifierForDisplay: adminRecord.name,
                 theme: adminRecord.theme || 'light-default',
             };
         } else {
@@ -143,12 +171,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 return null;
              }
              userData = {
+                uid: userCredential.user.uid,
                 email: studentRecord.email ?? undefined,
                 role: 'member',
                 profilePictureUrl: studentRecord.profilePictureUrl,
                 firestoreId: studentRecord.firestoreId,
                 studentId: studentRecord.studentId,
-                identifierForDisplay: studentRecord.name, // Use name for display
+                identifierForDisplay: studentRecord.name,
                 theme: studentRecord.theme || 'light-default',
             };
         }
@@ -175,17 +204,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = async () => {
     try {
         if (user) {
-            // 1. Retrieve the ID for the CURRENT user before we delete it
             const storageKey = `oneSignalPlayerId_${user.firestoreId}`;
             const playerId = localStorage.getItem(storageKey);
-
-            // 2. Remove it from Firestore (Fire & Forget)
             if (playerId) {
-                // We don't await this because we don't want to block the logout UI
                 removeOneSignalPlayerId(user.firestoreId, user.role, playerId)
                     .catch(err => console.error("Failed to remove OneSignal ID:", err));
-                
-                // 3. Clean up LocalStorage
                 localStorage.removeItem(storageKey);
             }
         }
