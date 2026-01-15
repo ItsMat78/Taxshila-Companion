@@ -12,7 +12,7 @@ service cloud.firestore {
 
     function isAdmin() {
       return isSignedIn() && (
-        request.auth.token.admin == true ||
+        request.auth.token.get('admin', false) == true || 
         request.auth.token.email == 'guest-admin@taxshila-auth.com'
       );
     }
@@ -20,7 +20,7 @@ service cloud.firestore {
     function isReviewer() {
       return request.auth.token.email == 'guest-admin@taxshila-auth.com';
     }
-
+    
     function isOwner(userId) {
       return isSignedIn() && request.auth.uid == userId;
     }
@@ -34,7 +34,7 @@ service cloud.firestore {
 
     match /students/{studentDocId} {
       allow list: if true;
-      allow read: if isAdmin() || isOwner(resource.data.uid);
+      allow read: if isAdmin();
       allow create: if true;
       allow update: if (isAdmin() && !isReviewer()) || isOwner(resource.data.uid);
       allow delete: if isAdmin() && !isReviewer();
@@ -61,7 +61,7 @@ service cloud.firestore {
       allow read: if isSignedIn();
       allow write: if isAdmin() && !isReviewer();
     }
-
+    
     match /admins/{adminId} {
       allow list, read: if isAdmin();
       allow write: if false;
