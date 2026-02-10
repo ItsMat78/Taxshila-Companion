@@ -12,9 +12,9 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useAuth } from '@/contexts/auth-context';
-import { Loader2, Download, Smartphone, Home } from 'lucide-react';
+import { Loader2, Download, Smartphone, Home, Eye, EyeOff } from 'lucide-react';
 import { LoggingInDialog } from '@/components/shared/logging-in-dialog';
 import { useToast } from '@/hooks/use-toast';
 
@@ -44,6 +44,7 @@ export default function RootLoginPage() {
   const { toast } = useToast();
   const [isLoggingIn, setIsLoggingIn] = React.useState(false);
   const [showLoggingInDialog, setShowLoggingInDialog] = React.useState(false);
+  const [showPassword, setShowPassword] = React.useState(false);
 
   // --- PWA Install State ---
   const [deferredPrompt, setDeferredPrompt] = React.useState<BeforeInstallPromptEvent | null>(null);
@@ -192,9 +193,37 @@ export default function RootLoginPage() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel className="text-xs sm:text-sm">Password</FormLabel>
-                        <FormControl>
-                          <Input type="password" placeholder="Enter your password" {...field} className="text-xs sm:text-sm" disabled={isLoggingIn} />
-                        </FormControl>
+                        <div className="relative">
+                          <FormControl>
+                            <Input
+                              type={showPassword ? "text" : "password"}
+                              placeholder="Enter your password"
+                              {...field}
+                              className="text-xs sm:text-sm pr-10"
+                              disabled={isLoggingIn}
+                            />
+                          </FormControl>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                            onClick={() => setShowPassword(!showPassword)}
+                            disabled={isLoggingIn}
+                          >
+                            {showPassword ? (
+                              <EyeOff className="h-4 w-4" aria-hidden="true" />
+                            ) : (
+                              <Eye className="h-4 w-4" aria-hidden="true" />
+                            )}
+                            <span className="sr-only">
+                              {showPassword ? "Hide password" : "Show password"}
+                            </span>
+                          </Button>
+                        </div>
+                        <FormDescription className="text-xs">
+                          Your default password is your full name (e.g., 'Shreyash Rai').
+                        </FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}
