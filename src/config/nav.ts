@@ -215,9 +215,9 @@ export const mainNav: NavItem[] = [
   },
   {
     title: 'Library Rules',
-    href: '/member/rules',
+    href: '/rules',
     icon: BookOpenCheck,
-    roles: ['member'],
+    roles: ['member', 'admin'],
   },
   {
     title: 'Privacy Policy',

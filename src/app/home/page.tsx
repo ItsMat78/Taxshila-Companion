@@ -1,4 +1,3 @@
-
 "use client";
 
 import Image from 'next/image';
@@ -17,8 +16,8 @@ import {
 } from "@/components/ui/dialog";
 import { 
   Check, MapPin, Phone, Mail, ArrowRight, 
-  Wifi, Wind, Thermometer, Droplets, ShieldCheck, 
-  UserCircle, Sparkles, Clock, Crown
+  Wifi, Wind, Armchair, Droplets, ShieldCheck, 
+  UserCircle, Sparkles, Clock, Crown, Play, BookOpenCheck
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -138,23 +137,23 @@ const featureList = [
   {
     icon: Wifi,
     title: "Gigabit Wi-Fi",
-    description: "Fiber-optic speeds.",
+    description: "Excitel fiber speeds.",
     gradient: "from-violet-500/20 to-purple-500/20",
     iconColor: "text-violet-500",
     border: "border-violet-200/50"
   },
   {
     icon: Wind,
-    title: "Climate Control",
-    description: "Always cool.",
+    title: "Air Conditioned",
+    description: "Fully climate controlled.",
     gradient: "from-cyan-500/20 to-blue-500/20",
     iconColor: "text-cyan-500",
     border: "border-cyan-200/50"
   },
   {
-    icon: Thermometer,
-    title: "Ergonomic",
-    description: "Premium seating.",
+    icon: Armchair,
+    title: "Ergonomic Setup",
+    description: "Wide 2.5x2ft tables.",
     gradient: "from-amber-500/20 to-orange-500/20",
     iconColor: "text-amber-500",
     border: "border-amber-200/50"
@@ -174,6 +173,14 @@ const featureList = [
     gradient: "from-slate-500/20 to-gray-500/20",
     iconColor: "text-slate-500",
     border: "border-slate-200/50"
+  },
+  {
+    icon: Sparkles,
+    title: "Clean Environment",
+    description: "Daily sanitized spaces.",
+    gradient: "from-pink-500/20 to-rose-500/20",
+    iconColor: "text-pink-500",
+    border: "border-pink-200/50"
   }
 ];
 
@@ -243,7 +250,7 @@ export default function HomePage() {
               <p className="text-lg md:text-xl text-gray-200/90 mb-10 max-w-xl leading-relaxed drop-shadow-md font-medium">
                 Taxshila Digital Library is a precision-engineered environment designed to amplify your focus. Join the most productive community in Varanasi.
               </p>
-              
+
             </div>
           </div>
         </section>
@@ -270,7 +277,7 @@ export default function HomePage() {
               <p className="text-muted-foreground text-lg md:text-xl">Premium infrastructure designed for serious aspirants.</p>
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-6 auto-rows-[minmax(180px,auto)]">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-6 auto-rows-[minmax(180px,auto)]">
               {featureList.map((feature, idx) => (
                 <Card 
                   key={idx} 
@@ -296,13 +303,13 @@ export default function HomePage() {
               
               <Dialog>
                 <DialogTrigger asChild>
-                  <Card className="col-span-2 lg:col-span-2 bg-primary text-primary-foreground flex flex-col justify-center items-center text-center border-none relative overflow-hidden shadow-2xl shadow-primary/20 group cursor-pointer transition-all hover:shadow-primary/40 hover:-translate-y-1">
+                  <Card className="col-span-2 lg:col-span-3 bg-primary text-primary-foreground flex flex-col justify-center items-center text-center border-none relative overflow-hidden shadow-2xl shadow-primary/20 group cursor-pointer transition-all hover:shadow-primary/40 hover:-translate-y-1">
                     <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay" />
                     <div className="absolute -right-20 -bottom-20 opacity-10 transition-transform duration-700 group-hover:rotate-12 group-hover:scale-110">
                       <UserCircle className="w-64 h-64" />
                     </div>
                     <CardContent className="relative z-10 p-8 flex flex-col items-center">
-                      <h3 className="text-2xl md:text-3xl font-bold mb-2">Ready to join the elite?</h3>
+                      <h3 className="text-2xl pt-[30px] md:text-3xl font-bold mb-2">Ready to join the elite?</h3>
                       <p className="text-primary-foreground/90 mb-6 text-lg max-w-md">Your best work happens here. Start your journey today.</p>
                       <div className="px-8 py-3 bg-secondary text-secondary-foreground rounded-full font-bold shadow-lg transition-all scale-100 group-hover:scale-105">
                         Get Started
@@ -381,6 +388,68 @@ export default function HomePage() {
           </DialogContent>
         </Dialog>
 
+        {/* --- Library Rules --- */}
+        <section className="py-20 bg-background">
+            <div className="container mx-auto px-6 md:px-12 lg:px-20 max-w-4xl">
+                <Card className="p-8 text-center shadow-lg bg-card border">
+                <CardHeader>
+                    <div className="mx-auto h-16 w-16 mb-4 rounded-full bg-primary/10 flex items-center justify-center">
+                        <BookOpenCheck className="h-8 w-8 text-primary"/>
+                    </div>
+                    <CardTitle className="text-3xl font-bold">Library Rules & Regulations</CardTitle>
+                    <CardDescription className="text-lg text-muted-foreground mt-2">
+                    Please familiarize yourself with our code of conduct to ensure a productive environment for everyone.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <Link href="/rules" passHref>
+                    <Button size="lg" className="font-bold rounded-xl shadow-md">
+                        View Rules
+                        <ArrowRight className="ml-2 h-4 w-4"/>
+                    </Button>
+                    </Link>
+                </CardContent>
+                </Card>
+            </div>
+        </section>
+
+        {/* --- Get The App Section --- */}
+        <section className="py-20 bg-background border-t">
+            <div className="container mx-auto px-6 md:px-12 lg:px-20 max-w-4xl text-center">
+                <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-4">Access Anywhere</h2>
+                <p className="text-muted-foreground text-lg mb-8">
+                    Stay connected with the Taxshila Companion app, available on Google Play and as a progressive web app for all devices.
+                </p>
+                <div className="flex flex-col sm:flex-row justify-center items-center gap-4">
+                    <a href="https://play.google.com/store/apps/details?id=co.median.android.yeeemel&pcampaignid=web_share" target="_blank" rel="noopener noreferrer" className="inline-block w-[17rem] h-[104.53px]">
+                        <Image
+                            src="https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png"
+                            alt="Get it on Google Play"
+                            width={240}
+                            height={92}
+                            className="object-contain hover:opacity-90 transition-opacity w-full h-full"
+                            quality={95}
+                        />
+                    </a>
+                    <Link href="/" passHref>
+                        <Button variant="outline" className="h-[67.5px] w-[240px] bg-black text-white hover:bg-gray-800 hover:text-white border-gray-600 flex items-center justify-center gap-3">
+                             <Image
+                                src={LOGO_URL}
+                                alt="Taxshila Logo"
+                                width={48}
+                                height={48}
+                                className="object-contain"
+                            />
+                            <div className="text-left">
+                                <span className="text-sm block">GET THE</span>
+                                <span className="text-2xl font-semibold leading-none">Web App</span>
+                            </div>
+                        </Button>
+                    </Link>
+                </div>
+            </div>
+        </section>
+
 
         {/* --- Footer --- */}
         <footer className="bg-[#0f172a] text-white py-16">
@@ -436,3 +505,4 @@ export default function HomePage() {
     </div>
   );
 }
+    
