@@ -309,7 +309,7 @@ export default function HomePage() {
                       <UserCircle className="w-64 h-64" />
                     </div>
                     <CardContent className="relative z-10 p-8 flex flex-col items-center">
-                      <h3 className="text-2xl md:text-3xl font-bold mb-2">Ready to join the elite?</h3>
+                      <h3 className="text-2xl pt-[30px] md:text-3xl font-bold mb-2">Ready to join the elite?</h3>
                       <p className="text-primary-foreground/90 mb-6 text-lg max-w-md">Your best work happens here. Start your journey today.</p>
                       <div className="px-8 py-3 bg-secondary text-secondary-foreground rounded-full font-bold shadow-lg transition-all scale-100 group-hover:scale-105">
                         Get Started
