@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from 'react';
@@ -58,11 +59,16 @@ export default function RulesPage() {
             <CardDescription>Familiarize yourself with these rules to make the most of your study time.</CardDescription>
             </CardHeader>
             <CardContent>
-            <ul className="space-y-3 list-decimal list-inside text-foreground">
+              <div className="space-y-4">
                 {libraryRules.map((rule, index) => (
-                <li key={index} className="pl-2">{rule}</li>
+                  <div key={index} className="flex items-start gap-4 p-4 border rounded-lg bg-muted/50">
+                    <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-bold flex-shrink-0 mt-1">
+                      {index + 1}
+                    </div>
+                    <p className="text-foreground/90 leading-relaxed">{rule}</p>
+                  </div>
                 ))}
-            </ul>
+              </div>
             </CardContent>
         </Card>
     </div>

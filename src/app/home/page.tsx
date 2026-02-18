@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/dialog";
 import { 
   Check, MapPin, Phone, Mail, ArrowRight, 
-  Wifi, Wind, Thermometer, Droplets, ShieldCheck, 
+  Wifi, Wind, Armchair, Droplets, ShieldCheck, 
   UserCircle, Sparkles, Clock, Crown, Play, BookOpenCheck
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -138,23 +138,23 @@ const featureList = [
   {
     icon: Wifi,
     title: "Gigabit Wi-Fi",
-    description: "Fiber-optic speeds.",
+    description: "Excitel fiber speeds.",
     gradient: "from-violet-500/20 to-purple-500/20",
     iconColor: "text-violet-500",
     border: "border-violet-200/50"
   },
   {
     icon: Wind,
-    title: "Climate Control",
-    description: "Always cool.",
+    title: "Air Conditioned",
+    description: "Fully climate controlled.",
     gradient: "from-cyan-500/20 to-blue-500/20",
     iconColor: "text-cyan-500",
     border: "border-cyan-200/50"
   },
   {
-    icon: Thermometer,
-    title: "Ergonomic",
-    description: "Premium seating.",
+    icon: Armchair,
+    title: "Ergonomic Setup",
+    description: "Wide 2.5x2ft tables.",
     gradient: "from-amber-500/20 to-orange-500/20",
     iconColor: "text-amber-500",
     border: "border-amber-200/50"
@@ -174,6 +174,14 @@ const featureList = [
     gradient: "from-slate-500/20 to-gray-500/20",
     iconColor: "text-slate-500",
     border: "border-slate-200/50"
+  },
+  {
+    icon: Sparkles,
+    title: "Clean Environment",
+    description: "Daily sanitized spaces.",
+    gradient: "from-pink-500/20 to-rose-500/20",
+    iconColor: "text-pink-500",
+    border: "border-pink-200/50"
   }
 ];
 
@@ -270,7 +278,7 @@ export default function HomePage() {
               <p className="text-muted-foreground text-lg md:text-xl">Premium infrastructure designed for serious aspirants.</p>
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-6 auto-rows-[minmax(180px,auto)]">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-6 auto-rows-[minmax(180px,auto)]">
               {featureList.map((feature, idx) => (
                 <Card 
                   key={idx} 
@@ -296,7 +304,7 @@ export default function HomePage() {
               
               <Dialog>
                 <DialogTrigger asChild>
-                  <Card className="col-span-2 lg:col-span-2 bg-primary text-primary-foreground flex flex-col justify-center items-center text-center border-none relative overflow-hidden shadow-2xl shadow-primary/20 group cursor-pointer transition-all hover:shadow-primary/40 hover:-translate-y-1">
+                  <Card className="col-span-2 lg:col-span-3 bg-primary text-primary-foreground flex flex-col justify-center items-center text-center border-none relative overflow-hidden shadow-2xl shadow-primary/20 group cursor-pointer transition-all hover:shadow-primary/40 hover:-translate-y-1">
                     <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay" />
                     <div className="absolute -right-20 -bottom-20 opacity-10 transition-transform duration-700 group-hover:rotate-12 group-hover:scale-110">
                       <UserCircle className="w-64 h-64" />
