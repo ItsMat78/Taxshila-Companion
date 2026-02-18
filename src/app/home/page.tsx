@@ -18,7 +18,7 @@ import {
 import { 
   Check, MapPin, Phone, Mail, ArrowRight, 
   Wifi, Wind, Thermometer, Droplets, ShieldCheck, 
-  UserCircle, Sparkles, Clock, Crown
+  UserCircle, Sparkles, Clock, Crown, Play
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -244,6 +244,26 @@ export default function HomePage() {
                 Taxshila Digital Library is a precision-engineered environment designed to amplify your focus. Join the most productive community in Varanasi.
               </p>
               
+              <div className="flex flex-col sm:flex-row items-center gap-4 mt-10">
+                <a 
+                  href="https://play.google.com/store/apps/details?id=co.median.android.yeeemel&pcampaignid=web_share" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="w-full sm:w-auto"
+                >
+                  <Button size="lg" className="w-full rounded-full px-8 py-6 text-base font-bold shadow-lg shadow-primary/30 transition-all hover:scale-105 hover:shadow-primary/40 flex items-center justify-center">
+                    <Play className="h-5 w-5 mr-2 fill-current" />
+                    Get on Google Play
+                  </Button>
+                </a>
+                <Link href="/" passHref className="w-full sm:w-auto">
+                  <Button size="lg" variant="outline" className="w-full rounded-full px-8 py-6 text-base font-bold bg-white/10 text-white border-white/30 backdrop-blur-sm transition-all hover:bg-white/20 hover:scale-105 flex items-center justify-center">
+                    Open Web App
+                    <ArrowRight className="h-5 w-5 ml-2" />
+                  </Button>
+                </Link>
+              </div>
+
             </div>
           </div>
         </section>
