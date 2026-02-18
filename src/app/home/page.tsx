@@ -422,7 +422,7 @@ export default function HomePage() {
                     Stay connected with the Taxshila Companion app, available on Google Play and as a progressive web app for all devices.
                 </p>
                 <div className="flex flex-col sm:flex-row justify-center items-center gap-4">
-                    <a href="https://play.google.com/store/apps/details?id=co.median.android.yeeemel&pcampaignid=web_share" target="_blank" rel="noopener noreferrer" className="inline-flex h-16 w-52 items-center justify-center hover:opacity-90 transition-opacity">
+                    <a href="https://play.google.com/store/apps/details?id=co.median.android.yeeemel&pcampaignid=web_share" target="_blank" rel="noopener noreferrer" className="inline-flex h-16 w-44 items-center justify-center hover:opacity-90 transition-opacity">
                         <Image
                             src="https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png"
                             alt="Get it on Google Play"
@@ -433,7 +433,7 @@ export default function HomePage() {
                         />
                     </a>
                     <Link href="/" passHref>
-                        <Button variant="outline" className="h-16 w-52 bg-black text-white hover:bg-gray-800 hover:text-white border-gray-600 flex items-center justify-center gap-3">
+                        <Button variant="outline" className="h-16 w-44 bg-black text-white hover:bg-gray-800 hover:text-white border-gray-600 flex items-center justify-center gap-3">
                              <Image
                                 src={LOGO_URL}
                                 alt="Taxshila Logo"
