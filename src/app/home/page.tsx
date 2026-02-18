@@ -432,16 +432,16 @@ export default function HomePage() {
                         />
                     </a>
                     <Link href="/" passHref>
-                        <Button variant="outline" className="h-[104.53px] w-[17rem] bg-black text-white hover:bg-gray-800 hover:text-white border-gray-600 flex items-center justify-center gap-3">
+                        <Button variant="outline" className="h-[67.5px] w-[240px] bg-black text-white hover:bg-gray-800 hover:text-white border-gray-600 flex items-center justify-center gap-3">
                              <Image
                                 src={LOGO_URL}
                                 alt="Taxshila Logo"
-                                width={32}
-                                height={32}
+                                width={48}
+                                height={48}
                                 className="object-contain"
                             />
                             <div className="text-left">
-                                <span className="text-sm block">Launch the</span>
+                                <span className="text-sm block">GET THE</span>
                                 <span className="text-2xl font-semibold leading-none">Web App</span>
                             </div>
                         </Button>
