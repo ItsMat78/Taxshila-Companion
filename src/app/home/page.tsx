@@ -1,4 +1,3 @@
-
 "use client";
 
 import Image from 'next/image';
@@ -243,26 +242,6 @@ export default function HomePage() {
               <p className="text-lg md:text-xl text-gray-200/90 mb-10 max-w-xl leading-relaxed drop-shadow-md font-medium">
                 Taxshila Digital Library is a precision-engineered environment designed to amplify your focus. Join the most productive community in Varanasi.
               </p>
-              
-              <div className="flex flex-col sm:flex-row items-center gap-4 mt-10">
-                <a 
-                  href="https://play.google.com/store/apps/details?id=co.median.android.yeeemel&pcampaignid=web_share" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="w-full sm:w-auto"
-                >
-                  <Button size="lg" className="w-full rounded-full px-8 py-6 text-base font-bold shadow-lg shadow-primary/30 transition-all hover:scale-105 hover:shadow-primary/40 flex items-center justify-center">
-                    <Play className="h-5 w-5 mr-2 fill-current" />
-                    Get on Google Play
-                  </Button>
-                </a>
-                <Link href="/" passHref className="w-full sm:w-auto">
-                  <Button size="lg" variant="outline" className="w-full rounded-full px-8 py-6 text-base font-bold bg-white/10 text-white border-white/30 backdrop-blur-sm transition-all hover:bg-white/20 hover:scale-105 flex items-center justify-center">
-                    Open Web App
-                    <ArrowRight className="h-5 w-5 ml-2" />
-                  </Button>
-                </Link>
-              </div>
 
             </div>
           </div>
@@ -400,6 +379,43 @@ export default function HomePage() {
             <ContactDialogContent />
           </DialogContent>
         </Dialog>
+
+        {/* --- Get The App Section --- */}
+        <section className="py-20 bg-background border-t">
+            <div className="container mx-auto px-6 md:px-12 lg:px-20 max-w-4xl text-center">
+                <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-4">Access Anywhere</h2>
+                <p className="text-muted-foreground text-lg mb-8">
+                    Stay connected with the Taxshila Companion app, available on Google Play and as a progressive web app for all devices.
+                </p>
+                <div className="flex flex-col sm:flex-row justify-center items-center gap-4">
+                    <a href="https://play.google.com/store/apps/details?id=co.median.android.yeeemel&pcampaignid=web_share" target="_blank" rel="noopener noreferrer" className="inline-block hover:opacity-90 transition-opacity">
+                        <Image
+                            src="https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png"
+                            alt="Get it on Google Play"
+                            width={240}
+                            height={92}
+                            className="object-contain h-[60px] w-auto"
+                            quality={95}
+                        />
+                    </a>
+                    <Link href="/" passHref>
+                        <Button variant="outline" className="h-[60px] w-[202px] bg-black text-white hover:bg-gray-800 hover:text-white border-gray-600 flex items-center justify-center gap-3">
+                             <Image
+                                src={LOGO_URL}
+                                alt="Taxshila Logo"
+                                width={32}
+                                height={32}
+                                className="object-contain"
+                            />
+                            <div className="text-left">
+                                <span className="text-xs block">Launch the</span>
+                                <span className="text-lg font-semibold leading-tight">Web App</span>
+                            </div>
+                        </Button>
+                    </Link>
+                </div>
+            </div>
+        </section>
 
 
         {/* --- Footer --- */}
