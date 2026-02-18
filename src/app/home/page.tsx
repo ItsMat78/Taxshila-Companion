@@ -1,3 +1,4 @@
+
 "use client";
 
 import Image from 'next/image';
@@ -17,7 +18,7 @@ import {
 import { 
   Check, MapPin, Phone, Mail, ArrowRight, 
   Wifi, Wind, Thermometer, Droplets, ShieldCheck, 
-  UserCircle, Sparkles, Clock, Crown, Play
+  UserCircle, Sparkles, Clock, Crown, Play, BookOpenCheck
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -380,6 +381,31 @@ export default function HomePage() {
           </DialogContent>
         </Dialog>
 
+        {/* --- Library Rules --- */}
+        <section className="py-20 bg-background">
+            <div className="container mx-auto px-6 md:px-12 lg:px-20 max-w-4xl">
+                <Card className="p-8 text-center shadow-lg bg-card border">
+                <CardHeader>
+                    <div className="mx-auto h-16 w-16 mb-4 rounded-full bg-primary/10 flex items-center justify-center">
+                        <BookOpenCheck className="h-8 w-8 text-primary"/>
+                    </div>
+                    <CardTitle className="text-3xl font-bold">Library Rules & Regulations</CardTitle>
+                    <CardDescription className="text-lg text-muted-foreground mt-2">
+                    Please familiarize yourself with our code of conduct to ensure a productive environment for everyone.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <Link href="/rules" passHref>
+                    <Button size="lg" className="font-bold rounded-xl shadow-md">
+                        View Rules
+                        <ArrowRight className="ml-2 h-4 w-4"/>
+                    </Button>
+                    </Link>
+                </CardContent>
+                </Card>
+            </div>
+        </section>
+
         {/* --- Get The App Section --- */}
         <section className="py-20 bg-background border-t">
             <div className="container mx-auto px-6 md:px-12 lg:px-20 max-w-4xl text-center">
@@ -388,18 +414,18 @@ export default function HomePage() {
                     Stay connected with the Taxshila Companion app, available on Google Play and as a progressive web app for all devices.
                 </p>
                 <div className="flex flex-col sm:flex-row justify-center items-center gap-4">
-                    <a href="https://play.google.com/store/apps/details?id=co.median.android.yeeemel&pcampaignid=web_share" target="_blank" rel="noopener noreferrer" className="inline-block hover:opacity-90 transition-opacity">
+                    <a href="https://play.google.com/store/apps/details?id=co.median.android.yeeemel&pcampaignid=web_share" target="_blank" rel="noopener noreferrer" className="inline-flex h-16 w-52 items-center justify-center hover:opacity-90 transition-opacity">
                         <Image
                             src="https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png"
                             alt="Get it on Google Play"
                             width={240}
                             height={92}
-                            className="object-contain h-[60px] w-auto"
+                            className="object-contain h-full w-auto"
                             quality={95}
                         />
                     </a>
                     <Link href="/" passHref>
-                        <Button variant="outline" className="h-[60px] w-[202px] bg-black text-white hover:bg-gray-800 hover:text-white border-gray-600 flex items-center justify-center gap-3">
+                        <Button variant="outline" className="h-16 w-52 bg-black text-white hover:bg-gray-800 hover:text-white border-gray-600 flex items-center justify-center gap-3">
                              <Image
                                 src={LOGO_URL}
                                 alt="Taxshila Logo"

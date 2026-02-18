@@ -59,7 +59,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const { refreshNotifications } = useNotificationContext();
   const { theme, setTheme } = useTheme();
 
-  const publicPaths = ['/home', '/privacy_policy'];
+  const publicPaths = ['/home', '/privacy_policy', '/rules'];
   const isPublicPath = publicPaths.includes(pathname);
 
   React.useEffect(() => {
