@@ -421,7 +421,7 @@ export default function HomePage() {
                     Stay connected with the Taxshila Companion app, available on Google Play and as a progressive web app for all devices.
                 </p>
                 <div className="flex flex-col sm:flex-row justify-center items-center gap-4">
-                    <a href="https://play.google.com/store/apps/details?id=co.median.android.yeeemel&pcampaignid=web_share" target="_blank" rel="noopener noreferrer" className="inline-block w-44 h-auto">
+                    <a href="https://play.google.com/store/apps/details?id=co.median.android.yeeemel&pcampaignid=web_share" target="_blank" rel="noopener noreferrer" className="inline-block w-[17rem] h-[104.53px]">
                         <Image
                             src="https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png"
                             alt="Get it on Google Play"
@@ -432,7 +432,7 @@ export default function HomePage() {
                         />
                     </a>
                     <Link href="/" passHref>
-                        <Button variant="outline" className="h-[67.5px] w-44 bg-black text-white hover:bg-gray-800 hover:text-white border-gray-600 flex items-center justify-center gap-3">
+                        <Button variant="outline" className="h-[104.53px] w-[17rem] bg-black text-white hover:bg-gray-800 hover:text-white border-gray-600 flex items-center justify-center gap-3">
                              <Image
                                 src={LOGO_URL}
                                 alt="Taxshila Logo"
@@ -441,8 +441,8 @@ export default function HomePage() {
                                 className="object-contain"
                             />
                             <div className="text-left">
-                                <span className="text-xs block">Launch the</span>
-                                <span className="text-lg font-semibold leading-tight">Web App</span>
+                                <span className="text-sm block">Launch the</span>
+                                <span className="text-2xl font-semibold leading-none">Web App</span>
                             </div>
                         </Button>
                     </Link>
@@ -505,5 +505,4 @@ export default function HomePage() {
     </div>
   );
 }
-
     
