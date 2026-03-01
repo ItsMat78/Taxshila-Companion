@@ -1,5 +1,3 @@
-
-
 import {
   db,
   collection,
@@ -813,7 +811,7 @@ export async function recordStudentPayment(
       // Fallback to today only if no valid due date exists (e.g., brand new student)
       baseDateForCalculation = today;
   }
-  const newNextDueDate = addMonths(baseDateForCalculation, numberOfMonthsPaid);
+  const newNextDueDate = addDays(baseDateForCalculation, 30 * numberOfMonthsPaid);
 
   const updatedFeeData = {
     feeStatus: "Paid" as FeeStatus,

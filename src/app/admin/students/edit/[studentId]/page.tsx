@@ -51,7 +51,7 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { getStudentById, updateStudent, getAvailableSeats, recordStudentPayment, getFeeStructure } from '@/services/student-service';
 import type { Student, Shift, FeeStructure, PaymentRecord } from '@/types/student';
-import { format, parseISO, isValid, addMonths } from 'date-fns';
+import { format, parseISO, isValid, addDays } from 'date-fns';
 import { Calendar } from '@/components/ui/calendar'
 import {
   Popover,
@@ -199,9 +199,9 @@ export default function EditStudentPage() {
   };
 
   const newDueDateForPayment = React.useMemo(() => {
-    if (!studentData?.nextDueDate) return format(addMonths(new Date(), 1), 'yyyy-MM-dd');
+    if (!studentData?.nextDueDate) return format(addDays(new Date(), 30), 'yyyy-MM-dd');
     const baseDate = isValid(parseISO(studentData.nextDueDate)) ? parseISO(studentData.nextDueDate) : new Date();
-    return format(addMonths(baseDate, 1), 'yyyy-MM-dd');
+    return format(addDays(baseDate, 30), 'yyyy-MM-dd');
   }, [studentData?.nextDueDate]);
 
   const amountDueDisplay = getAmountDueDisplay();
@@ -920,7 +920,3 @@ export default function EditStudentPage() {
     </>
   );
 }
-
-    
-
-    
