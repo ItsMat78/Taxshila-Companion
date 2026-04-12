@@ -76,7 +76,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             };
             setUser(userData);
             localStorage.setItem('taxshilaUser', JSON.stringify(userData)); // Keep for quick initial loads
-            setTheme(userData.theme);
+            
+            // Normalize theme before setting
+            const normalizedTheme = ['light', 'dark'].includes(userData.theme) ? userData.theme : 'light';
+            setTheme(normalizedTheme);
         } else {
             // Auth user exists but no DB record, force logout
             await signOut(auth);
@@ -92,7 +95,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
 
     return () => unsubscribe(); // Cleanup subscription on unmount
-  }, [auth, setTheme]);
+  }, [auth]); // Removed setTheme for stability
 
 
   const updateUser = (updatedData: Partial<User>) => {
@@ -184,7 +187,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         
         setUser(userData);
         localStorage.setItem('taxshilaUser', JSON.stringify(userData));
-        setTheme(userData.theme);
+        
+        // Normalize theme before setting
+        const normalizedTheme = ['light', 'dark'].includes(userData.theme) ? userData.theme : 'light';
+        setTheme(normalizedTheme);
         return userData;
 
     } catch (error: any) {
@@ -218,7 +224,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     setUser(null);
     localStorage.removeItem('taxshilaUser');
-    setTheme('light-default');
+    setTheme('light'); // Standardized from light-default
     
     await signOut(auth).catch(err => console.warn("Firebase sign out error:", err));
     

@@ -19,14 +19,8 @@ import { Palette } from "lucide-react"
 import { SidebarMenuItem, SidebarMenuButton } from "@/components/ui/sidebar"
 
 const themes = [
-    { name: "Light Default", value: "light-default", icon: Sun },
-    { name: "Mint", value: "light-mint", icon: Sun },
-    { name: "Sunrise", value: "light-sunrise", icon: Sun },
-    { name: "Sakura", value: "light-sakura", icon: Sun },
-    { name: "Dark Default", value: "dark-default", icon: Moon },
-    { name: "Midnight", value: "dark-midnight", icon: Moon },
-    { name: "Forest", value: "dark-forest", icon: Moon },
-    { name: "Rose", value: "dark-rose", icon: Moon },
+    { name: "Light Mode", value: "light", icon: Sun },
+    { name: "Dark Mode", value: "dark", icon: Moon },
 ];
 
 export function ThemeSwitcher() {
@@ -67,16 +61,7 @@ export function ThemeSwitcher() {
         <DropdownMenuLabel>Appearance</DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuRadioGroup value={theme} onValueChange={handleThemeChange}>
-            <DropdownMenuLabel className="text-xs font-normal text-muted-foreground px-2">Light Themes</DropdownMenuLabel>
-            {themes.filter(t => t.value.startsWith('light')).map((t) => (
-                <DropdownMenuRadioItem key={t.value} value={t.value}>
-                    <t.icon className="mr-2 h-4 w-4" />
-                    {t.name}
-                </DropdownMenuRadioItem>
-            ))}
-            <DropdownMenuSeparator />
-            <DropdownMenuLabel className="text-xs font-normal text-muted-foreground px-2">Dark Themes</DropdownMenuLabel>
-             {themes.filter(t => t.value.startsWith('dark')).map((t) => (
+            {themes.map((t) => (
                 <DropdownMenuRadioItem key={t.value} value={t.value}>
                     <t.icon className="mr-2 h-4 w-4" />
                     {t.name}

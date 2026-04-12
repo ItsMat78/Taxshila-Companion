@@ -7,6 +7,7 @@ import { AuthProvider } from '@/contexts/auth-context';
 import { NotificationProvider } from '@/contexts/notification-context';
 import { ThemeProvider } from '@/contexts/theme-context';
 import { DynamicThemeColor } from '@/components/shared/dynamic-theme-color';
+import { ReactQueryProvider } from '@/contexts/query-provider';
 
 export const metadata: Metadata = {
   title: 'Taxshila Companion',
@@ -40,19 +41,21 @@ export default function RootLayout({
       <body className="font-body antialiased">
         <ThemeProvider
           attribute="class"
-          defaultTheme="light-default"
-          enableSystem={false}
-          themes={['light-default', 'light-mint', 'light-sunrise', 'light-sakura', 'dark-default', 'dark-midnight', 'dark-forest', 'dark-rose']}
+          defaultTheme="light"
+          enableSystem={true}
+          themes={['light', 'dark']}
           disableTransitionOnChange={true}
         >
           <DynamicThemeColor />
           <AuthProvider>
-            <NotificationProvider>
-                <AppLayout>
-                  {children}
-                </AppLayout>
-              <Toaster />
-            </NotificationProvider>
+            <ReactQueryProvider>
+              <NotificationProvider>
+                  <AppLayout>
+                    {children}
+                  </AppLayout>
+                <Toaster />
+              </NotificationProvider>
+            </ReactQueryProvider>
           </AuthProvider>
         </ThemeProvider>
       </body>

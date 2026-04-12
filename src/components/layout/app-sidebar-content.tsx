@@ -209,15 +209,15 @@ export function AppSidebarContent() {
   }
 
   return (
-    <Sidebar side="left" collapsible="icon">
-      <SidebarHeader className="p-4 flex flex-col items-start w-full">
-        <Link href="/" className="flex items-center gap-2 mb-4 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:w-full">
+    <Sidebar side="left" collapsible="icon" className="bg-transparent border-none font-headline z-40">
+      <SidebarHeader className="p-4 flex flex-col items-start w-full bg-white/10 dark:bg-black/10 backdrop-blur-md border-b border-white/20 dark:border-white/5">
+        <Link href="/" className="flex items-center gap-3 mb-4 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:w-full transition-transform hover:scale-105">
           <Image
             src={ACTUAL_LOGO_URL}
             alt="Taxshila Logo Icon"
             width={64}
             height={64}
-            className="object-contain group-data-[collapsible=icon]:block hidden h-8 w-8"
+            className="object-contain group-data-[collapsible=icon]:block hidden h-8 w-8 drop-shadow-md"
             data-ai-hint="logo brand"
             priority
           />
@@ -226,14 +226,14 @@ export function AppSidebarContent() {
             alt="Taxshila Logo"
             width={120}
             height={120}
-            className="object-contain group-data-[collapsible=icon]:hidden h-8 w-auto"
+            className="object-contain group-data-[collapsible=icon]:hidden h-10 w-auto drop-shadow-md"
             data-ai-hint="logo brand"
             priority
           />
-          <h1 className="text-xl font-headline font-semibold group-data-[collapsible=icon]:hidden">Taxshila Companion</h1>
+          <h1 className="text-xl font-headline font-bold tracking-tight text-gray-800 dark:text-gray-100 group-data-[collapsible=icon]:hidden">Taxshila</h1>
         </Link>
-         <div className="flex items-center gap-2 group-data-[collapsible=icon]:hidden w-full">
-            <Avatar className="h-9 w-9">
+         <div className="flex items-center gap-3 group-data-[collapsible=icon]:hidden w-full p-2 rounded-xl bg-white/20 dark:bg-white/5 border border-white/30 dark:border-white/10 shadow-sm transition-all hover:bg-white/30">
+            <Avatar className="h-9 w-9 border border-white/60 shadow-sm">
               <AvatarImage src={user.profilePictureUrl || undefined} alt={user.identifierForDisplay} data-ai-hint="profile person" />
               <AvatarFallback>{getInitials(user.identifierForDisplay)}</AvatarFallback>
             </Avatar>

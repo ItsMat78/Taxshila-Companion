@@ -77,9 +77,12 @@ const DashboardTile: React.FC<DashboardTileProps> = ({
 }) => {
   const content = (
     <Card className={cn(
-      "shadow-lg h-full flex flex-col",
-      isPrimaryAction ? 'text-primary-foreground' : '',
-      disabled ? 'opacity-60 cursor-not-allowed bg-muted/50' : (isPrimaryAction ? 'hover:opacity-90' : 'hover:bg-muted/50 hover:shadow-xl transition-shadow'),
+      "shadow-lg h-full flex flex-col transition-all",
+      isPrimaryAction 
+        ? 'bg-gradient-to-br from-indigo-600 to-blue-700 text-white border-transparent' 
+        : 'bg-white/40 dark:bg-black/30 backdrop-blur-xl border-white/60 dark:border-white/10 text-gray-800 dark:text-gray-200',
+      !disabled && "hover:shadow-2xl active:scale-[0.98]",
+      disabled ? 'opacity-50 cursor-not-allowed bg-black/10 dark:bg-white/5' : (!isPrimaryAction && 'hover:bg-white/50 dark:hover:bg-black/50'),
       className
     )}>
       <CardHeader className={cn(
@@ -103,7 +106,7 @@ const DashboardTile: React.FC<DashboardTileProps> = ({
            />
           <ShadcnCardTitle className={cn(
             "break-words",
-            isPrimaryAction ? 'text-lg sm:text-xl font-bold' : 'text-sm sm:text-base font-semibold',
+            isPrimaryAction ? 'text-lg sm:text-xl font-bold text-white' : 'text-sm sm:text-base font-semibold',
           )}>
             {title}
           </ShadcnCardTitle>
@@ -119,14 +122,14 @@ const DashboardTile: React.FC<DashboardTileProps> = ({
           <>
             <div className={cn(
               "font-bold break-words",
-               isPrimaryAction ? 'text-xl sm:text-2xl text-primary-foreground' : 'text-lg sm:text-xl text-foreground',
+               isPrimaryAction ? 'text-xl sm:text-2xl text-white' : 'text-lg sm:text-xl text-foreground',
               isUrgent && !isPrimaryAction && 'text-destructive'
             )}>
               {statistic}
             </div>
             {description && <p className={cn(
               "text-xs mt-1 break-words",
-              isPrimaryAction ? 'text-primary-foreground/80' : 'text-muted-foreground text-center',
+              isPrimaryAction ? 'text-white/80' : 'text-muted-foreground text-center',
             )}>{description}</p>}
           </>
         ) : children ? (
@@ -134,7 +137,7 @@ const DashboardTile: React.FC<DashboardTileProps> = ({
         ) : (
           description && <p className={cn(
             "break-words text-center",
-            isPrimaryAction ? 'text-sm text-primary-foreground/80' : 'text-xs text-muted-foreground',
+            isPrimaryAction ? 'text-sm text-white/80' : 'text-xs text-muted-foreground',
           )}>{description}</p>
         )}
       </CardContent>
@@ -712,8 +715,8 @@ export default function MemberDashboardPage() {
       {showNotificationPrompt && <NotificationPrompt onDismiss={handleDismissPrompt} />}
 
       {activeCheckInRecord && (
-        <Card className="my-6 shadow-lg rounded-lg overflow-hidden">
-          <CardContent className="p-4 flex items-center justify-between gap-4">
+        <Card className="my-6 rounded-xl overflow-hidden shadow-2xl border-white/60 dark:border-white/10">
+          <CardContent className="p-5 flex items-center justify-between gap-4">
             <div className="flex-1">
               <ShadcnCardDescription className="text-xs text-muted-foreground uppercase tracking-wider mb-2">Current Session</ShadcnCardDescription>
               <div className="text-5xl sm:text-6xl font-bold font-mono tracking-tighter text-primary">
@@ -736,7 +739,7 @@ export default function MemberDashboardPage() {
                 onClick={handleDashboardCheckOut}
                 disabled={isProcessingCheckout}
                 className={cn(
-                  "w-full rounded-t-none h-12 text-base text-primary-foreground animate-gradient-sweep-green"
+                  "w-full rounded-t-none h-14 text-lg font-headline font-semibold text-primary-foreground animate-gradient-sweep-green"
                 )}
              >
                 {isProcessingCheckout ? (
@@ -836,15 +839,15 @@ export default function MemberDashboardPage() {
       )}
 
 
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {coreActionTiles.map((tile) => (
           <DashboardTile key={tile.title} {...tile} />
         ))}
       </div>
 
-      <div className="my-8 border-t border-border"></div>
+      <div className="my-6 border-t border-white/40 dark:border-white/10"></div>
 
-      <div className="grid grid-cols-2 gap-4 sm:gap-6">
+      <div className="grid grid-cols-2 gap-4">
         <DashboardTile
             title="Library Rules"
             description="Familiarize yourself with guidelines."

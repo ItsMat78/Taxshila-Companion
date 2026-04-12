@@ -91,10 +91,14 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   }, [pathname]);
 
   React.useEffect(() => {
-    if (user?.theme && user.theme !== theme) {
-      setTheme(user.theme);
+    if (user?.theme) {
+      // Strictly allow only light and dark. Default everything else to light.
+      const targetTheme = ['light', 'dark'].includes(user.theme) ? user.theme : 'light';
+      if (targetTheme !== theme) {
+        setTheme(targetTheme);
+      }
     }
-  }, [user, theme, setTheme]);
+  }, [user?.theme, theme, setTheme]);
   
   // --- Robust Notification Setup ---
   React.useEffect(() => {
@@ -197,29 +201,35 @@ if (targetId) {
   // If we have a user and we're not on a public path, render the main app layout.
   if (user) {
     return (
-      <SidebarProvider defaultOpen>
-        <TopProgressBar isLoading={isRouteLoading} />
-        <AppSidebarContent />
-        <SidebarInset>
-          <header className="sticky top-0 z-10 flex h-14 items-center gap-4 border-b bg-background/80 px-4 backdrop-blur-sm sm:h-16 sm:px-6 md:hidden">
-            <SidebarTrigger asChild>
-              <Button size="icon" variant="outline" className="md:hidden">
-                <PanelLeft className="h-5 w-5" />
-                <span className="sr-only">Toggle Menu</span>
-              </Button>
-            </SidebarTrigger>
-            <Link href="/" className="flex items-center gap-2 font-headline text-lg font-semibold">
-               Taxshila Companion
-            </Link>
-            <div className="ml-auto flex items-center gap-2">
-              <NotificationIconArea />
-            </div>
-          </header>
-          <main className="flex-1 p-4 sm:p-6 lg:p-8 min-w-0">
-            {children}
-          </main>
+      <div className="bg-glass-abstract min-h-screen">
+        <SidebarProvider defaultOpen className="bg-transparent">
+          <TopProgressBar isLoading={isRouteLoading} />
+          <AppSidebarContent />
+          <SidebarInset className="bg-transparent relative">
+            <header className="fixed top-0 left-0 right-0 z-50 flex h-14 items-center gap-4 border-b border-white/20 dark:border-white/5 bg-white/40 dark:bg-black/20 px-4 backdrop-blur-xl sm:h-16 sm:px-6 md:hidden">
+              <SidebarTrigger asChild>
+                <Button size="icon" variant="outline" className="md:hidden">
+                  <PanelLeft className="h-5 w-5" />
+                  <span className="sr-only">Toggle Menu</span>
+                </Button>
+              </SidebarTrigger>
+              <Link href="/" className="flex items-center gap-2 font-headline text-lg font-semibold md:hidden">
+                 Taxshila Companion
+              </Link>
+              <div className="ml-auto flex items-center gap-2">
+                <NotificationIconArea />
+              </div>
+            </header>
+            
+            {/* Mobile Header Spacer */}
+            <div className="h-14 md:hidden" />
+
+            <main className="flex-1 p-2.5 sm:p-5 lg:p-6 min-w-0">
+              {children}
+            </main>
         </SidebarInset>
       </SidebarProvider>
+      </div>
     );
   }
 

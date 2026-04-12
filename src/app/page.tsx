@@ -144,14 +144,13 @@ export default function RootLoginPage() {
     <>
       {showLoggingInDialog && <LoggingInDialog isOpen={true} />}
       <div
-        style={{ backgroundImage: `url(${COVER_IMAGE_URL})` }}
-        className="min-h-screen flex flex-col items-center justify-center bg-cover bg-center p-4 gap-6"
-      ><Link href="/home">
+        className="bg-glass-abstract min-h-screen flex flex-col items-center justify-center p-4 gap-6 relative"
+      ><Link href="/home" className="relative z-10">
       <Button variant="outline" className="bg-background/70 backdrop-blur-md">
         <Home className="mr-2 h-4 w-4" /> Go to Home Page
       </Button>
     </Link>
-        <Card className="w-full max-w-md md:max-w-3xl shadow-xl bg-background/70 backdrop-blur-md rounded-lg flex flex-col md:flex-row max-h-[calc(100vh_-_theme(space.8))] overflow-y-auto">
+        <Card className="z-10 w-full max-w-md md:max-w-3xl shadow-2xl bg-white/40 dark:bg-black/40 backdrop-blur-xl border-white/60 dark:border-white/10 rounded-2xl flex flex-col md:flex-row max-h-[calc(100vh_-_theme(space.8))] overflow-y-auto">
           <div className="flex flex-col items-center justify-center px-4 pt-4 pb-0 sm:p-6 sm:pb-2 md:pb-6 md:w-1/3 md:border-r md:border-border/30 md:p-4">
             <div className="relative w-16 h-auto sm:w-24 md:w-28 mb-2 sm:mb-4 md:mb-0">
               <Image
@@ -239,7 +238,7 @@ export default function RootLoginPage() {
         </Card>
         
         {canInstallPWA && deferredPrompt && (
-          <Card className="w-full max-w-md md:max-w-sm shadow-xl bg-background/80 backdrop-blur-md rounded-lg">
+          <Card className="z-10 w-full max-w-md md:max-w-sm shadow-xl bg-white/40 dark:bg-black/40 backdrop-blur-xl rounded-2xl border-white/60 dark:border-white/10">
             <CardContent className="p-3 flex flex-col items-center text-center">
               <div className="flex items-center gap-2 mb-1">
                 <Smartphone className="h-5 w-5 text-primary" />

@@ -10,7 +10,7 @@ const Card = React.forwardRef<
   <div
     ref={ref}
     className={cn(
-      "rounded-lg border bg-card text-card-foreground shadow-sm",
+      "bg-white/40 dark:bg-slate-900/60 backdrop-blur-xl border border-white/60 dark:border-white/5 shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-2xl rounded-xl overflow-hidden font-body text-gray-800 dark:text-gray-200 transition-all",
       className
     )}
     {...props}
@@ -37,7 +37,7 @@ const CardTitle = React.forwardRef<
   <h3 // Changed from div to h3 for semantic title
     ref={ref}
     className={cn(
-      "text-lg font-semibold leading-tight tracking-tight font-headline break-words", // Added break-words
+      "text-xl font-light leading-none tracking-tight font-headline text-gray-800 dark:text-gray-100 break-words", // Added break-words
       className
     )}
     {...props}
@@ -51,7 +51,7 @@ const CardDescription = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <p // Changed from div to p
     ref={ref}
-    className={cn("text-sm text-muted-foreground break-words", className)} // Added break-words, text-sm is explicit here, fine
+    className={cn("text-sm text-gray-500 dark:text-gray-400 font-body break-words", className)} // Added dark:text-gray-400
     {...props}
   />
 ))

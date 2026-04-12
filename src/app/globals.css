@@ -4,7 +4,7 @@
 @tailwind utilities;
 
 @layer base {
-  :root, [class="light-default"] {
+  :root, .light {
     --background: 240 7% 84%; /* Light gray #D6D5D8 */
     --foreground: 210 25% 15%; /* Dark grayish blue for text */
 
@@ -42,15 +42,15 @@
     --chart-4: 30 80% 60%;  /* A lighter orange/yellow */
     --chart-5: 210 15% 70%; /* A lighter blue/gray */
 
-    /* Sidebar specific colors */
-    --sidebar-background: 210 31% 23%; /* Slightly darker variant of primary for sidebar */
-    --sidebar-foreground: 0 0% 85%;    /* Light gray text for sidebar */
-    --sidebar-primary: 0 84% 63%;      /* Accent color for active items in sidebar */
+    /* Sidebar specific colors for glassy bright theme */
+    --sidebar-background: transparent; /* Changed to fully transparent for mesh flow */
+    --sidebar-foreground: 210 25% 15%; /* Dark gray text */
+    --sidebar-primary: 0 84% 63%;
     --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 210 31% 33%;     /* Hover/focus color for sidebar items */
-    --sidebar-accent-foreground: 0 0% 98%;
-    --sidebar-border: 210 31% 20%;
-    --sidebar-ring: 0 84% 63%;
+    --sidebar-accent: 210 20% 90%;     /* Light gray/white hover */
+    --sidebar-accent-foreground: 210 25% 10%;
+    --sidebar-border: 210 10% 85%;
+    --sidebar-ring: 210 25% 15%;
 
     /* Seat Colors */
     --seat-available: 207 90% 89%;      /* sky-200 */
@@ -77,7 +77,7 @@
     --audience-general-foreground: 147 76% 28%; /* teal-700 */
   }
 
-  [class="dark-default"] {
+  .dark {
     --background: 0 0% 0%; /* Absolute Black for AMOLED */
     --foreground: 210 20% 90%; /* Light Cool Gray */
 
@@ -115,7 +115,7 @@
     --chart-5: 210 20% 30%;
 
     /* Sidebar */
-    --sidebar-background: 220 13% 6%; /* Even darker for sidebar */
+    --sidebar-background: 0 0% 0% / 0; /* Transparent for desktop glass flow */
     --sidebar-foreground: 210 20% 85%;
     --sidebar-primary: 210 20% 80%;
     --sidebar-primary-foreground: 220 13% 10%;
@@ -571,6 +571,73 @@
 
 .animate-breathing-stroke {
   animation: breathing-stroke 2s ease-in-out infinite;
+}
+
+/* Liquid Glass Mesh Background */
+.bg-glass-abstract {
+  background-color: #f8fafc;
+  position: relative;
+  overflow: hidden;
+  z-index: 0;
+  transition: background-color 0.5s ease;
+}
+
+.dark .bg-glass-abstract {
+  background-color: #020617; /* Very deep slate/black */
+}
+
+.bg-glass-abstract::before,
+.bg-glass-abstract::after {
+  content: "";
+  position: fixed;
+  top: -10vw;
+  left: -10vw;
+  width: 120vw;
+  height: 120vh;
+  z-index: -1;
+  pointer-events: none;
+  filter: blur(100px);
+  transition: background-image 1s ease;
+}
+
+/* Light Mode Blobs */
+.bg-glass-abstract::before {
+  background-image: 
+    radial-gradient(ellipse at 20% 20%, rgba(147, 197, 253, 0.6) 0%, transparent 40%),
+    radial-gradient(ellipse at 80% 80%, rgba(216, 180, 254, 0.5) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 20%, rgba(253, 230, 138, 0.5) 0%, transparent 40%);
+  animation: mesh-move1 20s infinite alternate cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.bg-glass-abstract::after {
+  background-image: 
+    radial-gradient(ellipse at 20% 80%, rgba(110, 231, 183, 0.5) 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 50%, rgba(196, 181, 253, 0.4) 0%, transparent 60%);
+  animation: mesh-move2 25s infinite alternate-reverse cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Dark Mode Blobs (Refined: Indigo, Emerald, Slate) */
+.dark .bg-glass-abstract::before {
+  background-image: 
+    radial-gradient(ellipse at 20% 20%, rgba(30, 58, 138, 0.7) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 80%, rgba(20, 83, 45, 0.6) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 20%, rgba(67, 56, 202, 0.5) 0%, transparent 40%);
+}
+
+.dark .bg-glass-abstract::after {
+  background-image: 
+    radial-gradient(ellipse at 20% 80%, rgba(13, 148, 136, 0.5) 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 50%, rgba(23, 37, 84, 0.4) 0%, transparent 60%);
+}
+
+@keyframes mesh-move1 {
+  0% { transform: scale(1) translate(0, 0); }
+  100% { transform: scale(1.2) translate(5%, 5%); }
+}
+
+@keyframes mesh-move2 {
+  0% { transform: scale(1.1) translate(0, 0); }
+  100% { transform: scale(1) translate(-5%, -5%); }
 }
 
     

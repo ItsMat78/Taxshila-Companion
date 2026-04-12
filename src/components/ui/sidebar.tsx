@@ -199,7 +199,7 @@ const Sidebar = React.forwardRef<
           <SheetContent
             data-sidebar="sidebar"
             data-mobile="true"
-            className="bg-sidebar p-0 text-sidebar-foreground [&>button]:hidden" // Removed fixed width, relies on SheetContent defaults (w-3/4, sm:max-w-sm)
+            className="bg-white/80 dark:bg-black/70 backdrop-blur-xl border-r border-white/20 dark:border-white/10 p-0 text-sidebar-foreground [&>button]:hidden shadow-2xl" // Increased transparency for mesh visible flow
             side={side}
           >
             <SheetTitle className="sr-only">Navigation Menu</SheetTitle>
@@ -517,17 +517,17 @@ const SidebarMenuItem = React.forwardRef<
 SidebarMenuItem.displayName = "SidebarMenuItem"
 
 const sidebarMenuButtonVariants = cva(
-  "peer/menu-button flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm outline-none ring-sidebar-ring transition-[width,height,padding] hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 group-has-[[data-sidebar=menu-action]]/menu-item:pr-8 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[active=true]:bg-sidebar-accent data-[active=true]:font-medium data-[active=true]:text-sidebar-accent-foreground data-[state=open]:hover:bg-sidebar-accent data-[state=open]:hover:text-sidebar-accent-foreground group-data-[collapsible=icon]:!size-8 group-data-[collapsible=icon]:!p-2 [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0",
+  "peer/menu-button flex w-full items-center gap-2 overflow-hidden rounded-lg p-2 text-left text-sm outline-none ring-sidebar-ring transition-all hover:bg-white/30 dark:hover:bg-white/10 focus-visible:ring-2 active:bg-white/40 active:text-gray-900 disabled:pointer-events-none disabled:opacity-50 group-has-[[data-sidebar=menu-action]]/menu-item:pr-8 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[active=true]:bg-white/50 dark:data-[active=true]:bg-white/15 data-[active=true]:font-semibold data-[active=true]:text-gray-900 dark:data-[active=true]:text-gray-100 data-[active=true]:shadow-sm data-[active=true]:backdrop-blur-md data-[state=open]:hover:bg-white/30 data-[state=open]:hover:text-gray-800 group-data-[collapsible=icon]:!size-8 group-data-[collapsible=icon]:!p-2 [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0",
   {
     variants: {
       variant: {
-        default: "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+        default: "hover:bg-white/30 dark:hover:bg-white/10 hover:text-gray-900 dark:hover:text-gray-100 transition-all",
         outline:
-          "bg-background shadow-[0_0_0_1px_hsl(var(--sidebar-border))] hover:bg-sidebar-accent hover:text-sidebar-accent-foreground hover:shadow-[0_0_0_1px_hsl(var(--sidebar-accent))]",
+          "bg-white/20 dark:bg-black/20 border border-white/40 dark:border-white/10 shadow-sm hover:bg-white/40 dark:hover:bg-white/10 hover:text-gray-900 dark:hover:text-gray-100",
       },
       size: {
-        default: "h-8 text-sm",
-        sm: "h-7 text-xs",
+        default: "h-9 text-sm",
+        sm: "h-8 text-xs",
         lg: "h-12 text-sm group-data-[collapsible=icon]:!p-0",
       },
     },
