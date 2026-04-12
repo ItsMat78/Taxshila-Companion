@@ -39,8 +39,12 @@ export function ThemeSwitcher() {
   }, []);
 
   const handleThemeChange = (newTheme: string) => {
-    setTheme(newTheme);
     saveThemePreference(newTheme); // Save the new theme to Firestore
+    // Delay theme change slightly to allow Radix DropdownMenu to close and 
+    // clean up pointer-events on the body, preventing UI freeze in Median webviews.
+    setTimeout(() => {
+      setTheme(newTheme);
+    }, 150);
   }
 
   const currentThemeName = React.useMemo(() => {
