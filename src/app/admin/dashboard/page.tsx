@@ -37,7 +37,7 @@ import {
    processCheckedInStudentsFromSnapshot,
    getAllStudents,
    getMonthlyRevenueHistory,
-   getAllAttendanceRecords
+   getAttendanceRecordsForDateRangeAll
 } from '@/services/student-service';
 import type { StudentSeatAssignment, CheckedInStudentInfo } from '@/types/student';
 import { format, parseISO, subDays, differenceInDays, startOfMonth, startOfDay, endOfDay, isSameMonth, subMonths, getDaysInMonth } from 'date-fns';
@@ -64,7 +64,7 @@ const TinyMovementChart = ({ data }: any) => (
 );
 
 const GlassCard = ({ children, className = "", onClick }: { children: React.ReactNode, className?: string, onClick?: () => void }) => (
-   <div onClick={onClick} className={`bg-white/40 dark:bg-slate-900/60 backdrop-blur-xl border border-white/60 dark:border-white/5 shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-2xl rounded-2xl overflow-hidden ${onClick ? 'cursor-pointer hover:bg-white/50 dark:hover:bg-slate-800/60 transition-all active:scale-[0.99]' : ''} ${className}`}>
+   <div onClick={onClick} className={`bg-white/40 dark:bg-slate-900/60 backdrop-blur-md md:backdrop-blur-xl border border-white/60 dark:border-white/5 shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-2xl rounded-2xl overflow-hidden ${onClick ? 'cursor-pointer hover:bg-white/50 dark:hover:bg-slate-800/60 transition-all active:scale-[0.99]' : ''} ${className}`}>
       {children}
    </div>
 );
@@ -104,20 +104,28 @@ const TinyLineChart = ({ data, color, dataKey }: any) => (
 
 // Moved data fetcher outside to be utilized cleanly by React Query
 const fetchDashboardData = async () => {
-   const [allStudentsData, snapshots, rev, revHistory, allAttendanceRecords] = await Promise.all([
+   const now = new Date();
+   const monthStart = startOfMonth(now);
+   const weekAgo = subDays(now, 7);
+   const weekAgoStr = format(weekAgo, 'yyyy-MM-dd');
+   const todayStr = format(now, 'yyyy-MM-dd');
+
+   const [allStudentsData, snapshots, rev, revHistory, recentAttendance] = await Promise.all([
       getAllStudents(),
       getTodaysActiveAttendanceRecords(),
       calculateMonthlyRevenue(),
       getMonthlyRevenueHistory(),
-      getAllAttendanceRecords()
+      getAttendanceRecordsForDateRangeAll(weekAgoStr, todayStr)
    ]);
 
    const activeStudents = allStudentsData.filter(s => s.activityStatus === "Active");
+   const activeStudentsMap = new Map(activeStudents.map(s => [s.studentId, s]));
+
    const assignments: StudentSeatAssignment[] = activeStudents.map(s => ({
       studentId: s.studentId, name: s.name, shift: s.shift, seatNumber: s.seatNumber || null, activityStatus: s.activityStatus, profilePictureUrl: s.profilePictureUrl
    }));
 
-   const checkedIn = await processCheckedInStudentsFromSnapshot(snapshots, assignments);
+   const checkedIn = await processCheckedInStudentsFromSnapshot(snapshots, activeStudents);
 
    const occupiedMorning = new Set(activeStudents.filter(s => s.seatNumber && (s.shift === 'morning' || s.shift === 'fullday')).map(s => s.seatNumber));
    const occupiedEvening = new Set(activeStudents.filter(s => s.seatNumber && (s.shift === 'evening' || s.shift === 'fullday')).map(s => s.seatNumber));
@@ -125,8 +133,6 @@ const fetchDashboardData = async () => {
 
    const defaulters = activeStudents.filter(s => s.feeStatus === 'Due' || s.feeStatus === 'Overdue');
    const defaultersCount = defaulters.length;
-
-   const now = new Date();
 
    const rd = revHistory.slice(0, 6).reverse().map(r => ({
       name: r.monthDisplay.substring(0, 3),
@@ -157,11 +163,20 @@ const fetchDashboardData = async () => {
    ];
 
    const last7DaysStrings = Array.from({ length: 7 }).map((_, i) => format(subDays(new Date(), 6 - i), 'yyyy-MM-dd'));
+   
+   // Pre-group attendance by date for O(1) daily lookup
+   const attendanceByDate = new Map<string, any[]>();
+   recentAttendance.forEach(rec => {
+      const recs = attendanceByDate.get(rec.date) || [];
+      recs.push(rec);
+      attendanceByDate.set(rec.date, recs);
+   });
+
    const attData = last7DaysStrings.map(dayStr => {
-      const dailyRecs = allAttendanceRecords.filter(r => r.date === dayStr);
+      const dailyRecs = attendanceByDate.get(dayStr) || [];
       let morning = 0, evening = 0, fullday = 0;
       dailyRecs.forEach(r => {
-         const s = activeStudents.find(st => st.studentId === r.studentId);
+         const s = activeStudentsMap.get(r.studentId);
          if (s) {
             if (s.shift === 'morning') morning++;
             else if (s.shift === 'evening') evening++;

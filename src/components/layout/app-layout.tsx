@@ -206,7 +206,7 @@ if (targetId) {
           <TopProgressBar isLoading={isRouteLoading} />
           <AppSidebarContent />
           <SidebarInset className="bg-transparent relative">
-            <header className="fixed top-0 left-0 right-0 z-50 flex h-14 items-center gap-4 border-b border-white/20 dark:border-white/5 bg-white/40 dark:bg-black/20 px-4 backdrop-blur-xl sm:h-16 sm:px-6 md:hidden">
+            <header className="fixed top-0 left-0 right-0 z-50 flex h-14 items-center gap-4 border-b border-white/20 dark:border-white/5 bg-white/40 dark:bg-black/20 px-4 backdrop-blur-md sm:h-16 sm:px-6 md:hidden">
               <SidebarTrigger asChild>
                 <Button size="icon" variant="outline" className="md:hidden">
                   <PanelLeft className="h-5 w-5" />
