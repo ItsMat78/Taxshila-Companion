@@ -715,13 +715,18 @@ export async function getAttendanceForDate(studentId: string, date: string): Pro
 export async function getAttendanceForDateRange(studentId: string, startDate: string, endDate: string): Promise<AttendanceRecord[]> {
   const q = query(
     collection(db, ATTENDANCE_COLLECTION),
-    where("studentId", "==", studentId),
-    where("date", ">=", startDate),
-    where("date", "<=", endDate),
-    orderBy("date", "asc")
+    where("studentId", "==", studentId)
   );
   const querySnapshot = await getDocs(q);
-  return querySnapshot.docs.map(doc => attendanceRecordFromDoc(doc));
+  const allRecords = querySnapshot.docs.map(doc => attendanceRecordFromDoc(doc));
+
+  // Filter in memory to avoid needing a composite index (studentId + date)
+  const filteredRecords = allRecords.filter(record => {
+      return record.date >= startDate && record.date <= endDate;
+  });
+
+  filteredRecords.sort((a, b) => a.date.localeCompare(b.date));
+  return filteredRecords;
 }
 
 export async function getAttendanceRecordsForDateRangeAll(startDate: string, endDate: string): Promise<AttendanceRecord[]> {
