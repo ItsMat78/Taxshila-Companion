@@ -169,8 +169,8 @@ export function ProfilePictureUploader({
     try {
       const newUrl = await updateProfilePicture(studentFirestoreId, 'member', base64Preview);
       onUploadSuccess(newUrl);
-    } catch (error: any) {
-      toast({ title: "Upload Failed", description: error.message || "Could not save the picture.", variant: "destructive" });
+    } catch (error: unknown) {
+      toast({ title: "Upload Failed", description: (error instanceof Error ? error.message : String(error)) || "Could not save the picture.", variant: "destructive" });
     } finally {
       setIsUploading(false);
       if (fileInputRef.current) {
@@ -193,7 +193,7 @@ export function ProfilePictureUploader({
             <DialogTrigger asChild>
                 <div className="cursor-pointer relative group">
                     <NextImage
-                        src={base64Preview || "https://placehold.co/150x150.png"}
+                        src={base64Preview || "/logo.png"}
                         alt="Profile Picture Preview"
                         width={150}
                         height={150}
@@ -207,7 +207,7 @@ export function ProfilePictureUploader({
             </DialogTrigger>
             <DialogContent className="max-w-md w-auto p-2">
                 <NextImage
-                    src={base64Preview || "https://placehold.co/400x400.png"}
+                    src={base64Preview || "/logo.png"}
                     alt="Profile Picture Full View"
                     width={500}
                     height={500}
@@ -252,7 +252,7 @@ export function ProfilePictureUploader({
       </CardContent>
       <CardFooter>
           <Button onClick={handleUpload} disabled={isUploading || (!hasUnsavedChanges && !isReviewer)} className="w-full">
-            {isUploading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/> Uploading...</> : <><Save className="mr-2 h-4 w-4"/>Save Picture {isReviewer && "(For Reviewer)"}</>}
+            {isUploading ? <><Loader2 aria-hidden="true" className="mr-2 h-4 w-4 animate-spin"/> Uploading...</> : <><Save className="mr-2 h-4 w-4"/>Save Picture {isReviewer && "(For Reviewer)"}</>}
           </Button>
       </CardFooter>
     </Card>

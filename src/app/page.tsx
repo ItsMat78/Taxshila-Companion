@@ -68,7 +68,7 @@ export default function RootLoginPage() {
       e.preventDefault();
       setDeferredPrompt(e as BeforeInstallPromptEvent);
       setCanInstallPWA(true);
-      console.log("beforeinstallprompt event fired and captured.");
+
     };
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
     return () => {
@@ -78,16 +78,14 @@ export default function RootLoginPage() {
 
   const handleInstallClick = async () => {
     if (!deferredPrompt) {
-      console.log("Deferred prompt not available.");
       return;
     }
     deferredPrompt.prompt();
     const { outcome } = await deferredPrompt.userChoice;
     if (outcome === 'accepted') {
-      console.log('User accepted the PWA installation');
       toast({ title: "App Installed!", description: "Taxshila Companion has been added to your device." });
     } else {
-      console.log('User dismissed the PWA installation');
+
     }
     setDeferredPrompt(null);
     setCanInstallPWA(false);
@@ -127,7 +125,7 @@ export default function RootLoginPage() {
   if (isAuthLoading) {
     return (
         <div className="flex min-h-screen w-full flex-col items-center justify-center bg-background">
-            <Loader2 className="h-12 w-12 animate-spin text-primary" />
+            <Loader2 role="status" aria-label="Loading" className="h-12 w-12 animate-spin text-primary" />
             <p className="mt-4 text-muted-foreground">Initializing...</p>
         </div>
     );
@@ -228,7 +226,7 @@ export default function RootLoginPage() {
                     )}
                   />
                   <Button type="submit" className="w-full" size="sm" disabled={isLoggingIn}>
-                    {isLoggingIn && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    {isLoggingIn && <Loader2 aria-hidden="true" className="mr-2 h-4 w-4 animate-spin" />}
                     {isLoggingIn ? 'Logging in...' : 'Login'}
                   </Button>
                 </form>

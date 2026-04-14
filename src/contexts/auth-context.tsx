@@ -69,7 +69,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 email: userRecord.email,
                 role: userRole,
                 profilePictureUrl: userRole === 'member' ? (userRecord as Student).profilePictureUrl : undefined,
-                firestoreId: userRecord.firestoreId,
+                firestoreId: userRecord.firestoreId ?? '',
                 studentId: userRole === 'member' ? (userRecord as Student).studentId : undefined,
                 identifierForDisplay: userRecord.name,
                 theme: userRecord.theme || 'light-default',
@@ -113,7 +113,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     let userRole: UserRole = 'member';
     let emailForAuth: string | undefined = undefined;
 
-    if (identifier.includes('@')) {
+    if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(identifier)) {
         const admin = await getAdminByEmail(identifier);
         if (admin) {
             userRecord = admin;
@@ -193,12 +193,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setTheme(normalizedTheme);
         return userData;
 
-    } catch (error: any) {
-        console.error("Firebase login error:", error.code, error.message);
-        if (['auth/wrong-password', 'auth/user-not-found', 'auth/invalid-email', 'auth/invalid-credential'].includes(error.code)) {
+    } catch (error: unknown) {
+        const firebaseCode = (error as {code?: string}).code;
+        console.error("Firebase login error:", firebaseCode, (error instanceof Error ? error.message : String(error)));
+        if (['auth/wrong-password', 'auth/user-not-found', 'auth/invalid-email', 'auth/invalid-credential'].includes(firebaseCode ?? '')) {
             toast({ title: "Login Failed", description: "Invalid credentials.", variant: "destructive" });
         } else {
-            toast({ title: "Login Error", description: error.message || "An unexpected error occurred.", variant: "destructive" });
+            toast({ title: "Login Error", description: (error instanceof Error ? error.message : String(error)) || "An unexpected error occurred.", variant: "destructive" });
         }
     } finally {
         setIsLoading(false);

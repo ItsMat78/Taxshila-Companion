@@ -2,6 +2,7 @@
 "use client";
 
 import * as React from 'react';
+import { isReviewerUser } from '@/lib/auth-utils';
 import { PageTitle } from '@/components/shared/page-title';
 import { Button } from "@/components/ui/button";
 import {
@@ -46,7 +47,7 @@ export default function ManageFeesPage() {
   const [isSaving, setIsSaving] = React.useState(false);
   const [currentFees, setCurrentFees] = React.useState<FeeStructure | null>(null);
 
-  const isReviewer = user?.email === 'guest-admin@taxshila-auth.com';
+  const isReviewer = isReviewerUser(user?.email);
 
   const form = useForm<FeeManagementFormValues>({
     resolver: zodResolver(feeManagementFormSchema),
@@ -96,10 +97,10 @@ export default function ManageFeesPage() {
         description: "The fee structure has been saved.",
       });
       await fetchCurrentFees(); // Refresh current fees display
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Update Failed",
-        description: error.message || "Could not save fee settings.",
+        description: (error instanceof Error ? error.message : String(error)) || "Could not save fee settings.",
         variant: "destructive",
       });
     } finally {
@@ -190,7 +191,7 @@ export default function ManageFeesPage() {
               </CardContent>
               <CardFooter>
                 <Button type="submit" className="w-full sm:w-auto" disabled={isSaving || !form.formState.isDirty || isReviewer}>
-                  {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                  {isSaving ? <Loader2 aria-hidden="true" className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                   {isSaving ? "Saving..." : "Save Fee Structure"}
                 </Button>
               </CardFooter>

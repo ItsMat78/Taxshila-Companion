@@ -5,22 +5,24 @@ export type ActivityStatus = "Active" | "Left";
 
 export interface Student {
   uid?: string; // Firebase Auth UID
+  firestoreId?: string; // Firestore document ID, populated when read from Firestore
   studentId: string;
   name: string;
-  email?: string; 
+  email?: string;
   phone: string;
   address: string;
-  password?: string; 
+  password?: string;
   shift: Shift;
-  seatNumber: string | null; 
-  idCardFileName?: string; 
+  seatNumber: string | null;
+  idCardFileName?: string;
   feeStatus: FeeStatus;
   activityStatus: ActivityStatus;
-  registrationDate: string; 
-  lastPaymentDate?: string; 
-  nextDueDate?: string; 
+  registrationDate: string;
+  lastPaymentDate?: string;
+  nextDueDate?: string;
   leftDate?: string; // New field for when student is marked as left
-  amountDue?: string; 
+  lastAttendanceDate?: string; // ISO date string of most recent check-in
+  amountDue?: string;
   paymentHistory?: PaymentRecord[];
   profilePictureUrl?: string;
   fcmTokens?: string[]; // For Firebase Web Push
@@ -41,10 +43,12 @@ export interface Admin {
 
 export interface PaymentRecord {
   paymentId: string;
-  date: string; 
-  amount: string; 
+  date: string;
+  amount: string;
   transactionId: string;
   method: "Cash" | "Online" | "Desk Payment" | "UPI" | "Card" | "Imported";
+  previousDueDate?: string; // yyyy-MM-dd — value of nextDueDate BEFORE this payment
+  newDueDate?: string;      // yyyy-MM-dd — value of nextDueDate AFTER this payment
 }
 
 export interface AttendanceRecord {
@@ -86,3 +90,12 @@ export interface PaymentImportData {
 }
 
 export type CheckedInStudentInfo = Student & { checkInTime: string; isOutsideShift: boolean; };
+
+export interface StudentSeatAssignment {
+  studentId: string;
+  name: string;
+  shift: Shift;
+  seatNumber: string | null;
+  activityStatus: ActivityStatus;
+  profilePictureUrl?: string;
+}

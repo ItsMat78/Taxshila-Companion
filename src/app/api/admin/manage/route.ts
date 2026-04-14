@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getAuth, getDb } from '@/lib/firebase-admin';
+import { getVerifiedToken, isReviewerToken } from '@/lib/api-auth';
 
 // Helper to check if the requester is an admin and self-heal permissions
 async function verifyAndHealAdmin(request: Request): Promise<boolean> {
@@ -48,13 +49,18 @@ export async function GET(request: Request) {
         const adminsSnapshot = await db.collection('admins').get();
         const admins = adminsSnapshot.docs.map(doc => ({ uid: doc.id, ...doc.data() }));
         return NextResponse.json({ admins });
-    } catch (error: any) {
+    } catch (error: unknown) {
         return NextResponse.json({ error: 'An unexpected server error occurred while fetching admins.' }, { status: 500 });
     }
 }
 
 // POST - Add a new admin
 export async function POST(request: Request) {
+    const token = await getVerifiedToken(request);
+    if (isReviewerToken(token)) {
+      return NextResponse.json({ error: 'Action not permitted in reviewer mode.' }, { status: 403 });
+    }
+
     const isAuthorized = await verifyAndHealAdmin(request);
     if (!isAuthorized) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
@@ -80,8 +86,8 @@ export async function POST(request: Request) {
 
         return NextResponse.json({ uid: userRecord.uid, name, email });
 
-    } catch (error: any) {
-        if (error.code === 'auth/email-already-exists') {
+    } catch (error: unknown) {
+        if ((error as {code?: string}).code === 'auth/email-already-exists') {
             return NextResponse.json({ error: 'An account with this email already exists.' }, { status: 409 });
         }
         console.error("Error adding admin:", error);
@@ -91,6 +97,11 @@ export async function POST(request: Request) {
 
 // DELETE - Remove an admin
 export async function DELETE(request: Request) {
+    const token = await getVerifiedToken(request);
+    if (isReviewerToken(token)) {
+      return NextResponse.json({ error: 'Action not permitted in reviewer mode.' }, { status: 403 });
+    }
+
     const isAuthorized = await verifyAndHealAdmin(request);
     if (!isAuthorized) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
@@ -110,7 +121,7 @@ export async function DELETE(request: Request) {
 
         return NextResponse.json({ message: 'Admin removed successfully.' });
 
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Error removing admin:", error);
         return NextResponse.json({ error: 'An unexpected server error occurred while removing the admin.' }, { status: 500 });
     }

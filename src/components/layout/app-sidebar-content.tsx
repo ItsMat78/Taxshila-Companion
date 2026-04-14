@@ -7,7 +7,8 @@ import { usePathname } from 'next/navigation';
 import { BookOpenCheck, LogOut, ChevronDown } from 'lucide-react';
 import * as React from "react";
 
-import { mainNav, type NavItem } from '@/config/nav';
+import { mainNav } from '@/config/nav';
+import type { NavItem } from '@/types/nav';
 import { cn } from '@/lib/utils';
 import {
   Sidebar,

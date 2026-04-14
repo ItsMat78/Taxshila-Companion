@@ -7,4 +7,5 @@ export interface NavItem {
   roles: Array<'admin' | 'member'>;
   items?: NavItem[];
   disabled?: boolean;
+  external?: boolean;
 }

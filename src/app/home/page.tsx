@@ -223,6 +223,7 @@ export default function HomePage() {
               src={COVER_IMAGE_URL}
               alt="Library Interior"
               fill
+              sizes="100vw"
               className="object-cover"
               priority
             />

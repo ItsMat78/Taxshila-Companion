@@ -2,13 +2,19 @@
 import { NextResponse } from 'next/server';
 import { getAuth, getDb } from '@/lib/firebase-admin';
 import type { UserRecord, CreateRequest } from 'firebase-admin/auth';
+import { getVerifiedToken, isReviewerToken } from '@/lib/api-auth';
 
 const isValidIndianPhoneNumber = (phone: string): boolean => {
     const regex = /^[6-9]\d{9}$/;
     return typeof phone === 'string' && regex.test(phone);
 };
 
-export async function POST() {
+export async function POST(request: Request) {
+  const token = await getVerifiedToken(request);
+  if (isReviewerToken(token)) {
+    return NextResponse.json({ error: 'Action not permitted in reviewer mode.' }, { status: 403 });
+  }
+
   const auth = getAuth();
   const db = getDb();
   let processedCount = 0;
@@ -47,15 +53,15 @@ export async function POST() {
         // Check for existing user by email or phone
         try { 
             userRecord = await auth.getUserByEmail(email); 
-        } catch (e: any) { 
-            if (e.code !== 'auth/user-not-found') throw e; 
+        } catch (e: unknown) { 
+            if ((e as {code?: string}).code !== 'auth/user-not-found') throw e; 
         }
         
         if (!userRecord) {
             try { 
                 userRecord = await auth.getUserByPhoneNumber(phoneNumber); 
-            } catch (e: any) { 
-                if (e.code !== 'auth/user-not-found') throw e; 
+            } catch (e: unknown) { 
+                if ((e as {code?: string}).code !== 'auth/user-not-found') throw e; 
             }
         }
 
@@ -80,15 +86,15 @@ export async function POST() {
           createdCount++;
         }
         
-      } catch (userError: any) {
-        errors.push(`Error processing ${studentName} (${email}): ${userError.message}`);
+      } catch (userError: unknown) {
+        errors.push(`Error processing ${studentName} (${email}): ${(userError instanceof Error ? userError.message : String(userError))}`);
         errorCount++;
       }
     }
 
     return NextResponse.json({ success: true, processedCount, updatedCount, createdCount, errorCount, errors });
 
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error("User Migration Error:", e);
     return NextResponse.json({ success: false, error: "An unexpected server error occurred during migration." }, { status: 500 });
   }

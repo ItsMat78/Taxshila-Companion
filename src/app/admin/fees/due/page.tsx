@@ -133,11 +133,13 @@ const FeeDueCardItem = ({ student }: { student: StudentWithLastAttended }) => {
                             </div>
                         </DialogTrigger>
                         <DialogContent className="max-w-md w-auto p-2">
+                            <DialogTitle className="sr-only">Profile picture for {student.name}</DialogTitle>
                             <Image
-                                src={student.profilePictureUrl || "https://placehold.co/400x400.png"}
+                                src={student.profilePictureUrl || "/logo.png"}
                                 alt={`${student.name}'s profile picture`}
                                 width={400}
                                 height={400}
+                                sizes="(max-width: 640px) 90vw, 400px"
                                 className="rounded-md object-contain max-h-[70vh] w-full h-auto"
                             />
                         </DialogContent>
@@ -199,9 +201,9 @@ export default function FeesDuePage() {
           description: `${result.updatedCount} student(s) had their fee status updated.`,
         });
         await fetchFeesDue(); // Re-fetch the list after manual refresh
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error("Failed to refresh fee statuses:", error);
-        toast({ title: "Error", description: error.message || "Could not refresh fee statuses.", variant: "destructive" });
+        toast({ title: "Error", description: (error instanceof Error ? error.message : String(error)) || "Could not refresh fee statuses.", variant: "destructive" });
       } finally {
         setIsRefreshing(false);
       }
@@ -289,7 +291,7 @@ export default function FeesDuePage() {
             </DialogContent>
         </Dialog>
          <Button onClick={handleManualRefresh} variant="outline" disabled={isRefreshing || isLoading}>
-          {isRefreshing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+          {isRefreshing ? <Loader2 aria-hidden="true" className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
           Refresh
         </Button>
       </PageTitle>
@@ -346,7 +348,7 @@ export default function FeesDuePage() {
         <CardContent>
           {isLoading ? (
             <div className="flex items-center justify-center py-10">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <Loader2 role="status" aria-label="Loading" className="h-8 w-8 animate-spin text-primary" />
               <p className="ml-2 text-muted-foreground">Loading student fee data...</p>
             </div>
           ) : (
@@ -396,8 +398,9 @@ export default function FeesDuePage() {
                                         </div>
                                     </DialogTrigger>
                                     <DialogContent className="max-w-md w-auto p-2">
+                                        <DialogTitle className="sr-only">Profile picture for {student.name}</DialogTitle>
                                         <Image
-                                            src={student.profilePictureUrl || "https://placehold.co/400x400.png"}
+                                            src={student.profilePictureUrl || "/logo.png"}
                                             alt={`${student.name}'s profile picture`}
                                             width={400}
                                             height={400}

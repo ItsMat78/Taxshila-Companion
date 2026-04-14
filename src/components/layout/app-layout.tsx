@@ -32,7 +32,7 @@ function NotificationIconArea() {
     return (
         <Button size="icon" variant="ghost" className="relative" asChild>
             <Link href={href}>
-               <Loader2 className="h-5 w-5 animate-spin" />
+               <Loader2 aria-hidden="true" className="h-5 w-5 animate-spin" />
             </Link>
         </Button>
     )
@@ -106,7 +106,6 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       
       // 1. Firebase Web Push (Keep existing logic)
       if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
-          // console.log("[AppLayout] Web Push Setup..."); 
           setupPushNotifications(user.firestoreId, user.role);
       }
       
@@ -148,14 +147,13 @@ if (targetId) {
   const savedPlayerId = localStorage.getItem(storageKey);
 
   if (savedPlayerId !== targetId) {
-      console.log(`[AppLayout] Saving ID for ${user.role}: ${targetId}`);
       await saveOneSignalPlayerId(user.firestoreId, user.role, targetId);
       
       // Save using the unique key
       localStorage.setItem(storageKey, targetId);
   }
   } else {
-                      console.log("[AppLayout] ID already up to date in localStorage.");
+
                   }
 
                   clearInterval(intervalId); // Success

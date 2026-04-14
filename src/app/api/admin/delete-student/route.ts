@@ -1,6 +1,7 @@
 
 import { NextResponse } from 'next/server';
 import { getAuth, getDb } from '@/lib/firebase-admin';
+import { getVerifiedToken, isReviewerToken } from '@/lib/api-auth';
 
 // Initialize Admin SDK services
 const auth = getAuth();
@@ -13,6 +14,11 @@ const FEEDBACK_COLLECTION = "feedbackItems";
 const ALERTS_COLLECTION = "alertItems";
 
 export async function POST(request: Request) {
+  const token = await getVerifiedToken(request);
+  if (isReviewerToken(token)) {
+    return NextResponse.json({ error: 'Action not permitted in reviewer mode.' }, { status: 403 });
+  }
+
   const { uid, studentId } = await request.json();
 
   // Both uid (for Auth) and studentId (for database records) are required.
@@ -23,15 +29,15 @@ export async function POST(request: Request) {
   // --- Step 1: Delete the user from Firebase Authentication using their UID ---
   try {
     await auth.deleteUser(uid);
-  } catch (error: any) {
+  } catch (error: unknown) {
     // If the user doesn't exist in Auth, we can ignore the error and proceed with database cleanup.
     // This makes the function idempotent.
-    if (error.code !== 'auth/user-not-found') {
+    if ((error as {code?: string}).code !== 'auth/user-not-found') {
       console.error(`Failed to delete auth user with UID ${uid}:`, error);
       // We stop here because if we can't delete the auth user, we shouldn't delete their data.
-      return NextResponse.json({ success: false, error: `Failed to delete authentication user: ${error.message}` }, { status: 500 });
+      return NextResponse.json({ success: false, error: `Failed to delete authentication user: ${(error instanceof Error ? error.message : String(error))}` }, { status: 500 });
     }
-    console.log(`Authentication user with UID ${uid} was not found. Proceeding with database cleanup anyway.`);
+    // Auth user not found — proceed with Firestore cleanup anyway.
   }
 
   // --- Step 2: Delete the student's data from Firestore ---
@@ -63,8 +69,8 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ success: true, message: `Student ${studentId} and their authentication account were deleted successfully.` });
 
-  } catch (dbError: any) {
+  } catch (dbError: unknown) {
       console.error("Database Deletion Error:", dbError);
-      return NextResponse.json({ success: false, error: `Failed to delete database records: ${dbError.message}` }, { status: 500 });
+      return NextResponse.json({ success: false, error: `Failed to delete database records: ${dbError instanceof Error ? dbError.message : String(dbError)}` }, { status: 500 });
   }
 }

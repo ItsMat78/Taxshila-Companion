@@ -2,6 +2,7 @@
 "use client";
 
 import * as React from 'react';
+import { isReviewerUser } from '@/lib/auth-utils';
 import { PageTitle } from '@/components/shared/page-title';
 import {
   Card,
@@ -126,7 +127,7 @@ function FeedbackResponseDialog({ feedbackItem, isOpen, onClose, onSendResponse,
         <DialogFooter>
           <Button variant="outline" onClick={onClose} disabled={isSending}>Cancel</Button>
           <Button onClick={handleSubmitResponse} disabled={isSending || !responseMessage.trim() || isReviewer}>
-            {isSending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
+            {isSending ? <Loader2 aria-hidden="true" className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
             {isReviewer ? "Send (For Reviewer)" : "Send Response & Resolve"}
           </Button>
         </DialogFooter>
@@ -194,7 +195,7 @@ const FeedbackCardItem = ({ item, onOpenResponseDialog, onArchiveFeedback, updat
           className="px-2 sm:px-3"
         >
           {updatingFeedbackId === item.id && selectedFeedbackForResponse?.id === item.id ? (
-            <Loader2 className="h-3 w-3 animate-spin sm:mr-1" />
+            <Loader2 aria-hidden="true" className="h-3 w-3 animate-spin sm:mr-1" />
           ) : (
             <Reply className="h-3 w-3 sm:mr-1" />
           )}
@@ -210,7 +211,7 @@ const FeedbackCardItem = ({ item, onOpenResponseDialog, onArchiveFeedback, updat
           className="text-muted-foreground hover:text-destructive px-2 sm:px-3"
         >
           {updatingFeedbackId === item.id && selectedFeedbackForResponse?.id !== item.id ? (
-            <Loader2 className="h-3 w-3 animate-spin sm:mr-1" />
+            <Loader2 aria-hidden="true" className="h-3 w-3 animate-spin sm:mr-1" />
           ) : (
             <Archive className="h-3 w-3 sm:mr-1" />
           )}
@@ -234,7 +235,7 @@ export default function AdminFeedbackPage() {
   const [isResponseDialogOpen, setIsResponseDialogOpen] = React.useState(false);
   const [selectedFeedbackForResponse, setSelectedFeedbackForResponse] = React.useState<FeedbackItem | null>(null);
   
-  const isReviewer = user?.email === 'guest-admin@taxshila-auth.com';
+  const isReviewer = isReviewerUser(user?.email);
 
   const fetchFeedback = React.useCallback(async () => {
     setIsLoading(true);
@@ -285,8 +286,8 @@ export default function AdminFeedbackPage() {
       }
       await fetchFeedback(); // Re-fetch after update
       refreshNotifications(); // Refresh counts after update
-    } catch (error: any) {
-      toast({ title: "Update Failed", description: error.message || "Could not update feedback status.", variant: "destructive" });
+    } catch (error: unknown) {
+      toast({ title: "Update Failed", description: (error instanceof Error ? error.message : String(error)) || "Could not update feedback status.", variant: "destructive" });
     } finally {
       setUpdatingFeedbackId(null);
       setSelectedFeedbackForResponse(null); // Ensure this is cleared
@@ -311,7 +312,7 @@ export default function AdminFeedbackPage() {
       <>
         <PageTitle title="Member Feedback & Suggestions" description="Review and manage feedback submitted by students." />
         <div className="flex items-center justify-center py-10">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <Loader2 role="status" aria-label="Loading" className="h-8 w-8 animate-spin text-primary" />
           <p className="ml-2 text-muted-foreground">Loading feedback...</p>
         </div>
       </>
@@ -351,7 +352,7 @@ export default function AdminFeedbackPage() {
         <CardContent>
           {isLoading && filteredFeedbackList.length === 0 ? (
              <div className="flex items-center justify-center py-10">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <Loader2 role="status" aria-label="Loading" className="h-8 w-8 animate-spin text-primary" />
              </div>
           ) : (
             <>
@@ -418,7 +419,7 @@ export default function AdminFeedbackPage() {
                                 disabled={updatingFeedbackId === item.id || isReviewer}
                               >
                                 {updatingFeedbackId === item.id && selectedFeedbackForResponse?.id === item.id ? (
-                                  <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                                  <Loader2 aria-hidden="true" className="mr-1 h-3 w-3 animate-spin" />
                                 ) : (
                                   <Reply className="mr-1 h-3 w-3" />
                                 )}
@@ -434,7 +435,7 @@ export default function AdminFeedbackPage() {
                                 className="text-muted-foreground hover:text-destructive"
                               >
                                 {updatingFeedbackId === item.id && selectedFeedbackForResponse?.id !== item.id ? (
-                                  <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                                  <Loader2 aria-hidden="true" className="mr-1 h-3 w-3 animate-spin" />
                                 ) : (
                                   <Archive className="mr-1 h-3 w-3" />
                                 )}

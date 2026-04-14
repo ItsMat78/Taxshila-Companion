@@ -29,6 +29,7 @@ import { format, parseISO, isValid, differenceInDays } from 'date-fns';
 
 interface PotentialLeftStudent extends Student {
   daysSinceLastAttended?: number | null;
+  // lastAttendanceDate is inherited from Student
 }
 
 const PotentialLeftCardItem = ({ student }: { student: PotentialLeftStudent }) => {
@@ -110,7 +111,7 @@ export default function AbsentStudentsPage() {
               return false;
             }
             // Use the pre-calculated days
-            return student.daysSinceLastAttended !== null && student.daysSinceLastAttended > 5;
+            return student.daysSinceLastAttended != null && student.daysSinceLastAttended > 5;
           });
 
         filteredStudents.sort((a, b) => {
@@ -145,7 +146,7 @@ export default function AbsentStudentsPage() {
         <CardContent>
           {isLoading ? (
             <div className="flex items-center justify-center py-10">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <Loader2 role="status" aria-label="Loading" className="h-8 w-8 animate-spin text-primary" />
               <p className="ml-2 text-muted-foreground">Analyzing attendance data...</p>
             </div>
           ) : (

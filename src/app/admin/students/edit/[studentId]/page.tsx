@@ -2,9 +2,9 @@
 "use client";
 
 import * as React from 'react';
+import { isReviewerUser } from '@/lib/auth-utils';
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import * as z from "zod";
 import { PageTitle } from '@/components/shared/page-title';
 import { Button } from "@/components/ui/button";
 import {
@@ -65,46 +65,7 @@ import { ProfilePictureUploader } from '@/components/admin/edit-student/profile-
 import { Separator } from '@/components/ui/separator';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/contexts/auth-context';
-
-
-const studentEditFormSchema = z.object({
-  name: z.string().min(2, { message: "Name must be at least 2 characters." }),
-  email: z.string().email({ message: "Invalid email address." }).optional().or(z.literal('')),
-  phone: z.string()
-    .length(10, { message: "Phone number must be exactly 10 digits." })
-    .regex(/^\d+$/, { message: "Phone number must contain only digits." }),
-  address: z.string(),
-  shift: z.enum(["morning", "evening", "fullday"], { required_error: "Shift selection is required." }),
-  seatNumber: z.string().nullable().refine(val => val !== null && val !== "", { message: "Seat selection is required."}),
-  idCardFileName: z.string().optional(),
-  nextDueDate: z.date().optional(),
-  newPassword: z.string().optional(),
-  confirmNewPassword: z.string().optional(),
-}).refine(data => {
-  if (data.newPassword && data.newPassword.length > 0) {
-    return data.newPassword.length >= 6;
-  }
-  return true;
-}, {
-  message: "New password must be at least 6 characters.",
-  path: ["newPassword"],
-}).refine(data => {
-  if (data.newPassword && data.newPassword.length > 0) {
-    return data.confirmNewPassword === data.newPassword;
-  }
-  return true;
-}, {
-  message: "New passwords don't match.",
-  path: ["confirmNewPassword"],
-});
-
-type StudentEditFormValues = z.infer<typeof studentEditFormSchema>;
-
-const shiftOptions = [
-  { value: "morning" as Shift, label: "Morning Shift (7 AM - 2 PM)" },
-  { value: "evening" as Shift, label: "Evening Shift (2 PM - 9:30 PM)" },
-  { value: "fullday" as Shift, label: "Full Day (7 AM - 9:30 PM)" },
-];
+import { studentEditSchema, type StudentEditFormValues, SHIFT_OPTIONS } from '@/lib/schemas/student';
 
 const getShiftColorClass = (shift: Shift | undefined) => {
   if (!shift) return 'bg-gray-100 text-gray-800 border-gray-300';
@@ -161,11 +122,11 @@ export default function EditStudentPage() {
   const [paymentMethod, setPaymentMethod] = React.useState<PaymentRecord['method']>('Cash');
   const seatNumberRef = React.useRef<HTMLDivElement>(null);
 
-  const isReviewer = user?.email === 'guest-admin@taxshila-auth.com';
+  const isReviewer = isReviewerUser(user?.email);
 
 
   const form = useForm<StudentEditFormValues>({
-    resolver: zodResolver(studentEditFormSchema),
+    resolver: zodResolver(studentEditSchema),
     defaultValues: {
       name: "",
       email: "",
@@ -371,10 +332,10 @@ export default function EditStudentPage() {
       } else {
          toast({ title: "Error", description: "Failed to save changes.", variant: "destructive"});
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Save Failed",
-        description: error.message || "An unexpected error occurred.",
+        description: (error instanceof Error ? error.message : String(error)) || "An unexpected error occurred.",
         variant: "destructive",
       });
     } finally {
@@ -412,10 +373,10 @@ export default function EditStudentPage() {
       } else {
         toast({ title: "Error", description: "Failed to update payment status.", variant: "destructive"});
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
        toast({
         title: "Update Failed",
-        description: error.message || "An unexpected error occurred.",
+        description: (error instanceof Error ? error.message : String(error)) || "An unexpected error occurred.",
         variant: "destructive",
       });
     } finally {
@@ -463,10 +424,10 @@ export default function EditStudentPage() {
       } else {
         toast({ title: "Error", description: "Failed to mark student as Left.", variant: "destructive"});
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Update Failed",
-        description: error.message || "An unexpected error occurred.",
+        description: (error instanceof Error ? error.message : String(error)) || "An unexpected error occurred.",
         variant: "destructive",
       });
     } finally {
@@ -500,10 +461,10 @@ export default function EditStudentPage() {
         description: `${studentData.name} (ID: ${studentId}) has been permanently deleted from the system.`,
       });
       router.push('/students/list');
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Deletion Failed",
-        description: error.message || "An unexpected error occurred while deleting the student.",
+        description: (error instanceof Error ? error.message : String(error)) || "An unexpected error occurred while deleting the student.",
         variant: "destructive",
       });
       setIsDeleting(false);
@@ -648,7 +609,7 @@ export default function EditStudentPage() {
                         <FormItem className="space-y-3"><FormLabel>Shift Selection</FormLabel>
                         <FormControl>
                             <RadioGroup onValueChange={(value) => { field.onChange(value); setIsDirtyOverride(true); }} value={field.value} className="flex flex-col space-y-2">
-                            {shiftOptions.map(option => (
+                            {SHIFT_OPTIONS.map(option => (
                                 <FormItem key={option.value} className="flex items-center space-x-3 space-y-0">
                                 <FormControl><RadioGroupItem value={option.value} /></FormControl>
                                 <FormLabel className="font-normal">{option.label}</FormLabel>
@@ -695,6 +656,18 @@ export default function EditStudentPage() {
                         </FormItem>
                         )}
                     />
+                     {isStudentLeft ? (
+                        <div className="flex flex-col gap-1">
+                            <p className="text-sm font-medium flex items-center"><CalendarDays className="mr-2 h-4 w-4 text-muted-foreground"/>Next Due Date</p>
+                            <p className="text-sm text-muted-foreground">
+                                Upon re-activation, the due date will be set to{' '}
+                                <span className="font-medium text-foreground">{format(new Date(), 'dd MMM yyyy')}</span>.{' '}
+                                {studentData.nextDueDate && isValid(parseISO(studentData.nextDueDate))
+                                    ? `Current stored value: ${format(parseISO(studentData.nextDueDate), 'dd MMM yyyy')}`
+                                    : 'No due date currently stored.'}
+                            </p>
+                        </div>
+                     ) : (
                      <FormField control={form.control} name="nextDueDate" render={({ field }) => (
                         <FormItem className="flex flex-col">
                             <FormLabel className="flex items-center"><CalendarDays className="mr-2 h-4 w-4 text-muted-foreground"/>Next Due Date</FormLabel>
@@ -707,7 +680,6 @@ export default function EditStudentPage() {
                                     "w-full sm:w-[240px] pl-3 text-left font-normal",
                                     !field.value && "text-muted-foreground"
                                     )}
-                                    disabled={isStudentLeft}
                                 >
                                     {field.value ? (
                                     format(field.value, "PPP")
@@ -722,18 +694,15 @@ export default function EditStudentPage() {
                                 mode="single"
                                 selected={field.value}
                                 onSelect={field.onChange}
-                                disabled={isStudentLeft}
                                 initialFocus
                                 />
                             </PopoverContent>
                             </Popover>
-                            <FormDescription>
-                                {isStudentLeft && `Student's next due date is ${studentData.nextDueDate ? format(parseISO(studentData.nextDueDate), 'PP') : 'not set'}.`}
-                            </FormDescription>
                             <FormMessage />
                         </FormItem>
                         )}
                     />
+                     )}
 
                     <div className="space-y-2 pt-4 border-t">
                         <FormLabel className="flex items-center"><KeyRound className="mr-2 h-4 w-4 text-muted-foreground" />Update Password (Optional)</FormLabel>
@@ -780,13 +749,13 @@ export default function EditStudentPage() {
                             <div className="flex justify-around items-center gap-2 my-4">
                                 <DateBox date={studentData.nextDueDate} label="Old Due Date" />
                                 <ArrowRight className="h-6 w-6 text-muted-foreground flex-shrink-0" />
-                                <DateBox date={new Date().toISOString()} label="New Due Date" />
+                                <DateBox date={format(new Date(), 'yyyy-MM-dd')} label="New Due Date" />
                             </div>
                           </div>
                           <AlertDialogFooter>
                             <AlertDialogCancel>Cancel</AlertDialogCancel>
                             <AlertDialogAction onClick={form.handleSubmit(onSaveChanges)}>
-                              {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                              {isSaving ? <Loader2 aria-hidden="true" className="mr-2 h-4 w-4 animate-spin" /> : null}
                               Confirm Re-activation
                             </AlertDialogAction>
                           </AlertDialogFooter>
@@ -796,7 +765,7 @@ export default function EditStudentPage() {
                   )
                ) : (
                  <Button type="button" onClick={isReviewer ? () => handleReviewerAction("Save Changes") : form.handleSubmit(onSaveChanges)} className="w-full sm:w-auto" disabled={!isReviewer && isSaveDisabled}>
-                  {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                  {isSaving ? <Loader2 aria-hidden="true" className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                   Save Changes {isReviewer && '(For Reviewer)'}
                 </Button>
                )}
@@ -843,7 +812,7 @@ export default function EditStudentPage() {
                             <AlertDialogFooter>
                                 <AlertDialogCancel onClick={() => setIsConfirmPaymentOpen(false)} disabled={isSaving}>Cancel</AlertDialogCancel>
                                 <AlertDialogAction onClick={handleMarkPaymentPaid} disabled={isSaving}>
-                                    {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                                    {isSaving ? <Loader2 aria-hidden="true" className="mr-2 h-4 w-4 animate-spin" /> : null}
                                     Confirm Payment
                                 </AlertDialogAction>
                             </AlertDialogFooter>
@@ -873,7 +842,7 @@ export default function EditStudentPage() {
                       <AlertDialogFooter>
                           <AlertDialogCancel onClick={() => setIsConfirmMarkLeftOpen(false)} disabled={isSaving}>Cancel</AlertDialogCancel>
                           <AlertDialogAction onClick={handleMarkAsLeft} disabled={isSaving}>
-                          {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                          {isSaving ? <Loader2 aria-hidden="true" className="mr-2 h-4 w-4 animate-spin" /> : null}
                           Confirm
                           </AlertDialogAction>
                       </AlertDialogFooter>
@@ -904,7 +873,7 @@ export default function EditStudentPage() {
                         <AlertDialogFooter>
                             <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
                             <AlertDialogAction onClick={handleDeleteStudent} disabled={isDeleting} className="bg-destructive hover:bg-destructive/90">
-                            {isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                            {isDeleting ? <Loader2 aria-hidden="true" className="mr-2 h-4 w-4 animate-spin" /> : null}
                             Confirm Delete
                             </AlertDialogAction>
                         </AlertDialogFooter>

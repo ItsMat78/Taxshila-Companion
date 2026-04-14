@@ -77,7 +77,7 @@ export default function MemberPayFeesPage() {
       <>
         <PageTitle title="My Payments" description="Loading your payment details..." />
         <div className="flex justify-center items-center py-10">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <Loader2 role="status" aria-label="Loading" className="h-8 w-8 animate-spin text-primary" />
         </div>
       </>
     );

@@ -23,13 +23,13 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { cn } from '@/lib/utils';
 
 
-const ChartTooltipContent = ({ active, payload, label }: any) => {
+const ChartTooltipContent = ({ active, payload, label }: { active?: boolean; payload?: Array<{ value: number; name: string }>; label?: string }) => {
   if (active && payload && payload.length) {
     const hours = payload[0].value;
     const minutes = Math.round((hours % 1) * 60);
     return (
       <div className="p-2 bg-popover text-popover-foreground border rounded-md shadow-md text-sm">
-        <p className="font-semibold">{format(parseISO(label), 'PP')}</p>
+        <p className="font-semibold">{label ? format(parseISO(label), 'PP') : ''}</p>
         <p>
           {payload[0].name}: {Math.floor(hours)} hr {minutes} min
         </p>
@@ -160,11 +160,11 @@ export default function MemberAttendancePage() {
           setCurrentStudent(null);
           return null;
         }
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error("Error fetching student data (Attendance Page):", error);
         toast({
           title: "Error",
-          description: error.message || "Failed to fetch student details.",
+          description: (error instanceof Error ? error.message : String(error)) || "Failed to fetch student details.",
           variant: "destructive",
           });
         setCurrentStudent(null);
@@ -261,7 +261,7 @@ export default function MemberAttendancePage() {
     }
   }, [currentStudent, viewedMonth, getDailyStudyDataForMonth, showMonthlyStudyTime]);
 
-  const calculateDailyStudyTime = (records: AttendanceRecord[], studentShift: Student['shift']) => {
+  const calculateDailyStudyTime = (records: AttendanceRecord[], studentShift: Student['shift'] | undefined) => {
     let totalMilliseconds = 0;
     records.forEach(record => {
       if (record.checkInTime && isValid(parseISO(record.checkInTime))) {
@@ -306,11 +306,11 @@ export default function MemberAttendancePage() {
       try {
         const records = await getAttendanceForDate(currentStudent.studentId, format(date, 'yyyy-MM-dd'));
         setAttendanceForDay(records);
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error("Error fetching attendance for date (Attendance Page):", error);
         toast({
           title: "Error Fetching Attendance",
-          description: error.message || "Could not load attendance for the selected date.",
+          description: (error instanceof Error ? error.message : String(error)) || "Could not load attendance for the selected date.",
           variant: "destructive",
         });
         setAttendanceForDay([]);
@@ -360,7 +360,7 @@ export default function MemberAttendancePage() {
                     </Button>
                 ) : isLoadingMonthlyStudyData ? (
                     <div className="flex items-center justify-center h-[300px]">
-                        <Loader2 className="h-8 w-8 animate-spin text-primary"/>
+                        <Loader2 role="status" aria-label="Loading" className="h-8 w-8 animate-spin text-primary"/>
                     </div>
                 ) : (
                   <div className="w-full">
@@ -443,7 +443,7 @@ export default function MemberAttendancePage() {
                         <div className="w-full md:flex-1">
                             <h4 className="text-md font-semibold mb-2">Details for {date ? format(date, 'PPP') : 'selected date'}:</h4>
                             {isLoadingDetails ? (
-                            <div className="flex items-center justify-center text-muted-foreground"><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading details...</div>
+                            <div className="flex items-center justify-center text-muted-foreground"><Loader2 aria-hidden="true" className="mr-2 h-4 w-4 animate-spin" /> Loading details...</div>
                             ) : (
                             <>
                                 <div className="mb-4 text-lg font-semibold text-primary">

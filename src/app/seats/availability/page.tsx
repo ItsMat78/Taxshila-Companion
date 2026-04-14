@@ -117,7 +117,7 @@ export default function SeatAvailabilityPage() {
           getTodaysActiveAttendanceRecords()
         ]);
         setSeatAssignments(assignments);
-        const checkedIn = await processCheckedInStudentsFromSnapshot(attendanceSnapshot, assignments);
+        const checkedIn = await processCheckedInStudentsFromSnapshot(attendanceSnapshot, assignments as unknown as import('@/types/student').Student[]);
         setCheckedInStudents(checkedIn);
       } catch (error) {
         console.error("Failed to fetch initial data:", error);
@@ -203,11 +203,13 @@ export default function SeatAvailabilityPage() {
                                             </div>
                                         </DialogTrigger>
                                         <DialogContent className="max-w-md w-auto p-2">
+                                            <DialogTitle className="sr-only">Profile picture for {student.name}</DialogTitle>
                                             <Image
-                                                src={student.profilePictureUrl || "https://placehold.co/400x400.png"}
+                                                src={student.profilePictureUrl || "/logo.png"}
                                                 alt={`${student.name}'s profile picture`}
                                                 width={400}
                                                 height={400}
+                                                sizes="(max-width: 640px) 90vw, 400px"
                                                 className="rounded-md object-contain max-h-[70vh] w-full h-auto"
                                             />
                                         </DialogContent>
@@ -259,7 +261,7 @@ export default function SeatAvailabilityPage() {
             </div>
             <div className="p-2 rounded-lg bg-muted/50">
                 <p className="text-xs text-muted-foreground">Occupied (M/E/FD)</p>
-                {isLoading ? <Loader2 className="h-5 w-5 animate-spin mx-auto mt-1" /> : (
+                {isLoading ? <Loader2 role="status" aria-label="Loading" className="h-5 w-5 animate-spin mx-auto mt-1" /> : (
                   <p className="text-xl font-bold text-foreground">
                     {occupiedMorningStudentsCount} / {occupiedEveningStudentsCount} / {occupiedFullDayStudentsCount}
                   </p>
@@ -267,7 +269,7 @@ export default function SeatAvailabilityPage() {
             </div>
             <div className="p-2 rounded-lg bg-muted/50 col-span-2 sm:col-span-1">
                 <p className="text-xs text-muted-foreground">Available Slots (M/E/FD)</p>
-                {isLoading ? <Loader2 className="h-5 w-5 animate-spin mx-auto mt-1" /> : (
+                {isLoading ? <Loader2 role="status" aria-label="Loading" className="h-5 w-5 animate-spin mx-auto mt-1" /> : (
                     <p className="text-xl font-bold">
                         {availableMorningSlotsCount} / {availableEveningSlotsCount} / {availableForFullDayBookingCount}
                     </p>
@@ -278,7 +280,7 @@ export default function SeatAvailabilityPage() {
       
       {isLoading ? (
         <div className="flex items-center justify-center py-10">
-          <Loader2 className="h-12 w-12 animate-spin text-primary" />
+          <Loader2 role="status" aria-label="Loading" className="h-12 w-12 animate-spin text-primary" />
           <p className="ml-3 text-muted-foreground">Loading seat data...</p>
         </div>
       ) : (

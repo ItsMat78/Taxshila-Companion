@@ -4,6 +4,7 @@
 import { NextResponse } from 'next/server';
 import { getAuth, getDb } from '@/lib/firebase-admin'; // Import getDb
 import type { CreateRequest, UserRecord } from 'firebase-admin/auth';
+import { getVerifiedToken, isReviewerToken } from '@/lib/api-auth';
 
 const isValidIndianPhoneNumber = (phone: string): boolean => {
     const regex = /^[6-9]\d{9}$/;
@@ -11,6 +12,11 @@ const isValidIndianPhoneNumber = (phone: string): boolean => {
 };
 
 export async function POST(request: Request) {
+  const token = await getVerifiedToken(request);
+  if (isReviewerToken(token)) {
+    return NextResponse.json({ error: 'Action not permitted in reviewer mode.' }, { status: 403 });
+  }
+
   try {
     const { email, phone, password, name } = await request.json();
 
@@ -36,15 +42,15 @@ export async function POST(request: Request) {
     // --- Check for existing users ---
     try {
         existingUser = await auth.getUserByEmail(emailForAuth);
-    } catch (error: any) {
-        if (error.code !== 'auth/user-not-found') throw error;
+    } catch (error: unknown) {
+        if ((error as {code?: string}).code !== 'auth/user-not-found') throw error;
     }
 
     if (!existingUser) {
         try {
             existingUser = await auth.getUserByPhoneNumber(phoneNumberForAuth);
-        } catch (error: any) {
-            if (error.code !== 'auth/user-not-found') throw error;
+        } catch (error: unknown) {
+            if ((error as {code?: string}).code !== 'auth/user-not-found') throw error;
         }
     }
 
@@ -79,10 +85,10 @@ export async function POST(request: Request) {
     // --- Return a successful response with the new UID and the email used ---
     return NextResponse.json({ success: true, uid: userRecord.uid, email: emailForAuth });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Create Student Auth API Error:", error);
-    if (error.code?.startsWith('auth/')) {
-        return NextResponse.json({ success: false, error: error.message }, { status: 409 });
+    if ((error as {code?: string}).code?.startsWith('auth/')) {
+        return NextResponse.json({ success: false, error: (error instanceof Error ? error.message : String(error)) }, { status: 409 });
     }
     return NextResponse.json({ success: false, error: "An unexpected server error occurred during auth creation." }, { status: 500 });
   }

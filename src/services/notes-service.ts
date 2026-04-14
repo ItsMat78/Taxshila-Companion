@@ -13,6 +13,7 @@ import {
   orderBy,
   query
 } from '@/lib/firebase';
+import type { QueryDocumentSnapshot, DocumentData } from 'firebase/firestore';
 import { formatISO } from 'date-fns';
 
 const NOTES_COLLECTION = "adminNotes";
@@ -23,7 +24,7 @@ export interface AdminNote {
   date: string; // ISO string format
 }
 
-const noteFromDoc = (docSnapshot: any): AdminNote => {
+const noteFromDoc = (docSnapshot: QueryDocumentSnapshot<DocumentData>): AdminNote => {
   const data = docSnapshot.data();
   return {
     id: docSnapshot.id,

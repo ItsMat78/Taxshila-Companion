@@ -2,11 +2,11 @@
 
 import { initializeApp, getApp, getApps } from 'firebase/app';
 import { 
-  getFirestore, 
-  collection, 
-  getDocs, 
-  getDoc, 
-  doc, 
+  getFirestore,
+  collection,
+  getDocs,
+  getDoc,
+  doc,
   addDoc,
   updateDoc,
   deleteDoc,
@@ -18,12 +18,13 @@ import {
   Timestamp,
   serverTimestamp,
   orderBy,
-  limit, 
+  limit,
   startAfter,
   getCountFromServer,
   runTransaction,
   increment,
-  setDoc
+  setDoc,
+  onSnapshot,
 } from 'firebase/firestore';
 import { getStorage, ref as storageRef, uploadBytesResumable, getDownloadURL, deleteObject, uploadString } from 'firebase/storage';
 import { getAuth } from 'firebase/auth'; // Import getAuth
@@ -88,5 +89,6 @@ export {
   getCountFromServer,
   runTransaction,
   increment,
-  setDoc
+  setDoc,
+  onSnapshot,
 };

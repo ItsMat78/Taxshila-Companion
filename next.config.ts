@@ -5,22 +5,16 @@ import type {NextConfig} from 'next';
 const nextConfig: NextConfig = {
   /* config options here */
   typescript: {
-    ignoreBuildErrors: true,
+    ignoreBuildErrors: false,
   },
   eslint: {
-    ignoreDuringBuilds: true,
+    ignoreDuringBuilds: false,
   },
   images: {
     remotePatterns: [
       {
         protocol: 'https',
         hostname: 'picsum.photos',
-        port: '',
-        pathname: '/**',
-      },
-      {
-        protocol: 'https',
-        hostname: 'placehold.co',
         port: '',
         pathname: '/**',
       },
@@ -47,6 +41,7 @@ const nextConfig: NextConfig = {
   // Allow cross-origin requests from the Firebase Studio preview environment
   // for a smoother development experience.
   experimental: {
+    // @ts-ignore -- allowedDevOrigins is a valid Next.js runtime option not yet in published types
     allowedDevOrigins: [
       'https://*.cloudworkstations.dev',
       'https://*.firebase.studio',

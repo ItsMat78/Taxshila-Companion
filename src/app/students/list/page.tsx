@@ -63,7 +63,7 @@ const getShiftColorClass = (shift: StudentData['shift']) => {
 
 
 // Component for individual student card on mobile
-const StudentCardItem = ({ student, isLeftTable, getStatusBadge }: { student: StudentWithAttendance; isLeftTable?: boolean; getStatusBadge: (s: StudentData) => JSX.Element }) => {
+const StudentCardItem = ({ student, isLeftTable, getStatusBadge }: { student: StudentWithAttendance; isLeftTable?: boolean; getStatusBadge: (s: StudentData) => React.ReactElement }) => {
   return (
     <Card className="w-full shadow-md">
        <Accordion type="single" collapsible className="w-full">
@@ -84,11 +84,13 @@ const StudentCardItem = ({ student, isLeftTable, getStatusBadge }: { student: St
                         </div>
                     </DialogTrigger>
                     <DialogContent className="max-w-md w-auto p-2">
+                        <DialogTitle className="sr-only">Profile picture for {student.name}</DialogTitle>
                         <Image
-                            src={student.profilePictureUrl || "https://placehold.co/400x400.png"}
+                            src={student.profilePictureUrl || "/logo.png"}
                             alt={`${student.name}'s profile picture`}
                             width={400}
                             height={400}
+                            sizes="(max-width: 640px) 90vw, 400px"
                             className="rounded-md object-contain max-h-[70vh] w-full h-auto"
                         />
                     </DialogContent>
@@ -216,7 +218,7 @@ export default function StudentListPage() {
     <>
       {isLoading ? (
         <div className="flex items-center justify-center py-10">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <Loader2 role="status" aria-label="Loading" className="h-8 w-8 animate-spin text-primary" />
           <p className="ml-2 text-muted-foreground">Loading students...</p>
         </div>
       ) : (
@@ -269,8 +271,9 @@ export default function StudentListPage() {
                                   </div>
                                 </DialogTrigger>
                                 <DialogContent className="max-w-md w-auto p-2">
+                                    <DialogTitle className="sr-only">Profile picture for {student.name}</DialogTitle>
                                     <Image
-                                        src={student.profilePictureUrl || "https://placehold.co/400x400.png"}
+                                        src={student.profilePictureUrl || "/logo.png"}
                                         alt={`${student.name}'s profile picture`}
                                         width={400}
                                         height={400}

@@ -30,6 +30,17 @@ interface AggregatedPaymentRecord extends PaymentRecord {
   studentName: string;
 }
 
+function formatPeriod(prev?: string, next?: string): string {
+  const fmtDate = (d?: string) =>
+    d && isValid(parseISO(d)) ? format(parseISO(d), 'dd MMM') : null;
+  const p = fmtDate(prev);
+  const n = fmtDate(next);
+  if (!p && !n) return '—';
+  if (!p) return `? → ${n}`;
+  if (!n) return `${p} → ?`;
+  return `${p} → ${n}`;
+}
+
 const PaymentHistoryCardItem = ({ payment }: { payment: AggregatedPaymentRecord }) => (
   <Card className="w-full shadow-md">
     <CardHeader className="pb-2">
@@ -45,6 +56,7 @@ const PaymentHistoryCardItem = ({ payment }: { payment: AggregatedPaymentRecord 
     <CardContent className="text-xs space-y-1 pb-3">
       <p><span className="font-medium">Date:</span> {payment.date && isValid(parseISO(payment.date)) ? format(parseISO(payment.date), 'MMM d, yyyy') : 'N/A'}</p>
       <p><span className="font-medium">Amount:</span> {payment.amount}</p>
+      <p><span className="font-medium">Period:</span> {formatPeriod(payment.previousDueDate, payment.newDueDate)}</p>
       <p><span className="font-medium">Transaction ID:</span> {payment.transactionId}</p>
     </CardContent>
   </Card>
@@ -109,7 +121,7 @@ export default function PaymentHistoryPage() {
         <CardContent>
           {isLoading ? (
             <div className="flex items-center justify-center py-10">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <Loader2 role="status" aria-label="Loading" className="h-8 w-8 animate-spin text-primary" />
               <p className="ml-2 text-muted-foreground">Loading payment history...</p>
             </div>
           ) : (
@@ -137,6 +149,7 @@ export default function PaymentHistoryPage() {
                       <TableHead>Student Name</TableHead>
                       <TableHead>Date</TableHead>
                       <TableHead>Amount</TableHead>
+                      <TableHead>Period</TableHead>
                       <TableHead>Transaction ID</TableHead>
                       <TableHead>Method</TableHead>
                     </TableRow>
@@ -152,6 +165,7 @@ export default function PaymentHistoryPage() {
                             : 'N/A'}
                         </TableCell>
                         <TableCell>{payment.amount}</TableCell>
+                        <TableCell className="whitespace-nowrap">{formatPeriod(payment.previousDueDate, payment.newDueDate)}</TableCell>
                         <TableCell>{payment.transactionId}</TableCell>
                         <TableCell>
                           <Badge variant="secondary" className="capitalize">
@@ -163,7 +177,7 @@ export default function PaymentHistoryPage() {
                     ))}
                     {allPayments.length === 0 && !isLoading && (
                       <TableRow>
-                        <TableCell colSpan={6} className="text-center text-muted-foreground py-6">
+                        <TableCell colSpan={7} className="text-center text-muted-foreground py-6">
                           <History className="mx-auto mb-2 h-10 w-10 text-muted-foreground" />
                           No payment history found.
                         </TableCell>

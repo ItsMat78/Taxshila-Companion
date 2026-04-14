@@ -2,6 +2,7 @@
 "use client";
 
 import * as React from 'react';
+import { isReviewerUser } from '@/lib/auth-utils';
 import { PageTitle } from '@/components/shared/page-title';
 import { Button } from "@/components/ui/button";
 import {
@@ -79,7 +80,7 @@ const NoteCard = ({ note, onEdit, onDelete, isSubmitting, isReviewer }: NoteCard
             <AlertDialog>
                 <AlertDialogTrigger asChild>
                     <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive hover:bg-destructive/10" disabled={isSubmitting || isReviewer}>
-                        {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                        {isSubmitting ? <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
                     </Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent>
@@ -109,7 +110,7 @@ export default function AdminNotesPage() {
     const [isSubmitting, setIsSubmitting] = React.useState(false);
     const [editingNote, setEditingNote] = React.useState<AdminNote | null>(null);
 
-    const isReviewer = user?.email === 'guest-admin@taxshila-auth.com';
+    const isReviewer = isReviewerUser(user?.email);
 
     const form = useForm<NoteFormValues>({
         resolver: zodResolver(noteFormSchema),
@@ -169,8 +170,8 @@ export default function AdminNotesPage() {
             }
             handleCancelEdit();
             fetchNotes();
-        } catch (error: any) {
-            toast({ title: "Error", description: error.message || "Failed to save the note.", variant: "destructive" });
+        } catch (error: unknown) {
+            toast({ title: "Error", description: (error instanceof Error ? error.message : String(error)) || "Failed to save the note.", variant: "destructive" });
         } finally {
             setIsSubmitting(false);
         }
@@ -189,8 +190,8 @@ export default function AdminNotesPage() {
             await deleteAdminNote(noteId);
             toast({ title: "Note Deleted", description: "The note has been permanently removed." });
             fetchNotes();
-        } catch (error: any) {
-            toast({ title: "Error", description: error.message || "Failed to delete the note.", variant: "destructive" });
+        } catch (error: unknown) {
+            toast({ title: "Error", description: (error instanceof Error ? error.message : String(error)) || "Failed to delete the note.", variant: "destructive" });
         } finally {
             setIsSubmitting(false);
         }
@@ -232,7 +233,7 @@ export default function AdminNotesPage() {
                         </CardContent>
                         <CardFooter className="flex gap-2">
                             <Button type="submit" disabled={isSubmitting || isReviewer}>
-                                {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                                {isSubmitting ? <Loader2 aria-hidden="true" className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                                 {editingNote ? 'Save Changes' : 'Save Note'}
                             </Button>
                             {editingNote && (
@@ -249,7 +250,7 @@ export default function AdminNotesPage() {
                 <h2 className="text-xl font-headline font-semibold mb-4">Saved Notes</h2>
                 {isLoading ? (
                     <div className="text-center py-8">
-                        <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
+                        <Loader2 role="status" aria-label="Loading" className="h-8 w-8 animate-spin text-primary mx-auto" />
                     </div>
                 ) : notes.length > 0 ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

@@ -2,10 +2,11 @@
 import { NextResponse } from 'next/server';
 import { getDb } from '@/lib/firebase-admin';
 import { Student } from '@/types/student';
+import { getVerifiedToken, isReviewerToken } from '@/lib/api-auth';
 
 // This is a simplified 'upsert' function. 
 // In a real-world scenario, you'd add more robust error handling and validation.
-async function upsertStudents(data: any[]) {
+async function upsertStudents(data: Partial<Student>[]) {
     const db = getDb();
     const batch = db.batch();
     const studentsRef = db.collection('students');
@@ -37,7 +38,7 @@ async function upsertStudents(data: any[]) {
 }
 
 // A simple function to add attendance records. It doesn't check for duplicates.
-async function insertAttendance(data: any[]) {
+async function insertAttendance(data: Record<string, unknown>[]) {
     const db = getDb();
     const batch = db.batch();
     const attendanceRef = db.collection('attendanceRecords');
@@ -54,6 +55,11 @@ async function insertAttendance(data: any[]) {
 
 
 export async function POST(request: Request) {
+    const token = await getVerifiedToken(request);
+    if (isReviewerToken(token)) {
+      return NextResponse.json({ error: 'Action not permitted in reviewer mode.' }, { status: 403 });
+    }
+
     try {
         const { type, data } = await request.json();
 
@@ -81,7 +87,7 @@ export async function POST(request: Request) {
 
         return NextResponse.json({ success: true, message: `Successfully imported ${count} ${type} records.` });
 
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error(`Import API Error for type:`, error);
         return NextResponse.json({ success: false, error: 'An unexpected server error occurred.' }, { status: 500 });
     }

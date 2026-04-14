@@ -6,7 +6,6 @@ import { triggerAlertNotification, triggerAdminFeedbackNotification } from '@/se
 import type { AlertItem } from '@/types/communication';
 
 export async function POST(request: Request) {
-  console.log('[API Route (send-notification)] Received a request.');
   try {
     const body = await request.json();
     const { type, payload } = body;
@@ -14,8 +13,6 @@ export async function POST(request: Request) {
     if (!type || !payload) {
       return NextResponse.json({ success: false, error: 'Missing type or payload' }, { status: 400 });
     }
-    
-    console.log(`[API Route (send-notification)] Request type: ${type}`);
 
     switch (type) {
       case 'alert':
@@ -30,10 +27,10 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ success: true, message: 'Notification triggered successfully.' });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error(`[API Route (send-notification)] Error:`, error);
     // Return a more descriptive error if possible
-    const errorMessage = error.message || 'An unknown server error occurred.';
+    const errorMessage = (error instanceof Error ? error.message : String(error)) || 'An unknown server error occurred.';
     return NextResponse.json({ success: false, error: errorMessage }, { status: 500 });
   }
 }

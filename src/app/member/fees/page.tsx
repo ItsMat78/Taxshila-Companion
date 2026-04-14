@@ -26,6 +26,17 @@ import { getStudentByEmail, getFeeStructure, getStudentByCustomId } from '@/serv
 import type { Student, PaymentRecord, FeeStructure as FeeStructureType, Shift } from '@/types/student';
 import { useToast } from '@/hooks/use-toast';
 import { format, parseISO, isValid } from 'date-fns';
+
+function formatPeriod(prev?: string, next?: string): string {
+  const fmtDate = (d?: string) =>
+    d && isValid(parseISO(d)) ? format(parseISO(d), 'dd MMM') : null;
+  const p = fmtDate(prev);
+  const n = fmtDate(next);
+  if (!p && !n) return '—';
+  if (!p) return `? → ${n}`;
+  if (!n) return `${p} → ?`;
+  return `${p} → ${n}`;
+}
 import { cn } from '@/lib/utils';
 
 // New Shift Display Card Component
@@ -130,6 +141,7 @@ const PaymentHistoryCardItem = ({ payment }: { payment: PaymentRecord }) => (
     </div>
     <div className="text-xs text-muted-foreground space-y-1">
       <p>Date: {payment.date && isValid(parseISO(payment.date)) ? format(parseISO(payment.date), 'dd-MMM-yy') : 'N/A'}</p>
+      <p>Period: {formatPeriod(payment.previousDueDate, payment.newDueDate)}</p>
       <p>Transaction ID: {payment.transactionId}</p>
     </div>
     <div className="mt-2">
@@ -214,7 +226,7 @@ export default function MemberFeesPage() {
       <>
         <PageTitle title="My Fee Details" description="Loading your fee status and payment history..." />
         <div className="flex justify-center items-center py-10">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <Loader2 role="status" aria-label="Loading" className="h-8 w-8 animate-spin text-primary" />
         </div>
       </>
     );
@@ -286,6 +298,7 @@ export default function MemberFeesPage() {
                           <TableRow>
                             <TableHead>Date</TableHead>
                             <TableHead>Amount</TableHead>
+                            <TableHead>Period</TableHead>
                             <TableHead>Method</TableHead>
                             <TableHead>Transaction ID</TableHead>
                             <TableHead>Action</TableHead>
@@ -296,6 +309,7 @@ export default function MemberFeesPage() {
                             <TableRow key={payment.paymentId}>
                               <TableCell className="whitespace-nowrap">{payment.date && isValid(parseISO(payment.date)) ? format(parseISO(payment.date), 'dd-MMM-yy') : 'N/A'}</TableCell>
                               <TableCell className="whitespace-nowrap">{payment.amount}</TableCell>
+                              <TableCell className="whitespace-nowrap">{formatPeriod(payment.previousDueDate, payment.newDueDate)}</TableCell>
                               <TableCell className="capitalize whitespace-nowrap">{payment.method}</TableCell>
                               <TableCell className="whitespace-nowrap">{payment.transactionId}</TableCell>
                                <TableCell className="whitespace-nowrap">

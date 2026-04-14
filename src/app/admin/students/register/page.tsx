@@ -2,9 +2,9 @@
 "use client";
 
 import * as React from 'react';
+import { isReviewerUser } from '@/lib/auth-utils';
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, Controller } from "react-hook-form";
-import * as z from "zod";
 import { PageTitle } from '@/components/shared/page-title';
 import { Button } from "@/components/ui/button";
 import {
@@ -36,6 +36,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { UserPlus, Loader2, Camera, Upload, Video, VideoOff } from 'lucide-react';
 import { addStudent, getAvailableSeats, type AddStudentData } from '@/services/student-service';
+import { studentRegisterSchema, type StudentRegisterFormValues, SHIFT_OPTIONS } from '@/lib/schemas/student';
 import type { Shift } from '@/types/student';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
@@ -45,27 +46,9 @@ import { Label } from '@/components/ui/label';
 import { useAuth } from '@/contexts/auth-context';
 
 
-const studentFormSchema = z.object({
-  name: z.string().min(2, { message: "Name must be at least 2 characters." }),
-  email: z.string().email({ message: "Invalid email address." }).optional().or(z.literal('')),
-  phone: z.string()
-    .length(10, { message: "Phone number must be exactly 10 digits." })
-    .regex(/^\d+$/, { message: "Phone number must contain only digits." }),
-  password: z.string().min(6, { message: "Password must be at least 6 characters." }),
-  address: z.string(),
-  shift: z.enum(["morning", "evening", "fullday"], { required_error: "Shift selection is required." }),
-  seatNumber: z.string().min(1, "Seat selection is required."),
-  idCardFileName: z.string().optional(),
-  profilePictureUrl: z.string().optional(),
-});
-
-type StudentFormValues = z.infer<typeof studentFormSchema>;
-
-const shiftOptions = [
-  { value: "morning" as Shift, label: "Morning Shift (7 AM - 2 PM)" },
-  { value: "evening" as Shift, label: "Evening Shift (2 PM - 9:30 PM)" },
-  { value: "fullday" as Shift, label: "Full Day (7 AM - 9:30 PM)" },
-];
+// StudentRegisterFormValues and studentRegisterSchema imported from @/lib/schemas/student
+// Local alias kept to avoid touching every form.handleSubmit call below
+type StudentFormValues = StudentRegisterFormValues;
 
 const MAX_IMAGE_DIMENSION = 500; // Max width/height in pixels
 
@@ -119,10 +102,10 @@ export default function StudentRegisterPage() {
   const videoRef = React.useRef<HTMLVideoElement>(null);
   const canvasRef = React.useRef<HTMLCanvasElement>(null);
   
-  const isReviewer = user?.email === 'guest-admin@taxshila-auth.com';
+  const isReviewer = isReviewerUser(user?.email);
 
   const form = useForm<StudentFormValues>({
-    resolver: zodResolver(studentFormSchema),
+    resolver: zodResolver(studentRegisterSchema),
     defaultValues: {
       name: "",
       email: "",
@@ -279,13 +262,13 @@ export default function StudentRegisterPage() {
         fileInputRef.current.value = ""; 
       }
       setAvailableSeatOptions([]); 
-    } catch (error: any) {
+    } catch (error: unknown) {
        toast({
         title: "Registration Failed",
-        description: error.message || "An unexpected error occurred.",
+        description: (error instanceof Error ? error.message : String(error)) || "An unexpected error occurred.",
         variant: "destructive",
       });
-      if (selectedShift && error.message?.toLowerCase().includes("seat")) {
+      if (selectedShift && (error instanceof Error ? error.message : String(error))?.toLowerCase().includes("seat")) {
         setIsLoadingSeats(true);
         try {
             const seats = await getAvailableSeats(selectedShift);
@@ -383,7 +366,7 @@ export default function StudentRegisterPage() {
                 <FormItem className="space-y-3"><FormLabel>Shift Selection</FormLabel>
                   <FormControl>
                     <RadioGroup onValueChange={field.onChange} value={field.value} className="flex flex-col space-y-2" disabled={isSubmitting || isReviewer}>
-                      {shiftOptions.map(option => (
+                      {SHIFT_OPTIONS.map(option => (
                         <FormItem key={option.value} className="flex items-center space-x-3 space-y-0">
                           <FormControl><RadioGroupItem value={option.value} disabled={isSubmitting || isReviewer} /></FormControl>
                           <FormLabel className="font-normal">{option.label}</FormLabel>
@@ -436,7 +419,7 @@ export default function StudentRegisterPage() {
                 </Button>
               ) : (
                 <Button type="submit" className="w-full sm:w-auto" disabled={isSubmitting || isLoadingSeats || !selectedShift}>
-                  {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UserPlus className="mr-2 h-4 w-4" />}
+                  {isSubmitting ? <Loader2 aria-hidden="true" className="mr-2 h-4 w-4 animate-spin" /> : <UserPlus className="mr-2 h-4 w-4" />}
                   {isSubmitting ? "Registering..." : "Register Student"}
                 </Button>
               )}

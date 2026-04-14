@@ -240,7 +240,7 @@ export default function StudentMovementPage() {
           <CardContent>
             {isLoading ? (
                 <div className="flex items-center justify-center py-10">
-                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                    <Loader2 role="status" aria-label="Loading" className="h-8 w-8 animate-spin text-primary" />
                 </div>
             ) : (
                 <>
@@ -262,7 +262,7 @@ export default function StudentMovementPage() {
           <CardContent>
              {isLoading ? (
                 <div className="flex items-center justify-center py-10">
-                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                    <Loader2 role="status" aria-label="Loading" className="h-8 w-8 animate-spin text-primary" />
                 </div>
             ) : (
                 <>

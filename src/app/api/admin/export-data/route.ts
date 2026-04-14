@@ -32,7 +32,7 @@ async function fetchAllAuthUsers() {
     }));
 }
 
-function toCsv(data: any[], fields: string[]): string {
+function toCsv(data: object[], fields: string[]): string {
     if (!data || data.length === 0) return 'No data available.';
     try {
         const parser = new Parser({ fields });
@@ -85,7 +85,7 @@ export async function GET() {
         // 5. Generate Zip blob
         const content = await zip.generateAsync({ type: 'nodebuffer' });
 
-        return new NextResponse(content, {
+        return new NextResponse(content as unknown as BodyInit, {
             status: 200,
             headers: {
                 'Content-Type': 'application/zip',
@@ -93,7 +93,7 @@ export async function GET() {
             },
         });
 
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Export Error:", error);
         return NextResponse.json({ success: false, error: "Failed to export data." }, { status: 500 });
     }

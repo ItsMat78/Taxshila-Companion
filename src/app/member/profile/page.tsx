@@ -26,7 +26,7 @@ import { format, parseISO, isValid } from 'date-fns';
 import { cn } from '@/lib/utils';
 
 
-const DEFAULT_PROFILE_PLACEHOLDER = "https://placehold.co/200x200.png";
+const DEFAULT_PROFILE_PLACEHOLDER = "/logo.png";
 const MAX_IMAGE_DIMENSION = 500;
 
 // Helper to resize images
@@ -194,8 +194,8 @@ export default function MemberProfilePage() {
       setPreviewUrl(newUrl);
       updateUser({ profilePictureUrl: newUrl });
       toast({ title: "Success", description: "Your profile picture has been updated." });
-    } catch (error: any) {
-      toast({ title: "Upload Failed", description: error.message || "Could not save your new picture.", variant: "destructive" });
+    } catch (error: unknown) {
+      toast({ title: "Upload Failed", description: (error instanceof Error ? error.message : String(error)) || "Could not save your new picture.", variant: "destructive" });
     } finally {
       setIsSavingPicture(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -206,7 +206,7 @@ export default function MemberProfilePage() {
     return (
       <>
         <PageTitle title="My Profile" description="Loading your details..." />
-        <div className="flex justify-center items-center py-10"><Loader2 className="h-12 w-12 animate-spin text-primary" /></div>
+        <div className="flex justify-center items-center py-10"><Loader2 role="status" aria-label="Loading" className="h-12 w-12 animate-spin text-primary" /></div>
       </>
     );
   }
@@ -263,7 +263,7 @@ export default function MemberProfilePage() {
                         </div>
                     </DialogTrigger>
                     <DialogContent className="max-w-md w-auto p-2">
-                        <NextImage src={memberDetails.profilePictureUrl || DEFAULT_PROFILE_PLACEHOLDER} alt="Profile Picture Full View" width={500} height={500} className="rounded-md object-contain max-h-[80vh] w-full h-auto" />
+                        <NextImage src={memberDetails.profilePictureUrl || DEFAULT_PROFILE_PLACEHOLDER} alt="Profile Picture Full View" width={500} height={500} sizes="(max-width: 640px) 90vw, 500px" className="rounded-md object-contain max-h-[80vh] w-full h-auto" />
                     </DialogContent>
                 </Dialog>
                 <div className="flex-1 min-w-0">
@@ -295,7 +295,7 @@ export default function MemberProfilePage() {
                 </CardContent>
                 <CardFooter>
                     <Button onClick={handleSaveProfilePicture} disabled={isSavingPicture || !hasUnsavedChanges} className="w-full">
-                        {isSavingPicture ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/> Saving...</> : <><Save className="mr-2 h-4 w-4"/>Save Picture</>}
+                        {isSavingPicture ? <><Loader2 aria-hidden="true" className="mr-2 h-4 w-4 animate-spin"/> Saving...</> : <><Save className="mr-2 h-4 w-4"/>Save Picture</>}
                     </Button>
                 </CardFooter>
             </Card>

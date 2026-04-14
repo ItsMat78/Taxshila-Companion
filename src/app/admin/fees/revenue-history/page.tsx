@@ -224,7 +224,7 @@ export default function RevenueHistoryPage() {
           <div className="w-full">
             {isLoading ? (
               <div className="flex items-center justify-center h-[300px]">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <Loader2 role="status" aria-label="Loading" className="h-8 w-8 animate-spin text-primary" />
               </div>
             ) : graphData.length > 0 ? (
               <ChartContainer config={revenueChartConfig} className="min-h-[200px] w-full h-[320px]">
@@ -275,7 +275,7 @@ export default function RevenueHistoryPage() {
           <div className="bg-white/20 rounded-2xl overflow-hidden border border-white/40">
             {isLoading && tableData.length === 0 ? ( 
               <div className="flex items-center justify-center py-12">
-                <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+                <Loader2 role="status" aria-label="Loading" className="h-8 w-8 animate-spin text-gray-400" />
               </div>
             ) : (
               <Table>

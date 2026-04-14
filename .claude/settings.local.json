@@ -1,0 +1,26 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run:*)",
+      "Bash(find /e/Projects/Taxshila-Companion/src/app/api -type f -name \"route.ts\" -exec grep -l \"catch\" {} \\\\;)",
+      "Bash(find /e/Projects/Taxshila-Companion/src -type f \\\\\\( -name \"*.ts\" -o -name \"*.tsx\" \\\\\\) -not -path \"*/node_modules/*\" ! -path \"*/.next/*\" -exec wc -l {} +)",
+      "Bash(wc:*)",
+      "Bash(find /e/Projects/Taxshila-Companion/src/components -type f \\\\\\( -name \"*.tsx\" -o -name \"*.ts\" \\\\\\) -exec wc -l {} +)",
+      "Bash(find /e/Projects/Taxshila-Companion/src/app/api -type f -name \"*.ts\" -exec wc -l {} +)",
+      "Bash(npx tsc:*)",
+      "Bash(xargs grep:*)",
+      "Bash(echo \"Exit code: $?\")",
+      "Bash(sed:*)",
+      "Bash(cat src/lib/median-logger.tsx)",
+      "Bash(cat src/lib/median-logger.ts)",
+      "Bash(sed -i 's/`Failed to delete database records: \\\\${dbError\\\\.message}`/`Failed to delete database records: ${dbError instanceof Error ? dbError.message : String\\(dbError\\)}`/' src/app/api/admin/delete-student/route.ts)",
+      "Bash(sed -i 's/e\\\\.code/\\(e as {code?: string}\\).code/g' src/app/api/admin/migrate-users/route.ts)",
+      "Bash(sed -i 's/userError\\\\.message/\\(userError instanceof Error ? userError.message : String\\(userError\\)\\)/g' src/app/api/admin/migrate-users/route.ts)",
+      "Bash(npx next:*)",
+      "Bash(npm install:*)",
+      "Bash(node -e \"require\\('@tanstack/react-virtual'\\)\")",
+      "Bash(grep -n \"recordStudentPayment\\\\|numberOfMonthsPaid\\\\|paymentMethod\" /e/Projects/Taxshila-Companion/src/app/admin/students/edit/[studentId]/page.tsx)",
+      "Bash(grep -n \"Mark as Paid\\\\|payment\\\\|RadioGroup.*Cash\" /e/Projects/Taxshila-Companion/src/app/admin/students/edit/[studentId]/page.tsx)"
+    ]
+  }
+}

@@ -2,6 +2,7 @@
 "use client";
 
 import * as React from 'react';
+import { isReviewerUser } from '@/lib/auth-utils';
 import { PageTitle } from '@/components/shared/page-title';
 import { Button } from "@/components/ui/button";
 import {
@@ -136,7 +137,7 @@ function StudentSelectionDialog({ students, onSelectStudents, isLoading, onClose
         <div className="max-h-[60vh] overflow-y-auto border rounded-md">
           {isLoading ? (
             <div className="flex justify-center items-center h-48">
-              <Loader2 className="h-8 w-8 animate-spin" />
+              <Loader2 role="status" aria-label="Loading" className="h-8 w-8 animate-spin" />
             </div>
           ) : (
             <Table>
@@ -195,7 +196,7 @@ export default function AdminSendAlertPage() {
   const [isLoadingStudents, setIsLoadingStudents] = React.useState(true);
   const [isStudentDialogOpen, setIsStudentDialogOpen] = React.useState(false);
 
-  const isReviewer = user?.email === 'guest-admin@taxshila-auth.com';
+  const isReviewer = isReviewerUser(user?.email);
 
   const form = useForm<AlertFormValues>({
     resolver: zodResolver(alertFormSchema),
@@ -474,7 +475,7 @@ export default function AdminSendAlertPage() {
                 </Button>
               ) : (
                 <Button type="submit" className="w-full sm:w-auto" disabled={isSending || !form.formState.isValid}>
-                  {isSending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
+                  {isSending ? <Loader2 aria-hidden="true" className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
                   {isSending ? "Sending..." : "Send Alert"}
                 </Button>
               )}

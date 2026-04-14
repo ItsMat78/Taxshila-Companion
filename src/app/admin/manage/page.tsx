@@ -2,6 +2,7 @@
 "use client";
 
 import * as React from 'react';
+import { isReviewerUser } from '@/lib/auth-utils';
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -54,7 +55,7 @@ export default function AdminManagementPage() {
     const [newAdminEmail, setNewAdminEmail] = React.useState("");
     const [newAdminPassword, setNewAdminPassword] = React.useState("");
 
-    const isReviewer = user?.email === 'guest-admin@taxshila-auth.com';
+    const isReviewer = isReviewerUser(user?.email);
 
     const getAuthToken = async (): Promise<string | null> => {
         const currentUser = auth.currentUser;
@@ -81,8 +82,8 @@ export default function AdminManagementPage() {
             }
             const data = await response.json();
             setAdmins(data.admins);
-        } catch (error: any) {
-            toast({ title: "Error", description: error.message, variant: "destructive" });
+        } catch (error: unknown) {
+            toast({ title: "Error", description: (error instanceof Error ? error.message : String(error)), variant: "destructive" });
         } finally {
             setIsLoading(false);
         }
@@ -121,8 +122,8 @@ export default function AdminManagementPage() {
             setNewAdminEmail("");
             setNewAdminPassword("");
             fetchAdmins(); // Refresh the list
-        } catch (error: any) {
-            toast({ title: "Failed to Add Admin", description: error.message, variant: "destructive" });
+        } catch (error: unknown) {
+            toast({ title: "Failed to Add Admin", description: (error instanceof Error ? error.message : String(error)), variant: "destructive" });
         } finally {
             setIsSubmitting(false);
         }
@@ -149,8 +150,8 @@ export default function AdminManagementPage() {
             if (!response.ok) throw new Error(result.error);
             toast({ title: "Admin Removed", description: `${name} has been removed.` });
             fetchAdmins(); // Refresh the list
-        } catch (error: any) {
-            toast({ title: "Failed to Remove Admin", description: error.message, variant: "destructive" });
+        } catch (error: unknown) {
+            toast({ title: "Failed to Remove Admin", description: (error instanceof Error ? error.message : String(error)), variant: "destructive" });
         }
     };
 
@@ -178,7 +179,7 @@ export default function AdminManagementPage() {
                                 <Input id="password" type="password" value={newAdminPassword} onChange={(e) => setNewAdminPassword(e.target.value)} placeholder="Min. 6 characters" required disabled={isSubmitting || isReviewer}/>
                             </div>
                             <Button type="submit" disabled={isSubmitting || !user || isReviewer}>
-                                {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UserPlus className="mr-2 h-4 w-4" />}
+                                {isSubmitting ? <Loader2 aria-hidden="true" className="mr-2 h-4 w-4 animate-spin" /> : <UserPlus className="mr-2 h-4 w-4" />}
                                 Add Admin
                             </Button>
                         </form>
@@ -193,7 +194,7 @@ export default function AdminManagementPage() {
                     <CardContent>
                         {isLoading ? (
                             <div className="flex justify-center items-center h-24">
-                                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                                <Loader2 role="status" aria-label="Loading" className="h-8 w-8 animate-spin text-muted-foreground" />
                             </div>
                         ) : (
                             <Table>

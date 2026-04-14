@@ -186,17 +186,17 @@ export default function MemberAlertsPage() {
   };
 
   const getAlertInfo = (alert: AlertItem): {
-    mainIcon: JSX.Element;
+    mainIcon: React.ReactElement<{ className?: string }>;
     cardClasses: string;
     titleClasses: string;
     badgeColorClass: string;
     badgeLabel: string;
-    badgeIconElement: JSX.Element;
+    badgeIconElement: React.ReactElement<{ className?: string }>;
   } => {
     let cardClasses = "shadow-md hover:shadow-lg transition-shadow cursor-pointer";
     let titleClasses = "text-lg";
-    let mainIcon: JSX.Element;
-    let badgeIconElement: JSX.Element;
+    let mainIcon: React.ReactElement<{ className?: string }>;
+    let badgeIconElement: React.ReactElement<{ className?: string }>;
     let badgeColorClass: string;
     let badgeLabel: string;
 
@@ -246,7 +246,7 @@ export default function MemberAlertsPage() {
       <>
         <PageTitle title="Notifications & Alerts" description="Loading your latest updates..." />
         <div className="flex items-center justify-center py-10">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <Loader2 role="status" aria-label="Loading" className="h-8 w-8 animate-spin text-primary" />
           <p className="ml-2 text-muted-foreground">Loading alerts...</p>
         </div>
       </>
@@ -264,7 +264,7 @@ export default function MemberAlertsPage() {
             disabled={isMarkingAllRead || isLoading}
           >
             {isMarkingAllRead ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              <Loader2 aria-hidden="true" className="mr-2 h-4 w-4 animate-spin" />
             ) : (
               <ClipboardCheck className="mr-2 h-4 w-4" />
             )}

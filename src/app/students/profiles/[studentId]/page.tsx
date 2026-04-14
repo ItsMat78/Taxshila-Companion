@@ -22,23 +22,34 @@ import { Calendar } from "@/components/ui/calendar";
 import { getStudentById, getAttendanceForDate, getAttendanceForDateRange } from '@/services/student-service';
 import type { Student, PaymentRecord, AttendanceRecord, Shift } from '@/types/student';
 import { format, parseISO, isValid, differenceInMilliseconds, startOfMonth, endOfMonth, eachDayOfInterval, addMonths, subMonths, isAfter, isToday, getDay, startOfWeek, endOfWeek, isSameMonth } from 'date-fns';
+
+function formatPeriod(prev?: string, next?: string): string {
+  const fmtDate = (d?: string) =>
+    d && isValid(parseISO(d)) ? format(parseISO(d), 'dd MMM') : null;
+  const p = fmtDate(prev);
+  const n = fmtDate(next);
+  if (!p && !n) return '—';
+  if (!p) return `? → ${n}`;
+  if (!n) return `${p} → ?`;
+  return `${p} → ${n}`;
+}
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { BarChart, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Bar } from 'recharts';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
 
-const DEFAULT_PROFILE_PLACEHOLDER = "https://placehold.co/100x100.png";
-const ID_CARD_PLACEHOLDER = "https://placehold.co/300x200.png?text=ID+Card";
+const DEFAULT_PROFILE_PLACEHOLDER = "/logo.png";
+const ID_CARD_PLACEHOLDER = "/logo.png";
 
 
-const ChartTooltipContent = ({ active, payload, label }: any) => {
+const ChartTooltipContent = ({ active, payload, label }: { active?: boolean; payload?: Array<{ value: number; name: string }>; label?: string }) => {
     if (active && payload && payload.length) {
         const hours = payload[0].value;
         const minutes = Math.round((hours % 1) * 60);
         return (
             <div className="p-2 bg-popover text-popover-foreground border rounded-md shadow-md text-sm">
-                <p className="font-semibold">{format(parseISO(label), 'PP')}</p>
+                <p className="font-semibold">{label ? format(parseISO(label), 'PP') : ''}</p>
                 <p>
                     {payload[0].name}: {Math.floor(hours)} hr {minutes} min
                 </p>
@@ -129,6 +140,7 @@ const PaymentHistoryCardItem = ({ payment }: { payment: PaymentRecord }) => (
     </div>
     <div className="text-xs text-muted-foreground space-y-1">
       <p>Date: {payment.date && isValid(parseISO(payment.date)) ? format(parseISO(payment.date), 'dd-MMM-yy') : 'N/A'}</p>
+      <p>Period: {formatPeriod(payment.previousDueDate, payment.newDueDate)}</p>
       <p>Transaction ID: {payment.transactionId}</p>
     </div>
     <div className="mt-2">
@@ -330,7 +342,7 @@ export default function StudentDetailPage() {
   if (isLoading && !student) {
     return (
       <div className="flex flex-col items-center justify-center h-full py-10">
-        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+        <Loader2 role="status" aria-label="Loading" className="h-12 w-12 animate-spin text-primary" />
         <p className="mt-4 text-muted-foreground">Loading student details...</p>
       </div>
     );
@@ -399,6 +411,7 @@ export default function StudentDetailPage() {
                             alt="Profile Picture Full View"
                             width={500}
                             height={500}
+                            sizes="(max-width: 640px) 90vw, 500px"
                             className="rounded-md object-contain max-h-[80vh] w-full h-auto"
                         />
                     </DialogContent>
@@ -483,6 +496,7 @@ export default function StudentDetailPage() {
                       <TableRow>
                         <TableHead>Date</TableHead>
                         <TableHead>Amount</TableHead>
+                        <TableHead>Period</TableHead>
                         <TableHead>Method</TableHead>
                         <TableHead>Transaction ID</TableHead>
                         <TableHead>Action</TableHead>
@@ -493,6 +507,7 @@ export default function StudentDetailPage() {
                         <TableRow key={payment.paymentId}>
                           <TableCell className="whitespace-nowrap">{payment.date && isValid(parseISO(payment.date)) ? format(parseISO(payment.date), 'dd-MMM-yy') : 'N/A'}</TableCell>
                           <TableCell className="whitespace-nowrap">{payment.amount}</TableCell>
+                          <TableCell className="whitespace-nowrap">{formatPeriod(payment.previousDueDate, payment.newDueDate)}</TableCell>
                           <TableCell className="capitalize whitespace-nowrap">{payment.method}</TableCell>
                           <TableCell className="whitespace-nowrap">{payment.transactionId}</TableCell>
                            <TableCell className="whitespace-nowrap">
@@ -545,7 +560,7 @@ export default function StudentDetailPage() {
                 </div>
             ) : isLoadingMonthlyStudyData ? (
                 <div className="flex items-center justify-center h-[300px]">
-                    <Loader2 className="h-8 w-8 animate-spin text-primary"/>
+                    <Loader2 role="status" aria-label="Loading" className="h-8 w-8 animate-spin text-primary"/>
                 </div>
             ) : (
                 (monthlyStudyData.length > 0 && monthlyStudyData.some(d => d.hours > 0)) ? (
@@ -616,7 +631,7 @@ export default function StudentDetailPage() {
                   </h4>
                   {isLoadingDailyAttendance ? (
                     <div className="flex items-center justify-center text-muted-foreground py-4">
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading details...
+                      <Loader2 aria-hidden="true" className="mr-2 h-4 w-4 animate-spin" /> Loading details...
                     </div>
                   ) : dailyAttendanceRecords.length === 0 ? (
                     <p className="text-muted-foreground py-4">No attendance records found for this day.</p>

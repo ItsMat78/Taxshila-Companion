@@ -33,7 +33,6 @@ interface NotificationPayload {
 async function cleanupInvalidOneSignalIds(invalidIds: string[]) {
   if (!invalidIds || invalidIds.length === 0) return;
 
-  console.log(`[Notification Service] 🧹 Cleaning up ${invalidIds.length} invalid OneSignal IDs...`);
   const db = getDb();
 
   // We process each ID individually to ensure we find the correct user owner
@@ -50,7 +49,6 @@ async function cleanupInvalidOneSignalIds(invalidIds: string[]) {
           doc.ref.update({
             oneSignalPlayerIds: FieldValue.arrayRemove(invalidId)
           });
-          console.log(`[Notification Service] Removed dead ID ${invalidId} from Student ${doc.id}`);
         });
         return; // Found in students, stop looking
       }
@@ -65,7 +63,6 @@ async function cleanupInvalidOneSignalIds(invalidIds: string[]) {
           doc.ref.update({
             oneSignalPlayerIds: FieldValue.arrayRemove(invalidId)
           });
-          console.log(`[Notification Service] Removed dead ID ${invalidId} from Admin ${doc.id}`);
         });
       }
       
@@ -100,7 +97,6 @@ async function sendFcmBatch(tokens: string[], payload: NotificationPayload) {
           fcmOptions: { link: payload.click_action || DEFAULT_LINK },
         },
       });
-      console.log(`[Notification Service] FCM batch sent to ${tokenChunk.length} devices.`);
     } catch (error) {
       console.error('[Notification Service] FCM Batch Error:', error);
     }
@@ -159,7 +155,7 @@ async function sendOneSignalBatch(playerIds: string[], payload: NotificationPayl
       if (!response.ok) {
         console.error('[Notification Service] OneSignal API Error:', responseData);
       } else {
-        console.log(`[Notification Service] OneSignal batch sent. Recipients: ${responseData.recipients}`);
+
       }
     } catch (error) {
       console.error('[Notification Service] OneSignal Fetch Error:', error);
@@ -172,7 +168,6 @@ async function sendOneSignalBatch(playerIds: string[], payload: NotificationPayl
 // ==========================================
 
 export async function sendNotificationToStudent(studentId: string, payload: NotificationPayload): Promise<void> {
-  // console.log(`[Notification Service] Sending to student: ${studentId}`);
   const student = await getStudentByCustomId(studentId);
   
   if (!student) {
@@ -187,7 +182,6 @@ export async function sendNotificationToStudent(studentId: string, payload: Noti
 }
 
 export async function sendNotificationToAllAdmins(payload: NotificationPayload): Promise<void> {
-  // console.log('[Notification Service] Sending to all admins.');
   const db = getDb();
   const adminsSnapshot = await db.collection('admins').get();
   
@@ -209,8 +203,6 @@ export async function sendNotificationToAllAdmins(payload: NotificationPayload):
 }
 
 export async function sendNotificationToAllStudents(payload: NotificationPayload): Promise<void> {
-  console.log(`[Notification Service] Sending general alert to ALL students.`);
-  
   const allStudents = await getAllStudents();
   const activeStudents = allStudents.filter(s => s.activityStatus === 'Active');
   
@@ -222,8 +214,6 @@ export async function sendNotificationToAllStudents(payload: NotificationPayload
   const allFcmTokens = activeStudents.flatMap(s => s.fcmTokens || []);
   const allOneSignalIds = activeStudents.flatMap(s => s.oneSignalPlayerIds || []);
 
-  console.log(`[Notification Service] Targets: ${allFcmTokens.length} FCM, ${allOneSignalIds.length} OneSignal.`);
-
   await Promise.all([
     sendFcmBatch(allFcmTokens, payload),
     sendOneSignalBatch(allOneSignalIds, payload)
@@ -231,8 +221,6 @@ export async function sendNotificationToAllStudents(payload: NotificationPayload
 }
 
 export async function triggerAlertNotification(alert: AlertItem): Promise<void> {
-  console.log(`[Notification Service] Trigger: Alert ${alert.id}`);
-  
   const payload: NotificationPayload = {
     title: alert.title,
     body: alert.message,

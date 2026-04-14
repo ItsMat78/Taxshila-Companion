@@ -2,6 +2,7 @@
 "use client";
 
 import * as React from 'react';
+import { isReviewerUser } from '@/lib/auth-utils';
 import { PageTitle } from '@/components/shared/page-title';
 import { Button } from "@/components/ui/button";
 import {
@@ -59,7 +60,7 @@ export default function WifiManagementPage() {
     const [wifiConfigs, setWifiConfigs] = React.useState<WifiConfig[]>([]);
     const [editingConfig, setEditingConfig] = React.useState<WifiConfig | null>(null);
 
-    const isReviewer = user?.email === 'guest-admin@taxshila-auth.com';
+    const isReviewer = isReviewerUser(user?.email);
 
     const form = useForm<WifiFormValues>({
         resolver: zodResolver(wifiFormSchema),
@@ -137,10 +138,10 @@ export default function WifiManagementPage() {
             });
             setEditingConfig(null);
             await fetchWifiConfigs();
-        } catch (error: any) {
+        } catch (error: unknown) {
             toast({
                 title: "Update Failed",
-                description: error.message || "Could not save WiFi settings.",
+                description: (error instanceof Error ? error.message : String(error)) || "Could not save WiFi settings.",
                 variant: "destructive",
             });
         } finally {
@@ -165,8 +166,8 @@ export default function WifiManagementPage() {
                 description: "The WiFi network has been deleted.",
             });
             await fetchWifiConfigs();
-        } catch (error: any) {
-            toast({ title: "Deletion Failed", description: error.message, variant: "destructive" });
+        } catch (error: unknown) {
+            toast({ title: "Deletion Failed", description: (error instanceof Error ? error.message : String(error)), variant: "destructive" });
         } finally {
             setIsSaving(false);
         }
@@ -287,7 +288,7 @@ export default function WifiManagementPage() {
                     </CardContent>
                     <CardFooter className="flex justify-between">
                     <Button type="submit" disabled={isSaving || isReviewer}>
-                        {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                        {isSaving ? <Loader2 aria-hidden="true" className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                         {editingConfig ? 'Save Changes' : 'Add Network'}
                     </Button>
                     {editingConfig && (

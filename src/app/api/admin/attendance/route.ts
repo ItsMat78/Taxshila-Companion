@@ -1,3 +1,3 @@
 
-// This file is now empty and ready for deletion. 
-// The logic has been moved directly into the server-side rendering of the attendance calendar page.
+// This route has been superseded — logic lives in the attendance calendar page.
+export {};

@@ -2,6 +2,7 @@
 // src/app/api/admin/verify-and-set-claim/route.ts
 import { NextResponse } from 'next/server';
 import { getAuth, getDb } from '@/lib/firebase-admin';
+import { getVerifiedToken, isReviewerToken } from '@/lib/api-auth';
 
 // Helper to verify the token of the user making the request
 async function getVerifiedUid(request: Request): Promise<string | null> {
@@ -22,6 +23,11 @@ async function getVerifiedUid(request: Request): Promise<string | null> {
 // This endpoint is called by an admin right after they log in.
 // It verifies their status and sets a custom claim if needed.
 export async function POST(request: Request) {
+    const token = await getVerifiedToken(request);
+    if (isReviewerToken(token)) {
+      return NextResponse.json({ error: 'Action not permitted in reviewer mode.' }, { status: 403 });
+    }
+
     try {
         const uid = await getVerifiedUid(request);
         if (!uid) {
@@ -49,7 +55,7 @@ export async function POST(request: Request) {
             return NextResponse.json({ success: false, error: 'User is not registered as an admin.' }, { status: 403 });
         }
 
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Verify and Set Claim API Error:", error);
         return NextResponse.json({ success: false, error: "An unexpected server error occurred." }, { status: 500 });
     }

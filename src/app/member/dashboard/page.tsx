@@ -3,7 +3,7 @@
 
 import * as React from 'react';
 import Link from 'next/link';
-import { PageTitle } from '@/components/shared/page-title';
+import { ErrorBoundary } from '@/components/shared/error-boundary';
 import { Card, CardContent, CardHeader, CardTitle as ShadcnCardTitle, CardDescription as ShadcnCardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
@@ -26,21 +26,19 @@ import {
 import { Alert, AlertDescription, AlertTitle as ShadcnAlertTitle } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/auth-context';
-import { Camera, QrCode, Receipt, IndianRupee, MessageSquare, Bell, ScrollText, Star, Loader2, XCircle, Home, BarChart3, PlayCircle, CheckCircle, Hourglass, ScanLine, LogOut, AlertCircle, X, Eye, RefreshCw, View, Wifi, Copy } from 'lucide-react';
+import { Camera, IndianRupee, MessageSquare, Bell, ScrollText, Star, Loader2, XCircle, BarChart3, PlayCircle, ScanLine, LogOut, AlertCircle, X, RefreshCw, Wifi, Copy } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { getStudentByEmail, getAlertsForStudent, addCheckIn, addCheckOut, getActiveCheckIn, getAttendanceForDate, getStudentByCustomId, getWifiConfiguration } from '@/services/student-service';
+import { getStudentByEmail, getAlertsForStudent, addCheckIn, addCheckOut, getAttendanceForDate, getStudentByCustomId, getWifiConfiguration, subscribeToActiveCheckIn } from '@/services/student-service';
 import type { AlertItem } from '@/types/communication';
 import type { Student, AttendanceRecord, FeeStatus, Shift, WifiConfig } from '@/types/student';
 import { format, parseISO, differenceInMilliseconds, isValid, differenceInMinutes, differenceInHours } from 'date-fns';
-import { Html5QrcodeScanner, Html5QrcodeSupportedFormats, Html5QrcodeScanType } from 'html5-qrcode';
 import { setupPushNotifications } from '@/lib/notification-setup';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { getInitials } from '@/lib/utils';
-import NextImage from 'next/image';
 
 const DASHBOARD_QR_SCANNER_ELEMENT_ID = "qr-reader-dashboard";
 const LIBRARY_QR_CODE_PAYLOAD = "TAXSHILA_LIBRARY_CHECKIN_QR_V1";
-const DEFAULT_PROFILE_PLACEHOLDER = "https://placehold.co/400x400.png";
+const DEFAULT_PROFILE_PLACEHOLDER = "/logo.png";
 
 type DashboardTileProps = {
   title: string;
@@ -59,7 +57,7 @@ type DashboardTileProps = {
   children?: React.ReactNode; // Added children prop
 };
 
-const DashboardTile: React.FC<DashboardTileProps> = ({ 
+const DashboardTile: React.FC<DashboardTileProps> = React.memo(({
   title,
   description,
   statistic,
@@ -77,17 +75,17 @@ const DashboardTile: React.FC<DashboardTileProps> = ({
 }) => {
   const content = (
     <Card className={cn(
-      "shadow-lg h-full flex flex-col transition-all",
-      isPrimaryAction 
-        ? 'bg-gradient-to-br from-indigo-600 to-blue-700 text-white border-transparent' 
+      "shadow-sm h-full flex flex-col transition-all rounded-md",
+      isPrimaryAction
+        ? 'bg-gradient-to-br from-indigo-600 to-blue-700 text-white border-transparent'
         : 'bg-white/40 dark:bg-black/30 backdrop-blur-xl border-white/60 dark:border-white/10 text-gray-800 dark:text-gray-200',
-      !disabled && "hover:shadow-2xl active:scale-[0.98]",
+      !disabled && "hover:shadow-md active:scale-[0.98]",
       disabled ? 'opacity-50 cursor-not-allowed bg-black/10 dark:bg-white/5' : (!isPrimaryAction && 'hover:bg-white/50 dark:hover:bg-black/50'),
       className
     )}>
       <CardHeader className={cn(
         "relative",
-        isPrimaryAction ? "p-3 sm:p-4 pb-1 sm:pb-2" : "p-2 sm:p-3 pb-0 sm:pb-1"
+        isPrimaryAction ? "p-3 pb-1" : "p-3 pb-1"
       )}>
         {(hasNew || isUrgent) && (
           <span className={cn(
@@ -100,13 +98,13 @@ const DashboardTile: React.FC<DashboardTileProps> = ({
            isPrimaryAction ? "" : "flex-col text-center"
         )}>
           <Icon className={cn(
-            isPrimaryAction ? "h-5 w-5 sm:h-6 sm:w-6" : "h-5 w-5 sm:h-6 sm:w-6 mb-1",
+            isPrimaryAction ? "h-5 w-5" : "h-5 w-5 mb-0.5",
             isPrimaryAction && isLoadingStatistic && "animate-spin"
           )}
            />
           <ShadcnCardTitle className={cn(
             "break-words",
-            isPrimaryAction ? 'text-lg sm:text-xl font-bold text-white' : 'text-sm sm:text-base font-semibold',
+            isPrimaryAction ? 'text-base font-bold text-white' : 'text-sm font-semibold',
           )}>
             {title}
           </ShadcnCardTitle>
@@ -114,21 +112,21 @@ const DashboardTile: React.FC<DashboardTileProps> = ({
       </CardHeader>
       <CardContent className={cn(
         "flex-grow flex flex-col items-center justify-center",
-        isPrimaryAction ? "p-3 sm:p-4 pt-1 sm:pt-2" : "p-2 sm:p-3 pt-0 sm:pt-1"
+        isPrimaryAction ? "p-3 pt-1" : "p-3 pt-1"
       )}>
         {isLoadingStatistic && !isPrimaryAction ? (
-          <Loader2 className="h-6 w-6 sm:h-8 sm:w-8 animate-spin text-primary my-2" />
+          <Loader2 role="status" aria-label="Loading" className="h-6 w-6 sm:h-8 sm:w-8 animate-spin text-primary my-2" />
         ) : statistic !== null && statistic !== undefined ? (
           <>
             <div className={cn(
               "font-bold break-words",
-               isPrimaryAction ? 'text-xl sm:text-2xl text-white' : 'text-lg sm:text-xl text-foreground',
+               isPrimaryAction ? 'text-xl text-white' : 'text-lg text-foreground',
               isUrgent && !isPrimaryAction && 'text-destructive'
             )}>
               {statistic}
             </div>
             {description && <p className={cn(
-              "text-xs mt-1 break-words",
+              "text-xs mt-0.5 break-words",
               isPrimaryAction ? 'text-white/80' : 'text-muted-foreground text-center',
             )}>{description}</p>}
           </>
@@ -137,14 +135,14 @@ const DashboardTile: React.FC<DashboardTileProps> = ({
         ) : (
           description && <p className={cn(
             "break-words text-center",
-            isPrimaryAction ? 'text-sm text-white/80' : 'text-xs text-muted-foreground',
+            isPrimaryAction ? 'text-xs text-white/80' : 'text-xs text-muted-foreground',
           )}>{description}</p>
         )}
       </CardContent>
     </Card>
   );
 
-  const linkClasses = "block h-full no-underline focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-lg";
+  const linkClasses = "block h-full no-underline focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-md";
 
   if (href && !disabled) {
     return (
@@ -161,11 +159,12 @@ const DashboardTile: React.FC<DashboardTileProps> = ({
   }
 
   if (action && !disabled) {
-    return <button onClick={action} className={cn("block w-full h-full text-left", linkClasses, className)} disabled={disabled}>{content}</button>;
+    return <button onClick={action} className={cn("block w-full h-full text-left rounded-md", linkClasses, className)} disabled={disabled}>{content}</button>;
   }
 
   return <div className={cn(className, disabled ? 'cursor-not-allowed' : '')}>{content}</div>;
-};
+});
+DashboardTile.displayName = 'DashboardTile';
 
 function NotificationPrompt({ onDismiss }: { onDismiss: () => void }) {
   const { user } = useAuth();
@@ -212,13 +211,31 @@ const motivationalQuotes = [
 ];
 
 
+const CheckInTimer = React.memo(({ checkInTime }: { checkInTime: string }) => {
+  const [elapsed, setElapsed] = React.useState<string | null>(null);
+  React.useEffect(() => {
+    const updateElapsedTime = () => {
+      const now = new Date();
+      const time = parseISO(checkInTime);
+      const hours = differenceInHours(now, time);
+      const minutes = differenceInMinutes(now, time) % 60;
+      setElapsed(`${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`);
+    };
+    updateElapsedTime();
+    const id = setInterval(updateElapsedTime, 30000);
+    return () => clearInterval(id);
+  }, [checkInTime]);
+  return <span>{elapsed ?? '--:--'}</span>;
+});
+CheckInTimer.displayName = 'CheckInTimer';
+
 export default function MemberDashboardPage() {
   const { user, logout } = useAuth();
   const { toast } = useToast();
   const [isScannerOpen, setIsScannerOpen] = React.useState(false);
   const [hasCameraPermission, setHasCameraPermission] = React.useState<boolean | null>(null);
   const [isProcessingQr, setIsProcessingQr] = React.useState(false);
-  const html5QrcodeScannerRef = React.useRef<Html5QrcodeScanner | null>(null);
+  const html5QrcodeScannerRef = React.useRef<any>(null);
 
   const [wifiConfig, setWifiConfig] = React.useState<WifiConfig[]>([]);
   const [isLoadingWifi, setIsLoadingWifi] = React.useState(false);
@@ -237,7 +254,6 @@ export default function MemberDashboardPage() {
   const [studentFeeStatus, setStudentFeeStatus] = React.useState<FeeStatus | null>(null);
   const [studentNextDueDate, setStudentNextDueDate] = React.useState<string | null>(null);
   const [isOverdueDialogOpen, setIsOverdueDialogOpen] = React.useState(false);
-  const [elapsedTime, setElapsedTime] = React.useState<string | null>(null);
   const [showNotificationPrompt, setShowNotificationPrompt] = React.useState(false);
   const [isRefreshing, setIsRefreshing] = React.useState(false);
 
@@ -302,30 +318,25 @@ export default function MemberDashboardPage() {
           setStudentFeeStatus(studentDetails.feeStatus);
           setStudentNextDueDate(studentDetails.nextDueDate || null);
 
-          const [
-            alerts,
-            activeCheckInData,
-          ] = await Promise.all([
-            getAlertsForStudent(studentDetails.studentId),
-            getActiveCheckIn(studentDetails.studentId),
-          ]);
+          // Phase 1 complete — render name, fee status, and tiles immediately.
+          // Check-in status is handled by a separate onSnapshot listener (see useEffect below).
+          setIsLoadingStudentData(false);
 
+          const alerts = await getAlertsForStudent(studentDetails.studentId);
           setHasUnreadAlerts(alerts.some(alert => !alert.isRead));
-          setActiveCheckInRecord(activeCheckInData || null);
 
         } else {
             toast({ title: "Error", description: "Could not find your student record.", variant: "destructive" });
         }
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error("Detailed error fetching dashboard data:", error);
-        toast({ title: "Error", description: error.message || "Could not load all dashboard information.", variant: "destructive" });
+        toast({ title: "Error", description: (error instanceof Error ? error.message : String(error)) || "Could not load all dashboard information.", variant: "destructive" });
       } finally {
         setIsLoadingStudentData(false);
-        setIsLoadingCurrentSession(false);
         if (isManualRefresh) setIsRefreshing(false);
         if (!studentDetailsFetchedSuccessfully) {
             setStudentFirstName(null); setStudentId(null);
-            setHasUnreadAlerts(false); setActiveCheckInRecord(null);
+            setHasUnreadAlerts(false);
             setStudentFeeStatus(null); setStudentNextDueDate(null);
             setCurrentStudent(null);
         }
@@ -361,31 +372,17 @@ export default function MemberDashboardPage() {
     return () => clearInterval(intervalId);
   }, [user]); // Re-run only when user object changes
 
-  // This effect updates the displayed time string
-   React.useEffect(() => {
-    let timerId: NodeJS.Timeout | null = null;
-    if (activeCheckInRecord?.checkInTime && isValid(parseISO(activeCheckInRecord.checkInTime))) {
-      const updateElapsedTime = () => {
-        const now = new Date();
-        const checkInTime = parseISO(activeCheckInRecord.checkInTime);
-        const hours = differenceInHours(now, checkInTime);
-        const minutes = differenceInMinutes(now, checkInTime) % 60;
-        setElapsedTime(`${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`);
-      };
-      
-      updateElapsedTime();
-      timerId = setInterval(updateElapsedTime, 30000); // Update every 30 seconds
-    } else {
-      setElapsedTime(null);
-    }
-
-    return () => {
-      if (timerId) {
-        clearInterval(timerId);
-      }
-    };
-  }, [activeCheckInRecord, isRefreshing]); // Re-run when activeCheckInRecord or refresh state changes
-
+  // Real-time listener for check-in status — updates instantly when the student
+  // checks in or out from any device, replacing the previous polled approach.
+  React.useEffect(() => {
+    if (!studentId) return;
+    setIsLoadingCurrentSession(true);
+    const unsubscribe = subscribeToActiveCheckIn(studentId, (record) => {
+      setActiveCheckInRecord(record);
+      setIsLoadingCurrentSession(false);
+    });
+    return unsubscribe;
+  }, [studentId]);
 
   const handleCloseScanner = React.useCallback(async () => {
     if (html5QrcodeScannerRef.current && typeof html5QrcodeScannerRef.current.clear === 'function') {
@@ -407,6 +404,7 @@ export default function MemberDashboardPage() {
     let timeoutId: NodeJS.Timeout;
     if (isScannerOpen && studentId) {
       timeoutId = setTimeout(async () => {
+        const { Html5QrcodeScanner, Html5QrcodeSupportedFormats, Html5QrcodeScanType } = await import('html5-qrcode');
         const scannerElement = document.getElementById(DASHBOARD_QR_SCANNER_ELEMENT_ID);
         if (!scannerElement) {
           console.warn("Dashboard QR scanner element not found after delay. Dialog might not be fully rendered yet.");
@@ -421,7 +419,7 @@ export default function MemberDashboardPage() {
                 if (html5QrcodeScannerRef.current.getState() !== 0) {
                     await html5QrcodeScannerRef.current.clear();
                 }
-             } catch(e) { console.warn("Pre-clear failed:", e)}
+             } catch(e) { /* scanner pre-clear failed, non-critical */ }
              finally { html5QrcodeScannerRef.current = null; }
           }
         }
@@ -444,14 +442,14 @@ export default function MemberDashboardPage() {
         const scanner = new Html5QrcodeScanner(DASHBOARD_QR_SCANNER_ELEMENT_ID, config, false);
         html5QrcodeScannerRef.current = scanner;
 
-        const onScanSuccess = async (decodedText: string, decodedResult: any) => {
+        const onScanSuccess = async (decodedText: string, _decodedResult: unknown) => {
           if (isProcessingQr) return;
           setIsProcessingQr(true);
 
           if (html5QrcodeScannerRef.current && html5QrcodeScannerRef.current.getState() === 2 /* PAUSED */) {
           } else if (html5QrcodeScannerRef.current) {
               try { await html5QrcodeScannerRef.current.pause(true); }
-              catch(e) { console.warn("Scanner pause error", e); }
+              catch(e) { /* scanner pause failed, non-critical */ }
           }
 
           if (decodedText === LIBRARY_QR_CODE_PAYLOAD) {
@@ -463,9 +461,9 @@ export default function MemberDashboardPage() {
               } else {
                   toast({ title: "Error", description: "Student ID not available for scan processing.", variant: "destructive"});
               }
-            } catch (error: any) {
+            } catch (error: unknown) {
               console.error("Detailed error during scan processing (Dashboard):", error);
-              toast({ title: "Scan Error", description: error.message || "Failed to process attendance. Please try again.", variant: "destructive" });
+              toast({ title: "Scan Error", description: (error instanceof Error ? error.message : String(error)) || "Failed to process attendance. Please try again.", variant: "destructive" });
             }
           } else {
             toast({ title: "Invalid QR Code", description: "Please scan the official library QR code.", variant: "destructive" });
@@ -475,7 +473,7 @@ export default function MemberDashboardPage() {
                   if (html5QrcodeScannerRef.current.getState() === 2 /* PAUSED */) {
                      html5QrcodeScannerRef.current.resume();
                   }
-                } catch(e) { console.warn("Scanner resume error", e); }
+                } catch(e) { /* scanner resume failed, non-critical */ }
               }
             }, 1000);
           }
@@ -493,8 +491,8 @@ export default function MemberDashboardPage() {
           setIsScannerOpen(false);
         };
 
-        const onScanFailure = async (errorPayload: any) => {
-          let errorMessage = typeof errorPayload === 'string' ? errorPayload : (errorPayload?.message || JSON.stringify(errorPayload));
+        const onScanFailure = async (errorPayload: unknown) => {
+          let errorMessage = typeof errorPayload === 'string' ? errorPayload : ((errorPayload as { message?: string })?.message || JSON.stringify(errorPayload));
           const errorMsgLower = errorMessage.toLowerCase();
 
           if (!errorMsgLower.includes("no qr code found")) {
@@ -520,10 +518,10 @@ export default function MemberDashboardPage() {
         try {
           scanner.render(onScanSuccess, onScanFailure);
           setHasCameraPermission(true);
-        } catch (err: any) {
+        } catch (err: unknown) {
               console.error("Error rendering scanner (Dashboard - render call failed):", err);
               setHasCameraPermission(false);
-              toast({ variant: 'destructive', title: 'Camera Initialization Error', description: err.message || 'Could not initialize camera for QR scanning.'});
+              toast({ variant: 'destructive', title: 'Camera Initialization Error', description: (err instanceof Error ? err.message : String(err)) || 'Could not initialize camera for QR scanning.'});
               await handleCloseScanner();
         }
       }, 100);
@@ -533,7 +531,7 @@ export default function MemberDashboardPage() {
         if (html5QrcodeScannerRef.current && typeof html5QrcodeScannerRef.current.clear === 'function') {
             if (html5QrcodeScannerRef.current.getState() !== 0) {
                 html5QrcodeScannerRef.current.clear()
-                  .catch((err) => console.warn("Cleanup: Error clearing scanner (Dashboard):", err))
+                  .catch((err: unknown) => console.warn("Cleanup: Error clearing scanner (Dashboard):", err))
                   .finally(() => { html5QrcodeScannerRef.current = null; });
             } else {
                  html5QrcodeScannerRef.current = null;
@@ -576,9 +574,9 @@ export default function MemberDashboardPage() {
         description: `Successfully checked out at ${new Date().toLocaleTimeString()}.`,
       });
       await fetchAllDashboardData();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error during dashboard check-out:", error);
-      toast({ title: "Check-out Error", description: error.message || "Failed to process check-out. Please try again.", variant: "destructive" });
+      toast({ title: "Check-out Error", description: (error instanceof Error ? error.message : String(error)) || "Failed to process check-out. Please try again.", variant: "destructive" });
     } finally {
       setIsProcessingCheckout(false);
     }
@@ -602,11 +600,11 @@ export default function MemberDashboardPage() {
     });
   };
 
-  const generateCoreActionTiles = (): DashboardTileProps[] => {
+  const coreActionTiles = React.useMemo((): DashboardTileProps[] => {
     let payFeesTileDesc = "Settle your outstanding dues.";
     let payFeesIsUrgent = false;
     let payFeesClass = "";
-    
+
     if (isLoadingStudentData) {
       payFeesTileDesc = "Loading fee status...";
     } else if (studentId) {
@@ -667,9 +665,7 @@ export default function MemberDashboardPage() {
         disabled: !studentId,
       },
     ];
-  };
-
-  const coreActionTiles = generateCoreActionTiles();
+  }, [isLoadingStudentData, studentId, studentFeeStatus, studentNextDueDate, hasUnreadAlerts]);
 
   const defaultWelcomeName = user?.email?.split('@')[0] || 'Member';
   const pageTitleText = isLoadingStudentData && !studentFirstName
@@ -689,8 +685,9 @@ export default function MemberDashboardPage() {
 
 
   return (
-    <>
-      <div className="mb-6 flex flex-row items-center justify-between gap-4">
+    <ErrorBoundary>
+      <>
+      <div className="mb-4 flex flex-row items-center justify-between gap-3">
         <div className="flex items-center gap-4 flex-1 min-w-0">
           <Link href="/member/profile" passHref legacyBehavior>
             <a className="cursor-pointer relative group flex-shrink-0">
@@ -706,7 +703,7 @@ export default function MemberDashboardPage() {
           </div>
         </div>
         {currentStudent && (
-          <div className={cn("flex items-center justify-center h-10 w-10 sm:h-12 sm:w-12 text-md sm:text-lg rounded-lg border-2 font-bold flex-shrink-0", getShiftColorClass(currentStudent.shift))} title={`Seat ${currentStudent.seatNumber}`}>
+          <div className={cn("flex items-center justify-center h-10 w-10 sm:h-12 sm:w-12 text-base sm:text-lg rounded-lg border-2 font-bold flex-shrink-0", getShiftColorClass(currentStudent.shift))} title={`Seat ${currentStudent.seatNumber}`}>
             {currentStudent.seatNumber || 'N/A'}
           </div>
         )}
@@ -714,13 +711,15 @@ export default function MemberDashboardPage() {
 
       {showNotificationPrompt && <NotificationPrompt onDismiss={handleDismissPrompt} />}
 
-      {activeCheckInRecord && (
-        <Card className="my-6 rounded-xl overflow-hidden shadow-2xl border-white/60 dark:border-white/10">
-          <CardContent className="p-5 flex items-center justify-between gap-4">
+      {isLoadingCurrentSession ? (
+        <div className="my-3 animate-pulse rounded-md overflow-hidden border border-white/60 dark:border-white/10 bg-white/40 dark:bg-black/30 h-[128px]" />
+      ) : activeCheckInRecord ? (
+        <Card className="my-3 rounded-md overflow-hidden shadow-lg border-white/60 dark:border-white/10">
+          <CardContent className="p-4 flex items-center justify-between gap-3">
             <div className="flex-1">
               <ShadcnCardDescription className="text-xs text-muted-foreground uppercase tracking-wider mb-2">Current Session</ShadcnCardDescription>
-              <div className="text-5xl sm:text-6xl font-bold font-mono tracking-tighter text-primary">
-                {elapsedTime || "00:00"}
+              <div className="text-4xl sm:text-5xl font-bold font-mono tracking-tighter text-primary">
+                {activeCheckInRecord?.checkInTime ? <CheckInTimer checkInTime={activeCheckInRecord.checkInTime} /> : "00:00"}
               </div>
             </div>
             <div className="text-right text-xs text-muted-foreground space-y-2">
@@ -729,7 +728,7 @@ export default function MemberDashboardPage() {
                     <span>Checked In: {activeCheckInRecord.checkInTime && isValid(parseISO(activeCheckInRecord.checkInTime)) ? format(parseISO(activeCheckInRecord.checkInTime), 'p') : 'N/A'}</span>
                 </div>
                 <Button variant="link" size="sm" onClick={() => fetchAllDashboardData(true)} className="h-auto p-0 text-xs" disabled={isRefreshing}>
-                    {isRefreshing ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <RefreshCw className="mr-1 h-3 w-3"/>}
+                    {isRefreshing ? <Loader2 aria-hidden="true" className="mr-1 h-3 w-3 animate-spin" /> : <RefreshCw className="mr-1 h-3 w-3"/>}
                     {isRefreshing ? 'Refreshing...' : 'Refresh'}
                 </Button>
             </div>
@@ -743,7 +742,7 @@ export default function MemberDashboardPage() {
                 )}
              >
                 {isProcessingCheckout ? (
-                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                    <Loader2 aria-hidden="true" className="mr-2 h-5 w-5 animate-spin" />
                 ) : (
                     <LogOut className="mr-2 h-5 w-5" />
                 )}
@@ -751,7 +750,7 @@ export default function MemberDashboardPage() {
              </Button>
           </CardFooter>
         </Card>
-      )}
+      ) : null}
 
 
       <AlertDialog open={isOverdueDialogOpen} onOpenChange={setIsOverdueDialogOpen}>
@@ -772,7 +771,7 @@ export default function MemberDashboardPage() {
       </AlertDialog>
 
        {!activeCheckInRecord && (
-         <div className="mb-6">
+         <div className="mb-3">
             <DashboardTile
               title={primaryAttendanceTitle}
               description="Scan the library QR code for attendance."
@@ -814,13 +813,13 @@ export default function MemberDashboardPage() {
 
               {(hasCameraPermission === null && !isProcessingQr) && (
                   <div className="flex items-center justify-center text-muted-foreground text-sm py-2 flex-shrink-0">
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      <Loader2 aria-hidden="true" className="mr-2 h-4 w-4 animate-spin" />
                       Initializing camera...
                   </div>
               )}
               {isProcessingQr && (
                   <div className="flex items-center justify-center text-muted-foreground text-sm py-2 flex-shrink-0">
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      <Loader2 aria-hidden="true" className="mr-2 h-4 w-4 animate-spin" />
                       Processing QR code...
                   </div>
               )}
@@ -839,15 +838,15 @@ export default function MemberDashboardPage() {
       )}
 
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {coreActionTiles.map((tile) => (
           <DashboardTile key={tile.title} {...tile} />
         ))}
       </div>
 
-      <div className="my-6 border-t border-white/40 dark:border-white/10"></div>
+      <div className="my-4 border-t border-white/40 dark:border-white/10"></div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-2 gap-3">
         <DashboardTile
             title="Library Rules"
             description="Familiarize yourself with guidelines."
@@ -875,7 +874,7 @@ export default function MemberDashboardPage() {
             <div className="py-4 space-y-4 max-h-[60vh] overflow-y-auto">
               {isLoadingWifi ? (
                 <div className="flex justify-center items-center h-24">
-                  <Loader2 className="h-6 w-6 animate-spin"/>
+                  <Loader2 role="status" aria-label="Loading" className="h-6 w-6 animate-spin"/>
                 </div>
               ) : wifiConfig.length > 0 ? (
                 wifiConfig.map(wifi => (
@@ -905,7 +904,7 @@ export default function MemberDashboardPage() {
           </DialogContent>
         </Dialog>
       </div>
-      <div className="mt-4 sm:mt-6">
+      <div className="mt-3">
         <DashboardTile
             title="Rate Us"
             description="Love our space? Let others know!"
@@ -915,7 +914,8 @@ export default function MemberDashboardPage() {
             className="w-full"
         />
       </div>
-    </>
+      </>
+    </ErrorBoundary>
   );
 }
 

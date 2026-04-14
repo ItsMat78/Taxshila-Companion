@@ -2,11 +2,10 @@
 
 import * as React from 'react';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import { useAuth } from '@/contexts/auth-context';
-import {
-   Bar, BarChart, CartesianGrid, XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveContainer,
-   Line, LineChart, Area, AreaChart
-} from "recharts";
+import { ErrorBoundary } from '@/components/shared/error-boundary';
 import {
    Users,
    CalendarDays,
@@ -40,7 +39,7 @@ import {
    getAttendanceRecordsForDateRangeAll
 } from '@/services/student-service';
 import type { StudentSeatAssignment, CheckedInStudentInfo } from '@/types/student';
-import { format, parseISO, subDays, differenceInDays, startOfMonth, startOfDay, endOfDay, isSameMonth, subMonths, getDaysInMonth } from 'date-fns';
+import { format, parseISO, subDays, startOfMonth, endOfMonth, isSameMonth, subMonths, getDaysInMonth } from 'date-fns';
 import { ALL_SEAT_NUMBERS as serviceAllSeats } from '@/config/seats';
 import { useQuery } from '@tanstack/react-query';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -53,54 +52,41 @@ import {
    DialogTrigger
 } from "@/components/ui/dialog";
 
-const TinyMovementChart = ({ data }: any) => (
-   <ResponsiveContainer width="100%" height={50}>
-      <LineChart data={data}>
-         <RechartsTooltip cursor={{ fill: 'rgba(0,0,0,0.03)' }} contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', padding: '4px 8px', fontSize: '12px' }} />
-         <Line type="monotone" dataKey="Joined" stroke="#10b981" strokeWidth={2} dot={false} activeDot={{ r: 4 }} />
-         <Line type="monotone" dataKey="Left" stroke="#ef4444" strokeWidth={2} dot={false} activeDot={{ r: 4 }} />
-      </LineChart>
-   </ResponsiveContainer>
+const ChartLoadingTiny = () => <div className="h-[50px] animate-pulse bg-gray-100/50 dark:bg-white/5 rounded" />;
+const ChartLoadingArea = () => <div className="h-[70px] animate-pulse bg-gray-100/50 dark:bg-white/5 rounded" />;
+const ChartLoadingHero = () => <div className="h-[200px] animate-pulse bg-gray-100/50 dark:bg-white/5 rounded" />;
+
+const TinyMovementChart = dynamic(
+   () => import('@/components/admin/dashboard-charts').then(m => ({ default: m.TinyMovementChart })),
+   { ssr: false, loading: ChartLoadingTiny }
+);
+const TinyAreaChart = dynamic(
+   () => import('@/components/admin/dashboard-charts').then(m => ({ default: m.TinyAreaChart })),
+   { ssr: false, loading: ChartLoadingArea }
+);
+const TinyBarChart = dynamic(
+   () => import('@/components/admin/dashboard-charts').then(m => ({ default: m.TinyBarChart })),
+   { ssr: false, loading: ChartLoadingTiny }
+);
+const TinyLineChart = dynamic(
+   () => import('@/components/admin/dashboard-charts').then(m => ({ default: m.TinyLineChart })),
+   { ssr: false, loading: ChartLoadingArea }
+);
+const HeroAttendanceChart = dynamic(
+   () => import('@/components/admin/dashboard-charts').then(m => ({ default: m.HeroAttendanceChart })),
+   { ssr: false, loading: ChartLoadingHero }
+);
+const HeadcountOverTimeChart = dynamic(
+   () => import('@/components/admin/dashboard-charts').then(m => ({ default: m.HeadcountOverTimeChart })),
+   { ssr: false, loading: ChartLoadingHero }
 );
 
-const GlassCard = ({ children, className = "", onClick }: { children: React.ReactNode, className?: string, onClick?: () => void }) => (
-   <div onClick={onClick} className={`bg-white/40 dark:bg-slate-900/60 backdrop-blur-md md:backdrop-blur-xl border border-white/60 dark:border-white/5 shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-2xl rounded-2xl overflow-hidden ${onClick ? 'cursor-pointer hover:bg-white/50 dark:hover:bg-slate-800/60 transition-all active:scale-[0.99]' : ''} ${className}`}>
+const GlassCard = React.memo(({ children, className = "", onClick }: { children: React.ReactNode, className?: string, onClick?: () => void }) => (
+   <div onClick={onClick} className={`bg-white/40 dark:bg-slate-900/60 backdrop-blur-md md:backdrop-blur-xl border border-white/60 dark:border-white/5 shadow-[0_4px_16px_rgb(0,0,0,0.04)] dark:shadow-xl rounded-lg overflow-hidden ${onClick ? 'cursor-pointer hover:bg-white/50 dark:hover:bg-slate-800/60 transition-all active:scale-[0.99]' : ''} ${className}`}>
       {children}
    </div>
-);
-
-const TinyAreaChart = ({ data, color, dataKey }: any) => (
-   <ResponsiveContainer width="100%" height={70}>
-      <AreaChart data={data}>
-         <defs>
-            <linearGradient id={`color${dataKey}`} x1="0" y1="0" x2="0" y2="1">
-               <stop offset="5%" stopColor={color} stopOpacity={0.4} />
-               <stop offset="95%" stopColor={color} stopOpacity={0} />
-            </linearGradient>
-         </defs>
-         <RechartsTooltip cursor={false} contentStyle={{ display: 'none' }} />
-         <Area type="monotone" dataKey={dataKey} stroke={color} strokeWidth={2} fillOpacity={1} fill={`url(#color${dataKey})`} />
-      </AreaChart>
-   </ResponsiveContainer>
-);
-
-const TinyBarChart = ({ data, color, dataKey, height = 50 }: any) => (
-   <ResponsiveContainer width="100%" height={height}>
-      <BarChart data={data}>
-         <RechartsTooltip cursor={{ fill: 'rgba(0,0,0,0.03)' }} contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', padding: '4px 8px', fontSize: '12px' }} />
-         <Bar dataKey={dataKey} fill={color} radius={[3, 3, 0, 0]} />
-      </BarChart>
-   </ResponsiveContainer>
-);
-
-const TinyLineChart = ({ data, color, dataKey }: any) => (
-   <ResponsiveContainer width="100%" height={70}>
-      <LineChart data={data}>
-         <RechartsTooltip cursor={false} contentStyle={{ display: 'none' }} />
-         <Line type="monotone" dataKey={dataKey} stroke={color} strokeWidth={2} dot={{ r: 3, fill: color, strokeWidth: 0 }} activeDot={{ r: 5 }} />
-      </LineChart>
-   </ResponsiveContainer>
-);
+));
+GlassCard.displayName = 'GlassCard';
 
 // Moved data fetcher outside to be utilized cleanly by React Query
 const fetchDashboardData = async () => {
@@ -164,8 +150,26 @@ const fetchDashboardData = async () => {
 
    const last7DaysStrings = Array.from({ length: 7 }).map((_, i) => format(subDays(new Date(), 6 - i), 'yyyy-MM-dd'));
    
+   // Headcount over last 12 months (no extra reads — derived from allStudentsData)
+   const headcountData = Array.from({ length: 12 }).map((_, i) => {
+      const targetMonth = subMonths(now, 11 - i);
+      const monthEnd = endOfMonth(targetMonth);
+      const monthStart = startOfMonth(targetMonth);
+      const count = allStudentsData.filter(s => {
+         if (!s.registrationDate) return false;
+         const regDate = parseISO(s.registrationDate);
+         if (isNaN(regDate.getTime()) || regDate > monthEnd) return false;
+         if (s.activityStatus === 'Left' && s.leftDate) {
+            const leftDate = parseISO(s.leftDate);
+            if (!isNaN(leftDate.getTime()) && leftDate < monthStart) return false;
+         }
+         return true;
+      }).length;
+      return { name: format(targetMonth, 'MMM yy'), value: count };
+   });
+
    // Pre-group attendance by date for O(1) daily lookup
-   const attendanceByDate = new Map<string, any[]>();
+   const attendanceByDate = new Map<string, (typeof recentAttendance)[0][]>();
    recentAttendance.forEach(rec => {
       const recs = attendanceByDate.get(rec.date) || [];
       recs.push(rec);
@@ -226,7 +230,8 @@ const fetchDashboardData = async () => {
          registrationData: regData,
          pendingFeesData: pdData,
          attendanceWeeklyData: attData,
-         movementData: movementData
+         movementData: movementData,
+         headcountData: headcountData
       },
       liveStudents: checkedIn
    };
@@ -241,17 +246,17 @@ export default function GlassAdminDashboard() {
       staleTime: 120000 // 2 minutes of instant visual cache
    });
 
-   const getInitials = (name?: string) => {
+   const getInitials = React.useCallback((name?: string): string => {
       if (!name) return 'U';
       return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
-   };
+   }, []);
 
    const loadingFallback = {
       totalStudents: 0, activeCheckIns: 0, revenue: "Rs. 0", lastMonthRevenue: "Rs. 0",
       morningSlots: 0, eveningSlots: 0, fulldaySlots: 0, defaultersCount: 0, joinedThisMonth: 0, leftThisMonth: 0, loading: true
    };
 
-   const fallbackGraphs = { revenueData: [], registrationData: [], pendingFeesData: [], attendanceWeeklyData: [], movementData: [] };
+   const fallbackGraphs = { revenueData: [], registrationData: [], pendingFeesData: [], attendanceWeeklyData: [], movementData: [], headcountData: [] };
 
    const stats = dashboardData?.stats || loadingFallback;
    const graphs = dashboardData?.graphs || fallbackGraphs;
@@ -260,9 +265,10 @@ export default function GlassAdminDashboard() {
    const isRevenueTrendingUp = graphs.revenueData.length > 1 && graphs.revenueData[graphs.revenueData.length - 1].value >= graphs.revenueData[graphs.revenueData.length - 2].value;
 
    return (
+      <ErrorBoundary>
       <div className="w-full bg-transparent font-headline text-gray-800 dark:text-gray-100 pb-8 rounded-b-2xl">
          {/* Welcome Area */}
-         <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-8 pt-4 gap-4">
+         <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-4 pt-2 gap-3">
             <div className="md:mb-4">
                <h1 className="text-3xl md:text-4xl font-light tracking-tight mb-1 text-gray-900 dark:text-white leading-none">Welcome Back, {user?.identifierForDisplay?.split(' ')[0] || 'Admin'}</h1>
                <p className="text-gray-500 dark:text-gray-400 font-body text-xs md:text-sm">Management control room - prioritized metrics.</p>
@@ -284,9 +290,12 @@ export default function GlassAdminDashboard() {
                            Live in Library
                         </DialogTitle>
                      </DialogHeader>
-                     <div className="mt-4 px-1 max-h-[60vh] overflow-y-auto custom-scrollbar">
-                        <LiveStudentsList students={liveStudents} isLoading={stats.loading} getInitials={getInitials} />
-                     </div>
+                     <LiveStudentsList
+                        students={liveStudents}
+                        isLoading={stats.loading}
+                        getInitials={getInitials}
+                        className="mt-4 px-1 max-h-[60vh] overflow-y-auto custom-scrollbar"
+                     />
                   </DialogContent>
                </Dialog>
             </div>
@@ -294,12 +303,12 @@ export default function GlassAdminDashboard() {
 
 
 
-         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+         <div className="grid grid-cols-1 lg:grid-cols-12 gap-3">
             {/* Left Main Content */}
-            <div className="lg:col-span-9 space-y-4">
+            <div className="lg:col-span-9 space-y-3">
 
                {/* Main Crucial Metrics (Large Sizes) */}
-               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {/* Revenue (High Priority) */}
                   <Link href="/admin/fees/revenue-history" className="block">
                      <GlassCard className="p-3 md:p-5 flex flex-col justify-between h-full hover:-translate-y-0.5 transition-transform shadow-[0_12px_40px_rgba(234,179,8,0.06)]">
@@ -362,7 +371,7 @@ export default function GlassAdminDashboard() {
                </div>
 
                {/* Quick Actions Integrated Row */}
-               <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 md:gap-4">
+               <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
                   <Link href="/admin/students/register">
                      <GlassCard className="p-3 md:p-4 flex flex-col items-center justify-center text-center gap-1 md:gap-2 hover:bg-indigo-600/10 dark:hover:bg-indigo-500/10 border-indigo-200 dark:border-indigo-900/30 group">
                         <div className="bg-indigo-100 dark:bg-indigo-900/50 p-1.5 md:p-2 rounded-xl text-indigo-600 dark:text-indigo-400 group-hover:scale-110 transition-transform">
@@ -398,7 +407,7 @@ export default function GlassAdminDashboard() {
                </div>
 
                {/* Secondary Operational Metrics (Smaller Grid) */}
-               <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 md:gap-4">
+               <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
                   {/* Total Students */}
                   <Link href="/students/list" className="block">
                      <GlassCard className="p-3 md:p-4 flex flex-col justify-between h-full hover:bg-white/50 transition border-white">
@@ -480,7 +489,7 @@ export default function GlassAdminDashboard() {
                </div>
 
             {/* Large Hero Chart Area Width Expansion */}
-            <GlassCard className="p-5 flex flex-col mt-4 shadow-[0_4px_20px_rgb(0,0,0,0.02)] border-white">
+            <GlassCard className="p-4 flex flex-col shadow-[0_4px_20px_rgb(0,0,0,0.02)] border-white">
                <div className="flex justify-between items-end mb-4">
                   <div>
                      <h3 className="text-gray-500 dark:text-gray-400 text-sm font-medium mb-1">Weekly Attendance Volume</h3>
@@ -496,19 +505,27 @@ export default function GlassAdminDashboard() {
                </div>
 
                <div className="w-full mt-2 h-[200px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                     <BarChart data={graphs.attendanceWeeklyData} barSize={28} barGap={4}>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(0,0,0,0.05)" />
-                        <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fill: '#9ca3af', fontSize: 12 }} dy={10} />
-                        <RechartsTooltip
-                           cursor={{ fill: 'rgba(0,0,0,0.02)' }}
-                           contentStyle={{ borderRadius: '12px', border: '1px solid rgba(255,255,255,0.6)', boxShadow: '0 4px 20px rgba(0,0,0,0.08)', backgroundColor: 'rgba(255,255,255,0.8)', backdropFilter: 'blur(8px)' }}
-                        />
-                        <Bar dataKey="morning" stackId="a" fill="#3b82f6" radius={[0, 0, 6, 6]} />
-                        <Bar dataKey="evening" stackId="a" fill="#a855f7" />
-                        <Bar dataKey="fullday" stackId="a" fill="#eab308" radius={[6, 6, 0, 0]} />
-                     </BarChart>
-                  </ResponsiveContainer>
+                  <HeroAttendanceChart data={graphs.attendanceWeeklyData} />
+               </div>
+            </GlassCard>
+
+            {/* Headcount vs Time */}
+            <GlassCard className="p-4 flex flex-col shadow-[0_4px_20px_rgb(0,0,0,0.02)] border-white">
+               <div className="flex justify-between items-center mb-3">
+                  <div>
+                     <h3 className="text-gray-500 dark:text-gray-400 text-sm font-medium">Headcount vs Time</h3>
+                     <p className="text-[10px] text-gray-400 font-body mt-0.5">Net active students — last 12 months</p>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-[10px] font-semibold font-body bg-white/40 border border-white/60 py-1 px-2.5 rounded-full">
+                     <Users size={11} className="text-indigo-500" /> All Time
+                  </div>
+               </div>
+               <div className="w-full h-[180px]">
+                  {stats.loading ? (
+                     <div className="h-full w-full animate-pulse bg-gray-100/50 dark:bg-white/5 rounded"></div>
+                  ) : (
+                     <HeadcountOverTimeChart data={graphs.headcountData} />
+                  )}
                </div>
             </GlassCard>
 
@@ -525,65 +542,124 @@ export default function GlassAdminDashboard() {
                   <div className="ml-auto bg-white/60 dark:bg-white/10 backdrop-blur font-semibold text-teal-700 dark:text-teal-400 text-xs px-2.5 py-0.5 rounded-full border border-white/80 dark:border-white/10 shadow-sm">{stats.activeCheckIns}</div>
                </div>
 
-               <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar relative z-10">
-                  <LiveStudentsList students={liveStudents} isLoading={stats.loading} getInitials={getInitials} />
-               </div>
+               <LiveStudentsList
+                  students={liveStudents}
+                  isLoading={stats.loading}
+                  getInitials={getInitials}
+                  className="flex-1 overflow-y-auto pr-2 custom-scrollbar relative z-10"
+               />
             </GlassCard>
          </div>
       </div>
       </div>
+      </ErrorBoundary>
   );
 }
 
-function LiveStudentsList({ students, isLoading, getInitials }: any) {
-   return (
-   <div className="space-y-2">
-      {students.length === 0 && !isLoading && (
+interface LiveStudentsListProps {
+   students: CheckedInStudentInfo[];
+   isLoading: boolean;
+   getInitials: (name?: string) => string;
+   /** className applied to the scroll container div */
+   className?: string;
+}
+
+// Estimated height per row (p-2.5 padding + avatar + text + 8px gap)
+const ROW_HEIGHT = 68;
+
+const LiveStudentsList = React.memo(function LiveStudentsList({
+   students,
+   isLoading,
+   getInitials,
+   className = "max-h-[60vh] overflow-y-auto",
+}: LiveStudentsListProps) {
+   const parentRef = React.useRef<HTMLDivElement>(null);
+
+   const rowVirtualizer = useVirtualizer({
+      count: students.length,
+      getScrollElement: () => parentRef.current,
+      estimateSize: () => ROW_HEIGHT,
+      overscan: 5,
+   });
+
+   if (isLoading) {
+      return (
+         <div className={className}>
+            <div className="space-y-2">
+               {Array(4).fill(0).map((_, i) => (
+                  <div className="animate-pulse bg-white/30 dark:bg-white/10 h-14 rounded-xl w-full" key={i} />
+               ))}
+            </div>
+         </div>
+      );
+   }
+
+   if (students.length === 0) {
+      return (
          <div className="flex flex-col items-center justify-center h-40 text-center text-gray-400 font-body text-sm">
             <Monitor size={32} strokeWidth={1} className="mb-3 opacity-30 text-gray-500" />
             Nobody checked in.
          </div>
-      )}
-      {students.map((student: any, i: number) => (
-         <div key={student.studentId || i} className="group bg-white/40 dark:bg-white/5 hover:bg-white/80 dark:hover:bg-white/10 rounded-xl p-2.5 transition-all border border-white/50 dark:border-white/5 hover:border-white dark:hover:border-white/20">
-            <div className="flex items-center gap-3">
-               <Avatar className="h-9 w-9 border border-white/60 dark:border-white/10 shadow-sm shrink-0">
-                  <AvatarImage src={student.profilePictureUrl || undefined} alt={student.name} />
-                  <AvatarFallback className="bg-gradient-to-br from-indigo-100 to-purple-100 dark:from-indigo-900 dark:to-slate-900 text-indigo-700 dark:text-indigo-300 font-semibold text-xs">{getInitials(student.name)}</AvatarFallback>
-               </Avatar>
-               <div className="flex-1 min-w-0">
-                  <div className="flex justify-between items-start">
-                     <span className="font-semibold text-sm text-gray-800 dark:text-gray-100 truncate pr-2 leading-none mb-1">{student.name}</span>
-                     <span className="text-[10px] bg-white/80 dark:bg-white/10 text-gray-600 dark:text-gray-400 px-1.5 py-0.5 rounded border border-gray-100 dark:border-white/5 font-mono font-bold leading-none">{student.seatNumber || 'N/A'}</span>
+      );
+   }
+
+   return (
+      <div ref={parentRef} className={className}>
+         <div
+            style={{ height: `${rowVirtualizer.getTotalSize()}px`, position: 'relative' }}
+         >
+            {rowVirtualizer.getVirtualItems().map((virtualItem) => {
+               const student = students[virtualItem.index];
+               return (
+                  <div
+                     key={student.studentId || virtualItem.index}
+                     style={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        width: '100%',
+                        height: `${virtualItem.size}px`,
+                        transform: `translateY(${virtualItem.start}px)`,
+                        paddingBottom: '8px',
+                     }}
+                  >
+                     <div className="group bg-white/40 dark:bg-white/5 hover:bg-white/80 dark:hover:bg-white/10 rounded-xl p-2.5 transition-all border border-white/50 dark:border-white/5 hover:border-white dark:hover:border-white/20 h-full">
+                        <div className="flex items-center gap-3">
+                           <Avatar className="h-9 w-9 border border-white/60 dark:border-white/10 shadow-sm shrink-0">
+                              <AvatarImage src={student.profilePictureUrl || undefined} alt={student.name} />
+                              <AvatarFallback className="bg-gradient-to-br from-indigo-100 to-purple-100 dark:from-indigo-900 dark:to-slate-900 text-indigo-700 dark:text-indigo-300 font-semibold text-xs">{getInitials(student.name)}</AvatarFallback>
+                           </Avatar>
+                           <div className="flex-1 min-w-0">
+                              <div className="flex justify-between items-start">
+                                 <span className="font-semibold text-sm text-gray-800 dark:text-gray-100 truncate pr-2 leading-none mb-1">{student.name}</span>
+                                 <span className="text-[10px] bg-white/80 dark:bg-white/10 text-gray-600 dark:text-gray-400 px-1.5 py-0.5 rounded border border-gray-100 dark:border-white/5 font-mono font-bold leading-none">{student.seatNumber || 'N/A'}</span>
+                              </div>
+                              <div className="flex justify-between items-center text-[10px] font-body">
+                                 <span className={`${student.shift === 'morning' ? 'text-blue-500' : student.shift === 'evening' ? 'text-purple-500' : 'text-yellow-600'} capitalize font-bold tracking-wide flex items-center gap-1`}>
+                                    {student.shift === 'morning' && <Sunrise size={10} />}
+                                    {student.shift === 'evening' && <Moon size={10} />}
+                                    {student.shift === 'fullday' && <Sun size={10} />}
+                                    {student.shift}
+                                 </span>
+                                 <span className="text-gray-400 dark:text-gray-500 font-medium flex items-center gap-1">
+                                    <LogIn size={10} className="text-green-500" /> {format(parseISO(student.checkInTime), 'p')}
+                                 </span>
+                              </div>
+                           </div>
+                           <div className="flex items-center">
+                              <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20" title="Warn Student">
+                                 <AlertCircle size={14} />
+                              </Button>
+                           </div>
+                        </div>
+                     </div>
                   </div>
-                  <div className="flex justify-between items-center text-[10px] font-body">
-                     <span className={`${student.shift === 'morning' ? 'text-blue-500' : student.shift === 'evening' ? 'text-purple-500' : 'text-yellow-600'} capitalize font-bold tracking-wide flex items-center gap-1`}>
-                        {student.shift === 'morning' && <Sunrise size={10} />}
-                        {student.shift === 'evening' && <Moon size={10} />}
-                        {student.shift === 'fullday' && <Sun size={10} />}
-                        {student.shift}
-                     </span>
-                     <span className="text-gray-400 dark:text-gray-500 font-medium flex items-center gap-1">
-                        <LogIn size={10} className="text-green-500" /> {format(parseISO(student.checkInTime), 'p')}
-                     </span>
-                  </div>
-               </div>
-               <div className="flex items-center">
-                  <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20" title="Warn Student">
-                     <AlertCircle size={14} />
-                  </Button>
-               </div>
-            </div>
+               );
+            })}
          </div>
-      ))}
-      {isLoading && (
-         Array(4).fill(0).map((_, i) => (
-            <div className="animate-pulse bg-white/30 dark:bg-white/10 h-14 rounded-xl w-full" key={i}></div>
-         ))
-      )}
-   </div>
+      </div>
    );
-}
+});
 
 // Ensure custom scrollbar exists locally if needed
 const customScrollbarStyle = `

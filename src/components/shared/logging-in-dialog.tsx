@@ -29,7 +29,7 @@ export function LoggingInDialog({ isOpen }: LoggingInDialogProps) {
       >
         <DialogHeader className="items-center text-center">
           <DialogTitle id={titleId} className="flex flex-col items-center gap-2">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <Loader2 role="status" aria-label="Loading" className="h-8 w-8 animate-spin text-primary" />
             <span>Login Successful!</span>
           </DialogTitle>
           <DialogDescription id={descriptionId}>

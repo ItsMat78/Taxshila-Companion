@@ -10,7 +10,7 @@ export async function GET() {
     const adminsSnapshot = await db.collection('admins').get();
     const admins = adminsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     return NextResponse.json({ success: true, admins });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error fetching admins:", error);
     return NextResponse.json({ success: false, error: "Failed to fetch admins." }, { status: 500 });
   }
@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
     });
 
     return NextResponse.json({ success: true, id: newAdminRef.id, email });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error adding admin:", error);
     return NextResponse.json({ success: false, error: "Failed to add new admin." }, { status: 500 });
   }
@@ -55,7 +55,7 @@ export async function DELETE(request: NextRequest) {
     await db.collection('admins').doc(id).delete();
 
     return NextResponse.json({ success: true, message: 'Admin removed successfully.' });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error removing admin:", error);
     return NextResponse.json({ success: false, error: "Failed to remove admin." }, { status: 500 });
   }

@@ -92,11 +92,11 @@ export default function AdminAttendanceCalendarPage() {
         try {
           const details = await getAttendanceForDateAction(selectedDate);
           setDailyAttendance(details);
-        } catch (error: any) {
+        } catch (error: unknown) {
           console.error("Failed to fetch daily attendance:", error);
           toast({
             title: "Error",
-            description: error.message || "Could not load attendance records for the selected date.",
+            description: (error instanceof Error ? error.message : String(error)) || "Could not load attendance records for the selected date.",
             variant: "destructive",
           });
         } finally {
@@ -148,7 +148,7 @@ export default function AdminAttendanceCalendarPage() {
           <CardContent>
             {isLoading ? (
               <div className="flex items-center justify-center py-10">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <Loader2 role="status" aria-label="Loading" className="h-8 w-8 animate-spin text-primary" />
                 <p className="ml-2 text-muted-foreground">Loading attendance...</p>
               </div>
             ) : (

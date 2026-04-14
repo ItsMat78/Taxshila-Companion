@@ -4,6 +4,7 @@
 import { NextResponse } from 'next/server';
 import { getAuth } from '@/lib/firebase-admin';
 import type { UpdateRequest } from 'firebase-admin/auth';
+import { getVerifiedToken, isReviewerToken } from '@/lib/api-auth';
 
 const isValidIndianPhoneNumber = (phone: string): boolean => {
     const regex = /^[6-9]\d{9}$/;
@@ -11,6 +12,11 @@ const isValidIndianPhoneNumber = (phone: string): boolean => {
 };
 
 export async function POST(request: Request) {
+  const token = await getVerifiedToken(request);
+  if (isReviewerToken(token)) {
+    return NextResponse.json({ error: 'Action not permitted in reviewer mode.' }, { status: 403 });
+  }
+
   try {
     const { uid, email, phone, password, disabled } = await request.json();
 
@@ -27,8 +33,8 @@ export async function POST(request: Request) {
             await auth.getUserByEmail(email);
             // If the above line does not throw, it means the email is already in use by another user.
             return NextResponse.json({ success: false, error: "This email address is already in use by another account." }, { status: 409 });
-        } catch (error: any) {
-            if (error.code !== 'auth/user-not-found') {
+        } catch (error: unknown) {
+            if ((error as {code?: string}).code !== 'auth/user-not-found') {
                  // Re-throw unexpected errors
                 throw error;
             }
@@ -47,8 +53,8 @@ export async function POST(request: Request) {
             await auth.getUserByPhoneNumber(fullPhoneNumber);
             // If the above line does not throw, it means the phone number is already in use.
             return NextResponse.json({ success: false, error: "This phone number is already in use by another account." }, { status: 409 });
-        } catch (error: any) {
-            if (error.code !== 'auth/user-not-found') {
+        } catch (error: unknown) {
+            if ((error as {code?: string}).code !== 'auth/user-not-found') {
                 // Re-throw unexpected errors
                 throw error;
             }
@@ -81,10 +87,10 @@ export async function POST(request: Request) {
     // Return a successful response
     return NextResponse.json({ success: true, uid: userRecord.uid });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Update Student Auth API Error:", error);
-    if (error.code?.startsWith('auth/')) {
-        return NextResponse.json({ success: false, error: error.message }, { status: 409 });
+    if ((error as {code?: string}).code?.startsWith('auth/')) {
+        return NextResponse.json({ success: false, error: (error instanceof Error ? error.message : String(error)) }, { status: 409 });
     }
     return NextResponse.json({ success: false, error: "An unexpected server error occurred during auth update." }, { status: 500 });
   }

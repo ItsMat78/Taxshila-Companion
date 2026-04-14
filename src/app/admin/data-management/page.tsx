@@ -2,6 +2,7 @@
 "use client";
 
 import * as React from 'react';
+import { isReviewerUser } from '@/lib/auth-utils';
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -16,7 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2, Download, Upload, DatabaseZap } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import Papa from 'papaparse'; // Using a robust CSV parser
+// papaparse is loaded on demand (inside handleImport) to keep the initial bundle lean
 import { useAuth } from '@/contexts/auth-context';
 
 export default function DataManagementPage() {
@@ -29,7 +30,7 @@ export default function DataManagementPage() {
     
     const [importFile, setImportFile] = React.useState<File | null>(null);
 
-    const isReviewer = user?.email === 'guest-admin@taxshila-auth.com';
+    const isReviewer = isReviewerUser(user?.email);
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files) setImportFile(e.target.files[0]);
@@ -57,8 +58,8 @@ export default function DataManagementPage() {
               description: `Processed ${result.processedCount} students. ${result.createdCount} created, ${result.updatedCount} updated. Check console for ${result.errorCount} errors.`,
           });
           if (result.errors && result.errors.length > 0) console.error("Migration errors:", result.errors);
-      } catch (error: any) {
-          toast({ title: "Migration Failed", description: error.message, variant: "destructive" });
+      } catch (error: unknown) {
+          toast({ title: "Migration Failed", description: (error instanceof Error ? error.message : String(error)), variant: "destructive" });
       } finally {
           setIsMigrating(false);
       }
@@ -82,8 +83,8 @@ a.click();
             a.remove();
             window.URL.revokeObjectURL(url);
             toast({ title: "Export Successful", description: "Your data has been downloaded as a .zip file." });
-        } catch (error: any) {
-            toast({ title: "Export Failed", description: error.message, variant: "destructive" });
+        } catch (error: unknown) {
+            toast({ title: "Export Failed", description: (error instanceof Error ? error.message : String(error)), variant: "destructive" });
         } finally {
             setIsExporting(false);
         }
@@ -104,6 +105,7 @@ a.click();
             return;
         }
 
+        const { default: Papa } = await import('papaparse');
         Papa.parse(importFile, {
             header: true,
             skipEmptyLines: true,
@@ -117,8 +119,8 @@ a.click();
                     const result = await response.json();
                     if (!response.ok) throw new Error(result.error);
                     toast({ title: `Import Successful: ${type}`, description: result.message });
-                } catch (error: any) {
-                    toast({ title: `Import Failed: ${type}`, description: error.message, variant: "destructive" });
+                } catch (error: unknown) {
+                    toast({ title: `Import Failed: ${type}`, description: (error instanceof Error ? error.message : String(error)), variant: "destructive" });
                 } finally {
                     setIsImporting(false);
                     setActiveImportType(null);
@@ -128,7 +130,7 @@ a.click();
                     if(fileInput) fileInput.value = "";
                 }
             },
-            error: (error: any) => {
+            error: (error: Error) => {
                 toast({ title: "CSV Parsing Error", description: error.message, variant: "destructive" });
                 setIsImporting(false);
                 setActiveImportType(null);
@@ -145,7 +147,7 @@ a.click();
                     onClick={() => handleImport(type)} 
                     disabled={isImporting || !importFile || isReviewer}
                 >
-                    {(isImporting && activeImportType === type) ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
+                    {(isImporting && activeImportType === type) ? <Loader2 aria-hidden="true" className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
                     Import {label}
                 </Button>
             </div>
@@ -164,7 +166,7 @@ a.click();
                     </CardHeader>
                     <CardContent>
                         <Button onClick={handleUserMigration} disabled={isMigrating || isReviewer}>
-                            {isMigrating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                            {isMigrating ? <Loader2 aria-hidden="true" className="mr-2 h-4 w-4 animate-spin" /> : null}
                             Sync Student Auth Data
                         </Button>
                     </CardContent>
@@ -177,7 +179,7 @@ a.click();
                     </CardHeader>
                     <CardContent>
                         <Button onClick={handleExport} disabled={isExporting}>
-                            {isExporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                            {isExporting ? <Loader2 aria-hidden="true" className="mr-2 h-4 w-4 animate-spin" /> : null}
                             Export Data as .zip
                         </Button>
                     </CardContent>

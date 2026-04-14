@@ -22,8 +22,8 @@ export async function GET() {
     }
 
     return NextResponse.json(firebaseConfig);
-  } catch (error: any) {
-    console.error('[API Firebase Config] Error:', error.message);
+  } catch (error: unknown) {
+    console.error('[API Firebase Config] Error:', error instanceof Error ? error.message : String(error));
     return NextResponse.json({ success: false, error: 'Server error fetching Firebase configuration.' }, { status: 500 });
   }
 }
