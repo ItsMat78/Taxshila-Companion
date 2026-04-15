@@ -20,7 +20,12 @@
       "Bash(npm install:*)",
       "Bash(node -e \"require\\('@tanstack/react-virtual'\\)\")",
       "Bash(grep -n \"recordStudentPayment\\\\|numberOfMonthsPaid\\\\|paymentMethod\" /e/Projects/Taxshila-Companion/src/app/admin/students/edit/[studentId]/page.tsx)",
-      "Bash(grep -n \"Mark as Paid\\\\|payment\\\\|RadioGroup.*Cash\" /e/Projects/Taxshila-Companion/src/app/admin/students/edit/[studentId]/page.tsx)"
+      "Bash(grep -n \"Mark as Paid\\\\|payment\\\\|RadioGroup.*Cash\" /e/Projects/Taxshila-Companion/src/app/admin/students/edit/[studentId]/page.tsx)",
+      "Bash(npx husky:*)",
+      "Bash(grep -l \"Accordion\\\\|<details\\\\|<summary\" E:\\\\Projects\\\\Taxshila-Companion\\\\src\\\\app\\\\**\\\\*.tsx)",
+      "Bash(find E:\\\\Projects\\\\Taxshila-Companion\\\\src:*)",
+      "Bash(npx vitest:*)",
+      "WebFetch(domain:upload.wikimedia.org)"
     ]
   }
 }

@@ -310,12 +310,11 @@ export default function GlassAdminDashboard() {
                {/* Main Crucial Metrics (Large Sizes) */}
                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {/* Revenue (High Priority) */}
-                  <Link href="/admin/fees/revenue-history" className="block">
-                     <GlassCard className="p-3 md:p-5 flex flex-col justify-between h-full hover:-translate-y-0.5 transition-transform shadow-[0_12px_40px_rgba(234,179,8,0.06)]">
+                  <GlassCard className="p-3 md:p-5 flex flex-col justify-between h-full shadow-[0_12px_40px_rgba(234,179,8,0.06)]">
                         <div>
                            <div className="flex justify-between items-start mb-1 md:mb-2">
                               <span className="text-gray-500 dark:text-gray-400 font-medium tracking-wide text-[10px] md:text-sm uppercase md:normal-case">Monthly Revenue</span>
-                              <div className="bg-yellow-100 dark:bg-yellow-900/50 p-1 md:p-1.5 rounded-full"><IndianRupee size={14} className="text-yellow-600 md:size-[18px]" /></div>
+                              <Link href="/admin/fees/revenue-history" className="bg-yellow-100 dark:bg-yellow-900/50 p-1 md:p-1.5 rounded-full hover:scale-110 transition-transform flex items-center justify-center"><IndianRupee size={14} className="text-yellow-600 md:size-[18px]" /></Link>
                            </div>
                            <div className="flex flex-col gap-0.5 mb-1 mt-1 md:mt-2">
                               <div className="flex items-end gap-2 md:gap-3">
@@ -339,15 +338,13 @@ export default function GlassAdminDashboard() {
                            )}
                         </div>
                      </GlassCard>
-                  </Link>
 
                   {/* Defaulters / Pending Fees (High Priority) */}
-                  <Link href="/admin/fees/due" className="block">
-                     <GlassCard className="p-3 md:p-5 flex flex-col justify-between h-full hover:-translate-y-0.5 transition-transform shadow-[0_12px_40px_rgba(239,68,68,0.06)] relative">
+                  <GlassCard className="p-3 md:p-5 flex flex-col justify-between h-full shadow-[0_12px_40px_rgba(239,68,68,0.06)] relative">
                         <div>
                            <div className="flex justify-between items-start mb-1 md:mb-2">
                               <span className="text-gray-500 dark:text-gray-400 font-medium tracking-wide text-[10px] md:text-sm uppercase md:normal-case">Payment Defaulters</span>
-                              <div className="bg-red-100 dark:bg-red-900/50 p-1 md:p-1.5 rounded-full text-red-500"><FileWarning size={14} className="md:size-[18px]" /></div>
+                              <Link href="/admin/fees/due" className="bg-red-100 dark:bg-red-900/50 p-1 md:p-1.5 rounded-full text-red-500 hover:scale-110 transition-transform flex items-center justify-center"><FileWarning size={14} className="md:size-[18px]" /></Link>
                            </div>
                            <div className="flex items-end gap-2 md:gap-3 mb-1 mt-1 md:mt-2 leading-none">
                               <span className="text-2xl md:text-4xl font-light tracking-tight text-red-600">{stats.loading ? '-' : stats.defaultersCount}</span>
@@ -367,7 +364,6 @@ export default function GlassAdminDashboard() {
                            )}
                         </div>
                      </GlassCard>
-                  </Link>
                </div>
 
                {/* Quick Actions Integrated Row */}
@@ -409,31 +405,28 @@ export default function GlassAdminDashboard() {
                {/* Secondary Operational Metrics (Smaller Grid) */}
                <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
                   {/* Total Students */}
-                  <Link href="/students/list" className="block">
-                     <GlassCard className="p-3 md:p-4 flex flex-col justify-between h-full hover:bg-white/50 transition border-white">
+                  <GlassCard className="p-3 md:p-4 flex flex-col justify-between h-full border-white">
                         <div>
                            <div className="flex justify-between items-start mb-1">
                               <span className="text-gray-500 dark:text-gray-400 text-[10px] md:text-sm font-medium">Headcount</span>
-                              <Users size={14} className="text-blue-500 md:size-4" />
+                              <Link href="/students/list" className="hover:scale-110 transition-transform"><Users size={14} className="text-blue-500 md:size-4" /></Link>
                            </div>
                            <div className="flex items-end gap-1.5 md:gap-2 mb-1 mt-1 leading-none">
                               <span className="text-2xl md:text-3xl font-light">{stats.loading ? '-' : stats.totalStudents}</span>
                            </div>
                         </div>
                         <div className="mt-2 md:mt-4 -mx-2 -mb-2">
-                           <TinyBarChart data={graphs.registrationData} color="#3b82f6" dataKey="value" height={40} />
+                           <TinyBarChart data={graphs.registrationData} color="#3b82f6" dataKey="value" height={40} labelFormatter={(label) => `Day ${label}`} />
                         </div>
                      </GlassCard>
-                  </Link>
 
-                  {/* Seat Availability (Moved up on mobile for row flow) */}
-                  <Link href="/seats/availability" className="block">
-                     <GlassCard className="p-3 md:p-4 flex flex-col justify-between h-full hover:bg-white/50 transition relative overflow-hidden border-white">
+                  {/* Seat Availability */}
+                  <GlassCard className="p-3 md:p-4 flex flex-col justify-between h-full relative overflow-hidden border-white">
                         <div className="absolute top-0 right-0 w-16 md:w-24 h-16 md:h-24 bg-orange-200 blur-2xl opacity-30 rounded-full pointer-events-none transform translate-x-1/2 -translate-y-1/2"></div>
                         <div>
                            <div className="flex justify-between items-start mb-1">
                               <span className="text-gray-500 dark:text-gray-400 text-[10px] md:text-sm font-medium">Vacant</span>
-                              <Armchair size={14} className="text-orange-500 md:size-4" />
+                              <Link href="/seats/availability" className="hover:scale-110 transition-transform"><Armchair size={14} className="text-orange-500 md:size-4" /></Link>
                            </div>
                            <div className="space-y-1 mt-1.5 text-[8px] md:text-xs text-gray-700 dark:text-gray-300 font-body border-t border-gray-200/50 dark:border-white/5 pt-1.5">
                               <div className="flex justify-between items-center bg-white/30 dark:bg-white/5 px-1.5 py-0.5 rounded border border-white/50 dark:border-white/5">
@@ -451,14 +444,12 @@ export default function GlassAdminDashboard() {
                            </div>
                         </div>
                      </GlassCard>
-                  </Link>
 
                   {/* Student Movement Card (Full width on mobile below the pair) */}
-                  <Link href="/students/list" className="block col-span-2">
-                     <GlassCard className="p-3 md:p-4 flex flex-col justify-between h-full hover:-translate-y-0.5 transition relative border-white">
+                  <GlassCard className="p-3 md:p-4 flex flex-col justify-between h-full relative border-white col-span-2">
                         <div className="flex justify-between items-start mb-1">
                            <span className="text-gray-500 dark:text-gray-400 text-[10px] md:text-sm font-medium uppercase md:normal-case">Movement History</span>
-                           <Activity size={14} className="text-teal-500 md:size-4" />
+                           <Link href="/admin/students/movement" className="hover:scale-110 transition-transform"><Activity size={14} className="text-teal-500 md:size-4" /></Link>
                         </div>
 
                         <div className="flex h-full w-full items-center justify-between text-xs md:text-sm font-headline pr-2 md:pr-4">
@@ -485,7 +476,6 @@ export default function GlassAdminDashboard() {
                            )}
                         </div>
                      </GlassCard>
-                  </Link>
                </div>
 
             {/* Large Hero Chart Area Width Expansion */}
@@ -494,7 +484,7 @@ export default function GlassAdminDashboard() {
                   <div>
                      <h3 className="text-gray-500 dark:text-gray-400 text-sm font-medium mb-1">Weekly Attendance Volume</h3>
                      <div className="flex items-center gap-3">
-                        <span className="text-3xl font-light tracking-tight">Active Check-ins</span>
+                        <span className="text-base font-medium text-gray-700 dark:text-gray-300">Active Check-ins</span>
                      </div>
                   </div>
                   <div className="flex gap-4 text-xs font-semibold font-body bg-white/40 border border-white/60 p-2 px-3 rounded-full">

@@ -32,7 +32,7 @@ const studentFromDoc = (docSnapshot: QueryDocumentSnapshot<DocumentData> | Docum
     firestoreId: docSnapshot.id,
     registrationDate: data.registrationDate instanceof Timestamp ? format(data.registrationDate.toDate(), 'yyyy-MM-dd') : data.registrationDate,
     lastPaymentDate: data.lastPaymentDate instanceof Timestamp ? format(data.lastPaymentDate.toDate(), 'yyyy-MM-dd') : (data.lastPaymentDate === null ? undefined : data.lastPaymentDate),
-    lastAttendanceDate: data.lastAttendanceDate instanceof Timestamp ? data.lastAttendanceDate.toDate().toISOString() : data.lastAttendanceDate,
+    lastAttendanceDate: data.lastAttendanceDate instanceof Timestamp ? format(data.lastAttendanceDate.toDate(), 'yyyy-MM-dd') : data.lastAttendanceDate,
     nextDueDate: data.nextDueDate instanceof Timestamp ? format(data.nextDueDate.toDate(), 'yyyy-MM-dd') : (data.nextDueDate === null ? undefined : data.nextDueDate),
     paymentHistory: (data.paymentHistory || []).map((p: { date: unknown } & Record<string, unknown>) => ({
       ...p,

@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/dialog";
 import {
   AlertDialog,
+
   AlertDialogAction,
   AlertDialogContent,
   AlertDialogDescription,
@@ -26,145 +27,23 @@ import {
 import { Alert, AlertDescription, AlertTitle as ShadcnAlertTitle } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/auth-context';
-import { Camera, IndianRupee, MessageSquare, Bell, ScrollText, Star, Loader2, XCircle, BarChart3, PlayCircle, ScanLine, LogOut, AlertCircle, X, RefreshCw, Wifi, Copy } from 'lucide-react';
+import { IndianRupee, MessageSquare, Bell, ScrollText, Star, Loader2, BarChart3, PlayCircle, ScanLine, LogOut, AlertCircle, X, RefreshCw, Wifi, Copy } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getStudentByEmail, getAlertsForStudent, addCheckIn, addCheckOut, getAttendanceForDate, getStudentByCustomId, getWifiConfiguration, subscribeToActiveCheckIn } from '@/services/student-service';
 import type { AlertItem } from '@/types/communication';
 import type { Student, AttendanceRecord, FeeStatus, Shift, WifiConfig } from '@/types/student';
-import { format, parseISO, differenceInMilliseconds, isValid, differenceInMinutes, differenceInHours } from 'date-fns';
+import { format, parseISO, differenceInMilliseconds, isValid } from 'date-fns';
 import { setupPushNotifications } from '@/lib/notification-setup';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { getInitials } from '@/lib/utils';
+import { DashboardTile } from '@/components/member/DashboardTile';
+import type { DashboardTileProps } from '@/components/member/DashboardTile';
+import { CheckInTimer } from '@/components/member/CheckInTimer';
+import { QrScannerOverlay } from '@/components/member/QrScannerOverlay';
 
-const DASHBOARD_QR_SCANNER_ELEMENT_ID = "qr-reader-dashboard";
 const LIBRARY_QR_CODE_PAYLOAD = "TAXSHILA_LIBRARY_CHECKIN_QR_V1";
 const DEFAULT_PROFILE_PLACEHOLDER = "/logo.png";
 
-type DashboardTileProps = {
-  title: string;
-  description?: string;
-  statistic?: string | number | null;
-  isLoadingStatistic?: boolean;
-  icon: React.ElementType;
-  href?: string;
-  action?: () => void;
-  className?: string;
-  isPrimaryAction?: boolean;
-  external?: boolean;
-  hasNew?: boolean;
-  isUrgent?: boolean;
-  disabled?: boolean;
-  children?: React.ReactNode; // Added children prop
-};
-
-const DashboardTile: React.FC<DashboardTileProps> = React.memo(({
-  title,
-  description,
-  statistic,
-  isLoadingStatistic,
-  icon: Icon,
-  href,
-  action,
-  className = "",
-  isPrimaryAction = false,
-  external = false,
-  hasNew = false,
-  isUrgent = false,
-  disabled = false,
-  children
-}) => {
-  const content = (
-    <Card className={cn(
-      "shadow-sm h-full flex flex-col transition-all rounded-md",
-      isPrimaryAction
-        ? 'bg-gradient-to-br from-indigo-600 to-blue-700 text-white border-transparent'
-        : 'bg-white/40 dark:bg-black/30 backdrop-blur-xl border-white/60 dark:border-white/10 text-gray-800 dark:text-gray-200',
-      !disabled && "hover:shadow-md active:scale-[0.98]",
-      disabled ? 'opacity-50 cursor-not-allowed bg-black/10 dark:bg-white/5' : (!isPrimaryAction && 'hover:bg-white/50 dark:hover:bg-black/50'),
-      className
-    )}>
-      <CardHeader className={cn(
-        "relative",
-        isPrimaryAction ? "p-3 pb-1" : "p-3 pb-1"
-      )}>
-        {(hasNew || isUrgent) && (
-          <span className={cn(
-            "absolute top-1 right-1 block h-2.5 w-2.5 rounded-full ring-1 ring-white",
-             isUrgent ? 'bg-destructive' : 'bg-primary'
-          )} />
-        )}
-        <div className={cn(
-          "flex items-center gap-2",
-           isPrimaryAction ? "" : "flex-col text-center"
-        )}>
-          <Icon className={cn(
-            isPrimaryAction ? "h-5 w-5" : "h-5 w-5 mb-0.5",
-            isPrimaryAction && isLoadingStatistic && "animate-spin"
-          )}
-           />
-          <ShadcnCardTitle className={cn(
-            "break-words",
-            isPrimaryAction ? 'text-base font-bold text-white' : 'text-sm font-semibold',
-          )}>
-            {title}
-          </ShadcnCardTitle>
-        </div>
-      </CardHeader>
-      <CardContent className={cn(
-        "flex-grow flex flex-col items-center justify-center",
-        isPrimaryAction ? "p-3 pt-1" : "p-3 pt-1"
-      )}>
-        {isLoadingStatistic && !isPrimaryAction ? (
-          <Loader2 role="status" aria-label="Loading" className="h-6 w-6 sm:h-8 sm:w-8 animate-spin text-primary my-2" />
-        ) : statistic !== null && statistic !== undefined ? (
-          <>
-            <div className={cn(
-              "font-bold break-words",
-               isPrimaryAction ? 'text-xl text-white' : 'text-lg text-foreground',
-              isUrgent && !isPrimaryAction && 'text-destructive'
-            )}>
-              {statistic}
-            </div>
-            {description && <p className={cn(
-              "text-xs mt-0.5 break-words",
-              isPrimaryAction ? 'text-white/80' : 'text-muted-foreground text-center',
-            )}>{description}</p>}
-          </>
-        ) : children ? (
-          <div className="w-full">{children}</div>
-        ) : (
-          description && <p className={cn(
-            "break-words text-center",
-            isPrimaryAction ? 'text-xs text-white/80' : 'text-xs text-muted-foreground',
-          )}>{description}</p>
-        )}
-      </CardContent>
-    </Card>
-  );
-
-  const linkClasses = "block h-full no-underline focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-md";
-
-  if (href && !disabled) {
-    return (
-      <Link
-        href={href}
-        target={external ? '_blank' : undefined}
-        rel={external ? 'noopener noreferrer' : undefined}
-        className={cn(linkClasses, className)}
-        onClick={(e) => { if (disabled) e.preventDefault(); }}
-      >
-        {content}
-      </Link>
-    );
-  }
-
-  if (action && !disabled) {
-    return <button onClick={action} className={cn("block w-full h-full text-left rounded-md", linkClasses, className)} disabled={disabled}>{content}</button>;
-  }
-
-  return <div className={cn(className, disabled ? 'cursor-not-allowed' : '')}>{content}</div>;
-});
-DashboardTile.displayName = 'DashboardTile';
 
 function NotificationPrompt({ onDismiss }: { onDismiss: () => void }) {
   const { user } = useAuth();
@@ -211,31 +90,11 @@ const motivationalQuotes = [
 ];
 
 
-const CheckInTimer = React.memo(({ checkInTime }: { checkInTime: string }) => {
-  const [elapsed, setElapsed] = React.useState<string | null>(null);
-  React.useEffect(() => {
-    const updateElapsedTime = () => {
-      const now = new Date();
-      const time = parseISO(checkInTime);
-      const hours = differenceInHours(now, time);
-      const minutes = differenceInMinutes(now, time) % 60;
-      setElapsed(`${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`);
-    };
-    updateElapsedTime();
-    const id = setInterval(updateElapsedTime, 30000);
-    return () => clearInterval(id);
-  }, [checkInTime]);
-  return <span>{elapsed ?? '--:--'}</span>;
-});
-CheckInTimer.displayName = 'CheckInTimer';
 
 export default function MemberDashboardPage() {
   const { user, logout } = useAuth();
   const { toast } = useToast();
   const [isScannerOpen, setIsScannerOpen] = React.useState(false);
-  const [hasCameraPermission, setHasCameraPermission] = React.useState<boolean | null>(null);
-  const [isProcessingQr, setIsProcessingQr] = React.useState(false);
-  const html5QrcodeScannerRef = React.useRef<any>(null);
 
   const [wifiConfig, setWifiConfig] = React.useState<WifiConfig[]>([]);
   const [isLoadingWifi, setIsLoadingWifi] = React.useState(false);
@@ -370,7 +229,7 @@ export default function MemberDashboardPage() {
     fetchAllDashboardData();
     const intervalId = setInterval(() => fetchAllDashboardData(true), 300000); // Refresh every 5 minutes
     return () => clearInterval(intervalId);
-  }, [user]); // Re-run only when user object changes
+  }, [user, fetchAllDashboardData]); // Re-run only when user object changes
 
   // Real-time listener for check-in status — updates instantly when the student
   // checks in or out from any device, replacing the previous polled approach.
@@ -384,162 +243,17 @@ export default function MemberDashboardPage() {
     return unsubscribe;
   }, [studentId]);
 
-  const handleCloseScanner = React.useCallback(async () => {
-    if (html5QrcodeScannerRef.current && typeof html5QrcodeScannerRef.current.clear === 'function') {
-        if (html5QrcodeScannerRef.current.getState() !== 0 /* Html5QrcodeScannerState.NOT_STARTED */) {
-            try {
-                await html5QrcodeScannerRef.current.clear();
-            } catch (clearError) {
-                console.warn("Error clearing scanner on close:", clearError);
-            } finally {
-                html5QrcodeScannerRef.current = null;
-            }
-        }
-    }
+  const handleCloseScanner = React.useCallback(() => {
     setIsScannerOpen(false);
   }, []);
 
-
-  React.useEffect(() => {
-    let timeoutId: NodeJS.Timeout;
-    if (isScannerOpen && studentId) {
-      timeoutId = setTimeout(async () => {
-        const { Html5QrcodeScanner, Html5QrcodeSupportedFormats, Html5QrcodeScanType } = await import('html5-qrcode');
-        const scannerElement = document.getElementById(DASHBOARD_QR_SCANNER_ELEMENT_ID);
-        if (!scannerElement) {
-          console.warn("Dashboard QR scanner element not found after delay. Dialog might not be fully rendered yet.");
-          toast({variant: 'destructive', title: "Scanner Error", description: "Could not initialize QR scanner display. Please try again."});
-          await handleCloseScanner();
-          return;
-        }
-
-        if (html5QrcodeScannerRef.current) {
-          if (typeof html5QrcodeScannerRef.current.clear === 'function') {
-             try {
-                if (html5QrcodeScannerRef.current.getState() !== 0) {
-                    await html5QrcodeScannerRef.current.clear();
-                }
-             } catch(e) { /* scanner pre-clear failed, non-critical */ }
-             finally { html5QrcodeScannerRef.current = null; }
-          }
-        }
-
-        const formatsToSupport = [ Html5QrcodeSupportedFormats.QR_CODE ];
-        const config = {
-            fps: 10,
-             qrbox: (viewfinderWidth: number, viewfinderHeight: number) => {
-              const edgePercentage = 0.7;
-              const edgeLength = Math.min(viewfinderWidth, viewfinderHeight) * edgePercentage;
-              return { width: edgeLength, height: edgeLength };
-            },
-            supportedScanTypes: [Html5QrcodeScanType.SCAN_TYPE_CAMERA],
-            formatsToSupport: formatsToSupport,
-            rememberLastUsedCamera: true,
-            videoConstraints: {
-              facingMode: "environment" }
-        };
-
-        const scanner = new Html5QrcodeScanner(DASHBOARD_QR_SCANNER_ELEMENT_ID, config, false);
-        html5QrcodeScannerRef.current = scanner;
-
-        const onScanSuccess = async (decodedText: string, _decodedResult: unknown) => {
-          if (isProcessingQr) return;
-          setIsProcessingQr(true);
-
-          if (html5QrcodeScannerRef.current && html5QrcodeScannerRef.current.getState() === 2 /* PAUSED */) {
-          } else if (html5QrcodeScannerRef.current) {
-              try { await html5QrcodeScannerRef.current.pause(true); }
-              catch(e) { /* scanner pause failed, non-critical */ }
-          }
-
-          if (decodedText === LIBRARY_QR_CODE_PAYLOAD) {
-            try {
-              if (studentId) {
-                  await addCheckIn(studentId);
-                  toast({ title: "Checked In!", description: `Successfully checked in at ${new Date().toLocaleTimeString()}.` });
-                  await fetchAllDashboardData();
-              } else {
-                  toast({ title: "Error", description: "Student ID not available for scan processing.", variant: "destructive"});
-              }
-            } catch (error: unknown) {
-              console.error("Detailed error during scan processing (Dashboard):", error);
-              toast({ title: "Scan Error", description: (error instanceof Error ? error.message : String(error)) || "Failed to process attendance. Please try again.", variant: "destructive" });
-            }
-          } else {
-            toast({ title: "Invalid QR Code", description: "Please scan the official library QR code.", variant: "destructive" });
-            setTimeout(async () => {
-              if (html5QrcodeScannerRef.current ) {
-                try {
-                  if (html5QrcodeScannerRef.current.getState() === 2 /* PAUSED */) {
-                     html5QrcodeScannerRef.current.resume();
-                  }
-                } catch(e) { /* scanner resume failed, non-critical */ }
-              }
-            }, 1000);
-          }
-
-          if (html5QrcodeScannerRef.current && typeof html5QrcodeScannerRef.current.clear === 'function') {
-            try {
-                if (html5QrcodeScannerRef.current.getState() !== 0) await html5QrcodeScannerRef.current.clear();
-            } catch (clearError) {
-                console.warn("Error clearing scanner on success:", clearError);
-            } finally {
-                html5QrcodeScannerRef.current = null;
-            }
-          }
-          setIsProcessingQr(false);
-          setIsScannerOpen(false);
-        };
-
-        const onScanFailure = async (errorPayload: unknown) => {
-          let errorMessage = typeof errorPayload === 'string' ? errorPayload : ((errorPayload as { message?: string })?.message || JSON.stringify(errorPayload));
-          const errorMsgLower = errorMessage.toLowerCase();
-
-          if (!errorMsgLower.includes("no qr code found")) {
-            if (
-                errorMsgLower.includes("permission denied") ||
-                errorMsgLower.includes("notallowederror") ||
-                errorMsgLower.includes("notfounderror") ||
-                errorMsgLower.includes("aborterror")
-            ) {
-                setHasCameraPermission(false);
-                toast({
-                    variant: 'destructive',
-                    title: 'Camera or Scanner Error',
-                    description: 'Could not start QR scanner. Ensure camera permissions are enabled and no other app is using the camera. Try again.',
-                });
-                await handleCloseScanner();
-            } else {
-              console.warn("Dashboard QR Scan Failure (other, non-critical):", errorMessage, errorPayload);
-            }
-          }
-        };
-
-        try {
-          scanner.render(onScanSuccess, onScanFailure);
-          setHasCameraPermission(true);
-        } catch (err: unknown) {
-              console.error("Error rendering scanner (Dashboard - render call failed):", err);
-              setHasCameraPermission(false);
-              toast({ variant: 'destructive', title: 'Camera Initialization Error', description: (err instanceof Error ? err.message : String(err)) || 'Could not initialize camera for QR scanning.'});
-              await handleCloseScanner();
-        }
-      }, 100);
-
-      return () => {
-        clearTimeout(timeoutId);
-        if (html5QrcodeScannerRef.current && typeof html5QrcodeScannerRef.current.clear === 'function') {
-            if (html5QrcodeScannerRef.current.getState() !== 0) {
-                html5QrcodeScannerRef.current.clear()
-                  .catch((err: unknown) => console.warn("Cleanup: Error clearing scanner (Dashboard):", err))
-                  .finally(() => { html5QrcodeScannerRef.current = null; });
-            } else {
-                 html5QrcodeScannerRef.current = null;
-            }
-        }
-      };
-    }
-  }, [isScannerOpen, studentId, toast, fetchAllDashboardData, handleCloseScanner, isProcessingQr]);
+  const handleScanSuccess = React.useCallback(async () => {
+    if (!studentId) throw new Error("Student ID not available.");
+    await addCheckIn(studentId);
+    toast({ title: "Checked In!", description: `Successfully checked in at ${new Date().toLocaleTimeString()}.` });
+    setIsScannerOpen(false);
+    await fetchAllDashboardData();
+  }, [studentId, toast, fetchAllDashboardData]);
 
 
   const handleOpenScanner = React.useCallback(() => {
@@ -555,8 +269,6 @@ export default function MemberDashboardPage() {
         toast({title: "Already Checked In", description: "You are already checked in. Use the 'Check Out' button.", variant: "default"});
         return;
     }
-    setHasCameraPermission(null);
-    setIsProcessingQr(false);
     setIsScannerOpen(true);
   }, [studentId, activeCheckInRecord, toast, studentFeeStatus]);
 
@@ -780,58 +492,19 @@ export default function MemberDashboardPage() {
               isPrimaryAction={!primaryAttendanceDisabled}
               isLoadingStatistic={isLoadingCurrentSession && primaryAttendanceIcon === Loader2}
               disabled={primaryAttendanceDisabled}
-              className={cn(!primaryAttendanceDisabled && "animate-gradient-sweep")}
+              className={cn(!primaryAttendanceDisabled && "shadow-md")}
             />
         </div>
        )}
 
 
-       <Dialog open={isScannerOpen} onOpenChange={(open) => { if(!open) handleCloseScanner(); else if (!activeCheckInRecord) handleOpenScanner();}}>
-         <DialogContent className="w-[90vw] max-w-xs sm:max-w-sm md:max-w-md p-4 flex flex-col overflow-hidden">
-            <DialogHeader className="flex-shrink-0">
-              <ShadcnDialogTitle className="flex items-center"><Camera className="mr-2"/>Scan Library QR Code</ShadcnDialogTitle>
-              <DialogDescription>
-                Point your camera at the QR code provided at the library desk to check-in.
-              </DialogDescription>
-            </DialogHeader>
-
-            <div className="flex-grow flex flex-col gap-3 mt-3 min-h-0">
-              {hasCameraPermission === false && (
-                <Alert variant="destructive" className="flex-shrink-0">
-                  <XCircle className="h-4 w-4" />
-                  <ShadcnAlertTitle>Camera Access Denied</ShadcnAlertTitle>
-                  <AlertDescription>
-                    Camera access is required. Please enable it in your browser settings and try again.
-                  </AlertDescription>
-                </Alert>
-              )}
-
-              <div
-                id={DASHBOARD_QR_SCANNER_ELEMENT_ID}
-                className="w-full aspect-square bg-muted rounded-md border"
-              />
-
-              {(hasCameraPermission === null && !isProcessingQr) && (
-                  <div className="flex items-center justify-center text-muted-foreground text-sm py-2 flex-shrink-0">
-                      <Loader2 aria-hidden="true" className="mr-2 h-4 w-4 animate-spin" />
-                      Initializing camera...
-                  </div>
-              )}
-              {isProcessingQr && (
-                  <div className="flex items-center justify-center text-muted-foreground text-sm py-2 flex-shrink-0">
-                      <Loader2 aria-hidden="true" className="mr-2 h-4 w-4 animate-spin" />
-                      Processing QR code...
-                  </div>
-              )}
-            </div>
-
-            <div className="flex flex-col sm:flex-row gap-2 mt-auto pt-4 flex-shrink-0">
-                <Button variant="outline" onClick={handleCloseScanner} className="w-full" disabled={isProcessingQr}>
-                  Cancel
-                </Button>
-            </div>
-          </DialogContent>
-      </Dialog>
+      {isScannerOpen && studentId && (
+        <QrScannerOverlay
+          expectedPayload={LIBRARY_QR_CODE_PAYLOAD}
+          onSuccess={handleScanSuccess}
+          onClose={handleCloseScanner}
+        />
+      )}
 
       {!studentId && !isLoadingStudentData && (
          <p className="text-xs text-destructive text-center mb-4">Could not load your student record. Some features may be unavailable.</p>
@@ -851,7 +524,7 @@ export default function MemberDashboardPage() {
             title="Library Rules"
             description="Familiarize yourself with guidelines."
             icon={ScrollText}
-            href="/member/rules"
+            href="/rules"
         />
         <Dialog open={isWifiDialogOpen} onOpenChange={setIsWifiDialogOpen}>
           <DialogTrigger asChild>
@@ -868,7 +541,7 @@ export default function MemberDashboardPage() {
             <DialogHeader>
               <ShadcnDialogTitle>Library WiFi Details</ShadcnDialogTitle>
               <DialogDescription>
-                Connect to the library's network using the credentials below.
+                Connect to the library&apos;s network using the credentials below.
               </DialogDescription>
             </DialogHeader>
             <div className="py-4 space-y-4 max-h-[60vh] overflow-y-auto">

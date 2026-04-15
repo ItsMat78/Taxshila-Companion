@@ -7,7 +7,7 @@ import {
 export const TinyMovementChart = React.memo(({ data }: { data: Array<{ name: string; Joined: number; Left: number }> }) => (
    <ResponsiveContainer width="100%" height={50}>
       <LineChart data={data}>
-         <RechartsTooltip cursor={{ fill: 'rgba(0,0,0,0.03)' }} contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', padding: '4px 8px', fontSize: '12px' }} />
+         <RechartsTooltip cursor={{ fill: 'rgba(0,0,0,0.03)' }} contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', padding: '4px 8px', fontSize: '12px' }} labelFormatter={(label: string | number) => `Day ${label}`} />
          <Line type="monotone" dataKey="Joined" stroke="#10b981" strokeWidth={2} dot={false} activeDot={{ r: 4 }} />
          <Line type="monotone" dataKey="Left" stroke="#ef4444" strokeWidth={2} dot={false} activeDot={{ r: 4 }} />
       </LineChart>
@@ -31,10 +31,10 @@ export const TinyAreaChart = React.memo(({ data, color, dataKey }: { data: Array
 ));
 TinyAreaChart.displayName = 'TinyAreaChart';
 
-export const TinyBarChart = React.memo(({ data, color, dataKey, height = 50 }: { data: Array<{ name: string; [key: string]: unknown }>; color: string; dataKey: string; height?: number }) => (
+export const TinyBarChart = React.memo(({ data, color, dataKey, height = 50, labelFormatter }: { data: Array<{ name: string; [key: string]: unknown }>; color: string; dataKey: string; height?: number; labelFormatter?: (label: string | number) => string }) => (
    <ResponsiveContainer width="100%" height={height}>
       <BarChart data={data}>
-         <RechartsTooltip cursor={{ fill: 'rgba(0,0,0,0.03)' }} contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', padding: '4px 8px', fontSize: '12px' }} />
+         <RechartsTooltip cursor={{ fill: 'rgba(0,0,0,0.03)' }} contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', padding: '4px 8px', fontSize: '12px' }} labelFormatter={labelFormatter} />
          <Bar dataKey={dataKey} fill={color} radius={[3, 3, 0, 0]} />
       </BarChart>
    </ResponsiveContainer>

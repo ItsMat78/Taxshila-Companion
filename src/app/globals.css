@@ -596,7 +596,7 @@
   height: 120vh;
   z-index: -1;
   pointer-events: none;
-  filter: blur(100px);
+  filter: blur(60px);
   transition: background-image 1s ease;
 }
 
