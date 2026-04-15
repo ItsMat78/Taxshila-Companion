@@ -141,7 +141,7 @@ export default function AbsentStudentsPage() {
             <UserX className="mr-2 h-5 w-5 text-orange-500" />
             Long-term Absentee List ({potentialLeftStudents.length})
           </CardTitle>
-          <CardDescription>Review this list to mark students as 'Left' and free up their seats if necessary.</CardDescription>
+          <CardDescription>Review this list to mark students as &apos;Left&apos; and free up their seats if necessary.</CardDescription>
         </CardHeader>
         <CardContent>
           {isLoading ? (

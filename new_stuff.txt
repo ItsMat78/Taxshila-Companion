@@ -1,0 +1,99 @@
+Fix searchbox
+fix admin side update to transactionID 
+fix If payment not seen as confirmed, then send admin message to check account. admin will update in the app. if success, do it automatically. 
+
+Fix ESLINT errors in production fucking ass
+23:41:52.906 Running build in Washington, D.C., USA (East) – iad1
+23:41:52.906 Build machine configuration: 2 cores, 8 GB
+23:41:53.080 Cloning github.com/ItsMat78/Taxshila-Companion (Branch: master, Commit: 36851c2)
+23:41:53.534 Cloning completed: 454.000ms
+23:41:56.516 Restored build cache from previous deployment (4mCy39uVfba4ifk7RDPaeD6cXarY)
+23:41:56.717 Running "vercel build"
+23:41:57.349 Vercel CLI 51.2.1
+23:41:57.638 Installing dependencies...
+23:42:03.070 
+23:42:03.071 > nextn@1.0.0 prepare
+23:42:03.071 > husky
+23:42:03.071 
+23:42:03.139 
+23:42:03.140 added 137 packages, and changed 2 packages in 5s
+23:42:03.140 
+23:42:03.140 268 packages are looking for funding
+23:42:03.141   run `npm fund` for details
+23:42:03.174 Detected Next.js version: 15.5.9
+23:42:03.182 Running "npm run build"
+23:42:03.314 
+23:42:03.315 > nextn@1.0.0 build
+23:42:03.315 > next build
+23:42:03.315 
+23:42:04.455  ⚠ Invalid next.config.ts options detected: 
+23:42:04.455  ⚠     Unrecognized key(s) in object: 'allowedDevOrigins' at "experimental"
+23:42:04.455  ⚠ See more info here: https://nextjs.org/docs/messages/invalid-next-config
+23:42:04.542    ▲ Next.js 15.5.9
+23:42:04.543    - Experiments (use with caution):
+23:42:04.543      · allowedDevOrigins
+23:42:04.543 
+23:42:04.627    Creating an optimized production build ...
+23:42:29.327  ✓ Compiled successfully in 21.9s
+23:42:29.333    Linting and checking validity of types ...
+23:42:38.950 
+23:42:38.951 Failed to compile.
+23:42:38.951 
+23:42:38.951 ./src/app/admin/alerts/send/page.tsx
+23:42:38.952 315:100  Error: `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`.  react/no-unescaped-entities
+23:42:38.952 315:103  Error: `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`.  react/no-unescaped-entities
+23:42:38.952 315:110  Error: `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`.  react/no-unescaped-entities
+23:42:38.952 
+23:42:38.952 ./src/app/admin/feedback/page.tsx
+23:42:38.952 105:135  Error: `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`.  react/no-unescaped-entities
+23:42:38.953 105:144  Error: `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`.  react/no-unescaped-entities
+23:42:38.953 111:56  Error: `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`.  react/no-unescaped-entities
+23:42:38.955 111:79  Error: `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`.  react/no-unescaped-entities
+23:42:38.955 
+23:42:38.955 ./src/app/admin/manage/page.tsx
+23:42:38.955 90:8  Warning: React Hook React.useCallback has a missing dependency: 'getAuthToken'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+23:42:38.955 
+23:42:38.955 ./src/app/admin/settings/wifi/page.tsx
+23:42:38.955 228:103  Error: `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`.  react/no-unescaped-entities
+23:42:38.956 228:117  Error: `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`.  react/no-unescaped-entities
+23:42:38.956 
+23:42:38.956 ./src/app/admin/students/edit/[studentId]/page.tsx
+23:42:38.956 745:93  Error: `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`.  react/no-unescaped-entities
+23:42:38.956 745:97  Error: `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`.  react/no-unescaped-entities
+23:42:38.956 
+23:42:38.956 ./src/app/admin/students/movement/page.tsx
+23:42:38.957 260:49  Error: `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`.  react/no-unescaped-entities
+23:42:38.957 260:54  Error: `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`.  react/no-unescaped-entities
+23:42:38.957 
+23:42:38.957 ./src/app/admin/students/potential-left/page.tsx
+23:42:38.957 144:65  Error: `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`.  react/no-unescaped-entities
+23:42:38.957 144:70  Error: `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`.  react/no-unescaped-entities
+23:42:38.957 
+23:42:38.957 ./src/app/home/page.tsx
+23:42:38.957 34:13  Error: `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`.  react/no-unescaped-entities
+23:42:38.957 
+23:42:38.957 ./src/app/layout.tsx
+23:42:38.957 37:9  Warning: Custom fonts not added in `pages/_document.js` will only load for a single page. This is discouraged. See: https://nextjs.org/docs/messages/no-page-custom-font  @next/next/no-page-custom-font
+23:42:38.957 38:9  Warning: Custom fonts not added in `pages/_document.js` will only load for a single page. This is discouraged. See: https://nextjs.org/docs/messages/no-page-custom-font  @next/next/no-page-custom-font
+23:42:38.957 
+23:42:38.957 ./src/app/member/alerts/page.tsx
+23:42:38.957 71:50  Error: `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`.  react/no-unescaped-entities
+23:42:38.967 71:93  Error: `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`.  react/no-unescaped-entities
+23:42:38.968 
+23:42:38.968 ./src/app/page.tsx
+23:42:38.968 222:105  Error: `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`.  react/no-unescaped-entities
+23:42:38.968 222:117  Error: `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`.  react/no-unescaped-entities
+23:42:38.973 
+23:42:38.973 ./src/app/privacy_policy/page.tsx
+23:42:38.973 44:67  Error: `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`.  react/no-unescaped-entities
+23:42:38.981 44:70  Error: `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`.  react/no-unescaped-entities
+23:42:38.981 44:73  Error: `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`.  react/no-unescaped-entities
+23:42:38.981 44:76  Error: `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`.  react/no-unescaped-entities
+23:42:38.981 44:82  Error: `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`.  react/no-unescaped-entities
+23:42:38.982 44:86  Error: `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`.  react/no-unescaped-entities
+23:42:38.982 
+23:42:38.982 ./src/contexts/auth-context.tsx
+23:42:38.982 98:6  Warning: React Hook React.useEffect has a missing dependency: 'setTheme'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+23:42:38.982 
+23:42:38.982 info  - Need to disable some ESLint rules? Learn more here: https://nextjs.org/docs/app/api-reference/config/eslint#disabling-rules
+23:42:39.011 Error: Command "npm run build" exited with 1

@@ -68,7 +68,7 @@ function AlertDetailsDialog({ isOpen, onClose, alertItem }: AlertDetailsDialogPr
           {alertItem.originalFeedbackMessageSnippet && (
             <div className="text-sm p-3 bg-muted/50 rounded-md border">
               <p className="text-xs font-semibold text-muted-foreground">Regarding your feedback on:</p>
-              <p className="italic line-clamp-2">"{alertItem.originalFeedbackMessageSnippet}"</p>
+              <p className="italic line-clamp-2">&quot;{alertItem.originalFeedbackMessageSnippet}&quot;</p>
             </div>
           )}
           <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">

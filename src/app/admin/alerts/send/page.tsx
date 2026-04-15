@@ -312,7 +312,7 @@ export default function AdminSendAlertPage() {
             <Megaphone className="mr-2 h-5 w-5" />
              Compose Alert
           </CardTitle>
-          <CardDescription>The message will be sent as a push notification and appear in the member's 'Alerts' tab.</CardDescription>
+          <CardDescription>The message will be sent as a push notification and appear in the member&apos;s &apos;Alerts&apos; tab.</CardDescription>
         </CardHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)}>

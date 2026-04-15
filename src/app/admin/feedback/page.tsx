@@ -102,13 +102,13 @@ function FeedbackResponseDialog({ feedbackItem, isOpen, onClose, onSendResponse,
             Respond to Feedback
             </DialogTitle>
           <DialogDescription>
-            Your response will be sent as an alert to {feedbackItem.studentName || 'the student'} and this feedback will be marked as "Resolved".
+            Your response will be sent as an alert to {feedbackItem.studentName || 'the student'} and this feedback will be marked as &quot;Resolved&quot;.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
           <div className="mb-2 p-3 bg-muted/50 rounded-md border">
             <p className="text-xs font-semibold text-muted-foreground">Original Feedback from {feedbackItem.studentName || 'Student'}:</p>
-            <p className="text-sm italic line-clamp-3">"{feedbackItem.message}"</p>
+            <p className="text-sm italic line-clamp-3">&quot;{feedbackItem.message}&quot;</p>
           </div>
           <div className="grid gap-2">
             <Label htmlFor="responseMessage" className="text-left">

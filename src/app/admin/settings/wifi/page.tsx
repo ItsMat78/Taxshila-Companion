@@ -225,7 +225,7 @@ export default function WifiManagementPage() {
                                                 <AlertDialogHeader>
                                                     <AlertDialogTitle>Are you sure?</AlertDialogTitle>
                                                     <AlertDialogDescription>
-                                                        This will permanently delete the WiFi network "{config.ssid}".
+                                                        This will permanently delete the WiFi network &quot;{config.ssid}&quot;.
                                                     </AlertDialogDescription>
                                                 </AlertDialogHeader>
                                                 <AlertDialogFooter>

@@ -95,7 +95,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
 
     return () => unsubscribe(); // Cleanup subscription on unmount
-  }, [auth]); // Removed setTheme for stability
+  }, [auth, setTheme]);
 
 
   const updateUser = (updatedData: Partial<User>) => {

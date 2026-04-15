@@ -41,7 +41,7 @@ export default function PrivacyPolicyPage() {
             Our Commitment to Your Privacy
           </CardTitle>
           <CardDescription>
-            This Privacy Policy describes how Taxshila Companion ("we", "us", or "our") collects, uses, and discloses your information.
+            This Privacy Policy describes how Taxshila Companion (&quot;we&quot;, &quot;us&quot;, or &quot;our&quot;) collects, uses, and discloses your information.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6 text-foreground/90 leading-relaxed">

@@ -31,7 +31,7 @@ function ContactDialogContent() {
       <DialogHeader>
         <DialogTitle>Get in Touch</DialogTitle>
         <DialogDescription>
-          We're here to help. Reach out to us or visit us at our location.
+          We&apos;re here to help. Reach out to us or visit us at our location.
         </DialogDescription>
       </DialogHeader>
       <div className="space-y-4 pt-4">

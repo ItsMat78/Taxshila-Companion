@@ -257,7 +257,7 @@ export default function StudentMovementPage() {
               <UserMinus className="mr-2 h-5 w-5 text-red-500" />
               Students Who Left ({studentsWhoLeft.length})
             </CardTitle>
-            <CardDescription>Students marked as 'Left' in {periodLabel}.</CardDescription>
+            <CardDescription>Students marked as &apos;Left&apos; in {periodLabel}.</CardDescription>
           </CardHeader>
           <CardContent>
              {isLoading ? (

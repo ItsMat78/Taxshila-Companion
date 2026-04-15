@@ -57,14 +57,14 @@ export default function AdminManagementPage() {
 
     const isReviewer = isReviewerUser(user?.email);
 
-    const getAuthToken = async (): Promise<string | null> => {
+    const getAuthToken = React.useCallback(async (): Promise<string | null> => {
         const currentUser = auth.currentUser;
         if (!currentUser) {
             toast({ title: "Not Authenticated", description: "You are not logged in.", variant: "destructive" });
             return null;
         }
         return await currentUser.getIdToken();
-    };
+    }, [toast]);
 
     const fetchAdmins = React.useCallback(async () => {
         setIsLoading(true);
@@ -87,7 +87,7 @@ export default function AdminManagementPage() {
         } finally {
             setIsLoading(false);
         }
-    }, [toast]);
+    }, [toast, getAuthToken]);
 
     React.useEffect(() => {
         // We depend on the user object from the context to trigger the fetch

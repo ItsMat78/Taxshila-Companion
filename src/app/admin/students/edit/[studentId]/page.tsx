@@ -742,7 +742,7 @@ export default function EditStudentPage() {
                           <AlertDialogHeader>
                             <AlertDialogTitle>Confirm Student Re-activation</AlertDialogTitle>
                             <AlertDialogDescription>
-                              This will re-activate the student and set their fee status to 'Due'. Please review the date change below.
+                              This will re-activate the student and set their fee status to &apos;Due&apos;. Please review the date change below.
                             </AlertDialogDescription>
                           </AlertDialogHeader>
                           <div className="py-2 text-sm">

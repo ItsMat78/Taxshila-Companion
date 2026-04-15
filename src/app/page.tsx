@@ -219,7 +219,7 @@ export default function RootLoginPage() {
                           </Button>
                         </div>
                         <FormDescription className="text-xs text-foreground/80">
-                          The default password is your full name in all lowercase without spaces (e.g., 'shreyashrai').
+                          The default password is your full name in all lowercase without spaces (e.g., &apos;shreyashrai&apos;).
                         </FormDescription>
                         <FormMessage />
                       </FormItem>
