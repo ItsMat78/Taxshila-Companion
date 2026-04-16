@@ -2,7 +2,7 @@
 // src/app/api/send-notification/route.ts
 
 import { NextResponse } from 'next/server';
-import { triggerAlertNotification, triggerAdminFeedbackNotification } from '@/services/notification-service';
+import { triggerAlertNotification, triggerAdminFeedbackNotification, triggerAdminPaymentVerificationNotification } from '@/services/notification-service';
 import type { AlertItem } from '@/types/communication';
 
 export async function POST(request: Request) {
@@ -20,6 +20,14 @@ export async function POST(request: Request) {
         break;
       case 'feedback':
         await triggerAdminFeedbackNotification(payload.studentName, payload.feedbackType);
+        break;
+      case 'payment-alert':
+        await triggerAdminPaymentVerificationNotification(
+          payload.studentName,
+          payload.studentId,
+          payload.amount,
+          payload.txnId
+        );
         break;
       default:
         return NextResponse.json({ success: false, error: 'Invalid notification type' }, { status: 400 });

@@ -255,3 +255,27 @@ export async function triggerAdminFeedbackNotification(studentName: string, feed
         console.error(`[Notification Service] Failed to notify admins:`, error);
     }
 }
+
+export async function triggerAdminPaymentVerificationNotification(
+  studentName: string,
+  studentId: string,
+  amount: number,
+  txnId?: string
+): Promise<void> {
+  const body = txnId
+    ? `${studentName} (${studentId}) paid Rs.${amount} via UPI. Txn: ${txnId}. Please verify and update their account.`
+    : `${studentName} (${studentId}) has made a UPI payment of Rs.${amount}. Please verify and update their account.`;
+
+  const payload: NotificationPayload = {
+    title: 'Payment Pending Verification',
+    body,
+    icon: DEFAULT_ICON,
+    click_action: `/admin/students/edit/${studentId}`,
+  };
+
+  try {
+    await sendNotificationToAllAdmins(payload);
+  } catch (error) {
+    console.error('[Notification Service] Failed to notify admins of payment:', error);
+  }
+}

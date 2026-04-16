@@ -1,8 +1,11 @@
-Fix searchbox
-fix admin side update to transactionID 
-fix If payment not seen as confirmed, then send admin message to check account. admin will update in the app. if success, do it automatically. 
+Fix searchbox on admin student list
+fix admin side update to new transactionID format 
+fix not having download button on payment reciept after it is generated 
+fix If payment not seen as confirmed, then send admin an alert (feedback) with push notif to check account. admin will update in the app. if success, do it automatically. 
+upi apps don't trust this ;-;
 
-Fix ESLINT errors in production fucking ass
+Fix ESLINT errors in production fucking ass. it is running now but double check
+
 23:41:52.906 Running build in Washington, D.C., USA (East) – iad1
 23:41:52.906 Build machine configuration: 2 cores, 8 GB
 23:41:53.080 Cloning github.com/ItsMat78/Taxshila-Companion (Branch: master, Commit: 36851c2)

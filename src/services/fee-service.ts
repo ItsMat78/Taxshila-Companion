@@ -120,7 +120,8 @@ export async function recordStudentPayment(
   customStudentId: string,
   totalAmountPaidString: string,
   paymentMethod: PaymentRecord['method'],
-  numberOfMonthsPaid: number = 1
+  numberOfMonthsPaid: number = 1,
+  customTransactionId?: string
 ): Promise<Student | undefined> {
   const studentToUpdate = await getStudentByCustomIdInternal(customStudentId);
   if (!studentToUpdate || !studentToUpdate.firestoreId) {
@@ -144,7 +145,7 @@ export async function recordStudentPayment(
   const studentDocRef = doc(db, STUDENTS_COLLECTION, studentToUpdate.firestoreId);
   const today = new Date();
   const newPaymentId = `PAY${String(Date.now()).slice(-6)}${String(Math.floor(Math.random() * 100)).padStart(2,'0')}`;
-  const newTransactionId = `TXN${paymentMethod.substring(0,3).toUpperCase()}${String(Date.now()).slice(-7)}`;
+  const newTransactionId = customTransactionId?.trim() || `TXN${paymentMethod.substring(0,3).toUpperCase()}${String(Date.now()).slice(-7)}`;
 
   const previousDueDateString: string | undefined =
     studentToUpdate.nextDueDate && isValid(parseISO(studentToUpdate.nextDueDate))

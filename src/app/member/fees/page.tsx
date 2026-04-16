@@ -291,6 +291,7 @@ export default function MemberFeesPage() {
   const [showHistory, setShowHistory] = React.useState(false);
   const [showUpiReturn, setShowUpiReturn] = React.useState(false);
   const [upiPending, setUpiPending] = React.useState(false);
+  const [lastUpiTn, setLastUpiTn] = React.useState<string>('');
 
   const getFeeAmount = (): number => {
     if (!feeStructure || !studentData) return 0;
@@ -317,13 +318,27 @@ export default function MemberFeesPage() {
           setUpiPending(false);
           const status = (result?.status || '').toUpperCase();
           if (status === 'SUCCESS') {
-            toast({ title: 'Payment received!', description: `Transaction ID: ${result.txnId || result.txnRef || '—'}. Inform admin to confirm your account.` });
+            const txnId = result.txnId || result.txnRef || tn;
+            toast({ title: 'Payment received!', description: `Transaction ID: ${txnId}. Admin has been notified to verify your account.` });
+            fetch('/api/send-notification', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                type: 'payment-alert',
+                studentName: studentData!.name,
+                studentId: studentData!.studentId,
+                amount,
+                txnId,
+              }),
+            }).catch(console.error);
           } else {
+            setLastUpiTn(tn);
             setShowUpiReturn(true);
           }
         },
       });
     } else {
+      setLastUpiTn(tn);
       window.location.href = upiUri;
     }
   };
@@ -376,6 +391,27 @@ export default function MemberFeesPage() {
     document.addEventListener('visibilitychange', handleVisibility);
     return () => document.removeEventListener('visibilitychange', handleVisibility);
   }, [upiPending]);
+
+  const handlePaymentConfirmed = () => {
+    setShowUpiReturn(false);
+    if (!studentData) return;
+    const amount = getFeeAmount();
+    fetch('/api/send-notification', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        type: 'payment-alert',
+        studentName: studentData.name,
+        studentId: studentData.studentId,
+        amount,
+        txnId: lastUpiTn || undefined,
+      }),
+    }).catch(console.error);
+    toast({
+      title: 'Admin Notified',
+      description: 'Admin has been alerted to verify your payment. Your account will be updated shortly.',
+    });
+  };
 
   const getMonthlyFeeDisplay = (shift?: Student['shift'], currentFeeStructure?: FeeStructureType | null): string => {
     if (!shift || !currentFeeStructure) return "N/A";
@@ -544,8 +580,8 @@ export default function MemberFeesPage() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>No, I&apos;ll try again</AlertDialogCancel>
-            <AlertDialogAction onClick={() => setShowUpiReturn(false)}>
-              Yes, I paid — noted!
+            <AlertDialogAction onClick={handlePaymentConfirmed}>
+              Yes, I paid — notify admin!
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

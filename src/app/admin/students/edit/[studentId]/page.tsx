@@ -120,6 +120,7 @@ export default function EditStudentPage() {
   const [isReactivateConfirmOpen, setIsReactivateConfirmOpen] = React.useState(false);
   const [feeStructure, setFeeStructure] = React.useState<FeeStructure | null>(null);
   const [paymentMethod, setPaymentMethod] = React.useState<PaymentRecord['method']>('Cash');
+  const [manualTransactionId, setManualTransactionId] = React.useState("");
   const seatNumberRef = React.useRef<HTMLDivElement>(null);
 
   const isReviewer = isReviewerUser(user?.email);
@@ -361,7 +362,7 @@ export default function EditStudentPage() {
     }
 
     try {
-      const updatedStudent = await recordStudentPayment(studentId, amountToPay, paymentMethod);
+      const updatedStudent = await recordStudentPayment(studentId, amountToPay, paymentMethod, 1, manualTransactionId || undefined);
       if (updatedStudent) {
         setStudentData(updatedStudent); 
         setIsDirtyOverride(false);
@@ -796,21 +797,34 @@ export default function EditStudentPage() {
                                     <DateBox date={newDueDateForPayment} label="New Due Date" />
                                 </div>
                             </div>
-                            <div className="py-4">
-                                <Label className="mb-2 block">Payment Method</Label>
-                                <RadioGroup defaultValue="Cash" onValueChange={(value) => setPaymentMethod(value as PaymentRecord['method'])}>
-                                    <div className="flex items-center space-x-2">
-                                        <RadioGroupItem value="Cash" id="payment-cash" />
-                                        <Label htmlFor="payment-cash" className="font-normal">Cash</Label>
+                            <div className="py-4 space-y-4">
+                                <div>
+                                    <Label className="mb-2 block">Payment Method</Label>
+                                    <RadioGroup defaultValue="Cash" onValueChange={(value) => { setPaymentMethod(value as PaymentRecord['method']); setManualTransactionId(""); }}>
+                                        <div className="flex items-center space-x-2">
+                                            <RadioGroupItem value="Cash" id="payment-cash" />
+                                            <Label htmlFor="payment-cash" className="font-normal">Cash</Label>
+                                        </div>
+                                        <div className="flex items-center space-x-2">
+                                            <RadioGroupItem value="Online" id="payment-online" />
+                                            <Label htmlFor="payment-online" className="font-normal">Online (UPI/Card)</Label>
+                                        </div>
+                                    </RadioGroup>
+                                </div>
+                                {paymentMethod === 'Online' && (
+                                    <div>
+                                        <Label className="mb-1 block text-sm">UPI / Transaction Reference <span className="text-muted-foreground font-normal">(optional)</span></Label>
+                                        <Input
+                                            placeholder="e.g. 423978346798"
+                                            value={manualTransactionId}
+                                            onChange={(e) => setManualTransactionId(e.target.value)}
+                                        />
+                                        <p className="text-xs text-muted-foreground mt-1">Enter the transaction ID from the student&apos;s UPI app. Leave blank to auto-generate.</p>
                                     </div>
-                                    <div className="flex items-center space-x-2">
-                                        <RadioGroupItem value="Online" id="payment-online" />
-                                        <Label htmlFor="payment-online" className="font-normal">Online (UPI/Card)</Label>
-                                    </div>
-                                </RadioGroup>
+                                )}
                             </div>
                             <AlertDialogFooter>
-                                <AlertDialogCancel onClick={() => setIsConfirmPaymentOpen(false)} disabled={isSaving}>Cancel</AlertDialogCancel>
+                                <AlertDialogCancel onClick={() => { setIsConfirmPaymentOpen(false); setManualTransactionId(""); }} disabled={isSaving}>Cancel</AlertDialogCancel>
                                 <AlertDialogAction onClick={handleMarkPaymentPaid} disabled={isSaving}>
                                     {isSaving ? <Loader2 aria-hidden="true" className="mr-2 h-4 w-4 animate-spin" /> : null}
                                     Confirm Payment
