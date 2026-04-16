@@ -18,7 +18,7 @@ export function PageTitle({ title, description, children }: PageTitleProps) {
           <p className="mt-1 text-muted-foreground break-words">{description}</p>
         )}
       </div>
-      {children && <div className="flex flex-shrink-0 items-center gap-x-2">{children}</div>} {/* Actions container */}
+      {children && <div className="flex w-full flex-shrink-0 items-center gap-x-2 sm:w-auto">{children}</div>} {/* Actions container */}
     </div>
   );
 }

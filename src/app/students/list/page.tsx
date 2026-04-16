@@ -342,14 +342,14 @@ export default function StudentListPage() {
   return (
     <>
       <PageTitle title="Student Management" description="View and manage all registered students.">
-        <div className="relative ml-auto flex-1 md:grow-0 w-full sm:w-auto">
+        <div className="relative w-full sm:w-56 lg:w-[336px]">
             <SearchIcon className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               type="search"
               placeholder="Search students..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full rounded-lg bg-background pl-8 md:w-full lg:w-[336px]"
+              className="w-full rounded-lg bg-background pl-8"
             />
           </div>
       </PageTitle>
