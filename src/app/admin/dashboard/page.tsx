@@ -36,7 +36,8 @@ import {
    processCheckedInStudentsFromSnapshot,
    getAllStudents,
    getMonthlyRevenueHistory,
-   getAttendanceRecordsForDateRangeAll
+   getAttendanceRecordsForDateRangeAll,
+   refreshAllStudentFeeStatuses
 } from '@/services/student-service';
 import type { StudentSeatAssignment, CheckedInStudentInfo } from '@/types/student';
 import { format, parseISO, subDays, startOfMonth, endOfMonth, isSameMonth, subMonths, getDaysInMonth } from 'date-fns';
@@ -239,6 +240,10 @@ const fetchDashboardData = async () => {
 
 export default function GlassAdminDashboard() {
    const { user } = useAuth();
+
+   React.useEffect(() => {
+      refreshAllStudentFeeStatuses().catch(() => {});
+   }, []);
 
    const { data: dashboardData, isLoading, error } = useQuery({
       queryKey: ['dashboardAnalyticsData'],
