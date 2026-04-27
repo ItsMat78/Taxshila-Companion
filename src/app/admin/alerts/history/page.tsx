@@ -158,11 +158,16 @@ const AlertCardItem = ({ alert, onCardClick }: { alert: AlertItem, onCardClick: 
 
 type AlertFilterType = 'all' | 'payment' | 'admin_broadcast' | 'feedback' | 'shift_warning';
 
+const PAGE_SIZE = 20;
+
 export default function AdminAlertsHistoryPage() {
   const { toast } = useToast();
   const [sentAlerts, setSentAlerts] = React.useState<AlertItem[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
-  
+  const [visibleCount, setVisibleCount] = React.useState(PAGE_SIZE);
+  const sentinelRef = React.useRef<HTMLDivElement>(null);
+  const filteredLengthRef = React.useRef(0);
+
   const [filterType, setFilterType] = React.useState<AlertFilterType>('all');
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = React.useState(false);
   const [selectedAlert, setSelectedAlert] = React.useState<AlertItem | null>(null);
@@ -198,6 +203,25 @@ export default function AdminAlertsHistoryPage() {
         return sentAlerts;
     }
   }, [sentAlerts, filterType]);
+
+  filteredLengthRef.current = filteredAlerts.length;
+
+  React.useEffect(() => {
+    setVisibleCount(PAGE_SIZE);
+  }, [filteredAlerts]);
+
+  React.useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!sentinel) return;
+    const observer = new IntersectionObserver((entries) => {
+      if (entries[0].isIntersecting) {
+        setVisibleCount(c => Math.min(c + PAGE_SIZE, filteredLengthRef.current));
+      }
+    }, { rootMargin: '150px' });
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   
   const getFilterLabel = (type: AlertFilterType): string => {
     switch (type) {
@@ -261,7 +285,7 @@ export default function AdminAlertsHistoryPage() {
                     No alerts found for the selected filter.
                   </div>
                 ) : (
-                  filteredAlerts.map((alert) => (
+                  filteredAlerts.slice(0, visibleCount).map((alert) => (
                     <AlertCardItem key={alert.id} alert={alert} onCardClick={handleOpenDetails} />
                   ))
                 )}
@@ -280,7 +304,7 @@ export default function AdminAlertsHistoryPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredAlerts.map((alert) => {
+                    {filteredAlerts.slice(0, visibleCount).map((alert) => {
                       const { icon, color, label } = getAlertDisplayInfo(alert);
                       return (
                         <TableRow key={alert.id} onClick={() => handleOpenDetails(alert)} className="cursor-pointer hover:bg-muted/50">
@@ -320,6 +344,12 @@ export default function AdminAlertsHistoryPage() {
                   </TableBody>
                 </Table>
               </div>
+
+              {visibleCount < filteredAlerts.length && (
+                <div ref={sentinelRef} className="flex items-center justify-center py-4">
+                  <Loader2 aria-hidden="true" className="h-5 w-5 animate-spin text-muted-foreground" />
+                </div>
+              )}
             </>
           )}
         </CardContent>

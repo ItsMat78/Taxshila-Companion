@@ -116,7 +116,8 @@ const fetchDashboardData = async () => {
 
    const occupiedMorning = new Set(activeStudents.filter(s => s.seatNumber && (s.shift === 'morning' || s.shift === 'fullday')).map(s => s.seatNumber));
    const occupiedEvening = new Set(activeStudents.filter(s => s.seatNumber && (s.shift === 'evening' || s.shift === 'fullday')).map(s => s.seatNumber));
-   const occupiedFullday = new Set(activeStudents.filter(s => s.seatNumber && (s.shift === 'fullday')).map(s => s.seatNumber));
+   // A seat is only free for fullday if no morning AND no evening student holds it
+   const occupiedFullday = new Set([...occupiedMorning, ...occupiedEvening]);
 
    const defaulters = activeStudents.filter(s => s.feeStatus === 'Due' || s.feeStatus === 'Overdue');
    const defaultersCount = defaulters.length;

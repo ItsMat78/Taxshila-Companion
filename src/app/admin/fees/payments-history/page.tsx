@@ -63,10 +63,15 @@ const PaymentHistoryCardItem = ({ payment }: { payment: AggregatedPaymentRecord 
 );
 
 
+const PAGE_SIZE = 20;
+
 export default function PaymentHistoryPage() {
   const { toast } = useToast();
   const [allPayments, setAllPayments] = React.useState<AggregatedPaymentRecord[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
+  const [visibleCount, setVisibleCount] = React.useState(PAGE_SIZE);
+  const sentinelRef = React.useRef<HTMLDivElement>(null);
+  const totalRef = React.useRef(0);
 
   React.useEffect(() => {
     const fetchPaymentHistory = async () => {
@@ -106,6 +111,25 @@ export default function PaymentHistoryPage() {
     fetchPaymentHistory();
   }, [toast]);
 
+  totalRef.current = allPayments.length;
+
+  React.useEffect(() => {
+    setVisibleCount(PAGE_SIZE);
+  }, [allPayments]);
+
+  React.useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!sentinel) return;
+    const observer = new IntersectionObserver((entries) => {
+      if (entries[0].isIntersecting) {
+        setVisibleCount(c => Math.min(c + PAGE_SIZE, totalRef.current));
+      }
+    }, { rootMargin: '150px' });
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   return (
     <>
       <PageTitle title="Recent Payment History" description="View a log of recent fee payments made by students." />
@@ -134,7 +158,7 @@ export default function PaymentHistoryPage() {
                     No payment history found.
                   </div>
                 ) : (
-                  allPayments.map((payment) => (
+                  allPayments.slice(0, visibleCount).map((payment) => (
                     <PaymentHistoryCardItem key={payment.paymentId} payment={payment} />
                   ))
                 )}
@@ -155,7 +179,7 @@ export default function PaymentHistoryPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {allPayments.map((payment) => (
+                    {allPayments.slice(0, visibleCount).map((payment) => (
                       <TableRow key={payment.paymentId}>
                         <TableCell>{payment.paymentId}</TableCell>
                         <TableCell className="font-medium">{payment.studentName} ({payment.studentId})</TableCell>
@@ -186,6 +210,12 @@ export default function PaymentHistoryPage() {
                   </TableBody>
                 </Table>
               </div>
+
+              {visibleCount < allPayments.length && (
+                <div ref={sentinelRef} className="flex items-center justify-center py-4">
+                  <Loader2 aria-hidden="true" className="h-5 w-5 animate-spin text-muted-foreground" />
+                </div>
+              )}
             </>
           )}
         </CardContent>

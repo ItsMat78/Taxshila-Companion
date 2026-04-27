@@ -84,6 +84,8 @@ function AlertDetailsDialog({ isOpen, onClose, alertItem }: AlertDetailsDialogPr
 }
 
 
+const PAGE_SIZE = 15;
+
 export default function MemberAlertsPage() {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -91,6 +93,9 @@ export default function MemberAlertsPage() {
   const [alertsList, setAlertsList] = React.useState<AlertItem[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [studentId, setStudentId] = React.useState<string | null>(null);
+  const [visibleCount, setVisibleCount] = React.useState(PAGE_SIZE);
+  const sentinelRef = React.useRef<HTMLDivElement>(null);
+  const alertsLengthRef = React.useRef(0);
 
   const [isAlertDetailsOpen, setIsAlertDetailsOpen] = React.useState(false);
   const [currentAlertInModal, setCurrentAlertInModal] = React.useState<AlertItem | null>(null);
@@ -143,6 +148,25 @@ export default function MemberAlertsPage() {
       });
     }
   }, [studentId, fetchAlerts, refreshKey]); // Add refreshKey to dependency array
+
+  alertsLengthRef.current = alertsList.length;
+
+  React.useEffect(() => {
+    setVisibleCount(PAGE_SIZE);
+  }, [alertsList]);
+
+  React.useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!sentinel) return;
+    const observer = new IntersectionObserver((entries) => {
+      if (entries[0].isIntersecting) {
+        setVisibleCount(c => Math.min(c + PAGE_SIZE, alertsLengthRef.current));
+      }
+    }, { rootMargin: '150px' });
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const hasUnread = React.useMemo(() => alertsList.some(a => !a.isRead), [alertsList]);
 
@@ -283,7 +307,7 @@ export default function MemberAlertsPage() {
         </Card>
       ) : (
         <div className="space-y-4">
-          {alertsList.map((alert) => {
+          {alertsList.slice(0, visibleCount).map((alert) => {
             if (!alert || !alert.id) {
               console.warn("Skipping alert with undefined ID:", alert);
               return null;
@@ -325,6 +349,11 @@ export default function MemberAlertsPage() {
               </Card>
             );
           })}
+          {visibleCount < alertsList.length && (
+            <div ref={sentinelRef} className="flex items-center justify-center py-4">
+              <Loader2 aria-hidden="true" className="h-5 w-5 animate-spin text-muted-foreground" />
+            </div>
+          )}
         </div>
       )}
       <AlertDetailsDialog

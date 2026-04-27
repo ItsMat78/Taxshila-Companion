@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { updateProfilePicture } from '@/services/student-service';
-import { Loader2, Camera, Video, VideoOff, View, Save } from "lucide-react";
+import { Loader2, Camera, Video, VideoOff, View, Save, User } from "lucide-react";
 import NextImage from "next/image";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
@@ -189,32 +189,38 @@ export function ProfilePictureUploader({
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex flex-col items-center space-y-4">
-          <Dialog>
-            <DialogTrigger asChild>
+          {base64Preview ? (
+            <Dialog>
+              <DialogTrigger asChild>
                 <div className="cursor-pointer relative group">
-                    <NextImage
-                        src={base64Preview || "/logo.png"}
-                        alt="Profile Picture Preview"
-                        width={150}
-                        height={150}
-                        className="rounded-full object-cover w-[150px] h-[150px] border-2 border-muted"
-                        data-ai-hint="profile person"
-                    />
-                    <div className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                        <View className="text-white h-8 w-8"/>
-                    </div>
+                  <NextImage
+                    src={base64Preview}
+                    alt="Profile Picture Preview"
+                    width={150}
+                    height={150}
+                    className="rounded-full object-cover w-[150px] h-[150px] border-2 border-muted"
+                    data-ai-hint="profile person"
+                  />
+                  <div className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                    <View className="text-white h-8 w-8"/>
+                  </div>
                 </div>
-            </DialogTrigger>
-            <DialogContent className="max-w-md w-auto p-2">
+              </DialogTrigger>
+              <DialogContent className="max-w-md w-auto p-2">
                 <NextImage
-                    src={base64Preview || "/logo.png"}
-                    alt="Profile Picture Full View"
-                    width={500}
-                    height={500}
-                    className="rounded-md object-contain max-h-[80vh] w-full h-auto"
+                  src={base64Preview}
+                  alt="Profile Picture Full View"
+                  width={500}
+                  height={500}
+                  className="rounded-md object-contain max-h-[80vh] w-full h-auto"
                 />
-            </DialogContent>
-          </Dialog>
+              </DialogContent>
+            </Dialog>
+          ) : (
+            <div className="w-[150px] h-[150px] rounded-full bg-muted border-2 border-muted flex items-center justify-center">
+              <User className="h-16 w-16 text-muted-foreground" />
+            </div>
+          )}
 
           <div className="grid w-full max-w-sm items-center gap-1.5">
             <Label htmlFor="picture">Select File</Label>
