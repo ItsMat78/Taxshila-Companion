@@ -85,6 +85,7 @@ const generateReceipt = (payment: PaymentRecord, student: Student) => {
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Payment Receipt — ${receiptNo}</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -105,6 +106,9 @@ const generateReceipt = (payment: PaymentRecord, student: Student) => {
     .total-row td { border-top: 2px solid #000; font-weight: bold; }
     .words { font-size: 11px; color: #444; margin-top: 3px; font-style: italic; }
     .footer { margin-top: 24px; border-top: 1px solid #ccc; padding-top: 10px; font-size: 11px; color: #666; text-align: center; line-height: 1.6; }
+    .save-btn { display: block; width: 100%; margin-top: 24px; padding: 14px; background: #000; color: #fff; font-size: 15px; font-weight: bold; border: none; border-radius: 6px; cursor: pointer; letter-spacing: 0.03em; }
+    .save-btn:active { background: #333; }
+    @media print { .save-btn { display: none !important; } }
   </style>
 </head>
 <body>
@@ -160,6 +164,7 @@ const generateReceipt = (payment: PaymentRecord, student: Student) => {
     Thank you for being a valued member of Taxshila Digital Library.<br>
     This is a computer-generated receipt and does not require a signature.
   </div>
+  <button class="save-btn" onclick="window.print()">⬇ Download / Save as PDF</button>
   <script>setTimeout(() => window.print(), 300);</script>
 </body>
 </html>`;

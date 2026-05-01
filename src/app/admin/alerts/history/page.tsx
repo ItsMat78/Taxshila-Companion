@@ -221,7 +221,7 @@ export default function AdminAlertsHistoryPage() {
     observer.observe(sentinel);
     return () => observer.disconnect();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [isLoading]);
   
   const getFilterLabel = (type: AlertFilterType): string => {
     switch (type) {
@@ -345,11 +345,11 @@ export default function AdminAlertsHistoryPage() {
                 </Table>
               </div>
 
-              {visibleCount < filteredAlerts.length && (
-                <div ref={sentinelRef} className="flex items-center justify-center py-4">
+              <div ref={sentinelRef} className="flex items-center justify-center py-4">
+                {visibleCount < filteredAlerts.length && (
                   <Loader2 aria-hidden="true" className="h-5 w-5 animate-spin text-muted-foreground" />
-                </div>
-              )}
+                )}
+              </div>
             </>
           )}
         </CardContent>

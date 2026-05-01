@@ -166,7 +166,7 @@ export default function MemberAlertsPage() {
     observer.observe(sentinel);
     return () => observer.disconnect();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [isLoading]);
 
   const hasUnread = React.useMemo(() => alertsList.some(a => !a.isRead), [alertsList]);
 
@@ -349,11 +349,11 @@ export default function MemberAlertsPage() {
               </Card>
             );
           })}
-          {visibleCount < alertsList.length && (
-            <div ref={sentinelRef} className="flex items-center justify-center py-4">
+          <div ref={sentinelRef} className="flex items-center justify-center py-4">
+            {visibleCount < alertsList.length && (
               <Loader2 aria-hidden="true" className="h-5 w-5 animate-spin text-muted-foreground" />
-            </div>
-          )}
+            )}
+          </div>
         </div>
       )}
       <AlertDetailsDialog
