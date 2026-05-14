@@ -301,13 +301,11 @@ export async function refreshAllStudentFeeStatuses(): Promise<{ updatedCount: nu
         newFeeStatus = 'Due';
       }
 
-      if (student.amountDue === 'Rs. 0' || !student.amountDue || student.amountDue === 'N/A') {
-          switch (student.shift) {
-            case "morning": newAmountDue = `Rs. ${feeStructure.morningFee}`; break;
-            case "evening": newAmountDue = `Rs. ${feeStructure.eveningFee}`; break;
-            case "fullday": newAmountDue = `Rs. ${feeStructure.fullDayFee}`; break;
-            default: newAmountDue = "Rs. 0";
-          }
+      switch (student.shift) {
+        case "morning": newAmountDue = `Rs. ${feeStructure.morningFee}`; break;
+        case "evening": newAmountDue = `Rs. ${feeStructure.eveningFee}`; break;
+        case "fullday": newAmountDue = `Rs. ${feeStructure.fullDayFee}`; break;
+        default: newAmountDue = "Rs. 0";
       }
     }
 
