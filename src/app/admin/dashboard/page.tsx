@@ -132,6 +132,27 @@ const fetchDashboardData = async () => {
       pastMonthRev = `Rs. ${revHistory[1].revenue.toLocaleString('en-IN')}`;
    }
 
+   // Month-to-date pace: compare revenue collected so far this month against the
+   // same number of days into last month. A whole-month total vs. a partial running
+   // total would otherwise show a misleading ~90% "drop" early in every month.
+   const currentDayOfMonth = now.getDate();
+   const lastMonthDate = subMonths(now, 1);
+   let currentMonthToDateRevenue = 0;
+   let lastMonthToSameDayRevenue = 0;
+   allStudentsData.forEach(s => {
+      s.paymentHistory?.forEach(p => {
+         const d = parseISO(p.date);
+         if (isNaN(d.getTime()) || d.getDate() > currentDayOfMonth) return;
+         const amt = parseInt(p.amount.replace('Rs. ', '').trim(), 10);
+         if (isNaN(amt)) return;
+         if (isSameMonth(d, now)) currentMonthToDateRevenue += amt;
+         else if (isSameMonth(d, lastMonthDate)) lastMonthToSameDayRevenue += amt;
+      });
+   });
+   const revenueChangePct = lastMonthToSameDayRevenue > 0
+      ? Math.round(((currentMonthToDateRevenue - lastMonthToSameDayRevenue) / lastMonthToSameDayRevenue) * 100)
+      : null;
+
    const daysInMonthTotal = getDaysInMonth(now);
    const regData = Array.from({ length: daysInMonthTotal }).map((_, i) => {
       const day = i + 1;
@@ -219,6 +240,7 @@ const fetchDashboardData = async () => {
          activeCheckIns: checkedIn.length,
          revenue: rev || "Rs. 0",
          lastMonthRevenue: pastMonthRev,
+         revenueChangePct,
          morningSlots: serviceAllSeats.length - occupiedMorning.size,
          eveningSlots: serviceAllSeats.length - occupiedEvening.size,
          fulldaySlots: serviceAllSeats.length - occupiedFullday.size,
@@ -258,7 +280,7 @@ export default function GlassAdminDashboard() {
    }, []);
 
    const loadingFallback = {
-      totalStudents: 0, activeCheckIns: 0, revenue: "Rs. 0", lastMonthRevenue: "Rs. 0",
+      totalStudents: 0, activeCheckIns: 0, revenue: "Rs. 0", lastMonthRevenue: "Rs. 0", revenueChangePct: null as number | null,
       morningSlots: 0, eveningSlots: 0, fulldaySlots: 0, defaultersCount: 0, joinedThisMonth: 0, leftThisMonth: 0, loading: true
    };
 
@@ -268,7 +290,9 @@ export default function GlassAdminDashboard() {
    const graphs = dashboardData?.graphs || fallbackGraphs;
    const liveStudents = dashboardData?.liveStudents || [];
 
-   const isRevenueTrendingUp = graphs.revenueData.length > 1 && graphs.revenueData[graphs.revenueData.length - 1].value >= graphs.revenueData[graphs.revenueData.length - 2].value;
+   // Month-to-date pace vs. the same day-of-month last month (computed in the fetcher).
+   const revenueChangePct = stats.revenueChangePct;
+   const isRevenueTrendingUp = revenueChangePct === null || revenueChangePct >= 0;
 
    return (
       <ErrorBoundary>
@@ -284,7 +308,7 @@ export default function GlassAdminDashboard() {
             <div className="lg:hidden w-full sm:w-auto">
                <Dialog>
                   <DialogTrigger asChild>
-                     <Button variant="outline" className="w-full sm:w-auto bg-white/20 dark:bg-white/5 backdrop-blur-lg border-white/40 dark:border-white/10 hover:bg-white/40 group">
+                     <Button variant="outline" className="w-full sm:w-auto bg-white/20 dark:bg-white/5 backdrop-blur-lg border-white/40 dark:border-white/10 hover:bg-white/40 dark:hover:bg-white/10 group">
                         <Activity className="mr-2 h-4 w-4 text-teal-500 animate-pulse" />
                         Live: {stats.activeCheckIns} Active
                      </Button>
@@ -325,9 +349,13 @@ export default function GlassAdminDashboard() {
                            <div className="flex flex-col gap-0.5 mb-1 mt-1 md:mt-2">
                               <div className="flex items-end gap-2 md:gap-3">
                                  <span className="text-2xl md:text-4xl font-light tracking-tight leading-none">{stats.loading ? '-' : stats.revenue.replace('Rs. ', '₹')}</span>
-                                 {!stats.loading && (
-                                    <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold flex items-center ${isRevenueTrendingUp ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'}`}>
-                                       {isRevenueTrendingUp ? <TrendingUp size={10} className="mr-1" /> : <TrendingDown size={10} className="mr-1" />}
+                                 {!stats.loading && revenueChangePct !== null && (
+                                    <span
+                                       title="Month-to-date vs. the same day last month"
+                                       className={`text-[10px] px-1.5 py-0.5 rounded font-bold flex items-center ${isRevenueTrendingUp ? 'bg-green-50 text-green-600 dark:bg-green-900/30 dark:text-green-400' : 'bg-red-50 text-red-600 dark:bg-red-900/30 dark:text-red-400'}`}
+                                    >
+                                       {isRevenueTrendingUp ? <TrendingUp size={10} className="mr-0.5" /> : <TrendingDown size={10} className="mr-0.5" />}
+                                       {`${revenueChangePct > 0 ? '+' : ''}${revenueChangePct}%`}
                                     </span>
                                  )}
                               </div>
@@ -411,7 +439,7 @@ export default function GlassAdminDashboard() {
                {/* Secondary Operational Metrics (Smaller Grid) */}
                <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
                   {/* Total Students */}
-                  <GlassCard className="p-3 md:p-4 flex flex-col justify-between h-full border-white">
+                  <GlassCard className="p-3 md:p-4 flex flex-col justify-between h-full border-white/80 dark:border-white/5">
                         <div>
                            <div className="flex justify-between items-start mb-1">
                               <span className="text-gray-500 dark:text-gray-400 text-[10px] md:text-sm font-medium">Headcount</span>
@@ -427,8 +455,8 @@ export default function GlassAdminDashboard() {
                      </GlassCard>
 
                   {/* Seat Availability */}
-                  <GlassCard className="p-3 md:p-4 flex flex-col justify-between h-full relative overflow-hidden border-white">
-                        <div className="absolute top-0 right-0 w-16 md:w-24 h-16 md:h-24 bg-orange-200 blur-2xl opacity-30 rounded-full pointer-events-none transform translate-x-1/2 -translate-y-1/2"></div>
+                  <GlassCard className="p-3 md:p-4 flex flex-col justify-between h-full relative overflow-hidden border-white/80 dark:border-white/5">
+                        <div className="absolute top-0 right-0 w-16 md:w-24 h-16 md:h-24 bg-orange-200 dark:bg-orange-500/40 blur-2xl opacity-30 dark:opacity-20 rounded-full pointer-events-none transform translate-x-1/2 -translate-y-1/2"></div>
                         <div>
                            <div className="flex justify-between items-start mb-1">
                               <span className="text-gray-500 dark:text-gray-400 text-[10px] md:text-sm font-medium">Vacant</span>
@@ -452,7 +480,7 @@ export default function GlassAdminDashboard() {
                      </GlassCard>
 
                   {/* Student Movement Card (Full width on mobile below the pair) */}
-                  <GlassCard className="p-3 md:p-4 flex flex-col justify-between h-full relative border-white col-span-2">
+                  <GlassCard className="p-3 md:p-4 flex flex-col justify-between h-full relative border-white/80 dark:border-white/5 col-span-2">
                         <div className="flex justify-between items-start mb-1">
                            <span className="text-gray-500 dark:text-gray-400 text-[10px] md:text-sm font-medium uppercase md:normal-case">Movement History</span>
                            <Link href="/admin/students/movement" className="hover:scale-110 transition-transform"><Activity size={14} className="text-teal-500 md:size-4" /></Link>
@@ -465,7 +493,7 @@ export default function GlassAdminDashboard() {
                               </span>
                               <span className="text-xl md:text-2xl font-light leading-none">{stats.loading ? '-' : stats.joinedThisMonth}</span>
                            </div>
-                           <div className="w-px h-6 bg-gray-200/50"></div>
+                           <div className="w-px h-6 bg-gray-200/50 dark:bg-white/10"></div>
                            <div className="flex flex-col text-right">
                               <span className="flex items-center justify-end gap-1 text-red-500 mb-0.5 mt-0.5 text-[10px]">
                                  <UserMinus size={12} /> Left
@@ -485,7 +513,7 @@ export default function GlassAdminDashboard() {
                </div>
 
             {/* Large Hero Chart Area Width Expansion */}
-            <GlassCard className="p-4 flex flex-col shadow-[0_4px_20px_rgb(0,0,0,0.02)] border-white">
+            <GlassCard className="p-4 flex flex-col shadow-[0_4px_20px_rgb(0,0,0,0.02)] border-white/80 dark:border-white/5">
                <div className="flex justify-between items-end mb-4">
                   <div>
                      <h3 className="text-gray-500 dark:text-gray-400 text-sm font-medium mb-1">Weekly Attendance Volume</h3>
@@ -493,7 +521,7 @@ export default function GlassAdminDashboard() {
                         <span className="text-base font-medium text-gray-700 dark:text-gray-300">Active Check-ins</span>
                      </div>
                   </div>
-                  <div className="flex gap-4 text-xs font-semibold font-body bg-white/40 border border-white/60 p-2 px-3 rounded-full">
+                  <div className="flex gap-4 text-xs font-semibold font-body bg-white/40 dark:bg-white/10 border border-white/60 dark:border-white/10 p-2 px-3 rounded-full">
                      <div className="flex items-center gap-1.5"><Sunrise size={12} className="text-blue-500" /> Morning</div>
                      <div className="flex items-center gap-1.5"><Moon size={12} className="text-purple-500" /> Evening</div>
                      <div className="flex items-center gap-1.5"><Sun size={12} className="text-yellow-500" /> Full Day</div>
@@ -506,13 +534,13 @@ export default function GlassAdminDashboard() {
             </GlassCard>
 
             {/* Headcount vs Time */}
-            <GlassCard className="p-4 flex flex-col shadow-[0_4px_20px_rgb(0,0,0,0.02)] border-white">
+            <GlassCard className="p-4 flex flex-col shadow-[0_4px_20px_rgb(0,0,0,0.02)] border-white/80 dark:border-white/5">
                <div className="flex justify-between items-center mb-3">
                   <div>
                      <h3 className="text-gray-500 dark:text-gray-400 text-sm font-medium">Headcount vs Time</h3>
                      <p className="text-[10px] text-gray-400 font-body mt-0.5">Net active students — last 12 months</p>
                   </div>
-                  <div className="flex items-center gap-1.5 text-[10px] font-semibold font-body bg-white/40 border border-white/60 py-1 px-2.5 rounded-full">
+                  <div className="flex items-center gap-1.5 text-[10px] font-semibold font-body bg-white/40 dark:bg-white/10 border border-white/60 dark:border-white/10 py-1 px-2.5 rounded-full">
                      <Users size={11} className="text-indigo-500" /> All Time
                   </div>
                </div>
@@ -530,7 +558,7 @@ export default function GlassAdminDashboard() {
          {/* Right Sidebar - Live Stream (Remains Constant) */}
          <div className="hidden lg:block lg:col-span-3">
             <GlassCard className="h-[calc(100vh-120px)] sticky top-24 p-5 flex flex-col shadow-[0_8px_30px_rgba(45,212,191,0.06)] relative overflow-hidden border-white/60">
-               <div className="absolute -top-10 -right-10 w-48 h-48 bg-teal-200 blur-3xl opacity-10 rounded-full pointer-events-none"></div>
+               <div className="absolute -top-10 -right-10 w-48 h-48 bg-teal-200 dark:bg-teal-500/30 blur-3xl opacity-10 rounded-full pointer-events-none"></div>
 
                <div className="flex items-center gap-2 mb-6 relative z-10 border-b border-gray-200/40 dark:border-white/5 pb-4">
                   <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
@@ -668,6 +696,9 @@ const customScrollbarStyle = `
   .custom-scrollbar::-webkit-scrollbar-thumb {
     background-color: rgba(0,0,0,0.1);
     border-radius: 20px;
+  }
+  .dark .custom-scrollbar::-webkit-scrollbar-thumb {
+    background-color: rgba(255,255,255,0.15);
   }
 `;
 
