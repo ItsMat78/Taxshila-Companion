@@ -206,11 +206,25 @@ export type MonthlyRevenueData = {
   monthDate: string;
   monthDisplay: string;
   revenue: number;
+  cashRevenue: number;
+  onlineRevenue: number;
+  otherRevenue: number;
 };
+
+// Classify a payment method into the cash / online buckets used for revenue breakdowns.
+const ONLINE_PAYMENT_METHODS: ReadonlySet<PaymentRecord['method']> = new Set(['Online', 'UPI', 'Card']);
+const CASH_PAYMENT_METHODS: ReadonlySet<PaymentRecord['method']> = new Set(['Cash', 'Desk Payment']);
+
+type RevenueBucket = 'cash' | 'online' | 'other';
+function classifyPaymentMethod(method: PaymentRecord['method']): RevenueBucket {
+    if (ONLINE_PAYMENT_METHODS.has(method)) return 'online';
+    if (CASH_PAYMENT_METHODS.has(method)) return 'cash';
+    return 'other';
+}
 
 export async function getMonthlyRevenueHistory(): Promise<MonthlyRevenueData[]> {
     const allStudents = await getAllStudentsInternal();
-    const monthlyRevenueMap = new Map<string, number>();
+    const monthlyRevenueMap = new Map<string, { revenue: number; cashRevenue: number; onlineRevenue: number; otherRevenue: number }>();
 
     allStudents.forEach(student => {
         if (student.paymentHistory) {
@@ -222,10 +236,14 @@ export async function getMonthlyRevenueHistory(): Promise<MonthlyRevenueData[]> 
                         const amountString = payment.amount.replace('Rs. ', '').trim();
                         const amountValue = parseInt(amountString, 10);
                         if (!isNaN(amountValue)) {
-                            monthlyRevenueMap.set(
-                                monthKey,
-                                (monthlyRevenueMap.get(monthKey) || 0) + amountValue
-                            );
+                            const entry = monthlyRevenueMap.get(monthKey)
+                                ?? { revenue: 0, cashRevenue: 0, onlineRevenue: 0, otherRevenue: 0 };
+                            entry.revenue += amountValue;
+                            const bucket = classifyPaymentMethod(payment.method);
+                            if (bucket === 'cash') entry.cashRevenue += amountValue;
+                            else if (bucket === 'online') entry.onlineRevenue += amountValue;
+                            else entry.otherRevenue += amountValue;
+                            monthlyRevenueMap.set(monthKey, entry);
                         }
                     }
                 } catch (e) { /* ignore parse errors */ }
@@ -234,12 +252,12 @@ export async function getMonthlyRevenueHistory(): Promise<MonthlyRevenueData[]> 
     });
 
     const results = Array.from(monthlyRevenueMap.entries())
-        .map(([monthKey, revenue]) => {
+        .map(([monthKey, totals]) => {
             const monthDate = parse(`${monthKey}-01`, 'yyyy-MM-dd', new Date());
             return {
                 monthDate: monthDate.toISOString(),
                 monthDisplay: format(monthDate, 'MMMM yyyy'),
-                revenue,
+                ...totals,
             };
         });
 
