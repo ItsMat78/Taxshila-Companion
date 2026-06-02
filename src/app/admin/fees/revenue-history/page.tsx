@@ -16,8 +16,8 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from "@/components/ui/chart";
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Legend } from 'recharts';
-import { Loader2, TrendingUp, History, IndianRupee } from 'lucide-react';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from 'recharts';
+import { Loader2, TrendingUp, History, IndianRupee, Wallet, Banknote, CreditCard } from 'lucide-react';
 import { getMonthlyRevenueHistory, type MonthlyRevenueData as MonthlyRevenueDataFromService } from '@/services/student-service';
 import { useToast } from '@/hooks/use-toast';
 import { format, parse, parseISO, compareDesc, subMonths, startOfMonth, endOfMonth, addMonths } from 'date-fns';
@@ -30,17 +30,22 @@ import {
 } from "@/components/ui/select";
 import { cn } from '@/lib/utils';
 
-// Bring in the GlassCard from dashboard for consistency
-const GlassCard = ({ children, className = "" }: { children: React.ReactNode, className?: string }) => (
-  <div className={`bg-white/40 backdrop-blur-xl border border-white/60 shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-3xl overflow-hidden ${className}`}>
+const GlassCard = ({ children, className = "" }: { children: React.ReactNode; className?: string }) => (
+  <div className={cn(
+    "bg-white/40 dark:bg-slate-900/60 backdrop-blur-md",
+    "border border-white/60 dark:border-white/5",
+    "shadow-[0_4px_16px_rgb(0,0,0,0.04)] dark:shadow-[0_4px_24px_rgba(0,0,0,0.3)]",
+    "rounded-xl overflow-hidden",
+    className
+  )}>
     {children}
   </div>
 );
 
 const revenueChartConfig = {
   revenue: {
-    label: "Revenue (Rs.)",
-    color: "#eab308", // Matching yellow theme from the dashboard revenue card
+    label: "Revenue",
+    color: "#eab308",
   },
 } satisfies ChartConfig;
 
@@ -48,6 +53,10 @@ type MonthlyRevenueData = {
   monthDate: Date;
   monthDisplay: string;
   revenue: number;
+  // Method breakdown — present for dynamic (Firestore) data, absent for legacy static figures.
+  cashRevenue?: number;
+  onlineRevenue?: number;
+  otherRevenue?: number;
 };
 
 const staticProvidedRevenueInput: { monthName: string; year: number; revenue: number }[] = [
@@ -64,11 +73,7 @@ const staticProvidedRevenueInput: { monthName: string; year: number; revenue: nu
 
 const staticRevenueData: MonthlyRevenueData[] = staticProvidedRevenueInput.map(item => {
   const monthDate = parse(`${item.monthName} ${item.year}`, 'MMMM yyyy', new Date());
-  return {
-    monthDate: monthDate,
-    monthDisplay: format(monthDate, 'MMMM yyyy'),
-    revenue: item.revenue,
-  };
+  return { monthDate, monthDisplay: format(monthDate, 'MMMM yyyy'), revenue: item.revenue };
 });
 
 type TimeRange = '3m' | '6m' | '12m' | 'all';
@@ -78,6 +83,7 @@ export default function RevenueHistoryPage() {
   const [allRevenueHistory, setAllRevenueHistory] = React.useState<MonthlyRevenueData[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [timeRange, setTimeRange] = React.useState<TimeRange>('6m');
+  const [selectedMonthKey, setSelectedMonthKey] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     const fetchHistory = async () => {
@@ -85,26 +91,17 @@ export default function RevenueHistoryPage() {
       try {
         const dynamicHistoryFromService: MonthlyRevenueDataFromService[] = await getMonthlyRevenueHistory();
         const dynamicHistory = dynamicHistoryFromService.map(item => ({
-            ...item,
-            monthDate: parseISO(item.monthDate)
+          ...item,
+          monthDate: parseISO(item.monthDate),
         }));
-        
+
         const combinedMap = new Map<string, MonthlyRevenueData>();
-        
-        dynamicHistory.forEach(item => {
-          const monthKey = format(item.monthDate, 'yyyy-MM');
-          combinedMap.set(monthKey, item);
-        });
-        staticRevenueData.forEach(item => {
-          const monthKey = format(item.monthDate, 'yyyy-MM');
-          combinedMap.set(monthKey, item); 
-        });
-        
-        const combinedList = Array.from(combinedMap.values())
-          .sort((a, b) => compareDesc(a.monthDate, b.monthDate)); 
+        dynamicHistory.forEach(item => combinedMap.set(format(item.monthDate, 'yyyy-MM'), item));
+        staticRevenueData.forEach(item => combinedMap.set(format(item.monthDate, 'yyyy-MM'), item));
 
-        setAllRevenueHistory(combinedList);
-
+        setAllRevenueHistory(
+          Array.from(combinedMap.values()).sort((a, b) => compareDesc(a.monthDate, b.monthDate))
+        );
       } catch (error) {
         console.error("Failed to fetch revenue history:", error);
         toast({ title: "Error", description: "Could not load revenue history. Displaying static data only.", variant: "destructive" });
@@ -118,183 +115,292 @@ export default function RevenueHistoryPage() {
 
   const graphData = React.useMemo(() => {
     if (isLoading) return [];
-
     const now = new Date();
-    let startDate;
     const endDate = endOfMonth(now);
+    let startDate: Date;
 
     if (timeRange === 'all') {
-        if (allRevenueHistory.length === 0) return [];
-        startDate = allRevenueHistory.reduce((earliest, item) => item.monthDate < earliest ? item.monthDate : earliest, new Date());
+      if (allRevenueHistory.length === 0) return [];
+      startDate = allRevenueHistory.reduce(
+        (earliest, item) => item.monthDate < earliest ? item.monthDate : earliest,
+        new Date()
+      );
     } else {
-        const monthsToSubtract = { '3m': 3, '6m': 6, '12m': 12 }[timeRange];
-        startDate = startOfMonth(subMonths(now, monthsToSubtract - 1));
+      const monthsToSubtract = { '3m': 3, '6m': 6, '12m': 12 }[timeRange];
+      startDate = startOfMonth(subMonths(now, monthsToSubtract - 1));
     }
 
     const revenueMap = new Map<string, number>();
-    allRevenueHistory.forEach(item => {
-        const monthKey = format(item.monthDate, 'yyyy-MM');
-        revenueMap.set(monthKey, item.revenue);
-    });
+    allRevenueHistory.forEach(item => revenueMap.set(format(item.monthDate, 'yyyy-MM'), item.revenue));
 
     const chartData = [];
     let currentMonth = startDate;
-    let safetyCounter = 0; 
-    while (currentMonth <= endDate && safetyCounter < 240) { 
-        const monthKey = format(currentMonth, 'yyyy-MM');
-        chartData.push({
-            month: format(currentMonth, 'MMM yy'),
-            revenue: revenueMap.get(monthKey) || 0,
-        });
-        currentMonth = addMonths(currentMonth, 1);
-        safetyCounter++;
+    let safetyCounter = 0;
+    while (currentMonth <= endDate && safetyCounter < 240) {
+      chartData.push({
+        month: format(currentMonth, 'MMM yy'),
+        revenue: revenueMap.get(format(currentMonth, 'yyyy-MM')) || 0,
+      });
+      currentMonth = addMonths(currentMonth, 1);
+      safetyCounter++;
     }
-    
     return chartData;
   }, [allRevenueHistory, isLoading, timeRange]);
 
-  const tableData = React.useMemo(() => {
-    return [...allRevenueHistory].sort((a, b) => b.monthDate.getTime() - a.monthDate.getTime());
-  }, [allRevenueHistory]);
+  const tableData = React.useMemo(
+    () => [...allRevenueHistory].sort((a, b) => b.monthDate.getTime() - a.monthDate.getTime()),
+    [allRevenueHistory]
+  );
 
   const totalRevenueAmount = React.useMemo(() => {
-    if (isLoading || allRevenueHistory.length === 0) {
-      return null;
-    }
+    if (isLoading || allRevenueHistory.length === 0) return null;
     return allRevenueHistory.reduce((sum, item) => sum + item.revenue, 0);
   }, [allRevenueHistory, isLoading]);
 
+  // Default the breakdown month to the most recent one once data arrives.
+  React.useEffect(() => {
+    if (selectedMonthKey === null && tableData.length > 0) {
+      setSelectedMonthKey(tableData[0].monthDisplay);
+    }
+  }, [tableData, selectedMonthKey]);
+
+  const selectedMonthData = React.useMemo(
+    () => tableData.find(item => item.monthDisplay === selectedMonthKey) ?? null,
+    [tableData, selectedMonthKey]
+  );
+
+  // Breakdown is only available for dynamic (Firestore) data; legacy static figures lack method info.
+  const selectedBreakdown = React.useMemo(() => {
+    if (!selectedMonthData || selectedMonthData.cashRevenue === undefined || selectedMonthData.onlineRevenue === undefined) {
+      return null;
+    }
+    return {
+      cash: selectedMonthData.cashRevenue,
+      online: selectedMonthData.onlineRevenue,
+      other: selectedMonthData.otherRevenue ?? 0,
+      total: selectedMonthData.revenue,
+    };
+  }, [selectedMonthData]);
 
   return (
-    <div className="bg-transparent font-headline pb-12 w-full relative">
+    <div className="bg-transparent font-headline pb-12 w-full">
       <PageTitle title="Monthly Revenue History" description="Track revenue from received payments over time." />
 
-      <div className="space-y-6 mt-6 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-        
-        {/* Total Summary Block */}
-        <GlassCard className="p-6 relative group border-white">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-yellow-300 blur-[60px] opacity-20 group-hover:opacity-30 transition-opacity duration-700 pointer-events-none rounded-full transform translate-x-10 -translate-y-10"></div>
-          <div className="flex items-start justify-between">
+      <div className="space-y-4 mt-6 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+
+        {/* Total Summary */}
+        <GlassCard className="p-5 relative group">
+          <div className="absolute top-0 right-0 w-28 h-28 bg-yellow-300 dark:bg-yellow-500 blur-[50px] opacity-15 dark:opacity-10 group-hover:opacity-25 transition-opacity duration-700 pointer-events-none rounded-full translate-x-8 -translate-y-8" />
+          <div className="flex items-center gap-3 mb-3">
+            <div className="p-2 rounded-lg bg-yellow-100/80 dark:bg-yellow-900/30 shrink-0">
+              <IndianRupee className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
+            </div>
             <div>
-              <div className="flex items-center gap-2 mb-2 text-gray-500 font-medium">
-                <IndianRupee className="h-5 w-5 text-yellow-600" /> Total Recorded Revenue
-              </div>
-              <p className="text-sm font-body text-gray-400 mb-4">Sum of all monthly documented revenues in the ledger.</p>
+              <p className="text-sm font-medium text-foreground">Total Recorded Revenue</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Sum of all monthly documented revenues.</p>
             </div>
           </div>
-          
-          <div className="mt-2">
-            {isLoading ? (
-              <div className="h-10 w-48 animate-pulse bg-gray-200/50 rounded-lg"></div>
-            ) : totalRevenueAmount !== null ? (
-              <p className="text-5xl font-light tracking-tight text-gray-800">
-                ₹{totalRevenueAmount.toLocaleString('en-IN')}
-              </p>
-            ) : (
-              <p className="text-muted-foreground">No revenue data available.</p>
-            )}
-          </div>
+          {isLoading ? (
+            <div className="h-9 w-44 animate-pulse bg-muted rounded-lg" />
+          ) : totalRevenueAmount !== null ? (
+            <p className="text-3xl font-semibold tracking-tight text-foreground">
+              ₹{totalRevenueAmount.toLocaleString('en-IN')}
+            </p>
+          ) : (
+            <p className="text-sm text-muted-foreground">No revenue data available.</p>
+          )}
         </GlassCard>
 
-        {/* Graph Area */}
-        <GlassCard className="p-6 shadow-[0_12px_40px_rgba(234,179,8,0.05)] border-white">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+        {/* Cash vs Online Breakdown */}
+        <GlassCard className="p-5">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
             <div>
-              <h2 className="text-lg font-medium flex items-center gap-2 text-gray-800">
-                <TrendingUp className="h-5 w-5 text-green-500" />
+              <h2 className="text-sm font-semibold flex items-center gap-2 text-foreground">
+                <Wallet className="h-4 w-4 text-blue-500" />
+                Cash vs Online
+              </h2>
+              <p className="text-xs text-muted-foreground mt-0.5">Payment method split for the selected month.</p>
+            </div>
+            <Select
+              value={selectedMonthKey ?? ''}
+              onValueChange={setSelectedMonthKey}
+              disabled={isLoading || tableData.length === 0}
+            >
+              <SelectTrigger className="w-full sm:w-[180px] h-8 text-xs bg-white/40 dark:bg-white/5 border-white/60 dark:border-white/10 focus:ring-0">
+                <SelectValue placeholder="Select month" />
+              </SelectTrigger>
+              <SelectContent className="bg-white/90 dark:bg-slate-900 border-white/60 dark:border-slate-700 backdrop-blur-xl max-h-72">
+                {tableData.map((item) => (
+                  <SelectItem key={item.monthDisplay} value={item.monthDisplay}>
+                    {item.monthDisplay}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {isLoading ? (
+            <div className="grid grid-cols-2 gap-3">
+              <div className="h-24 animate-pulse bg-muted rounded-lg" />
+              <div className="h-24 animate-pulse bg-muted rounded-lg" />
+            </div>
+          ) : selectedBreakdown ? (
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="rounded-lg p-4 bg-green-100/40 dark:bg-green-900/15 border border-green-200/50 dark:border-green-500/10">
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <Banknote className="h-4 w-4 text-green-600 dark:text-green-400 shrink-0" />
+                    <span className="text-xs font-medium text-muted-foreground">Cash</span>
+                  </div>
+                  <p className="text-2xl font-semibold tracking-tight text-foreground">
+                    ₹{selectedBreakdown.cash.toLocaleString('en-IN')}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {selectedBreakdown.total > 0
+                      ? `${Math.round((selectedBreakdown.cash / selectedBreakdown.total) * 100)}% of total`
+                      : '—'}
+                  </p>
+                </div>
+                <div className="rounded-lg p-4 bg-blue-100/40 dark:bg-blue-900/15 border border-blue-200/50 dark:border-blue-500/10">
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <CreditCard className="h-4 w-4 text-blue-600 dark:text-blue-400 shrink-0" />
+                    <span className="text-xs font-medium text-muted-foreground">Online</span>
+                  </div>
+                  <p className="text-2xl font-semibold tracking-tight text-foreground">
+                    ₹{selectedBreakdown.online.toLocaleString('en-IN')}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {selectedBreakdown.total > 0
+                      ? `${Math.round((selectedBreakdown.online / selectedBreakdown.total) * 100)}% of total`
+                      : '—'}
+                  </p>
+                </div>
+              </div>
+              {selectedBreakdown.other > 0 && (
+                <p className="text-xs text-muted-foreground">
+                  Plus ₹{selectedBreakdown.other.toLocaleString('en-IN')} from other/imported methods.
+                </p>
+              )}
+            </div>
+          ) : (
+            <div className="flex items-center justify-center py-8 text-sm text-muted-foreground text-center">
+              {selectedMonthData
+                ? 'Payment method breakdown is not available for this month.'
+                : 'No revenue data available.'}
+            </div>
+          )}
+        </GlassCard>
+
+        {/* Revenue Graph */}
+        <GlassCard className="p-5">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
+            <div>
+              <h2 className="text-sm font-semibold flex items-center gap-2 text-foreground">
+                <TrendingUp className="h-4 w-4 text-green-500" />
                 Revenue Graph
               </h2>
-              <p className="text-sm text-gray-500 font-body">Visual comparison of monthly revenue collections.</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Monthly revenue over the selected period.</p>
             </div>
-            <div className="bg-white/40 backdrop-blur-md rounded-xl p-1 border border-white/50 shadow-sm">
-                <Select value={timeRange} onValueChange={(value) => setTimeRange(value as TimeRange)}>
-                <SelectTrigger className="w-full sm:w-[150px] bg-transparent border-none shadow-none focus:ring-0 text-gray-700 font-medium h-8 text-sm">
-                    <SelectValue placeholder="Select timeframe" />
-                </SelectTrigger>
-                <SelectContent className="bg-white/80 backdrop-blur-xl border-white/60">
-                    <SelectItem value="3m">Last 3 Months</SelectItem>
-                    <SelectItem value="6m">Last 6 Months</SelectItem>
-                    <SelectItem value="12m">Last 12 Months</SelectItem>
-                    <SelectItem value="all">All Time</SelectItem>
-                </SelectContent>
-                </Select>
-            </div>
+            <Select value={timeRange} onValueChange={(value) => setTimeRange(value as TimeRange)}>
+              <SelectTrigger className="w-full sm:w-[140px] h-8 text-xs bg-white/40 dark:bg-white/5 border-white/60 dark:border-white/10 focus:ring-0">
+                <SelectValue placeholder="Select timeframe" />
+              </SelectTrigger>
+              <SelectContent className="bg-white/90 dark:bg-slate-900 border-white/60 dark:border-slate-700 backdrop-blur-xl">
+                <SelectItem value="3m">Last 3 Months</SelectItem>
+                <SelectItem value="6m">Last 6 Months</SelectItem>
+                <SelectItem value="12m">Last 12 Months</SelectItem>
+                <SelectItem value="all">All Time</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
-          <div className="w-full">
-            {isLoading ? (
-              <div className="flex items-center justify-center h-[300px]">
-                <Loader2 role="status" aria-label="Loading" className="h-8 w-8 animate-spin text-primary" />
-              </div>
-            ) : graphData.length > 0 ? (
-              <ChartContainer config={revenueChartConfig} className="min-h-[200px] w-full h-[320px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={graphData} margin={{ top: 5, right: 0, left: -20, bottom: 5 }}>
-                    <defs>
-                        <linearGradient id="colorRevenueHistory" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#eab308" stopOpacity={0.6}/>
-                        <stop offset="95%" stopColor="#eab308" stopOpacity={0}/>
-                        </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(0,0,0,0.05)" />
-                    <XAxis dataKey="month" tickLine={false} axisLine={false} tick={{fill: '#9ca3af', fontSize: 12}} dy={10} />
-                    <YAxis
-                      tickFormatter={(value) => `₹${(Number(value) / 1000).toLocaleString('en-IN')}k`}
-                      tickLine={false}
-                      axisLine={false}
-                      tick={{fill: '#9ca3af', fontSize: 12}}
-                      width={60}
-                    />
-                    <RechartsTooltip
-                      cursor={{fill: 'rgba(0,0,0,0.02)'}}
-                      contentStyle={{ borderRadius: '12px', border: '1px solid rgba(255,255,255,0.6)', boxShadow: '0 4px 20px rgba(0,0,0,0.08)', backgroundColor: 'rgba(255,255,255,0.8)', backdropFilter: 'blur(8px)', padding: '8px 12px' }}
-                      formatter={(value: number) => [`₹${value.toLocaleString('en-IN')}`, 'Revenue']}
-                    />
-                    <Area type="monotone" dataKey="revenue" stroke="#eab308" strokeWidth={3} fill="url(#colorRevenueHistory)" activeDot={{ r: 6, strokeWidth: 0, fill: '#ca8a04' }} />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </ChartContainer>
-            ) : (
-              <div className="flex items-center justify-center h-[300px] text-gray-400 font-body">
-                 No revenue history data available for this range.
-              </div>
-            )}
-          </div>
+          {isLoading ? (
+            <div className="flex items-center justify-center h-[260px]">
+              <Loader2 role="status" aria-label="Loading" className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : graphData.length > 0 ? (
+            <ChartContainer config={revenueChartConfig} className="h-[260px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={graphData} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="colorRevenueHistory" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#eab308" stopOpacity={0.45} />
+                      <stop offset="95%" stopColor="#eab308" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(128,128,128,0.12)" />
+                  <XAxis dataKey="month" tickLine={false} axisLine={false} tick={{ fill: '#9ca3af', fontSize: 11 }} dy={8} />
+                  <YAxis
+                    tickFormatter={(value) => `₹${(Number(value) / 1000).toLocaleString('en-IN')}k`}
+                    tickLine={false}
+                    axisLine={false}
+                    tick={{ fill: '#9ca3af', fontSize: 11 }}
+                    width={55}
+                  />
+                  <ChartTooltip
+                    cursor={{ fill: 'rgba(128,128,128,0.06)' }}
+                    content={
+                      <ChartTooltipContent
+                        formatter={(value) => [`₹${Number(value).toLocaleString('en-IN')}`, 'Revenue']}
+                      />
+                    }
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="revenue"
+                    stroke="#eab308"
+                    strokeWidth={2}
+                    fill="url(#colorRevenueHistory)"
+                    activeDot={{ r: 5, strokeWidth: 0, fill: '#ca8a04' }}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </ChartContainer>
+          ) : (
+            <div className="flex items-center justify-center h-[260px] text-sm text-muted-foreground">
+              No revenue history data available for this range.
+            </div>
+          )}
         </GlassCard>
 
-        {/* Tabular Data */}
-        <GlassCard className="p-6 border-white">
-          <div className="mb-6">
-            <h2 className="text-lg font-medium flex items-center gap-2 text-gray-800">
-              <History className="h-5 w-5 text-gray-400" />
+        {/* Revenue Table */}
+        <GlassCard className="p-5">
+          <div className="mb-4">
+            <h2 className="text-sm font-semibold flex items-center gap-2 text-foreground">
+              <History className="h-4 w-4 text-muted-foreground" />
               Monthly Revenue Log
             </h2>
-            <p className="text-sm text-gray-500 font-body">Tabular view of all captured monthly aggregates.</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Tabular view of all captured monthly aggregates.</p>
           </div>
-          
-          <div className="bg-white/20 rounded-2xl overflow-hidden border border-white/40">
-            {isLoading && tableData.length === 0 ? ( 
-              <div className="flex items-center justify-center py-12">
-                <Loader2 role="status" aria-label="Loading" className="h-8 w-8 animate-spin text-gray-400" />
+
+          <div className="rounded-lg overflow-hidden border border-white/40 dark:border-white/5">
+            {isLoading && tableData.length === 0 ? (
+              <div className="flex items-center justify-center py-10">
+                <Loader2 role="status" aria-label="Loading" className="h-6 w-6 animate-spin text-muted-foreground" />
               </div>
             ) : (
               <Table>
-                <TableHeader className="bg-white/40">
-                  <TableRow className="border-b border-gray-200/30 hover:bg-transparent">
-                    <TableHead className="w-[300px] font-semibold text-gray-700">Month</TableHead>
-                    <TableHead className="text-right font-semibold text-gray-700">Captured Revenue</TableHead>
+                <TableHeader>
+                  <TableRow className="bg-white/40 dark:bg-white/5 border-b border-white/40 dark:border-white/5 hover:bg-transparent dark:hover:bg-transparent">
+                    <TableHead className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Month</TableHead>
+                    <TableHead className="text-right text-xs font-semibold text-muted-foreground uppercase tracking-wide">Revenue</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {tableData.map((item) => (
-                    <TableRow key={item.monthDisplay} className="border-b border-gray-100/30 hover:bg-white/40 transition-colors">
-                      <TableCell className="font-medium text-gray-600">{item.monthDisplay}</TableCell>
-                      <TableCell className="text-right text-gray-800 font-semibold tracking-wide">₹ {item.revenue.toLocaleString('en-IN')}</TableCell>
+                    <TableRow
+                      key={item.monthDisplay}
+                      className="border-b border-white/20 dark:border-white/5 hover:bg-white/30 dark:hover:bg-white/5 transition-colors"
+                    >
+                      <TableCell className="text-sm font-medium text-foreground/80">{item.monthDisplay}</TableCell>
+                      <TableCell className="text-right text-sm font-semibold text-foreground">
+                        ₹ {item.revenue.toLocaleString('en-IN')}
+                      </TableCell>
                     </TableRow>
                   ))}
                   {tableData.length === 0 && !isLoading && (
-                    <TableRow className="hover:bg-transparent">
-                      <TableCell colSpan={2} className="text-center text-gray-400 font-body py-8 border-none">
+                    <TableRow className="hover:bg-transparent dark:hover:bg-transparent">
+                      <TableCell colSpan={2} className="text-center text-sm text-muted-foreground py-8 border-none">
                         No revenue data found.
                       </TableCell>
                     </TableRow>
@@ -304,6 +410,7 @@ export default function RevenueHistoryPage() {
             )}
           </div>
         </GlassCard>
+
       </div>
     </div>
   );
