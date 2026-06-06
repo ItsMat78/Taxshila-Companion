@@ -14,9 +14,9 @@ import {
   DialogTrigger,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { 
-  Check, MapPin, Phone, Mail, ArrowRight, 
-  Wifi, Wind, Armchair, Droplets, ShieldCheck, 
+import {
+  Check, MapPin, Phone, Mail, ArrowRight,
+  Wifi, Wind, Armchair, Droplets, ShieldCheck,
   UserCircle, Sparkles, Clock, Crown, Play, BookOpenCheck
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -54,12 +54,12 @@ function ContactDialogContent() {
           </div>
         </a>
         <div className="relative h-64 w-full rounded-2xl overflow-hidden transition-all duration-500 border border-border shadow-inner mt-4">
-          <iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3605.5020189959014!2d83.00187507449463!3d25.35448622531363!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x398e2fedc194747f%3A0x571327385a60b22f!2sTaxshila%20Digital%20Library!5e0!3m2!1sen!2sin!4v1766080131645!5m2!1sen!2sin" width="100%" height="100%" style={{border:0}} allowFullScreen loading="lazy" referrerPolicy="no-referrer-when-downgrade"></iframe>
+          <iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3605.5020189959014!2d83.00187507449463!3d25.35448622531363!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x398e2fedc194747f%3A0x571327385a60b22f!2sTaxshila%20Digital%20Library!5e0!3m2!1sen!2sin!4v1766080131645!5m2!1sen!2sin" width="100%" height="100%" style={{ border: 0 }} allowFullScreen loading="lazy" referrerPolicy="no-referrer-when-downgrade"></iframe>
           <div className="absolute bottom-3 right-3">
-             <a href="https://www.google.com/maps/place/Taxshila+Digital+Library/@25.3544862,83.0018751,17z/data=!3m1!4b1!4m6!3m5!1s0x398e2fedc194747f:0x571327385a60b22f!8m2!3d25.3544814!4d83.0044447!16s%2Fg%2F11fyb_x1g9?entry=ttu" target="_blank" rel="noopener noreferrer">
-                <Button size="sm" className="backdrop-blur-md bg-background/70 border-border text-foreground hover:bg-accent hover:text-accent-foreground transition-all">
-                    Get Directions
-                </Button>
+            <a href="https://www.google.com/maps/place/Taxshila+Digital+Library/@25.3544862,83.0018751,17z/data=!3m1!4b1!4m6!3m5!1s0x398e2fedc194747f:0x571327385a60b22f!8m2!3d25.3544814!4d83.0044447!16s%2Fg%2F11fyb_x1g9?entry=ttu" target="_blank" rel="noopener noreferrer">
+              <Button size="sm" className="backdrop-blur-md bg-background/70 border-border text-foreground hover:bg-accent hover:text-accent-foreground transition-all">
+                Get Directions
+              </Button>
             </a>
           </div>
         </div>
@@ -79,7 +79,7 @@ function ModernHeader() {
   }, []);
 
   return (
-    <header 
+    <header
       className={cn(
         "fixed top-0 left-0 right-0 z-50 transition-all duration-300",
         scrolled ? "bg-background/80 backdrop-blur-xl border-b py-3 shadow-sm" : "bg-transparent py-6"
@@ -107,10 +107,10 @@ function ModernHeader() {
         <nav className="flex items-center gap-2 sm:gap-4">
           <Dialog>
             <DialogTrigger asChild>
-              <Button 
-                variant="ghost" 
+              <Button
+                variant="ghost"
                 className={cn(
-                  "hover:bg-white/10 transition-colors font-medium text-sm sm:text-base", 
+                  "hover:bg-white/10 transition-colors font-medium text-sm sm:text-base",
                   !scrolled && "text-white hover:text-white"
                 )}
               >
@@ -185,27 +185,27 @@ const featureList = [
 ];
 
 export default function HomePage() {
-  
+
   const pricingTiers = [
     {
       name: "Morning",
-      price: 550,
-      time: "7:00 AM - 2:00 PM",
+      price: 600,
+      time: "7:30 AM - 2:00 PM",
       description: "Perfect for early birds who are most productive at the start of the day.",
       highlight: false,
     },
     {
       name: "Full Day",
-      price: 900,
-      time: "7:00 AM - 9:30 PM",
+      price: 1000,
+      time: "7:30 AM - 9:00 PM",
       description: "Unrestricted access for dedicated aspirants who need maximum study time.",
       highlight: true,
       tag: "Most Popular",
     },
     {
       name: "Evening",
-      price: 550,
-      time: "2:00 PM - 9:30 PM",
+      price: 600,
+      time: "2:00 PM - 9:00 PM",
       description: "Ideal for students and professionals who study best in the later hours.",
       highlight: false,
     }
@@ -232,14 +232,14 @@ export default function HomePage() {
           </div>
           <div className="container relative z-10 px-6 md:px-12 lg:px-20 max-w-7xl pt-24 md:pt-24">
             <div className="max-w-3xl">
-              <Badge 
-                variant="outline" 
+              <Badge
+                variant="outline"
                 className="mb-6 px-4 py-1.5 text-sm bg-white/5 text-white hover:bg-white/10 backdrop-blur-md border-white/20 shadow-[0_0_15px_rgba(255,255,255,0.1)] transition-all hover:scale-105 cursor-default"
               >
                 <Sparkles className="w-3.5 h-3.5 mr-2 text-amber-400 fill-amber-400" />
                 Admissions Open for 2026
               </Badge>
-              
+
               <h1 className="text-5xl md:text-7xl lg:text-8xl font-black tracking-tight text-white mb-8 leading-[1.1] drop-shadow-2xl">
                 Focus.<br />
                 Learn.<br />
@@ -247,7 +247,7 @@ export default function HomePage() {
                   Achieve.
                 </span>
               </h1>
-              
+
               <p className="text-lg md:text-xl text-gray-200/90 mb-10 max-w-xl leading-relaxed drop-shadow-md font-medium">
                 Taxshila Digital Library is a precision-engineered environment designed to amplify your focus. Join the most productive community in Varanasi.
               </p>
@@ -258,20 +258,20 @@ export default function HomePage() {
 
         {/* --- Overlapping Logo --- */}
         <div className="absolute top-[calc(85vh-50px)] left-1/2 -translate-x-1/2 z-20 h-[100px] w-[100px] bg-background rounded-full p-2 shadow-xl border-4 border-background">
-            <Image
-                src={LOGO_URL}
-                alt="Taxshila Digital Library Logo"
-                width={100}
-                height={100}
-                className="object-contain"
-            />
+          <Image
+            src={LOGO_URL}
+            alt="Taxshila Digital Library Logo"
+            width={100}
+            height={100}
+            className="object-contain"
+          />
         </div>
 
 
         {/* --- Vibrant Bento Features --- */}
         <section className="pt-24 pb-24 bg-background relative overflow-hidden">
           <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-primary/5 via-background to-background pointer-events-none" />
-          
+
           <div className="container px-6 md:px-12 lg:px-20 max-w-7xl mx-auto relative z-10">
             <div className="text-center max-w-3xl mx-auto mb-16">
               <h2 className="text-3xl md:text-5xl font-bold mb-4 tracking-tight">Engineered for Efficiency</h2>
@@ -280,8 +280,8 @@ export default function HomePage() {
 
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-6 auto-rows-[minmax(180px,auto)]">
               {featureList.map((feature, idx) => (
-                <Card 
-                  key={idx} 
+                <Card
+                  key={idx}
                   className={cn(
                     "relative overflow-hidden group border transition-all duration-300 hover:shadow-xl hover:-translate-y-1 bg-gradient-to-br",
                     feature.gradient,
@@ -297,11 +297,11 @@ export default function HomePage() {
                   <CardContent className="relative z-10">
                     <p className="text-muted-foreground/80 font-medium">{feature.description}</p>
                   </CardContent>
-                  
+
                   <div className="absolute -right-10 -bottom-10 h-32 w-32 bg-white/20 rounded-full blur-3xl group-hover:bg-white/30 transition-all duration-500 opacity-0 group-hover:opacity-100" />
                 </Card>
               ))}
-              
+
               <Dialog>
                 <DialogTrigger asChild>
                   <Card className="col-span-2 lg:col-span-3 bg-primary text-primary-foreground flex flex-col justify-center items-center text-center border-none relative overflow-hidden shadow-2xl shadow-primary/20 group cursor-pointer transition-all hover:shadow-primary/40 hover:-translate-y-1">
@@ -340,48 +340,48 @@ export default function HomePage() {
                 </div>
               </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-start">
-                  {pricingTiers.map((tier) => (
-                    <div 
-                      key={tier.name} 
-                      className={cn(
-                        "relative flex flex-col h-full transition-all duration-500",
-                        tier.highlight && "md:scale-105 z-10"
-                      )}
-                    >
-                      {tier.highlight && (
-                        <div className="absolute -top-4 left-1/2 -translate-x-1/2 z-20">
-                          <Badge className="bg-primary text-primary-foreground hover:bg-primary px-4 py-1.5 text-xs uppercase tracking-widest font-bold shadow-lg shadow-primary/30 flex items-center gap-2 border-2 border-background">
-                            <Crown className="w-3.5 h-3.5 fill-current" />
-                            {tier.tag}
-                          </Badge>
-                        </div>
-                      )}
-                      <div className={cn(
-                        "flex-1 bg-card/60 p-8 rounded-3xl flex flex-col",
-                        tier.highlight && "bg-card shadow-2xl shadow-primary/10 ring-2 ring-primary/50"
-                      )}>
-                        <div className="flex-1">
-                          <h3 className="text-xl font-bold mb-1">{tier.name}</h3>
-                          <p className="text-muted-foreground text-sm mb-6 flex items-center gap-2"><Clock className="w-3.5 h-3.5"/>{tier.time}</p>
-                          <div className="flex items-baseline justify-start mb-4">
-                            <span className="text-5xl font-black tracking-tighter">Rs. {tier.price}</span>
-                            <span className="text-muted-foreground ml-2 font-medium">/month</span>
-                          </div>
-                          <p className="text-sm text-muted-foreground mb-6 h-12">{tier.description}</p>
-                        </div>
-                        <DialogTrigger asChild>
-                          <Button 
-                            className="w-full font-bold rounded-xl h-12 text-base shadow-md transition-all hover:scale-[1.02]"
-                            variant={tier.highlight ? "default" : "outline"}
-                          >
-                            Choose Plan
-                          </Button>
-                        </DialogTrigger>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-start">
+                {pricingTiers.map((tier) => (
+                  <div
+                    key={tier.name}
+                    className={cn(
+                      "relative flex flex-col h-full transition-all duration-500",
+                      tier.highlight && "md:scale-105 z-10"
+                    )}
+                  >
+                    {tier.highlight && (
+                      <div className="absolute -top-4 left-1/2 -translate-x-1/2 z-20">
+                        <Badge className="bg-primary text-primary-foreground hover:bg-primary px-4 py-1.5 text-xs uppercase tracking-widest font-bold shadow-lg shadow-primary/30 flex items-center gap-2 border-2 border-background">
+                          <Crown className="w-3.5 h-3.5 fill-current" />
+                          {tier.tag}
+                        </Badge>
                       </div>
+                    )}
+                    <div className={cn(
+                      "flex-1 bg-card/60 p-8 rounded-3xl flex flex-col",
+                      tier.highlight && "bg-card shadow-2xl shadow-primary/10 ring-2 ring-primary/50"
+                    )}>
+                      <div className="flex-1">
+                        <h3 className="text-xl font-bold mb-1">{tier.name}</h3>
+                        <p className="text-muted-foreground text-sm mb-6 flex items-center gap-2"><Clock className="w-3.5 h-3.5" />{tier.time}</p>
+                        <div className="flex items-baseline justify-start mb-4">
+                          <span className="text-5xl font-black tracking-tighter">Rs. {tier.price}</span>
+                          <span className="text-muted-foreground ml-2 font-medium">/month</span>
+                        </div>
+                        <p className="text-sm text-muted-foreground mb-6 h-12">{tier.description}</p>
+                      </div>
+                      <DialogTrigger asChild>
+                        <Button
+                          className="w-full font-bold rounded-xl h-12 text-base shadow-md transition-all hover:scale-[1.02]"
+                          variant={tier.highlight ? "default" : "outline"}
+                        >
+                          Choose Plan
+                        </Button>
+                      </DialogTrigger>
                     </div>
-                  ))}
-                </div>
+                  </div>
+                ))}
+              </div>
             </div>
           </section>
           <DialogContent>
@@ -391,64 +391,64 @@ export default function HomePage() {
 
         {/* --- Library Rules --- */}
         <section className="py-20 bg-background">
-            <div className="container mx-auto px-6 md:px-12 lg:px-20 max-w-4xl">
-                <Card className="p-8 text-center shadow-lg bg-card border">
-                <CardHeader>
-                    <div className="mx-auto h-16 w-16 mb-4 rounded-full bg-primary/10 flex items-center justify-center">
-                        <BookOpenCheck className="h-8 w-8 text-primary"/>
-                    </div>
-                    <CardTitle className="text-3xl font-bold">Library Rules & Regulations</CardTitle>
-                    <CardDescription className="text-lg text-muted-foreground mt-2">
-                    Please familiarize yourself with our code of conduct to ensure a productive environment for everyone.
-                    </CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <Link href="/rules" passHref>
-                    <Button size="lg" className="font-bold rounded-xl shadow-md">
-                        View Rules
-                        <ArrowRight className="ml-2 h-4 w-4"/>
-                    </Button>
-                    </Link>
-                </CardContent>
-                </Card>
-            </div>
+          <div className="container mx-auto px-6 md:px-12 lg:px-20 max-w-4xl">
+            <Card className="p-8 text-center shadow-lg bg-card border">
+              <CardHeader>
+                <div className="mx-auto h-16 w-16 mb-4 rounded-full bg-primary/10 flex items-center justify-center">
+                  <BookOpenCheck className="h-8 w-8 text-primary" />
+                </div>
+                <CardTitle className="text-3xl font-bold">Library Rules & Regulations</CardTitle>
+                <CardDescription className="text-lg text-muted-foreground mt-2">
+                  Please familiarize yourself with our code of conduct to ensure a productive environment for everyone.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Link href="/rules" passHref>
+                  <Button size="lg" className="font-bold rounded-xl shadow-md">
+                    View Rules
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </Link>
+              </CardContent>
+            </Card>
+          </div>
         </section>
 
         {/* --- Get The App Section --- */}
         <section className="py-20 bg-background border-t">
-            <div className="container mx-auto px-6 md:px-12 lg:px-20 max-w-4xl text-center">
-                <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-4">Access Anywhere</h2>
-                <p className="text-muted-foreground text-lg mb-8">
-                    Stay connected with the Taxshila Companion app, available on Google Play and as a progressive web app for all devices.
-                </p>
-                <div className="flex flex-col sm:flex-row justify-center items-center gap-4">
-                    <a href="https://play.google.com/store/apps/details?id=co.median.android.yeeemel&pcampaignid=web_share" target="_blank" rel="noopener noreferrer" className="inline-block w-[17rem] h-[104.53px]">
-                        <Image
-                            src="https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png"
-                            alt="Get it on Google Play"
-                            width={240}
-                            height={92}
-                            className="object-contain hover:opacity-90 transition-opacity w-full h-full"
-                            quality={95}
-                        />
-                    </a>
-                    <Link href="/" passHref>
-                        <Button variant="outline" className="h-[67.5px] w-[240px] bg-black text-white hover:bg-gray-800 hover:text-white border-gray-600 flex items-center justify-center gap-3">
-                             <Image
-                                src={LOGO_URL}
-                                alt="Taxshila Logo"
-                                width={48}
-                                height={48}
-                                className="object-contain"
-                            />
-                            <div className="text-left">
-                                <span className="text-sm block">GET THE</span>
-                                <span className="text-2xl font-semibold leading-none">Web App</span>
-                            </div>
-                        </Button>
-                    </Link>
-                </div>
+          <div className="container mx-auto px-6 md:px-12 lg:px-20 max-w-4xl text-center">
+            <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-4">Access Anywhere</h2>
+            <p className="text-muted-foreground text-lg mb-8">
+              Stay connected with the Taxshila Companion app, available on Google Play and as a progressive web app for all devices.
+            </p>
+            <div className="flex flex-col sm:flex-row justify-center items-center gap-4">
+              <a href="https://play.google.com/store/apps/details?id=co.median.android.yeeemel&pcampaignid=web_share" target="_blank" rel="noopener noreferrer" className="inline-block w-[17rem] h-[104.53px]">
+                <Image
+                  src="https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png"
+                  alt="Get it on Google Play"
+                  width={240}
+                  height={92}
+                  className="object-contain hover:opacity-90 transition-opacity w-full h-full"
+                  quality={95}
+                />
+              </a>
+              <Link href="/" passHref>
+                <Button variant="outline" className="h-[67.5px] w-[240px] bg-black text-white hover:bg-gray-800 hover:text-white border-gray-600 flex items-center justify-center gap-3">
+                  <Image
+                    src={LOGO_URL}
+                    alt="Taxshila Logo"
+                    width={48}
+                    height={48}
+                    className="object-contain"
+                  />
+                  <div className="text-left">
+                    <span className="text-sm block">GET THE</span>
+                    <span className="text-2xl font-semibold leading-none">Web App</span>
+                  </div>
+                </Button>
+              </Link>
             </div>
+          </div>
         </section>
 
 
@@ -458,11 +458,11 @@ export default function HomePage() {
             <div className="space-y-8">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-white/10 rounded-xl backdrop-blur-sm border border-white/10">
-                   <Image src={LOGO_URL} alt="Logo" width={32} height={32} />
+                  <Image src={LOGO_URL} alt="Logo" width={32} height={32} />
                 </div>
                 <span className="text-2xl font-bold tracking-tight">Taxshila Digital Library</span>
               </div>
-              
+
               <div className="space-y-5 text-gray-400">
                 <div className="flex items-start gap-4 group cursor-pointer hover:text-white transition-colors">
                   <div className="h-10 w-10 rounded-full bg-white/5 flex items-center justify-center shrink-0 group-hover:bg-primary group-hover:text-white transition-colors">
@@ -471,19 +471,19 @@ export default function HomePage() {
                   <p className="leading-relaxed text-sm pt-2">Plot-79, Agrasen Nagar Colony, Paharia, Varanasi, Uttar Pradesh 221007</p>
                 </div>
                 <div className="flex items-center gap-4 group cursor-pointer hover:text-white transition-colors">
-                   <div className="h-10 w-10 rounded-full bg-white/5 flex items-center justify-center shrink-0 group-hover:bg-primary group-hover:text-white transition-colors">
+                  <div className="h-10 w-10 rounded-full bg-white/5 flex items-center justify-center shrink-0 group-hover:bg-primary group-hover:text-white transition-colors">
                     <Phone className="h-5 w-5" />
                   </div>
                   <p className="text-sm">+91 9123520131</p>
                 </div>
                 <div className="flex items-center gap-4 group cursor-pointer hover:text-white transition-colors">
-                   <div className="h-10 w-10 rounded-full bg-white/5 flex items-center justify-center shrink-0 group-hover:bg-primary group-hover:text-white transition-colors">
+                  <div className="h-10 w-10 rounded-full bg-white/5 flex items-center justify-center shrink-0 group-hover:bg-primary group-hover:text-white transition-colors">
                     <Mail className="h-5 w-5" />
                   </div>
                   <p className="text-sm">taxshiladigitallibrary@gmail.com</p>
                 </div>
               </div>
-              
+
               <div className="pt-6 flex gap-6 text-xs text-gray-500 font-medium border-t border-white/10">
                 <p>&copy; {new Date().getFullYear()} Taxshila Digital Library</p>
                 <Link href="/privacy_policy" className="hover:text-white transition-colors">Privacy Policy</Link>
@@ -491,12 +491,12 @@ export default function HomePage() {
             </div>
 
             <div className="relative h-64 w-full rounded-2xl overflow-hidden transition-all duration-500 border border-white/10 shadow-2xl">
-              <iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3605.5020189959014!2d83.00187507449463!3d25.35448622531363!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x398e2fedc194747f%3A0x571327385a60b22f!2sTaxshila%20Digital%20Library!5e0!3m2!1sen!2sin!4v1766080131645!5m2!1sen!2sin" width="100%" height="100%" style={{border:0}} allowFullScreen loading="lazy" referrerPolicy="no-referrer-when-downgrade"></iframe>
+              <iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3605.5020189959014!2d83.00187507449463!3d25.35448622531363!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x398e2fedc194747f%3A0x571327385a60b22f!2sTaxshila%20Digital%20Library!5e0!3m2!1sen!2sin!4v1766080131645!5m2!1sen!2sin" width="100%" height="100%" style={{ border: 0 }} allowFullScreen loading="lazy" referrerPolicy="no-referrer-when-downgrade"></iframe>
               <div className="absolute bottom-5 right-5">
-                 <a href="https://www.google.com/maps/place/Taxshila+Digital+Library/@25.3544862,83.0018751,17z/data=!3m1!4b1!4m6!3m5!1s0x398e2fedc194747f:0x571327385a60b22f!8m2!3d25.3544814!4d83.0044447!16s%2Fg%2F11fyb_x1g9?entry=ttu" target="_blank" rel="noopener noreferrer">
-                    <Button size="sm" className="backdrop-blur-md bg-background/70 border-border text-foreground hover:bg-accent hover:text-accent-foreground transition-all">
-                        Get Directions
-                    </Button>
+                <a href="https://www.google.com/maps/place/Taxshila+Digital+Library/@25.3544862,83.0018751,17z/data=!3m1!4b1!4m6!3m5!1s0x398e2fedc194747f:0x571327385a60b22f!8m2!3d25.3544814!4d83.0044447!16s%2Fg%2F11fyb_x1g9?entry=ttu" target="_blank" rel="noopener noreferrer">
+                  <Button size="sm" className="backdrop-blur-md bg-background/70 border-border text-foreground hover:bg-accent hover:text-accent-foreground transition-all">
+                    Get Directions
+                  </Button>
                 </a>
               </div>
             </div>
@@ -506,4 +506,3 @@ export default function HomePage() {
     </div>
   );
 }
-    
