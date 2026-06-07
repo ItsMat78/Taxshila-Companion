@@ -573,6 +573,38 @@
   animation: breathing-stroke 2s ease-in-out infinite;
 }
 
+/* --- Content-On-Demand landing page animations --- */
+@keyframes cod-marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+.animate-cod-marquee {
+  animation: cod-marquee 32s linear infinite;
+}
+
+@keyframes cod-spin {
+  to { transform: rotate(360deg); }
+}
+.animate-cod-spin {
+  animation: cod-spin 18s linear infinite;
+}
+
+@keyframes cod-float {
+  0%, 100% { transform: translateY(0) rotate(var(--cod-rot, 0deg)); }
+  50% { transform: translateY(-10px) rotate(var(--cod-rot, 0deg)); }
+}
+.animate-cod-float {
+  animation: cod-float 6s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-cod-marquee,
+  .animate-cod-spin,
+  .animate-cod-float {
+    animation: none;
+  }
+}
+
 /* Liquid Glass Mesh Background */
 .bg-glass-abstract {
   background-color: #f8fafc;
