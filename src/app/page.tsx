@@ -62,6 +62,15 @@ export default function RootLoginPage() {
     }
   }, [showLoggingInDialog, user, router]);
 
+  // If a user is already authenticated when this page renders (e.g. they navigated
+  // back to '/'), surface the dialog while app-layout redirects them. This must run
+  // in an effect — calling setState during render can trigger an update-depth loop.
+  React.useEffect(() => {
+    if (user && !showLoggingInDialog) {
+      setShowLoggingInDialog(true);
+    }
+  }, [user, showLoggingInDialog]);
+
 
   React.useEffect(() => {
     const handleBeforeInstallPrompt = (e: Event) => {
@@ -131,12 +140,6 @@ export default function RootLoginPage() {
     );
   }
 
-  // If we already have a user but the dialog isn't showing yet, render the dialog.
-  // This handles cases where the user is already logged in and lands on this page.
-  if (user && !showLoggingInDialog) {
-     setShowLoggingInDialog(true);
-  }
-  
   // Render the login form or the dialog. The redirect is handled by the useEffect.
   return (
     <>

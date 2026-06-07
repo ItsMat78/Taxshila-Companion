@@ -49,18 +49,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   React.useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: FirebaseUser | null) => {
+      // The uid this invocation is responsible for. Firebase does not wait for one
+      // async callback to finish before firing the next, so after every `await` we
+      // re-check that the live auth user still matches. If a newer auth change has
+      // happened (a fast logout→login, or switching accounts), this now-stale
+      // invocation bails instead of clobbering the newer user. Without this guard a
+      // slow profile lookup from the previous session could overwrite the current
+      // one — which showed up as a member login briefly rendering the admin view.
+      const invocationUid = firebaseUser?.uid ?? null;
+      const isCurrent = () => (auth.currentUser?.uid ?? null) === invocationUid;
+
       setIsLoading(true);
       if (firebaseUser && firebaseUser.email) {
         // User is signed in, fetch their profile from Firestore
         let userRecord: Student | Admin | null = null;
         let userRole: UserRole = 'member';
-        
+
         const admin = await getAdminByEmail(firebaseUser.email);
+        if (!isCurrent()) return; // superseded by a newer auth state
         if (admin) {
             userRecord = admin;
             userRole = 'admin';
         } else {
             userRecord = (await getStudentByIdentifier(firebaseUser.email)) ?? null;
+            if (!isCurrent()) return; // superseded by a newer auth state
         }
 
         if (userRecord) {
