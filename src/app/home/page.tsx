@@ -179,8 +179,8 @@ function DemoDayPanel() {
     "h-12 w-full rounded-full border-2 border-cod-ink bg-cod-cream px-5 font-cod text-cod-ink placeholder:text-cod-ink/40 [color-scheme:light] focus:outline-none focus:ring-2 focus:ring-cod-tomato focus:ring-offset-2 focus:ring-offset-cod-lilac";
 
   return (
-    <div className="rounded-[2rem] border-2 border-cod-ink bg-cod-lilac p-8 shadow-[8px_8px_0_0_#1D1D1D] md:p-12">
-      <div className="grid gap-10 md:grid-cols-2 md:gap-14">
+    <div className="rounded-[2rem] border-2 border-cod-ink bg-cod-lilac p-5 shadow-[6px_6px_0_0_#1D1D1D] sm:p-8 sm:shadow-[8px_8px_0_0_#1D1D1D] md:p-12">
+      <div className="grid gap-8 md:grid-cols-2 md:gap-14">
         {/* Left — brand + nav + say hi */}
         <div className="flex flex-col">
           <nav className="flex flex-wrap gap-x-6 gap-y-2">
@@ -195,11 +195,11 @@ function DemoDayPanel() {
             ))}
           </nav>
 
-          <h2 className="mt-7 font-cod text-3xl font-black leading-[0.95] tracking-tight text-cod-ink md:text-4xl">
+          <h2 className="mt-6 font-cod text-2xl font-black leading-[1.05] tracking-tight text-cod-ink sm:mt-7 sm:text-3xl sm:leading-[0.95] md:text-4xl">
             Came for the prep,{" "}
             <span className="relative inline-block">
               <span className="font-cod-serif font-semibold italic text-cod-tomato">stayed for the glow-up.</span>
-              <Sparkles className="absolute -right-6 -top-3 h-5 w-5 text-cod-ink" />
+              <Sparkles className="absolute -right-4 -top-2 h-4 w-4 text-cod-ink sm:-right-6 sm:-top-3 sm:h-5 sm:w-5" />
             </span>
           </h2>
 
@@ -220,7 +220,7 @@ function DemoDayPanel() {
         </div>
 
         {/* Right — free demo day "form" that hops to WhatsApp */}
-        <div className="rounded-3xl border-2 border-cod-ink bg-cod-lilac-soft/60 p-6 md:p-7">
+        <div className="rounded-3xl border-2 border-cod-ink bg-cod-lilac-soft/60 p-5 sm:p-6 md:p-7">
           <p className="font-cod-mono text-xs font-bold uppercase tracking-widest text-cod-tomato">Your first day is on us</p>
           <h3 className="mt-2 font-cod text-2xl font-extrabold leading-tight text-cod-ink">Book a free demo day</h3>
           <p className="mt-1 font-cod text-sm text-cod-ink/70">Tell us your name and when you&apos;d like to drop by — we&apos;ll keep a desk warm.</p>
@@ -472,7 +472,9 @@ export default function HomePage() {
             </div>
 
             {/* tilted polaroid card row */}
-            <div className="mt-16 grid grid-cols-2 gap-4 md:mt-20 md:grid-cols-4 md:gap-6">
+            <div className="relative mt-16 grid grid-cols-2 gap-4 md:mt-20 md:grid-cols-4 md:gap-6">
+              {/* Spinning sticker for phones/tablets, where the hero-corner badge is hidden */}
+              <CircularBadge className="absolute -top-10 right-2 z-20 lg:hidden" />
               <div className="group col-span-2 -rotate-2 overflow-hidden rounded-3xl border-2 border-cod-ink shadow-[6px_6px_0_0_#1D1D1D] transition-transform hover:rotate-0 md:col-span-2">
                 <div className="relative aspect-[16/10] w-full">
                   <Image src={COVER_IMAGE_URL} alt="Inside Taxshila Digital Library" fill sizes="(max-width:768px) 100vw, 50vw" className="object-cover" priority />
@@ -527,20 +529,20 @@ export default function HomePage() {
               </p>
             </div>
 
-            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-3">
               {amenities.map((a) => (
                 <div
                   key={a.title}
                   className={cn(
-                    "group flex flex-col rounded-3xl border-2 border-cod-ink p-7 transition-all duration-200 hover:-translate-y-1 hover:shadow-[8px_8px_0_0_#1D1D1D]",
+                    "group flex flex-col rounded-2xl border-2 border-cod-ink p-4 transition-all duration-200 hover:-translate-y-1 hover:shadow-[8px_8px_0_0_#1D1D1D] sm:rounded-3xl sm:p-7",
                     a.color
                   )}
                 >
-                  <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl border-2 border-cod-ink bg-cod-cream transition-transform group-hover:-rotate-6">
-                    <a.icon className="h-7 w-7 text-cod-ink" />
+                  <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl border-2 border-cod-ink bg-cod-cream transition-transform group-hover:-rotate-6 sm:mb-5 sm:h-14 sm:w-14 sm:rounded-2xl">
+                    <a.icon className="h-5 w-5 text-cod-ink sm:h-7 sm:w-7" />
                   </div>
-                  <h3 className="font-cod text-2xl font-extrabold text-cod-ink">{a.title}</h3>
-                  <p className="mt-2 font-cod text-base font-medium text-cod-ink/70">{a.description}</p>
+                  <h3 className="font-cod text-base font-extrabold leading-tight text-cod-ink sm:text-2xl">{a.title}</h3>
+                  <p className="mt-1 font-cod text-xs font-medium leading-snug text-cod-ink/70 sm:mt-2 sm:text-base">{a.description}</p>
                 </div>
               ))}
             </div>
@@ -552,7 +554,7 @@ export default function HomePage() {
           <div className="mx-auto grid max-w-7xl items-center gap-12 px-5 md:grid-cols-2 md:px-10">
             <div>
               <p className="font-cod-mono text-xs font-bold uppercase tracking-widest text-cod-cream/70">Every single day</p>
-              <p className="mt-3 font-cod text-7xl font-black leading-none tracking-tight md:text-8xl">
+              <p className="mt-3 font-cod text-5xl font-black leading-none tracking-tight sm:text-7xl md:text-8xl">
                 7:00<span className="text-cod-butter">→</span>21:00
               </p>
               <p className="mt-6 max-w-md font-cod text-xl font-medium leading-relaxed text-cod-cream/90">
