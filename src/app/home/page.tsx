@@ -165,7 +165,7 @@ function DemoDayPanel() {
   const [shift, setShift] = React.useState("");
 
   const waMessage = `Hello Taxshila Library, my name is ${name.trim() || "[your name]"} and I'd like to book my free demo day${shift ? ` for the ${shift} shift` : ""}.`;
-  const waHref = `https://wa.me/916306343791?text=${encodeURIComponent(waMessage)}`;
+  const waHref = `https://wa.me/919415652407?text=${encodeURIComponent(waMessage)}`;
 
   const panelNav = [
     { label: "Amenities", href: "#amenities" },
