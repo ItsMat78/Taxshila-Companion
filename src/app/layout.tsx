@@ -8,7 +8,7 @@ import { NotificationProvider } from '@/contexts/notification-context';
 import { ThemeProvider } from '@/contexts/theme-context';
 import { DynamicThemeColor } from '@/components/shared/dynamic-theme-color';
 import { ReactQueryProvider } from '@/contexts/query-provider';
-import { Poppins, PT_Sans } from 'next/font/google';
+import { Poppins, PT_Sans, Hanken_Grotesk, Space_Mono, Fraunces } from 'next/font/google';
 
 const poppins = Poppins({
   subsets: ['latin'],
@@ -20,6 +20,29 @@ const ptSans = PT_Sans({
   subsets: ['latin'],
   weight: ['400', '700'],
   variable: '--font-pt-sans',
+});
+
+// --- Content-On-Demand inspired brand fonts (used on the public landing page).
+// The originals (Apfel Grotezk / Hatch Sans / Hoover) are commercial; these are
+// the closest free Google Fonts: a rounded grotesque, a typewriter mono, and a
+// high-contrast serif for the playful italic accents.
+const hankenGrotesk = Hanken_Grotesk({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700', '800', '900'],
+  variable: '--font-hanken',
+});
+
+const spaceMono = Space_Mono({
+  subsets: ['latin'],
+  weight: ['400', '700'],
+  variable: '--font-space-mono',
+});
+
+const fraunces = Fraunces({
+  subsets: ['latin'],
+  style: ['normal', 'italic'],
+  weight: ['400', '500', '600', '700'],
+  variable: '--font-fraunces',
 });
 
 export const metadata: Metadata = {
@@ -43,7 +66,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning className={`${poppins.variable} ${ptSans.variable}`}>
+    <html lang="en" suppressHydrationWarning className={`${poppins.variable} ${ptSans.variable} ${hankenGrotesk.variable} ${spaceMono.variable} ${fraunces.variable}`}>
       <head>
         <meta name="theme-color" content="#D6D5D8" />
       </head>

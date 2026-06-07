@@ -14,6 +14,10 @@ export default {
         body: ['PT Sans', 'sans-serif'],
         headline: ['Poppins', 'sans-serif'],
         code: ['monospace', 'monospace'],
+        // Content-On-Demand inspired brand fonts (public landing page)
+        cod: ['var(--font-hanken)', 'Poppins', 'sans-serif'],
+        'cod-mono': ['var(--font-space-mono)', 'monospace'],
+        'cod-serif': ['var(--font-fraunces)', 'Georgia', 'serif'],
       },
       colors: {
         background: 'hsl(var(--background))',
@@ -88,6 +92,18 @@ export default {
         'status-due-text': 'hsl(var(--status-due-text))',
         'status-left-bg': 'hsl(var(--status-left-bg))',
         'status-left-text': 'hsl(var(--status-left-text))',
+        // Content-On-Demand inspired brand palette (sampled from contentondemand.in)
+        cod: {
+          lilac: '#B1ABF4',
+          'lilac-soft': '#C9C5F8',
+          tomato: '#E34135',
+          ink: '#1D1D1D',
+          cream: '#FAF9F5',
+          sage: '#C2E29E',
+          'sage-deep': '#9FCF7E',
+          pink: '#F6D8CE',
+          butter: '#F6D873',
+        },
       },
       borderColor: {
         'seat-available': 'hsl(206, 81%, 82%)', // sky-300
