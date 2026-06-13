@@ -61,6 +61,7 @@ import {
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/contexts/auth-context';
+import { useSearchParams } from 'next/navigation';
 
 
 const alertFormSchema = z.object({
@@ -187,7 +188,7 @@ function StudentSelectionDialog({ students, onSelectStudents, isLoading, onClose
 }
 
 
-export default function AdminSendAlertPage() {
+function AdminSendAlertContent() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [isSending, setIsSending] = React.useState(false);
@@ -229,6 +230,41 @@ export default function AdminSendAlertPage() {
     }
     fetchStudents();
   }, [toast]);
+
+  // Read query params to pre-fill the form (e.g., from Fee Dues page "Send Alert to All")
+  const searchParams = useSearchParams();
+  React.useEffect(() => {
+    const audience = searchParams.get('audience');
+    const studentIdsParam = searchParams.get('studentIds');
+    const titleParam = searchParams.get('title');
+    const messageParam = searchParams.get('message');
+    const typeParam = searchParams.get('type');
+
+    if (audience === 'targeted' && studentIdsParam && students.length > 0) {
+      const ids = studentIdsParam.split(',').filter(Boolean);
+      const matched = students.filter(s => ids.includes(s.studentId));
+      
+      if (matched.length > 0) {
+        form.setValue('audienceType', 'targeted');
+        setSelectedStudents(matched);
+        form.setValue('studentIds', matched.map(s => s.studentId), { shouldValidate: true });
+      }
+    }
+
+    if (titleParam) {
+      form.setValue('alertTitle', titleParam);
+    }
+    if (messageParam) {
+      form.setValue('alertMessage', messageParam);
+    }
+    if (typeParam && ['info', 'warning', 'closure'].includes(typeParam)) {
+      form.setValue('alertType', typeParam as AlertFormValues['alertType']);
+    }
+
+    if (audience || titleParam || messageParam || typeParam) {
+      form.trigger();
+    }
+  }, [searchParams, students, form]);
 
   const handleReviewerSubmit = () => {
     toast({
@@ -331,7 +367,7 @@ export default function AdminSendAlertPage() {
                             form.setValue("studentIds", []); // Clear selection on switch
                             setSelectedStudents([]);
                         }}
-                        defaultValue={field.value}
+                        value={field.value}
                         className="grid grid-cols-2 gap-4"
                         disabled={isSending}
                       >
@@ -425,7 +461,7 @@ export default function AdminSendAlertPage() {
                     render={({ field }) => (
                     <FormItem>
                         <FormLabel>Alert Type</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isSending}>
+                        <Select onValueChange={field.onChange} value={field.value} disabled={isSending}>
                         <FormControl>
                             <SelectTrigger>
                             <SelectValue placeholder="Select an alert type" />
@@ -484,5 +520,17 @@ export default function AdminSendAlertPage() {
         </Form>
       </Card>
     </>
+  );
+}
+
+export default function AdminSendAlertPage() {
+  return (
+    <React.Suspense fallback={
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    }>
+      <AdminSendAlertContent />
+    </React.Suspense>
   );
 }
