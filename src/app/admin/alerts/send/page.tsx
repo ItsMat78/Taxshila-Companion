@@ -35,9 +35,9 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useToast } from "@/hooks/use-toast";
-import { Send, Megaphone, Info, AlertTriangle, Loader2, User, Users, X } from 'lucide-react';
+import { Send, Megaphone, Info, AlertTriangle, Loader2, User, Users, X, CheckCircle2, XCircle, Smartphone, Globe, BellRing } from 'lucide-react';
 import { sendAlertToStudent, getAllStudents } from '@/services/student-service';
-import type { AlertItem } from '@/types/communication';
+import type { AlertItem, NotificationResult } from '@/types/communication';
 import type { Student } from '@/types/student';
 import { cn } from '@/lib/utils';
 import { Label } from '@/components/ui/label';
@@ -188,6 +188,163 @@ function StudentSelectionDialog({ students, onSelectStudents, isLoading, onClose
 }
 
 
+// --- Delivery summary ---------------------------------------------------------
+type MemberRow = { studentId: string; name: string; result: NotificationResult | null };
+type SendSummary =
+  | { mode: 'general'; title: string; result: NotificationResult | null; memberCount: number; perMember?: MemberRow[] }
+  | { mode: 'targeted'; title: string; deliveries: MemberRow[] };
+
+/** Collapses a raw NotificationResult into the few numbers the UI cares about. */
+function summarize(r: NotificationResult | null) {
+  if (!r) {
+    return { delivered: 0, failed: 0, devices: 0, confirmed: false, app: { sent: 0, failed: 0 }, web: { sent: 0, failed: 0 } };
+  }
+  return {
+    delivered: r.fcm.sent + r.oneSignal.sent,
+    failed: r.fcm.failed + r.oneSignal.failed,
+    devices: r.recipients,
+    confirmed: true,
+    app: r.oneSignal, // OneSignal == native app push
+    web: r.fcm,       // FCM == browser / PWA web push
+  };
+}
+
+function MemberDeliveryBadge({ result }: { result: NotificationResult | null }) {
+  const s = summarize(result);
+  if (!s.confirmed) return <Badge variant="outline" className="text-muted-foreground">Unconfirmed</Badge>;
+  if (s.devices === 0) return <Badge variant="outline" className="text-muted-foreground">No devices</Badge>;
+  if (s.delivered === 0) return <Badge variant="destructive">Failed</Badge>;
+  return <Badge className="bg-green-600 hover:bg-green-600 text-white">Delivered</Badge>;
+}
+
+function StatBlock({ label, value, tone }: { label: string; value: number; tone: 'good' | 'bad' | 'muted' }) {
+  const color = tone === 'good' ? 'text-green-600' : tone === 'bad' ? 'text-destructive' : 'text-muted-foreground';
+  return (
+    <div className="rounded-md border bg-muted/30 p-3 text-center">
+      <div className={cn('text-2xl font-bold tabular-nums', color)}>{value}</div>
+      <div className="text-xs text-muted-foreground mt-0.5">{label}</div>
+    </div>
+  );
+}
+
+function DeliverySummaryCard({ summary, onDismiss }: { summary: SendSummary; onDismiss: () => void }) {
+  const results = summary.mode === 'general' ? [summary.result] : summary.deliveries.map(d => d.result);
+
+  const agg = results.reduce(
+    (acc, r) => {
+      const s = summarize(r);
+      return {
+        delivered: acc.delivered + s.delivered,
+        failed: acc.failed + s.failed,
+        devices: acc.devices + s.devices,
+        appSent: acc.appSent + s.app.sent,
+        appFailed: acc.appFailed + s.app.failed,
+        webSent: acc.webSent + s.web.sent,
+        webFailed: acc.webFailed + s.web.failed,
+        anyConfirmed: acc.anyConfirmed || s.confirmed,
+      };
+    },
+    { delivered: 0, failed: 0, devices: 0, appSent: 0, appFailed: 0, webSent: 0, webFailed: 0, anyConfirmed: false }
+  );
+
+  // Per-member rows: explicit for targeted, server-provided for general broadcasts.
+  const memberRows: MemberRow[] = summary.mode === 'targeted' ? summary.deliveries : (summary.perMember ?? []);
+  const reachedMembers = memberRows.length > 0
+    ? memberRows.filter(d => summarize(d.result).delivered > 0).length
+    : null;
+
+  return (
+    <Card className="w-full md:max-w-2xl mx-auto mt-6 shadow-lg border-primary/30">
+      <CardHeader>
+        <div className="flex items-start justify-between gap-2">
+          <div>
+            <CardTitle className="flex items-center">
+              <BellRing className="mr-2 h-5 w-5" />
+              Delivery Summary
+            </CardTitle>
+            <CardDescription className="mt-1">
+              {summary.mode === 'general'
+                ? <>&ldquo;{summary.title}&rdquo; was broadcast to {summary.memberCount} active member(s){reachedMembers !== null ? ` — reached ${reachedMembers}.` : '.'}</>
+                : <>&ldquo;{summary.title}&rdquo; was sent to {summary.deliveries.length} member(s){reachedMembers !== null ? ` — reached ${reachedMembers}.` : '.'}</>}
+            </CardDescription>
+          </div>
+          <Button size="icon" variant="ghost" onClick={onDismiss} aria-label="Dismiss summary">
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {!agg.anyConfirmed && (
+          <div className="flex items-start gap-2 rounded-md border border-yellow-500/40 bg-yellow-500/10 p-3 text-sm">
+            <AlertTriangle className="h-4 w-4 mt-0.5 text-yellow-600 shrink-0" />
+            <span>Delivery could not be confirmed by the push service. The alert was still saved and will appear in members&apos; Alerts tab.</span>
+          </div>
+        )}
+
+        <div className="grid grid-cols-3 gap-3">
+          <StatBlock label="Devices reached" value={agg.delivered} tone="good" />
+          <StatBlock label="Failed" value={agg.failed} tone="bad" />
+          <StatBlock label="Total devices" value={agg.devices} tone="muted" />
+        </div>
+
+        <div className="space-y-2">
+          <div className="flex items-center justify-between rounded-md border p-2.5 text-sm">
+            <span className="flex items-center gap-2"><Smartphone className="h-4 w-4 text-muted-foreground" /> App push (OneSignal)</span>
+            <span className="tabular-nums">
+              <span className="text-green-600 font-medium">{agg.appSent}</span> delivered
+              <span className="text-muted-foreground"> · </span>
+              <span className="text-destructive font-medium">{agg.appFailed}</span> failed
+            </span>
+          </div>
+          <div className="flex items-center justify-between rounded-md border p-2.5 text-sm">
+            <span className="flex items-center gap-2"><Globe className="h-4 w-4 text-muted-foreground" /> Web push (FCM)</span>
+            <span className="tabular-nums">
+              <span className="text-green-600 font-medium">{agg.webSent}</span> delivered
+              <span className="text-muted-foreground"> · </span>
+              <span className="text-destructive font-medium">{agg.webFailed}</span> failed
+            </span>
+          </div>
+        </div>
+
+        {memberRows.length > 0 && (
+          <div className="border rounded-md max-h-72 overflow-y-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Member</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Devices</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {memberRows.map((d) => {
+                  const s = summarize(d.result);
+                  return (
+                    <TableRow key={d.studentId}>
+                      <TableCell className="font-medium">{d.name}</TableCell>
+                      <TableCell><MemberDeliveryBadge result={d.result} /></TableCell>
+                      <TableCell className="text-right tabular-nums text-muted-foreground">
+                        {s.confirmed ? `${s.delivered}/${s.devices}` : '—'}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+
+        <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          {agg.delivered > 0
+            ? <CheckCircle2 className="h-3.5 w-3.5 text-green-600" />
+            : <XCircle className="h-3.5 w-3.5 text-destructive" />}
+          Counts are push devices, not members — a member may have several devices, and members with notifications off show as &ldquo;No devices&rdquo;.
+        </p>
+      </CardContent>
+    </Card>
+  );
+}
+
 function AdminSendAlertContent() {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -196,6 +353,7 @@ function AdminSendAlertContent() {
   const [selectedStudents, setSelectedStudents] = React.useState<Student[]>([]);
   const [isLoadingStudents, setIsLoadingStudents] = React.useState(true);
   const [isStudentDialogOpen, setIsStudentDialogOpen] = React.useState(false);
+  const [sendSummary, setSendSummary] = React.useState<SendSummary | null>(null);
 
   const isReviewer = isReviewerUser(user?.email);
 
@@ -275,18 +433,25 @@ function AdminSendAlertContent() {
 
   async function onSubmit(data: AlertFormValues) {
     setIsSending(true);
+    setSendSummary(null);
     try {
       if (data.audienceType === 'targeted' && data.studentIds && data.studentIds.length > 0) {
-        
-        await Promise.all(
-          data.studentIds.map(studentId => 
-            sendAlertToStudent(studentId, data.alertTitle, data.alertMessage, data.alertType as AlertItem['type'])
-          )
+
+        // Capture the name now, before we clear the selection below.
+        const idToName = new Map(selectedStudents.map(s => [s.studentId, s.name]));
+
+        const deliveries: MemberRow[] = await Promise.all(
+          data.studentIds.map(async (studentId) => {
+            const res = await sendAlertToStudent(studentId, data.alertTitle, data.alertMessage, data.alertType as AlertItem['type']);
+            return { studentId, name: idToName.get(studentId) ?? studentId, result: res.deliveryResult ?? null };
+          })
         );
+
+        setSendSummary({ mode: 'targeted', title: data.alertTitle, deliveries });
 
         toast({
           title: `Targeted Alert Sent`,
-          description: `"${data.alertTitle}" has been sent to ${data.studentIds.length} student(s).`,
+          description: `"${data.alertTitle}" was sent to ${data.studentIds.length} member(s). See the delivery summary below.`,
         });
 
          form.reset({
@@ -300,10 +465,19 @@ function AdminSendAlertContent() {
 
 
       } else {
-        await sendAlertToStudent('__GENERAL__', data.alertTitle, data.alertMessage, data.alertType as AlertItem['type']);
+        const res = await sendAlertToStudent('__GENERAL__', data.alertTitle, data.alertMessage, data.alertType as AlertItem['type']);
+
+        setSendSummary({
+          mode: 'general',
+          title: data.alertTitle,
+          result: res.deliveryResult ?? null,
+          memberCount: students.length,
+          perMember: res.deliveryResult?.perMember ?? undefined,
+        });
+
         toast({
           title: `General Alert Sent`,
-          description: `"${data.alertTitle}" has been broadcasted to all members.`,
+          description: `"${data.alertTitle}" was broadcast to all members. See the delivery summary below.`,
         });
         form.reset({
             audienceType: "general",
@@ -519,6 +693,10 @@ function AdminSendAlertContent() {
           </form>
         </Form>
       </Card>
+
+      {sendSummary && (
+        <DeliverySummaryCard summary={sendSummary} onDismiss={() => setSendSummary(null)} />
+      )}
     </>
   );
 }

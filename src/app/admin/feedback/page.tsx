@@ -24,6 +24,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { MailWarning, MessageSquare, Archive, CheckCircle, Loader2, Send, Reply, User, Calendar, Type, ListFilter } from 'lucide-react';
 import { getAllFeedback, updateFeedbackStatus as updateFeedbackStatusService, sendAlertToStudent } from '@/services/student-service';
+import { EnableNotificationsButton } from '@/components/shared/enable-notifications-button';
 import type { FeedbackItem, FeedbackStatus, FeedbackType } from '@/types/communication';
 import { useToast } from '@/hooks/use-toast';
 import { format, parseISO } from 'date-fns';
@@ -322,6 +323,7 @@ export default function AdminFeedbackPage() {
   return (
     <>
       <PageTitle title="Member Feedback & Suggestions" description="Review and manage feedback submitted by students.">
+        <EnableNotificationsButton />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="outline">

@@ -28,6 +28,7 @@ import { useToast } from '@/hooks/use-toast';
 import { format, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { useNotificationContext } from '@/contexts/notification-context';
+import { EnableNotificationsButton } from '@/components/shared/enable-notifications-button';
 
 interface AlertDetailsDialogProps {
   isOpen: boolean;
@@ -280,6 +281,7 @@ export default function MemberAlertsPage() {
   return (
     <>
       <PageTitle title="Notifications & Alerts" description="Stay updated with important announcements from the library.">
+        <EnableNotificationsButton />
         {hasUnread && (
           <Button
             variant="outline"
