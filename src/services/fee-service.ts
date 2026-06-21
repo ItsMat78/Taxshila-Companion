@@ -121,7 +121,8 @@ export async function recordStudentPayment(
   totalAmountPaidString: string,
   paymentMethod: PaymentRecord['method'],
   numberOfMonthsPaid: number = 1,
-  customTransactionId?: string
+  customTransactionId?: string,
+  customNextDueDateString?: string
 ): Promise<Student | undefined> {
   const studentToUpdate = await getStudentByCustomIdInternal(customStudentId);
   if (!studentToUpdate || !studentToUpdate.firestoreId) {
@@ -140,7 +141,12 @@ export async function recordStudentPayment(
     default: throw new Error("Invalid shift for fee calculation.");
   }
 
-  const amountToPayNumeric = expectedMonthlyFee * numberOfMonthsPaid;
+  // Honour the amount actually entered by the admin. Fall back to the computed
+  // expected fee only when the passed value isn't a usable number.
+  const parsedManualAmount = parseInt(String(totalAmountPaidString ?? '').replace(/[^0-9]/g, ''), 10);
+  const amountToPayNumeric = Number.isFinite(parsedManualAmount) && parsedManualAmount > 0
+    ? parsedManualAmount
+    : expectedMonthlyFee * numberOfMonthsPaid;
 
   const studentDocRef = doc(db, STUDENTS_COLLECTION, studentToUpdate.firestoreId);
   const today = new Date();
@@ -158,7 +164,11 @@ export async function recordStudentPayment(
   } else {
       baseDateForCalculation = today;
   }
-  const newNextDueDate = addDays(baseDateForCalculation, 30 * numberOfMonthsPaid);
+  // Use the admin's manually chosen due date when valid; otherwise auto-compute
+  // (previous due date / today + 30 days per month paid).
+  const newNextDueDate = customNextDueDateString && isValid(parseISO(customNextDueDateString))
+    ? startOfDay(parseISO(customNextDueDateString))
+    : addDays(baseDateForCalculation, 30 * numberOfMonthsPaid);
   const newDueDateString = format(newNextDueDate, 'yyyy-MM-dd');
 
   const newPaymentRecord: PaymentRecord = {

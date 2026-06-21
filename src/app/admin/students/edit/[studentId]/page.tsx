@@ -121,6 +121,9 @@ export default function EditStudentPage() {
   const [feeStructure, setFeeStructure] = React.useState<FeeStructure | null>(null);
   const [paymentMethod, setPaymentMethod] = React.useState<PaymentRecord['method']>('Cash');
   const [manualTransactionId, setManualTransactionId] = React.useState("");
+  // Editable payment fields (seeded with computed defaults when the modal opens).
+  const [paymentAmount, setPaymentAmount] = React.useState("");
+  const [customDueDate, setCustomDueDate] = React.useState("");
   const seatNumberRef = React.useRef<HTMLDivElement>(null);
 
   const isReviewer = isReviewerUser(user?.email);
@@ -167,7 +170,19 @@ export default function EditStudentPage() {
   }, [studentData?.nextDueDate]);
 
   const amountDueDisplay = getAmountDueDisplay();
-  
+
+  // Seed the editable amount + due date when the payment modal opens.
+  const handlePaymentDialogChange = (open: boolean) => {
+    setIsConfirmPaymentOpen(open);
+    if (open) {
+      const numeric = parseInt(amountDueDisplay.replace(/[^0-9]/g, ''), 10);
+      setPaymentAmount(Number.isFinite(numeric) && numeric > 0 ? String(numeric) : "");
+      setCustomDueDate(newDueDateForPayment);
+    } else {
+      setManualTransactionId("");
+    }
+  };
+
   const fetchStudentDetails = React.useCallback(async (currentStudentId: string) => {
     setIsLoading(true);
     try {
@@ -346,30 +361,28 @@ export default function EditStudentPage() {
 
   async function handleMarkPaymentPaid() {
     if (!studentId || !studentData || isStudentLeft || !feeStructure) return;
-    setIsSaving(true);
-    
-    let amountToPay: string;
-    if (studentData.amountDue && studentData.amountDue !== "Rs. 0" && studentData.amountDue !== "N/A") {
-      amountToPay = studentData.amountDue;
-    } else {
-        let defaultFee = 0;
-        switch(studentData.shift) {
-            case 'morning': defaultFee = feeStructure.morningFee; break;
-            case 'evening': defaultFee = feeStructure.eveningFee; break;
-            case 'fullday': defaultFee = feeStructure.fullDayFee; break;
-        }
-        amountToPay = `Rs. ${defaultFee}`;
+
+    // Validate the manually editable fields before recording.
+    const numericAmount = parseInt(paymentAmount.replace(/[^0-9]/g, ''), 10);
+    if (!Number.isFinite(numericAmount) || numericAmount <= 0) {
+      toast({ title: "Invalid amount", description: "Enter a valid amount received (greater than 0).", variant: "destructive" });
+      return;
+    }
+    if (!customDueDate || !isValid(parseISO(customDueDate))) {
+      toast({ title: "Invalid due date", description: "Choose a valid next due date.", variant: "destructive" });
+      return;
     }
 
+    setIsSaving(true);
     try {
-      const updatedStudent = await recordStudentPayment(studentId, amountToPay, paymentMethod, 1, manualTransactionId || undefined);
+      const updatedStudent = await recordStudentPayment(studentId, `Rs. ${numericAmount}`, paymentMethod, 1, manualTransactionId || undefined, customDueDate);
       if (updatedStudent) {
-        setStudentData(updatedStudent); 
+        setStudentData(updatedStudent);
         setIsDirtyOverride(false);
         refreshNotifications(); // Refresh sidebar counts
          toast({
           title: "Payment Status Updated",
-          description: `Payment for ${updatedStudent.name} has been marked as Paid via ${paymentMethod}. An alert has been sent.`,
+          description: `Payment of Rs. ${numericAmount} for ${updatedStudent.name} recorded via ${paymentMethod}. An alert has been sent.`,
         });
       } else {
         toast({ title: "Error", description: "Failed to update payment status.", variant: "destructive"});
@@ -777,7 +790,7 @@ export default function EditStudentPage() {
                         <ClipboardCheck className="mr-2 h-4 w-4"/> Mark as Paid (For Reviewer)
                     </Button>
                  ) : (
-                    <AlertDialog open={isConfirmPaymentOpen} onOpenChange={setIsConfirmPaymentOpen}>
+                    <AlertDialog open={isConfirmPaymentOpen} onOpenChange={handlePaymentDialogChange}>
                         <AlertDialogTrigger asChild>
                             <Button type="button" variant="outline" className="w-full" disabled={isSaving || isDeleting || studentData.feeStatus === "Paid" || isStudentLeft}>
                                 <ClipboardCheck className="mr-2 h-4 w-4"/> Mark as Paid
@@ -787,17 +800,43 @@ export default function EditStudentPage() {
                             <AlertDialogHeader>
                                 <AlertDialogTitle>Confirm Payment for {studentData.name}?</AlertDialogTitle>
                                 <AlertDialogDescription>
-                                    This will mark the current due amount of <strong>{amountDueDisplay}</strong> as paid. Please review the due date change below.
+                                    Review and adjust the amount received and the next due date before recording this payment.
                                 </AlertDialogDescription>
                             </AlertDialogHeader>
                             <div className="py-2 text-sm">
                                 <div className="flex justify-around items-center gap-2 my-4">
                                     <DateBox date={studentData.nextDueDate} label="Old Due Date" />
                                     <ArrowRight className="h-6 w-6 text-muted-foreground flex-shrink-0" />
-                                    <DateBox date={newDueDateForPayment} label="New Due Date" />
+                                    <DateBox date={customDueDate || newDueDateForPayment} label="New Due Date" />
                                 </div>
                             </div>
                             <div className="py-4 space-y-4">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div>
+                                        <Label htmlFor="payment-amount" className="mb-1 block text-sm">Amount Received (Rs.)</Label>
+                                        <Input
+                                            id="payment-amount"
+                                            type="number"
+                                            inputMode="numeric"
+                                            min={1}
+                                            placeholder="e.g. 600"
+                                            value={paymentAmount}
+                                            onChange={(e) => setPaymentAmount(e.target.value)}
+                                        />
+                                        <p className="text-xs text-muted-foreground mt-1">Defaults to the amount due — edit if a different amount was paid.</p>
+                                    </div>
+                                    <div>
+                                        <Label htmlFor="payment-due-date" className="mb-1 block text-sm">Next Due Date</Label>
+                                        <Input
+                                            id="payment-due-date"
+                                            type="date"
+                                            value={customDueDate}
+                                            onChange={(e) => setCustomDueDate(e.target.value)}
+                                            className="[color-scheme:light] dark:[color-scheme:dark]"
+                                        />
+                                        <p className="text-xs text-muted-foreground mt-1">Auto-set to 30 days after the current due date — adjust if needed.</p>
+                                    </div>
+                                </div>
                                 <div>
                                     <Label className="mb-2 block">Payment Method</Label>
                                     <RadioGroup defaultValue="Cash" onValueChange={(value) => { setPaymentMethod(value as PaymentRecord['method']); setManualTransactionId(""); }}>
