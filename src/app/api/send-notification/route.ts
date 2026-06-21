@@ -3,7 +3,7 @@
 
 import { NextResponse } from 'next/server';
 import { triggerAlertNotification, triggerAdminFeedbackNotification, triggerAdminPaymentVerificationNotification } from '@/services/notification-service';
-import type { AlertItem } from '@/types/communication';
+import type { AlertItem, AlertDispatchResult } from '@/types/communication';
 
 export async function POST(request: Request) {
   try {
@@ -14,15 +14,16 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: 'Missing type or payload' }, { status: 400 });
     }
 
+    let result: AlertDispatchResult;
     switch (type) {
       case 'alert':
-        await triggerAlertNotification(payload as AlertItem);
+        result = await triggerAlertNotification(payload as AlertItem);
         break;
       case 'feedback':
-        await triggerAdminFeedbackNotification(payload.studentName, payload.feedbackType);
+        result = await triggerAdminFeedbackNotification(payload.studentName, payload.feedbackType);
         break;
       case 'payment-alert':
-        await triggerAdminPaymentVerificationNotification(
+        result = await triggerAdminPaymentVerificationNotification(
           payload.studentName,
           payload.studentId,
           payload.amount,
@@ -33,7 +34,14 @@ export async function POST(request: Request) {
         return NextResponse.json({ success: false, error: 'Invalid notification type' }, { status: 400 });
     }
 
-    return NextResponse.json({ success: true, message: 'Notification triggered successfully.' });
+    const delivered = result.fcm.sent + result.oneSignal.sent;
+    return NextResponse.json({
+      success: true,
+      message: delivered > 0
+        ? `Notification delivered to ${delivered} of ${result.recipients} recipient(s).`
+        : `Notification triggered, but reached 0 of ${result.recipients} recipient(s).`,
+      result,
+    });
 
   } catch (error: unknown) {
     console.error(`[API Route (send-notification)] Error:`, error);

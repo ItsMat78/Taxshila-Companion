@@ -1,12 +1,16 @@
 
 "use client";
 
-import { getMessaging, getToken } from "firebase/messaging";
+import { getMessaging, getToken, deleteToken } from "firebase/messaging";
 import { app as firebaseApp, db } from "./firebase";
-import { doc, updateDoc, arrayUnion } from "firebase/firestore";
+import { doc, updateDoc, arrayUnion, arrayRemove } from "firebase/firestore";
 
 // This is the public VAPID key from your Firebase project settings
 const VAPID_KEY = process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY;
+
+// localStorage key under which we remember the FCM token for a given user, so
+// that we can revoke exactly that token on logout (instead of leaking it).
+const fcmStorageKey = (firestoreId: string) => `fcmToken_${firestoreId}`;
 
 export const setupPushNotifications = async (firestoreId: string, userRole: 'admin' | 'member'): Promise<void> => {
   if (typeof window === 'undefined' || !VAPID_KEY) {
@@ -29,9 +33,45 @@ export const setupPushNotifications = async (firestoreId: string, userRole: 'adm
         await updateDoc(userDocRef, {
           fcmTokens: arrayUnion(currentToken)
         });
+
+        // Remember it locally so logout can revoke this exact token.
+        localStorage.setItem(fcmStorageKey(firestoreId), currentToken);
       }
     }
   } catch (error) {
     console.error('An error occurred while setting up push notifications.', error);
   }
+};
+
+/**
+ * Revokes this device's FCM token on logout: removes it from the user's
+ * Firestore document and invalidates it on the FCM side so the previous user
+ * stops receiving pushes on a shared device.
+ */
+export const removePushNotifications = async (firestoreId: string, userRole: 'admin' | 'member'): Promise<void> => {
+  if (typeof window === 'undefined') return;
+
+  const storageKey = fcmStorageKey(firestoreId);
+  const token = localStorage.getItem(storageKey);
+  if (!token) return;
+
+  try {
+    const collectionName = userRole === 'admin' ? 'admins' : 'students';
+    const userDocRef = doc(db, collectionName, firestoreId);
+    await updateDoc(userDocRef, {
+      fcmTokens: arrayRemove(token)
+    });
+  } catch (error) {
+    console.error('Failed to remove FCM token from Firestore on logout.', error);
+  }
+
+  try {
+    const messaging = getMessaging(firebaseApp);
+    await deleteToken(messaging);
+  } catch (error) {
+    // Non-fatal: the token may already be gone / SW unavailable.
+    console.warn('Failed to delete FCM token from the messaging instance.', error);
+  }
+
+  localStorage.removeItem(storageKey);
 };

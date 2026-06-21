@@ -15,6 +15,7 @@ import type { Admin } from '@/types/auth';
 import { useToast } from "@/hooks/use-toast";
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, type User as FirebaseUser } from 'firebase/auth';
 import { app as firebaseApp } from '@/lib/firebase';
+import { removePushNotifications } from '@/lib/notification-setup';
 import { useTheme } from 'next-themes';
 
 interface User {
@@ -223,6 +224,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = async () => {
     try {
         if (user) {
+            // Revoke OneSignal subscription id for this device.
             const storageKey = `oneSignalPlayerId_${user.firestoreId}`;
             const playerId = localStorage.getItem(storageKey);
             if (playerId) {
@@ -230,9 +232,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                     .catch(err => console.error("Failed to remove OneSignal ID:", err));
                 localStorage.removeItem(storageKey);
             }
+
+            // Revoke this device's FCM web-push token so the previous user
+            // stops receiving pushes on a shared device.
+            removePushNotifications(user.firestoreId, user.role)
+                .catch(err => console.error("Failed to remove FCM token:", err));
         }
     } catch (error) {
-        console.error("Error during OneSignal ID cleanup on logout:", error);
+        console.error("Error during push token cleanup on logout:", error);
     }
 
     setUser(null);

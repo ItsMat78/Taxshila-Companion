@@ -23,3 +23,22 @@ export interface AlertItem {
   originalFeedbackId?: string; // New field
   originalFeedbackMessageSnippet?: string; // New field
 }
+
+// Per-channel push delivery counts returned by the notification service / API.
+export interface NotificationResult {
+  fcm: { sent: number; failed: number };       // browser / PWA web push
+  oneSignal: { sent: number; failed: number }; // native app push
+  recipients: number;                          // total tokens/ids attempted
+}
+
+// Per-member delivery breakdown (used for broadcasts so we can show who was reached).
+export interface MemberDelivery {
+  studentId: string;
+  name: string;
+  result: NotificationResult;
+}
+
+// An aggregate result that may also carry a per-member breakdown (general broadcasts).
+export interface AlertDispatchResult extends NotificationResult {
+  perMember?: MemberDelivery[];
+}

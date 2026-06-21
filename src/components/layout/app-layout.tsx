@@ -17,7 +17,7 @@ import { useNotificationContext } from '@/contexts/notification-context';
 import { useTheme } from "next-themes";
 import { useNotificationCounts } from '@/hooks/use-notification-counts';
 import { setupPushNotifications } from '@/lib/notification-setup';
-import { saveOneSignalPlayerId } from '@/services/student-service';
+import { registerOneSignalPlayerId } from '@/lib/onesignal-median';
 
 function NotificationIconArea() {
   const { user } = useAuth();
@@ -102,78 +102,23 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   
   // --- Robust Notification Setup ---
   React.useEffect(() => {
-    if (user && user.firestoreId && user.role) {
-      
-      // 1. Firebase Web Push (Keep existing logic)
-      if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
-          setupPushNotifications(user.firestoreId, user.role);
-      }
-      
-      // 2. Median / OneSignal Native Push Logic
-      const registerOneSignalPlayerId = async () => {
-        const checkInterval = 2000; 
-        const maxDuration = 30000;
-        let elapsedTime = 0;
+    const firestoreId = user?.firestoreId;
+    const role = user?.role;
+    if (!firestoreId || !role) return;
 
-        const intervalId = setInterval(async () => {
-          elapsedTime += checkInterval;
-          const median = (window as any).median;
-
-          // CHECK: Look for the specific 'info' function
-          if (median?.onesignal?.info) {
-            try {
-              const data = await median.onesignal.info();
-              
-              // --- THE FIX: Access the nested 'subscription.id' ---
-              // The JSON shows data.subscription.id is the correct path for the Device ID
-              const subscriptionId = data.subscription?.id;
-              
-              // Fallback to legacy ID if the new structure isn't present
-              const legacyId = data.oneSignalId || data.oneSignalUserId; 
-
-              // Prioritize Subscription ID
-              const targetId = subscriptionId || legacyId;
-
-              if (targetId) {
-                  const savedPlayerId = localStorage.getItem('oneSignalPlayerId');
-
-                  // Inside registerOneSignalPlayerId...
-
-if (targetId) {
-  // 🔴 OLD: const savedPlayerId = localStorage.getItem('oneSignalPlayerId');
-  
-  // 🟢 NEW: Make the key unique to the CURRENT user
-  const storageKey = `oneSignalPlayerId_${user.firestoreId}`;
-  const savedPlayerId = localStorage.getItem(storageKey);
-
-  if (savedPlayerId !== targetId) {
-      await saveOneSignalPlayerId(user.firestoreId, user.role, targetId);
-      
-      // Save using the unique key
-      localStorage.setItem(storageKey, targetId);
-  }
-  } else {
-
-                  }
-
-                  clearInterval(intervalId); // Success
-              }
-            } catch (err) {
-               console.error("[AppLayout] Error calling median.onesignal.info():", err);
-            }
-          } 
-          
-          if (elapsedTime >= maxDuration) {
-              clearInterval(intervalId);
-          }
-        }, checkInterval);
-
-        return () => clearInterval(intervalId);
-      };
-
-      registerOneSignalPlayerId();
+    // 1. Firebase Web Push.
+    // Prompt unless the user has explicitly denied. `setupPushNotifications`
+    // handles requestPermission + token persistence; previously this was gated
+    // behind `=== 'granted'`, so brand-new users were never asked.
+    if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission !== 'denied') {
+      setupPushNotifications(firestoreId, role);
     }
-  }, [user]);
+
+    // 2. Median / OneSignal native push: harvest the device's subscription id.
+    // Event-driven with focus/online retries — captures late registrations
+    // without a reload. No-op outside the Median app. Returns its own cleanup.
+    return registerOneSignalPlayerId(firestoreId, role);
+  }, [user?.firestoreId, user?.role]);
 
 
   if (isAuthLoading && !isPublicPath) {

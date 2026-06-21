@@ -17,9 +17,15 @@ import {
 } from '@/lib/firebase';
 import type { QueryDocumentSnapshot, DocumentSnapshot, DocumentData } from 'firebase/firestore';
 import type { Student, WifiConfig } from '@/types/student';
-import type { FeedbackItem, FeedbackType, FeedbackStatus, AlertItem } from '@/types/communication';
+import type { FeedbackItem, FeedbackType, FeedbackStatus, AlertItem, AlertDispatchResult } from '@/types/communication';
 import { format, parseISO, isAfter } from 'date-fns';
 import { medianLogger } from '@/lib/median-logger';
+
+// An alert plus the push-delivery counts reported by the notification API.
+// `deliveryResult` is null when delivery could not be confirmed (e.g. the
+// push API failed); the alert itself is still saved either way. For general
+// broadcasts it also carries a per-member breakdown.
+export type AlertSendResult = AlertItem & { deliveryResult?: AlertDispatchResult | null };
 
 // --- Collections ---
 const STUDENTS_COLLECTION = "students";
@@ -57,7 +63,9 @@ async function getStudentByCustomIdInternal(studentId: string): Promise<Student 
 }
 
 // --- Notification trigger helper ---
-async function triggerNotification(type: 'alert' | 'feedback', payload: AlertItem | { studentName: string; feedbackType: string }) {
+// Returns the delivery counts reported by the API, or null if delivery could
+// not be confirmed (the alert is already persisted regardless).
+async function triggerNotification(type: 'alert' | 'feedback', payload: AlertItem | { studentName: string; feedbackType: string }): Promise<AlertDispatchResult | null> {
   medianLogger.log(`Calling API to send notification. Type: ${type}`);
   try {
     const response = await fetch('/api/send-notification', {
@@ -66,17 +74,20 @@ async function triggerNotification(type: 'alert' | 'feedback', payload: AlertIte
       body: JSON.stringify({ type, payload }),
     });
 
+    const data = await response.json().catch(() => null);
+
     if (!response.ok) {
-      const errorResult = await response.json();
-      const errorMessage = errorResult.error || 'API call for notification failed.';
+      const errorMessage = data?.error || 'API call for notification failed.';
       medianLogger.log(`API Error: ${errorMessage}`);
       throw new Error(errorMessage);
     }
     medianLogger.log(`API call for notification successful.`);
+    return (data?.result as AlertDispatchResult) ?? null;
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
     medianLogger.log(`Notification trigger failed: ${errorMessage}`);
     console.error(`[StudentService] Failed to trigger alert notification for type ${type}. Alert was saved, but push notification may have failed.`, error);
+    return null;
   }
 }
 
@@ -126,7 +137,7 @@ export async function updateFeedbackStatus(feedbackId: string, status: FeedbackS
 }
 
 // --- Alerts ---
-export async function sendGeneralAlert(title: string, message: string, type: AlertItem['type']): Promise<AlertItem> {
+export async function sendGeneralAlert(title: string, message: string, type: AlertItem['type']): Promise<AlertSendResult> {
     medianLogger.log(`Creating general alert: "${title}"`);
     const newAlertData = {
         title,
@@ -140,9 +151,9 @@ export async function sendGeneralAlert(title: string, message: string, type: Ale
     medianLogger.log(`General alert saved with ID: ${docRef.id}. Now triggering notifications.`);
 
     const newDocSnap = await getDoc(docRef);
-    const alertItem = alertItemFromDoc(newDocSnap);
+    const alertItem: AlertSendResult = alertItemFromDoc(newDocSnap);
 
-    triggerNotification('alert', alertItem);
+    alertItem.deliveryResult = await triggerNotification('alert', alertItem);
 
     return alertItem;
 }
@@ -154,7 +165,7 @@ export async function sendAlertToStudent(
   type: AlertItem['type'],
   originalFeedbackId?: string,
   originalFeedbackMessageSnippet?: string
-): Promise<AlertItem> {
+): Promise<AlertSendResult> {
     if (customStudentId === '__GENERAL__') {
         return sendGeneralAlert(title, message, type);
     }
@@ -175,9 +186,9 @@ export async function sendAlertToStudent(
     medianLogger.log(`Targeted alert saved with ID: ${docRef.id}. Now triggering notification.`);
 
     const newDocSnap = await getDoc(docRef);
-    const alertItem = alertItemFromDoc(newDocSnap);
+    const alertItem: AlertSendResult = alertItemFromDoc(newDocSnap);
 
-    triggerNotification('alert', alertItem);
+    alertItem.deliveryResult = await triggerNotification('alert', alertItem);
 
     return alertItem;
 }
