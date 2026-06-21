@@ -55,7 +55,12 @@ const PaymentHistoryCardItem = ({ payment }: { payment: AggregatedPaymentRecord 
     </CardHeader>
     <CardContent className="text-xs space-y-1 pb-3">
       <p><span className="font-medium">Date:</span> {payment.date && isValid(parseISO(payment.date)) ? format(parseISO(payment.date), 'MMM d, yyyy') : 'N/A'}</p>
-      <p><span className="font-medium">Amount:</span> {payment.amount}</p>
+      <p>
+        <span className="font-medium">Amount:</span> {payment.amount}
+        {payment.method === 'Mixed' && (
+          <span className="text-muted-foreground"> (Cash Rs. {payment.cashAmount ?? 0} · Online Rs. {payment.onlineAmount ?? 0})</span>
+        )}
+      </p>
       <p><span className="font-medium">Period:</span> {formatPeriod(payment.previousDueDate, payment.newDueDate)}</p>
       <p><span className="font-medium">Transaction ID:</span> {payment.transactionId}</p>
     </CardContent>
@@ -188,7 +193,12 @@ export default function PaymentHistoryPage() {
                             ? format(parseISO(payment.date), 'MMM d, yyyy')
                             : 'N/A'}
                         </TableCell>
-                        <TableCell>{payment.amount}</TableCell>
+                        <TableCell className="whitespace-nowrap">
+                          {payment.amount}
+                          {payment.method === 'Mixed' && (
+                            <span className="block text-xs text-muted-foreground">Cash Rs. {payment.cashAmount ?? 0} · Online Rs. {payment.onlineAmount ?? 0}</span>
+                          )}
+                        </TableCell>
                         <TableCell className="whitespace-nowrap">{formatPeriod(payment.previousDueDate, payment.newDueDate)}</TableCell>
                         <TableCell>{payment.transactionId}</TableCell>
                         <TableCell>

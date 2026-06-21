@@ -46,9 +46,11 @@ export interface PaymentRecord {
   date: string;
   amount: string;
   transactionId: string;
-  method: "Cash" | "Online" | "Desk Payment" | "UPI" | "Card" | "Imported";
+  method: "Cash" | "Online" | "Desk Payment" | "UPI" | "Card" | "Imported" | "Mixed";
   previousDueDate?: string; // yyyy-MM-dd — value of nextDueDate BEFORE this payment
   newDueDate?: string;      // yyyy-MM-dd — value of nextDueDate AFTER this payment
+  cashAmount?: number;      // for "Mixed" payments: portion paid in cash (Rs.)
+  onlineAmount?: number;    // for "Mixed" payments: portion paid online (Rs.)
 }
 
 export interface AttendanceRecord {

@@ -122,7 +122,9 @@ export async function recordStudentPayment(
   paymentMethod: PaymentRecord['method'],
   numberOfMonthsPaid: number = 1,
   customTransactionId?: string,
-  customNextDueDateString?: string
+  customNextDueDateString?: string,
+  cashAmount?: number,
+  onlineAmount?: number
 ): Promise<Student | undefined> {
   const studentToUpdate = await getStudentByCustomIdInternal(customStudentId);
   if (!studentToUpdate || !studentToUpdate.firestoreId) {
@@ -141,12 +143,25 @@ export async function recordStudentPayment(
     default: throw new Error("Invalid shift for fee calculation.");
   }
 
-  // Honour the amount actually entered by the admin. Fall back to the computed
-  // expected fee only when the passed value isn't a usable number.
-  const parsedManualAmount = parseInt(String(totalAmountPaidString ?? '').replace(/[^0-9]/g, ''), 10);
-  const amountToPayNumeric = Number.isFinite(parsedManualAmount) && parsedManualAmount > 0
-    ? parsedManualAmount
-    : expectedMonthlyFee * numberOfMonthsPaid;
+  // For a "Mixed" payment the total is the cash + online split. Otherwise honour
+  // the amount entered by the admin, falling back to the computed expected fee
+  // only when the passed value isn't a usable number.
+  const isMixed = paymentMethod === 'Mixed';
+  const cashPortion = Math.max(0, Math.floor(Number(cashAmount) || 0));
+  const onlinePortion = Math.max(0, Math.floor(Number(onlineAmount) || 0));
+
+  let amountToPayNumeric: number;
+  if (isMixed) {
+    amountToPayNumeric = cashPortion + onlinePortion;
+    if (amountToPayNumeric <= 0) {
+      throw new Error("A mixed payment must have a positive cash or online amount.");
+    }
+  } else {
+    const parsedManualAmount = parseInt(String(totalAmountPaidString ?? '').replace(/[^0-9]/g, ''), 10);
+    amountToPayNumeric = Number.isFinite(parsedManualAmount) && parsedManualAmount > 0
+      ? parsedManualAmount
+      : expectedMonthlyFee * numberOfMonthsPaid;
+  }
 
   const studentDocRef = doc(db, STUDENTS_COLLECTION, studentToUpdate.firestoreId);
   const today = new Date();
@@ -179,6 +194,7 @@ export async function recordStudentPayment(
     method: paymentMethod,
     previousDueDate: previousDueDateString,
     newDueDate: newDueDateString,
+    ...(isMixed ? { cashAmount: cashPortion, onlineAmount: onlinePortion } : {}),
   };
 
   const firestorePaymentRecord = {
@@ -249,10 +265,20 @@ export async function getMonthlyRevenueHistory(): Promise<MonthlyRevenueData[]> 
                             const entry = monthlyRevenueMap.get(monthKey)
                                 ?? { revenue: 0, cashRevenue: 0, onlineRevenue: 0, otherRevenue: 0 };
                             entry.revenue += amountValue;
-                            const bucket = classifyPaymentMethod(payment.method);
-                            if (bucket === 'cash') entry.cashRevenue += amountValue;
-                            else if (bucket === 'online') entry.onlineRevenue += amountValue;
-                            else entry.otherRevenue += amountValue;
+                            if (payment.method === 'Mixed') {
+                                // Split a mixed payment across its cash / online portions.
+                                const cash = typeof payment.cashAmount === 'number' ? payment.cashAmount : 0;
+                                const online = typeof payment.onlineAmount === 'number' ? payment.onlineAmount : 0;
+                                entry.cashRevenue += cash;
+                                entry.onlineRevenue += online;
+                                const remainder = amountValue - cash - online;
+                                if (remainder > 0) entry.otherRevenue += remainder;
+                            } else {
+                                const bucket = classifyPaymentMethod(payment.method);
+                                if (bucket === 'cash') entry.cashRevenue += amountValue;
+                                else if (bucket === 'online') entry.onlineRevenue += amountValue;
+                                else entry.otherRevenue += amountValue;
+                            }
                             monthlyRevenueMap.set(monthKey, entry);
                         }
                     }

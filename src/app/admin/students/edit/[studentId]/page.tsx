@@ -77,6 +77,12 @@ const getShiftColorClass = (shift: Shift | undefined) => {
   }
 };
 
+/** Parse a rupee string/number input to a non-negative integer (0 when invalid). */
+const parseRupees = (s: string): number => {
+  const n = parseInt(s.replace(/[^0-9]/g, ''), 10);
+  return Number.isFinite(n) ? n : 0;
+};
+
 const DateBox = ({ date, label }: { date?: string; label: string }) => {
   const parsedDate = date && isValid(parseISO(date)) ? parseISO(date) : null;
   
@@ -124,6 +130,9 @@ export default function EditStudentPage() {
   // Editable payment fields (seeded with computed defaults when the modal opens).
   const [paymentAmount, setPaymentAmount] = React.useState("");
   const [customDueDate, setCustomDueDate] = React.useState("");
+  // Cash / online split, used only when the method is "Mixed".
+  const [mixedCash, setMixedCash] = React.useState("");
+  const [mixedOnline, setMixedOnline] = React.useState("");
   const seatNumberRef = React.useRef<HTMLDivElement>(null);
 
   const isReviewer = isReviewerUser(user?.email);
@@ -169,17 +178,48 @@ export default function EditStudentPage() {
     return format(addDays(baseDate, 30), 'yyyy-MM-dd');
   }, [studentData?.nextDueDate]);
 
+  // The student's monthly fee for their shift (used to pro-rate the due date).
+  const monthlyFee = React.useMemo(() => {
+    if (!feeStructure || !studentData) return 0;
+    switch (studentData.shift) {
+      case 'morning': return feeStructure.morningFee;
+      case 'evening': return feeStructure.eveningFee;
+      case 'fullday': return feeStructure.fullDayFee;
+      default: return 0;
+    }
+  }, [feeStructure, studentData]);
+
+  // Pro-rate the next due date by how much of a full month's fee was paid:
+  // full fee → +30 days, half fee → +15 days, etc. (measured from the current
+  // due date, or today if none). Falls back to +30 when amount/fee isn't usable.
+  const dueDateFromAmount = React.useCallback((amount: number): string => {
+    const base = studentData?.nextDueDate && isValid(parseISO(studentData.nextDueDate))
+      ? parseISO(studentData.nextDueDate)
+      : new Date();
+    const days = amount > 0 && monthlyFee > 0
+      ? Math.max(1, Math.round((30 * amount) / monthlyFee))
+      : 30;
+    return format(addDays(base, days), 'yyyy-MM-dd');
+  }, [studentData, monthlyFee]);
+
   const amountDueDisplay = getAmountDueDisplay();
 
   // Seed the editable amount + due date when the payment modal opens.
   const handlePaymentDialogChange = (open: boolean) => {
     setIsConfirmPaymentOpen(open);
     if (open) {
-      const numeric = parseInt(amountDueDisplay.replace(/[^0-9]/g, ''), 10);
-      setPaymentAmount(Number.isFinite(numeric) && numeric > 0 ? String(numeric) : "");
-      setCustomDueDate(newDueDateForPayment);
+      const numeric = parseRupees(amountDueDisplay);
+      setPaymentAmount(numeric > 0 ? String(numeric) : "");
+      setCustomDueDate(dueDateFromAmount(numeric));
+      // Reset method + dependent fields each time the modal opens.
+      setPaymentMethod('Cash');
+      setMixedCash("");
+      setMixedOnline("");
+      setManualTransactionId("");
     } else {
       setManualTransactionId("");
+      setMixedCash("");
+      setMixedOnline("");
     }
   };
 
@@ -362,12 +402,29 @@ export default function EditStudentPage() {
   async function handleMarkPaymentPaid() {
     if (!studentId || !studentData || isStudentLeft || !feeStructure) return;
 
-    // Validate the manually editable fields before recording.
-    const numericAmount = parseInt(paymentAmount.replace(/[^0-9]/g, ''), 10);
-    if (!Number.isFinite(numericAmount) || numericAmount <= 0) {
-      toast({ title: "Invalid amount", description: "Enter a valid amount received (greater than 0).", variant: "destructive" });
-      return;
+    const isMixed = paymentMethod === 'Mixed';
+
+    // Resolve the amount + split, validating the manually editable fields.
+    let totalAmount: number;
+    let cashPart: number | undefined;
+    let onlinePart: number | undefined;
+
+    if (isMixed) {
+      cashPart = parseRupees(mixedCash);
+      onlinePart = parseRupees(mixedOnline);
+      totalAmount = cashPart + onlinePart;
+      if (totalAmount <= 0) {
+        toast({ title: "Invalid amounts", description: "Enter a cash and/or online amount greater than 0.", variant: "destructive" });
+        return;
+      }
+    } else {
+      totalAmount = parseRupees(paymentAmount);
+      if (totalAmount <= 0) {
+        toast({ title: "Invalid amount", description: "Enter a valid amount received (greater than 0).", variant: "destructive" });
+        return;
+      }
     }
+
     if (!customDueDate || !isValid(parseISO(customDueDate))) {
       toast({ title: "Invalid due date", description: "Choose a valid next due date.", variant: "destructive" });
       return;
@@ -375,14 +432,16 @@ export default function EditStudentPage() {
 
     setIsSaving(true);
     try {
-      const updatedStudent = await recordStudentPayment(studentId, `Rs. ${numericAmount}`, paymentMethod, 1, manualTransactionId || undefined, customDueDate);
+      const updatedStudent = await recordStudentPayment(studentId, `Rs. ${totalAmount}`, paymentMethod, 1, manualTransactionId || undefined, customDueDate, cashPart, onlinePart);
       if (updatedStudent) {
         setStudentData(updatedStudent);
         setIsDirtyOverride(false);
         refreshNotifications(); // Refresh sidebar counts
          toast({
           title: "Payment Status Updated",
-          description: `Payment of Rs. ${numericAmount} for ${updatedStudent.name} recorded via ${paymentMethod}. An alert has been sent.`,
+          description: isMixed
+            ? `Mixed payment of Rs. ${totalAmount} (Cash Rs. ${cashPart}, Online Rs. ${onlinePart}) for ${updatedStudent.name} recorded. An alert has been sent.`
+            : `Payment of Rs. ${totalAmount} for ${updatedStudent.name} recorded via ${paymentMethod}. An alert has been sent.`,
         });
       } else {
         toast({ title: "Error", description: "Failed to update payment status.", variant: "destructive"});
@@ -811,20 +870,69 @@ export default function EditStudentPage() {
                                 </div>
                             </div>
                             <div className="py-4 space-y-4">
+                                <div>
+                                    <Label className="mb-2 block">Payment Method</Label>
+                                    <RadioGroup
+                                        value={paymentMethod}
+                                        onValueChange={(value) => {
+                                            const method = value as PaymentRecord['method'];
+                                            setPaymentMethod(method);
+                                            setManualTransactionId("");
+                                            setMixedCash("");
+                                            setMixedOnline("");
+                                            // Switching to Mixed clears the split (total 0 → default +30);
+                                            // other methods re-derive from the single amount field.
+                                            setCustomDueDate(dueDateFromAmount(method === 'Mixed' ? 0 : parseRupees(paymentAmount)));
+                                        }}
+                                    >
+                                        <div className="flex items-center space-x-2">
+                                            <RadioGroupItem value="Cash" id="payment-cash" />
+                                            <Label htmlFor="payment-cash" className="font-normal">Cash</Label>
+                                        </div>
+                                        <div className="flex items-center space-x-2">
+                                            <RadioGroupItem value="Online" id="payment-online" />
+                                            <Label htmlFor="payment-online" className="font-normal">Online (UPI/Card)</Label>
+                                        </div>
+                                        <div className="flex items-center space-x-2">
+                                            <RadioGroupItem value="Mixed" id="payment-mixed" />
+                                            <Label htmlFor="payment-mixed" className="font-normal">Mixed (Cash + Online)</Label>
+                                        </div>
+                                    </RadioGroup>
+                                </div>
+
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                    <div>
-                                        <Label htmlFor="payment-amount" className="mb-1 block text-sm">Amount Received (Rs.)</Label>
-                                        <Input
-                                            id="payment-amount"
-                                            type="number"
-                                            inputMode="numeric"
-                                            min={1}
-                                            placeholder="e.g. 600"
-                                            value={paymentAmount}
-                                            onChange={(e) => setPaymentAmount(e.target.value)}
-                                        />
-                                        <p className="text-xs text-muted-foreground mt-1">Defaults to the amount due — edit if a different amount was paid.</p>
-                                    </div>
+                                    {paymentMethod === 'Mixed' ? (
+                                        <div className="sm:col-span-2 space-y-2">
+                                            <div className="grid grid-cols-2 gap-3">
+                                                <div>
+                                                    <Label htmlFor="mixed-cash" className="mb-1 block text-sm">Cash Amount (Rs.)</Label>
+                                                    <Input id="mixed-cash" type="number" inputMode="numeric" min={0} placeholder="e.g. 400" value={mixedCash} onChange={(e) => { setMixedCash(e.target.value); setCustomDueDate(dueDateFromAmount(parseRupees(e.target.value) + parseRupees(mixedOnline))); }} />
+                                                </div>
+                                                <div>
+                                                    <Label htmlFor="mixed-online" className="mb-1 block text-sm">Online Amount (Rs.)</Label>
+                                                    <Input id="mixed-online" type="number" inputMode="numeric" min={0} placeholder="e.g. 200" value={mixedOnline} onChange={(e) => { setMixedOnline(e.target.value); setCustomDueDate(dueDateFromAmount(parseRupees(mixedCash) + parseRupees(e.target.value))); }} />
+                                                </div>
+                                            </div>
+                                            <p className="text-sm font-medium">Total: Rs. {parseRupees(mixedCash) + parseRupees(mixedOnline)}</p>
+                                        </div>
+                                    ) : (
+                                        <div>
+                                            <Label htmlFor="payment-amount" className="mb-1 block text-sm">Amount Received (Rs.)</Label>
+                                            <Input
+                                                id="payment-amount"
+                                                type="number"
+                                                inputMode="numeric"
+                                                min={1}
+                                                placeholder="e.g. 600"
+                                                value={paymentAmount}
+                                                onChange={(e) => {
+                                                    setPaymentAmount(e.target.value);
+                                                    setCustomDueDate(dueDateFromAmount(parseRupees(e.target.value)));
+                                                }}
+                                            />
+                                            <p className="text-xs text-muted-foreground mt-1">Defaults to the amount due — edit if a different amount was paid.</p>
+                                        </div>
+                                    )}
                                     <div>
                                         <Label htmlFor="payment-due-date" className="mb-1 block text-sm">Next Due Date</Label>
                                         <Input
@@ -834,23 +942,11 @@ export default function EditStudentPage() {
                                             onChange={(e) => setCustomDueDate(e.target.value)}
                                             className="[color-scheme:light] dark:[color-scheme:dark]"
                                         />
-                                        <p className="text-xs text-muted-foreground mt-1">Auto-set to 30 days after the current due date — adjust if needed.</p>
+                                        <p className="text-xs text-muted-foreground mt-1">Auto-set from the amount (full fee = 30 days, half = 15) — adjust if needed.</p>
                                     </div>
                                 </div>
-                                <div>
-                                    <Label className="mb-2 block">Payment Method</Label>
-                                    <RadioGroup defaultValue="Cash" onValueChange={(value) => { setPaymentMethod(value as PaymentRecord['method']); setManualTransactionId(""); }}>
-                                        <div className="flex items-center space-x-2">
-                                            <RadioGroupItem value="Cash" id="payment-cash" />
-                                            <Label htmlFor="payment-cash" className="font-normal">Cash</Label>
-                                        </div>
-                                        <div className="flex items-center space-x-2">
-                                            <RadioGroupItem value="Online" id="payment-online" />
-                                            <Label htmlFor="payment-online" className="font-normal">Online (UPI/Card)</Label>
-                                        </div>
-                                    </RadioGroup>
-                                </div>
-                                {paymentMethod === 'Online' && (
+
+                                {(paymentMethod === 'Online' || paymentMethod === 'Mixed') && (
                                     <div>
                                         <Label className="mb-1 block text-sm">UPI / Transaction Reference <span className="text-muted-foreground font-normal">(optional)</span></Label>
                                         <Input
@@ -858,7 +954,7 @@ export default function EditStudentPage() {
                                             value={manualTransactionId}
                                             onChange={(e) => setManualTransactionId(e.target.value)}
                                         />
-                                        <p className="text-xs text-muted-foreground mt-1">Enter the transaction ID from the student&apos;s UPI app. Leave blank to auto-generate.</p>
+                                        <p className="text-xs text-muted-foreground mt-1">Enter the transaction ID for the online portion. Leave blank to auto-generate.</p>
                                     </div>
                                 )}
                             </div>
