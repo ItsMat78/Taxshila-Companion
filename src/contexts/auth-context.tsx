@@ -61,50 +61,65 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const isCurrent = () => (auth.currentUser?.uid ?? null) === invocationUid;
 
       setIsLoading(true);
-      if (firebaseUser && firebaseUser.email) {
-        // User is signed in, fetch their profile from Firestore
-        let userRecord: Student | Admin | null = null;
-        let userRole: UserRole = 'member';
+      try {
+        if (firebaseUser && firebaseUser.email) {
+          // User is signed in, fetch their profile from Firestore
+          let userRecord: Student | Admin | null = null;
+          let userRole: UserRole = 'member';
 
-        const admin = await getAdminByEmail(firebaseUser.email);
-        if (!isCurrent()) return; // superseded by a newer auth state
-        if (admin) {
-            userRecord = admin;
-            userRole = 'admin';
-        } else {
-            userRecord = (await getStudentByIdentifier(firebaseUser.email)) ?? null;
-            if (!isCurrent()) return; // superseded by a newer auth state
-        }
+          const admin = await getAdminByEmail(firebaseUser.email);
+          if (!isCurrent()) return; // superseded by a newer auth state (finally still runs)
+          if (admin) {
+              userRecord = admin;
+              userRole = 'admin';
+          } else {
+              userRecord = (await getStudentByIdentifier(firebaseUser.email)) ?? null;
+              if (!isCurrent()) return; // superseded by a newer auth state (finally still runs)
+          }
 
-        if (userRecord) {
-            const userData: User = {
-                uid: firebaseUser.uid,
-                email: userRecord.email,
-                role: userRole,
-                profilePictureUrl: userRole === 'member' ? (userRecord as Student).profilePictureUrl : undefined,
-                firestoreId: userRecord.firestoreId ?? '',
-                studentId: userRole === 'member' ? (userRecord as Student).studentId : undefined,
-                identifierForDisplay: userRecord.name,
-                theme: userRecord.theme || 'light-default',
-            };
-            setUser(userData);
-            localStorage.setItem('taxshilaUser', JSON.stringify(userData)); // Keep for quick initial loads
-            
-            // Normalize theme before setting
-            const normalizedTheme = ['light', 'dark'].includes(userData.theme) ? userData.theme : 'light';
-            setTheme(normalizedTheme);
+          if (userRecord) {
+              const userData: User = {
+                  uid: firebaseUser.uid,
+                  email: userRecord.email,
+                  role: userRole,
+                  profilePictureUrl: userRole === 'member' ? (userRecord as Student).profilePictureUrl : undefined,
+                  firestoreId: userRecord.firestoreId ?? '',
+                  studentId: userRole === 'member' ? (userRecord as Student).studentId : undefined,
+                  identifierForDisplay: userRecord.name,
+                  theme: userRecord.theme || 'light-default',
+              };
+              setUser(userData);
+              localStorage.setItem('taxshilaUser', JSON.stringify(userData)); // Keep for quick initial loads
+
+              // Normalize theme before setting
+              const normalizedTheme = ['light', 'dark'].includes(userData.theme) ? userData.theme : 'light';
+              setTheme(normalizedTheme);
+          } else {
+              // Auth user exists but no DB record, force logout
+              await signOut(auth);
+              setUser(null);
+              localStorage.removeItem('taxshilaUser');
+          }
         } else {
-            // Auth user exists but no DB record, force logout
-            await signOut(auth);
-            setUser(null);
-            localStorage.removeItem('taxshilaUser');
+          // User is signed out
+          setUser(null);
+          localStorage.removeItem('taxshilaUser');
         }
-      } else {
-        // User is signed out
-        setUser(null);
-        localStorage.removeItem('taxshilaUser');
+      } catch (error) {
+        // A transient profile-lookup failure (e.g. flaky network on app resume
+        // or back-navigation in the PWA) must NOT leave the app pinned on the
+        // loading screen. Log it and let `finally` clear the flag. The existing
+        // session is left untouched so a temporary error never logs the user out.
+        console.error("Auth state resolution failed:", error);
+      } finally {
+        // Only the live invocation owns the loading flag. A superseded (stale)
+        // invocation bails without flipping it, leaving the current one to settle
+        // it. This guarantees isLoading is cleared on every exit path — success,
+        // early-return, or throw — which is what previously got stuck.
+        if (isCurrent()) {
+          setIsLoading(false);
+        }
       }
-      setIsLoading(false);
     });
 
     return () => unsubscribe(); // Cleanup subscription on unmount

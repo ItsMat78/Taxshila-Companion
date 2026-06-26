@@ -107,13 +107,20 @@ export default function MemberProfilePage() {
 
 
   React.useEffect(() => {
+    // Wait for auth to resolve before fetching. Previously this set isLoading(true)
+    // unconditionally but only cleared it inside `if (user)`, so a missing user
+    // left the page stuck on the spinner forever.
+    if (!user) return;
+
+    let cancelled = false;
     setIsLoading(true);
     const fetchStudent = async () => {
       try {
         let student = null;
-        if (user?.studentId) student = await getStudentByCustomId(user.studentId);
-        else if (user?.email) student = await getStudentByEmail(user.email);
+        if (user.studentId) student = await getStudentByCustomId(user.studentId);
+        else if (user.email) student = await getStudentByEmail(user.email);
 
+        if (cancelled) return;
         if (student) {
           setMemberDetails(student);
           setPreviewUrl(student.profilePictureUrl || null);
@@ -121,12 +128,15 @@ export default function MemberProfilePage() {
           toast({ title: "Error", description: "Could not load your profile data.", variant: "destructive" });
         }
       } catch (error) {
-        toast({ title: "Error", description: "An error occurred while loading your profile.", variant: "destructive" });
+        if (!cancelled) toast({ title: "Error", description: "An error occurred while loading your profile.", variant: "destructive" });
       } finally {
-        setIsLoading(false);
+        if (!cancelled) setIsLoading(false);
       }
     };
-    if (user) fetchStudent();
+    fetchStudent();
+    return () => {
+      cancelled = true;
+    };
   }, [user, toast]);
   
 
