@@ -4,7 +4,7 @@
 import * as React from 'react';
 import { isReviewerUser } from '@/lib/auth-utils';
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm, Controller } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { PageTitle } from '@/components/shared/page-title';
 import { Button } from "@/components/ui/button";
 import {
@@ -34,15 +34,13 @@ import {
   FormDescription,
 } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
-import { UserPlus, Loader2, Camera, Upload, Video, VideoOff } from 'lucide-react';
+import { UserPlus, Loader2, Camera, User, Lock, Armchair } from 'lucide-react';
 import { addStudent, getAvailableSeats, type AddStudentData } from '@/services/student-service';
 import { studentRegisterSchema, type StudentRegisterFormValues, SHIFT_OPTIONS } from '@/lib/schemas/student';
 import type { Shift } from '@/types/student';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
-import { useCallback } from 'react';
-import { Label } from '@/components/ui/label';
 import { useAuth } from '@/contexts/auth-context';
 
 
@@ -93,7 +91,7 @@ export default function StudentRegisterPage() {
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [availableSeatOptions, setAvailableSeatOptions] = React.useState<string[]>([]);
   const [isLoadingSeats, setIsLoadingSeats] = React.useState(false);
-  
+
   const [previewUrl, setPreviewUrl] = React.useState<string | null>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
@@ -101,7 +99,7 @@ export default function StudentRegisterPage() {
   const [hasCameraPermission, setHasCameraPermission] = React.useState(true);
   const videoRef = React.useRef<HTMLVideoElement>(null);
   const canvasRef = React.useRef<HTMLCanvasElement>(null);
-  
+
   const isReviewer = isReviewerUser(user?.email);
 
   const form = useForm<StudentFormValues>({
@@ -122,28 +120,36 @@ export default function StudentRegisterPage() {
   const selectedShift = form.watch("shift");
 
   React.useEffect(() => {
+    if (!selectedShift) {
+      setAvailableSeatOptions([]);
+      setIsLoadingSeats(false);
+      return;
+    }
+
+    // Guard against out-of-order responses when the shift is switched quickly.
+    let cancelled = false;
     const fetchSeatsForShift = async (shift: Shift) => {
       setIsLoadingSeats(true);
-      setAvailableSeatOptions([]); 
-      form.setValue("seatNumber", ""); 
+      setAvailableSeatOptions([]);
+      form.setValue("seatNumber", "");
       try {
         const seats = await getAvailableSeats(shift);
-        setAvailableSeatOptions(seats);
+        if (!cancelled) setAvailableSeatOptions(seats);
       } catch (error) {
         console.error(`Failed to fetch available seats for ${shift} shift:`, error);
-        toast({ title: "Error", description: `Could not load seats for ${shift} shift.`, variant: "destructive" });
-        setAvailableSeatOptions([]);
+        if (!cancelled) {
+          toast({ title: "Error", description: `Could not load seats for ${shift} shift.`, variant: "destructive" });
+          setAvailableSeatOptions([]);
+        }
       } finally {
-        setIsLoadingSeats(false);
+        if (!cancelled) setIsLoadingSeats(false);
       }
     };
 
-    if (selectedShift) {
-      fetchSeatsForShift(selectedShift);
-    } else {
-      setAvailableSeatOptions([]); 
-      setIsLoadingSeats(false);
-    }
+    fetchSeatsForShift(selectedShift);
+    return () => {
+      cancelled = true;
+    };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedShift, toast, form.setValue]);
 
@@ -153,6 +159,7 @@ export default function StudentRegisterPage() {
     const videoElem = videoRef.current;
 
     if (isCameraDialogOpen) {
+      setHasCameraPermission(true); // Reset so a previous denial doesn't flash on reopen
       const getCameraPermission = async () => {
         try {
           stream = await navigator.mediaDevices.getUserMedia({ video: true });
@@ -168,7 +175,6 @@ export default function StudentRegisterPage() {
             title: "Camera Access Denied",
             description: "Please enable camera permissions in your browser settings to use this app.",
           });
-          setIsCameraDialogOpen(false);
         }
       };
       getCameraPermission();
@@ -257,11 +263,11 @@ export default function StudentRegisterPage() {
         description: `${newStudent.name} (ID: ${newStudent.studentId}) has been registered and their auth account is active.`,
       });
       form.reset();
-      setPreviewUrl(null); 
+      setPreviewUrl(null);
       if (fileInputRef.current) {
-        fileInputRef.current.value = ""; 
+        fileInputRef.current.value = "";
       }
-      setAvailableSeatOptions([]); 
+      setAvailableSeatOptions([]);
     } catch (error: unknown) {
        toast({
         title: "Registration Failed",
@@ -293,15 +299,16 @@ export default function StudentRegisterPage() {
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)}>
             <CardContent className="space-y-6">
-              
-              <FormItem>
+
+              {/* --- Profile picture --- */}
+              <FormItem className="space-y-3">
                 <FormLabel>Profile Picture (Optional)</FormLabel>
-                <div className="flex items-center gap-4">
-                    <Avatar className="h-20 w-20 border">
+                <div className="flex flex-col gap-4 rounded-lg border bg-muted/30 p-4 sm:flex-row sm:items-center">
+                    <Avatar className="h-24 w-24 self-center border sm:h-20 sm:w-20 sm:self-auto">
                         <AvatarImage src={previewUrl || undefined} alt="Profile preview" data-ai-hint="profile person"/>
                         <AvatarFallback><UserPlus /></AvatarFallback>
                     </Avatar>
-                    <div className="flex-grow space-y-2">
+                    <div className="min-w-0 flex-grow space-y-2">
                       <FormControl>
                         <Input
                             type="file"
@@ -309,6 +316,7 @@ export default function StudentRegisterPage() {
                             onChange={handleProfilePictureChange}
                             disabled={isSubmitting || isReviewer}
                             ref={fileInputRef}
+                            className="cursor-pointer"
                         />
                       </FormControl>
                        <Dialog open={isCameraDialogOpen} onOpenChange={setIsCameraDialogOpen}>
@@ -321,7 +329,7 @@ export default function StudentRegisterPage() {
                               <DialogHeader>
                                   <DialogTitle>Capture Photo</DialogTitle>
                               </DialogHeader>
-                              <div className="py-4">
+                              <div className="space-y-3 py-4">
                                   <video ref={videoRef} className="w-full aspect-video rounded-md bg-muted" autoPlay playsInline muted />
                                   { !hasCameraPermission && (
                                       <Alert variant="destructive">
@@ -347,69 +355,108 @@ export default function StudentRegisterPage() {
                 </div>
               </FormItem>
 
-              <FormField control={form.control} name="name" render={({ field }) => (
-                <FormItem><FormLabel>Full Name</FormLabel><FormControl><Input placeholder="Enter student's full name" {...field} disabled={isSubmitting || isReviewer} /></FormControl><FormMessage /></FormItem>
-              )} />
-              <FormField control={form.control} name="email" render={({ field }) => (
-                <FormItem><FormLabel>Email Address (Optional)</FormLabel><FormControl><Input type="email" placeholder="student@example.com" {...field} disabled={isSubmitting || isReviewer} /></FormControl><FormMessage /></FormItem>
-              )} />
-              <FormField control={form.control} name="phone" render={({ field }) => (
-                <FormItem><FormLabel>Phone Number</FormLabel><FormControl><Input type="tel" placeholder="Enter 10-digit phone number" {...field} disabled={isSubmitting || isReviewer} /></FormControl><FormMessage /></FormItem>
-              )} />
-              <FormField control={form.control} name="password" render={({ field }) => (
-                <FormItem><FormLabel>Password</FormLabel><FormControl><Input type="password" placeholder="Enter initial password (min. 6 characters)" {...field} disabled={isSubmitting || isReviewer} /></FormControl><FormMessage /></FormItem>
-              )} />
-              <FormField control={form.control} name="address" render={({ field }) => (
-                <FormItem><FormLabel>Address</FormLabel><FormControl><Input placeholder="Enter address" {...field} disabled={isSubmitting || isReviewer} /></FormControl><FormMessage /></FormItem>
-              )} />
-              <FormField control={form.control} name="shift" render={({ field }) => (
-                <FormItem className="space-y-3"><FormLabel>Shift Selection</FormLabel>
-                  <FormControl>
-                    <RadioGroup onValueChange={field.onChange} value={field.value} className="flex flex-col space-y-2" disabled={isSubmitting || isReviewer}>
-                      {SHIFT_OPTIONS.map(option => (
-                        <FormItem key={option.value} className="flex items-center space-x-3 space-y-0">
-                          <FormControl><RadioGroupItem value={option.value} disabled={isSubmitting || isReviewer} /></FormControl>
-                          <FormLabel className="font-normal">{option.label}</FormLabel>
-                        </FormItem>
-                      ))}
-                    </RadioGroup>
-                  </FormControl>
-                <FormMessage /></FormItem>
-              )} />
-              <FormField
-                control={form.control}
-                name="seatNumber"
-                render={({ field }) => (
+              {/* --- Personal details --- */}
+              <div className="space-y-4 border-t pt-6">
+                <div className="flex items-center gap-2 text-sm font-semibold">
+                  <User className="h-4 w-4 text-primary" />
+                  <span>Personal Details</span>
+                </div>
+                <FormField control={form.control} name="name" render={({ field }) => (
+                  <FormItem><FormLabel>Full Name</FormLabel><FormControl><Input placeholder="Enter student's full name" {...field} disabled={isSubmitting || isReviewer} /></FormControl><FormMessage /></FormItem>
+                )} />
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <FormField control={form.control} name="email" render={({ field }) => (
+                    <FormItem><FormLabel>Email Address (Optional)</FormLabel><FormControl><Input type="email" placeholder="student@example.com" {...field} disabled={isSubmitting || isReviewer} /></FormControl><FormMessage /></FormItem>
+                  )} />
+                  <FormField control={form.control} name="phone" render={({ field }) => (
+                    <FormItem><FormLabel>Phone Number</FormLabel><FormControl><Input type="tel" inputMode="numeric" placeholder="Enter 10-digit phone number" {...field} disabled={isSubmitting || isReviewer} /></FormControl><FormMessage /></FormItem>
+                  )} />
+                </div>
+                <FormField control={form.control} name="address" render={({ field }) => (
+                  <FormItem><FormLabel>Address (Optional)</FormLabel><FormControl><Input placeholder="Enter address" {...field} disabled={isSubmitting || isReviewer} /></FormControl><FormMessage /></FormItem>
+                )} />
+              </div>
+
+              {/* --- Login credentials --- */}
+              <div className="space-y-4 border-t pt-6">
+                <div className="flex items-center gap-2 text-sm font-semibold">
+                  <Lock className="h-4 w-4 text-primary" />
+                  <span>Login Credentials</span>
+                </div>
+                <FormField control={form.control} name="password" render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Seat Number</FormLabel>
-                    <Select
-                      onValueChange={field.onChange}
-                      value={field.value}
-                      disabled={isSubmitting || isLoadingSeats || !selectedShift || isReviewer}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder={!selectedShift ? "Select shift first" : (isLoadingSeats ? "Loading seats..." : "Select an available seat")} />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {!isLoadingSeats && !selectedShift && (
-                            <p className="p-2 text-xs text-muted-foreground">Please select a shift to see available seats.</p>
-                        )}
-                        {!isLoadingSeats && selectedShift && availableSeatOptions.length === 0 && (
-                            <p className="p-2 text-xs text-muted-foreground">No seats currently available for {selectedShift} shift.</p>
-                        )}
-                        {availableSeatOptions.map(seat => (
-                          <SelectItem key={seat} value={seat}>
-                            Seat {seat}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <FormLabel>Password</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="text"
+                        placeholder="Enter initial password (min. 6 characters)"
+                        {...field}
+                        disabled={isSubmitting || isReviewer}
+                      />
+                    </FormControl>
+                    <FormDescription className="text-xs">
+                      Members can&apos;t change this themselves &mdash; only an admin can update it later from the student&apos;s profile.
+                    </FormDescription>
                     <FormMessage />
                   </FormItem>
-                )}
-              />
+                )} />
+              </div>
+
+              {/* --- Seat assignment --- */}
+              <div className="space-y-4 border-t pt-6">
+                <div className="flex items-center gap-2 text-sm font-semibold">
+                  <Armchair className="h-4 w-4 text-primary" />
+                  <span>Seat Assignment</span>
+                </div>
+                <FormField control={form.control} name="shift" render={({ field }) => (
+                  <FormItem className="space-y-3"><FormLabel>Shift Selection</FormLabel>
+                    <FormControl>
+                      <RadioGroup onValueChange={field.onChange} value={field.value} className="grid grid-cols-1 gap-3" disabled={isSubmitting || isReviewer}>
+                        {SHIFT_OPTIONS.map(option => (
+                          <FormItem key={option.value} className="flex items-center space-x-3 space-y-0 rounded-md border p-3 transition-colors has-[:checked]:border-primary has-[:checked]:bg-primary/5">
+                            <FormControl><RadioGroupItem value={option.value} disabled={isSubmitting || isReviewer} /></FormControl>
+                            <FormLabel className="font-normal cursor-pointer w-full">{option.label}</FormLabel>
+                          </FormItem>
+                        ))}
+                      </RadioGroup>
+                    </FormControl>
+                  <FormMessage /></FormItem>
+                )} />
+                <FormField
+                  control={form.control}
+                  name="seatNumber"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Seat Number</FormLabel>
+                      <Select
+                        onValueChange={field.onChange}
+                        value={field.value}
+                        disabled={isSubmitting || isLoadingSeats || !selectedShift || isReviewer}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder={!selectedShift ? "Select shift first" : (isLoadingSeats ? "Loading seats..." : "Select an available seat")} />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {!isLoadingSeats && !selectedShift && (
+                              <p className="p-2 text-xs text-muted-foreground">Please select a shift to see available seats.</p>
+                          )}
+                          {!isLoadingSeats && selectedShift && availableSeatOptions.length === 0 && (
+                              <p className="p-2 text-xs text-muted-foreground">No seats currently available for {selectedShift} shift.</p>
+                          )}
+                          {availableSeatOptions.map(seat => (
+                            <SelectItem key={seat} value={seat}>
+                              Seat {seat}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
             </CardContent>
             <CardFooter>
               {isReviewer ? (
