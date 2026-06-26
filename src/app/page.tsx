@@ -85,6 +85,34 @@ export default function RootLoginPage() {
     };
   }, []);
 
+  // On mobile, the soft keyboard shrinks the visual viewport but not the 100vh
+  // layout height, so the vertically-centered card stays hidden behind it. When
+  // the visual viewport resizes (keyboard opens) while an input is focused,
+  // scroll that field back into the visible area above the keyboard.
+  React.useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+
+    const scrollActiveFieldIntoView = () => {
+      const active = document.activeElement;
+      if (active instanceof HTMLInputElement || active instanceof HTMLTextAreaElement) {
+        active.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      }
+    };
+
+    vv.addEventListener('resize', scrollActiveFieldIntoView);
+    return () => vv.removeEventListener('resize', scrollActiveFieldIntoView);
+  }, []);
+
+  // Fallback for browsers that don't fire a visualViewport resize on keyboard
+  // open: nudge the focused field into view after the keyboard has animated in.
+  const handleFieldFocus = (event: React.FocusEvent<HTMLInputElement>) => {
+    const field = event.currentTarget;
+    window.setTimeout(() => {
+      field.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    }, 300);
+  };
+
   const handleInstallClick = async () => {
     if (!deferredPrompt) {
       return;
@@ -181,7 +209,7 @@ export default function RootLoginPage() {
                       <FormItem>
                         <FormLabel className="text-xs sm:text-sm">Email or Phone Number</FormLabel>
                         <FormControl>
-                          <Input placeholder="Enter your email or phone" {...field} className="text-xs sm:text-sm" disabled={isLoggingIn} />
+                          <Input placeholder="Enter your email or phone" {...field} onFocus={handleFieldFocus} className="text-xs sm:text-sm" disabled={isLoggingIn} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -199,6 +227,7 @@ export default function RootLoginPage() {
                               type={showPassword ? "text" : "password"}
                               placeholder="Enter your password"
                               {...field}
+                              onFocus={handleFieldFocus}
                               className="text-xs sm:text-sm pr-10"
                               disabled={isLoggingIn}
                             />
