@@ -57,7 +57,25 @@ export function QrScannerOverlay({ expectedPayload, onSuccess, onClose }: QrScan
           { facingMode: "environment" },
           {
             fps: 10,
-            qrbox: { width: 240, height: 240 },
+            // Resolution/orientation hints MUST go through `videoConstraints`: the
+            // first argument only accepts `facingMode`/`deviceId` and throws on any
+            // other key — passing width/height there is what stopped the camera from
+            // opening. Nudge a portrait, high-res rear stream so the landscape sensor
+            // isn't aggressively zoom-cropped by the fullscreen `object-fit: cover`
+            // preview. `ideal` constraints never fail, so this degrades gracefully.
+            videoConstraints: {
+              facingMode: "environment",
+              width: { ideal: 1080 },
+              height: { ideal: 1920 },
+            },
+            // No `qrbox`: scan the full camera frame. html5-qrcode maps the qrbox
+            // into the source frame using videoWidth/clientWidth and
+            // videoHeight/clientHeight *independently*, which is only correct while
+            // the video keeps its natural aspect ratio. Under `object-fit: cover`
+            // those ratios diverge, so a fixed qrbox sampled a distorted, off-centre
+            // region (the "weird crop") and the library also drew its own misaligned
+            // shaded overlay. Full-frame scanning maps the whole frame 1:1 and lets
+            // our custom viewfinder be the only guide.
           },
           async (decodedText: string) => {
             if (!mountedRef.current || hasDetected.current) return;
@@ -134,6 +152,9 @@ export function QrScannerOverlay({ expectedPayload, onSuccess, onClose }: QrScan
         #${QR_FEED_ID} { position: absolute; inset: 0; }
         #${QR_FEED_ID} > div { width: 100% !important; height: 100% !important; padding: 0 !important; border: none !important; }
         #${QR_FEED_ID} video { width: 100% !important; height: 100% !important; object-fit: cover !important; border-radius: 0 !important; }
+        /* We render our own viewfinder; hide html5-qrcode's built-in shaded overlay
+           if a future version injects it even without a qrbox. */
+        #${QR_FEED_ID} #qr-shaded-region, #qr-shaded-region { display: none !important; }
       `}</style>
 
       {/* Camera feed — Html5Qrcode renders <video> here */}
