@@ -149,11 +149,15 @@ export function QrScannerOverlay({ expectedPayload, onSuccess, onClose }: QrScan
     <div className="fixed inset-0 z-[100] bg-black overflow-hidden">
       {/* Force Html5Qrcode's injected <video> to fill the container */}
       <style>{`
-        #${QR_FEED_ID} { position: absolute; inset: 0; }
+        /* html5-qrcode sets the container to inline position:relative and the
+           <video> to a fixed px width with auto height, collapsing the feed to the
+           camera's natural aspect (a band at the top with black below). Force both
+           to fill the viewport — !important is required to beat the library's inline
+           styles — so object-fit:cover actually has a height to cover. */
+        #${QR_FEED_ID} { position: absolute !important; inset: 0 !important; width: 100% !important; height: 100% !important; }
+        #${QR_FEED_ID} video { position: absolute !important; inset: 0 !important; width: 100% !important; height: 100% !important; object-fit: cover !important; border-radius: 0 !important; }
         #${QR_FEED_ID} > div { width: 100% !important; height: 100% !important; padding: 0 !important; border: none !important; }
-        #${QR_FEED_ID} video { width: 100% !important; height: 100% !important; object-fit: cover !important; border-radius: 0 !important; }
-        /* We render our own viewfinder; hide html5-qrcode's built-in shaded overlay
-           if a future version injects it even without a qrbox. */
+        /* We render our own viewfinder; hide html5-qrcode's built-in shaded overlay. */
         #${QR_FEED_ID} #qr-shaded-region, #qr-shaded-region { display: none !important; }
       `}</style>
 
