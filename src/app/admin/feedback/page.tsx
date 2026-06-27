@@ -144,6 +144,7 @@ const getFeedbackTypeBadge = (type: FeedbackType, size: "sm" | "xs" = "sm") => {
     case "Complaint": return <Badge variant="secondary" className={`${baseClass} bg-red-100 text-red-700`}>{type}</Badge>;
     case "Issue": return <Badge variant="secondary" className={`${baseClass} bg-yellow-100 text-yellow-700`}>{type}</Badge>;
     case "Compliment": return <Badge variant="secondary" className={`${baseClass} bg-green-100 text-green-700`}>{type}</Badge>;
+    case "Request": return <Badge variant="secondary" className={`${baseClass} bg-purple-100 text-purple-700`}>{type}</Badge>;
     default: return <Badge variant="outline" className={baseClass}>{type}</Badge>;
   }
 };

@@ -15,9 +15,9 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, BarChart3, Clock, LogIn, LogOut, TrendingUp, ChevronLeft, ChevronRight, Calendar as CalendarIcon, Grid3x3 } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
-import { getStudentByEmail, getAttendanceForDate, getStudentByCustomId, getAttendanceForDateRange } from '@/services/student-service';
+import { getStudentByEmail, getAttendanceForDate, getStudentByCustomId, getAttendanceForDateRange, aggregateDailyStudyMillis } from '@/services/student-service';
 import type { Student, AttendanceRecord } from '@/types/student';
-import { format, parseISO, isValid, differenceInMilliseconds, startOfMonth, endOfMonth, eachDayOfInterval, addMonths, subMonths, isAfter, isToday, getHours, getMinutes, getDay, addDays, startOfWeek, endOfWeek, isSameMonth } from 'date-fns';
+import { format, parseISO, isValid, startOfMonth, endOfMonth, eachDayOfInterval, addMonths, subMonths, isToday, startOfWeek, endOfWeek, isSameMonth } from 'date-fns';
 import { BarChart, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Bar } from 'recharts';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from '@/lib/utils';
@@ -196,47 +196,7 @@ export default function MemberAttendancePage() {
         format(startDate, 'yyyy-MM-dd'),
         format(endDate, 'yyyy-MM-dd')
       );
-      const dailyHoursMap = new Map<string, number>();
-
-      recordsForMonth.forEach(record => {
-        if (!record || !record.checkInTime) return;
-        
-        const checkInDate = parseISO(record.checkInTime);
-        if (!isValid(checkInDate)) return;
-
-        let totalMilliseconds = 0;
-        let sessionEndDate: Date;
-        const now = new Date();
-
-        if (record.checkOutTime && isValid(parseISO(record.checkOutTime))) {
-          sessionEndDate = parseISO(record.checkOutTime);
-        } else {
-          // No checkout time, calculate based on shift end
-          let shiftEndHour = 21;
-          let shiftEndMinute = 30;
-
-          if (student.shift === 'morning') {
-            shiftEndHour = 14;
-            shiftEndMinute = 0;
-          }
-
-          const shiftEndTimeOnDate = new Date(checkInDate);
-          shiftEndTimeOnDate.setHours(shiftEndHour, shiftEndMinute, 0, 0);
-
-          if (isToday(checkInDate)) {
-            sessionEndDate = isAfter(now, shiftEndTimeOnDate) ? shiftEndTimeOnDate : now;
-          } else {
-            sessionEndDate = shiftEndTimeOnDate;
-          }
-        }
-        
-        if (isAfter(sessionEndDate, checkInDate)) {
-          totalMilliseconds += differenceInMilliseconds(sessionEndDate, checkInDate);
-        }
-
-        const dateKey = format(checkInDate, 'yyyy-MM-dd');
-        dailyHoursMap.set(dateKey, (dailyHoursMap.get(dateKey) || 0) + totalMilliseconds);
-      });
+      const dailyHoursMap = aggregateDailyStudyMillis(recordsForMonth, student.shift);
 
       const allDays = eachDayOfInterval({ start: startDate, end: endDate });
       const studyData = allDays.map(day => {
@@ -262,36 +222,9 @@ export default function MemberAttendancePage() {
   }, [currentStudent, viewedMonth, getDailyStudyDataForMonth, showMonthlyStudyTime]);
 
   const calculateDailyStudyTime = (records: AttendanceRecord[], studentShift: Student['shift'] | undefined) => {
+    const dailyMillis = aggregateDailyStudyMillis(records, studentShift);
     let totalMilliseconds = 0;
-    records.forEach(record => {
-      if (record.checkInTime && isValid(parseISO(record.checkInTime))) {
-        const checkInTime = parseISO(record.checkInTime);
-        let checkOutTimeCalc: Date;
-
-        if (record.checkOutTime && isValid(parseISO(record.checkOutTime))) {
-            checkOutTimeCalc = parseISO(record.checkOutTime);
-        } else {
-            let shiftEndHour = 21, shiftEndMinute = 30;
-            if (studentShift === 'morning') {
-                shiftEndHour = 14; shiftEndMinute = 0;
-            }
-            
-            const now = new Date();
-            const shiftEndTimeOnDate = new Date(checkInTime);
-            shiftEndTimeOnDate.setHours(shiftEndHour, shiftEndMinute, 0, 0);
-
-            if(isToday(checkInTime)) {
-                checkOutTimeCalc = isAfter(now, shiftEndTimeOnDate) ? shiftEndTimeOnDate : now;
-            } else {
-                checkOutTimeCalc = shiftEndTimeOnDate;
-            }
-        }
-        
-        if (isAfter(checkOutTimeCalc, checkInTime)) {
-          totalMilliseconds += differenceInMilliseconds(checkOutTimeCalc, checkInTime);
-        }
-      }
-    });
+    dailyMillis.forEach(ms => { totalMilliseconds += ms; });
 
     const totalHours = totalMilliseconds / (1000 * 60 * 60);
     const hours = Math.floor(totalHours);

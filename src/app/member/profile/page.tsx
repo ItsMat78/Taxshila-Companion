@@ -16,10 +16,14 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from '@/contexts/auth-context';
-import { getStudentByEmail, getStudentByCustomId, updateProfilePicture } from '@/services/student-service'; 
-import type { Student } from '@/types/student'; 
-import { UserCircle, Save, Mail, Phone, Briefcase, Loader2, Camera, View, Video, VideoOff, BadgeIndianRupee, Armchair } from 'lucide-react';
-import { Dialog, DialogContent, DialogTrigger, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { getStudentByEmail, getStudentByCustomId, updateProfilePicture, submitFeedback } from '@/services/student-service';
+import { setupPushNotifications, removePushNotifications } from '@/lib/notification-setup';
+import type { Student } from '@/types/student';
+import { UserCircle, Save, Mail, Phone, Briefcase, Loader2, Camera, View, VideoOff, BadgeIndianRupee, Armchair, Bell, BellOff, Send } from 'lucide-react';
+import { Dialog, DialogContent, DialogTrigger, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { Badge } from '@/components/ui/badge';
 import { format, parseISO, isValid } from 'date-fns';
@@ -104,6 +108,89 @@ export default function MemberProfilePage() {
   const [hasCameraPermission, setHasCameraPermission] = React.useState(true);
   const videoRef = React.useRef<HTMLVideoElement>(null);
   const canvasRef = React.useRef<HTMLCanvasElement>(null);
+
+  const [notifStatus, setNotifStatus] = React.useState<'on' | 'off' | 'blocked'>('off');
+  const [isUpdatingNotif, setIsUpdatingNotif] = React.useState(false);
+
+  const [isRequestDialogOpen, setIsRequestDialogOpen] = React.useState(false);
+  const [requestedShift, setRequestedShift] = React.useState<'' | Student['shift']>('');
+  const [requestedSeat, setRequestedSeat] = React.useState('');
+  const [requestReason, setRequestReason] = React.useState('');
+  const [isSubmittingRequest, setIsSubmittingRequest] = React.useState(false);
+
+  const computeNotifStatus = React.useCallback((): 'on' | 'off' | 'blocked' => {
+    if (typeof window === 'undefined' || !('Notification' in window)) return 'off';
+    if (Notification.permission === 'denied') return 'blocked';
+    const firestoreId = memberDetails?.firestoreId;
+    const hasToken = !!(firestoreId && localStorage.getItem(`fcmToken_${firestoreId}`));
+    return Notification.permission === 'granted' && hasToken ? 'on' : 'off';
+  }, [memberDetails?.firestoreId]);
+
+  React.useEffect(() => {
+    setNotifStatus(computeNotifStatus());
+  }, [computeNotifStatus]);
+
+  const handleEnableNotifications = async () => {
+    if (!memberDetails?.firestoreId) return;
+    setIsUpdatingNotif(true);
+    try {
+      await setupPushNotifications(memberDetails.firestoreId, 'member');
+      const status = computeNotifStatus();
+      setNotifStatus(status);
+      if (status === 'on') {
+        toast({ title: "Notifications enabled", description: "You'll now receive library alerts on this device." });
+      } else if (typeof window !== 'undefined' && Notification.permission === 'denied') {
+        toast({ title: "Notifications blocked", description: "Allow notifications in your browser settings to receive alerts.", variant: "destructive" });
+      }
+    } finally {
+      setIsUpdatingNotif(false);
+    }
+  };
+
+  const handleDisableNotifications = async () => {
+    if (!memberDetails?.firestoreId) return;
+    setIsUpdatingNotif(true);
+    try {
+      await removePushNotifications(memberDetails.firestoreId, 'member');
+      setNotifStatus(computeNotifStatus());
+      toast({ title: "Notifications turned off", description: "You won't receive alerts on this device." });
+    } finally {
+      setIsUpdatingNotif(false);
+    }
+  };
+
+  const shiftLabel = (s?: string) =>
+    !s ? 'N/A' : s === 'fullday' ? 'Full Day' : s.charAt(0).toUpperCase() + s.slice(1);
+
+  const handleSubmitChangeRequest = async () => {
+    if (!memberDetails) return;
+    if (!requestedShift && !requestedSeat.trim()) {
+      toast({ title: "Add a detail", description: "Choose a shift or enter a preferred seat to request.", variant: "destructive" });
+      return;
+    }
+    setIsSubmittingRequest(true);
+    try {
+      const parts = [
+        `Seat/Shift change request from ${memberDetails.name} (${memberDetails.studentId}).`,
+        `Current: ${shiftLabel(memberDetails.shift)} shift, seat ${memberDetails.seatNumber || 'N/A'}.`,
+      ];
+      if (requestedShift) parts.push(`Requested shift: ${shiftLabel(requestedShift)}.`);
+      if (requestedSeat.trim()) parts.push(`Preferred seat: ${requestedSeat.trim()}.`);
+      if (requestReason.trim()) parts.push(`Reason: ${requestReason.trim()}`);
+
+      await submitFeedback(memberDetails.studentId, memberDetails.name, parts.join(' '), "Request");
+      toast({ title: "Request sent", description: "The admin will review your seat/shift change request." });
+      setIsRequestDialogOpen(false);
+      setRequestedShift('');
+      setRequestedSeat('');
+      setRequestReason('');
+    } catch (error) {
+      console.error("Seat/shift change request failed:", error);
+      toast({ title: "Could not send request", description: "Please try again later.", variant: "destructive" });
+    } finally {
+      setIsSubmittingRequest(false);
+    }
+  };
 
 
   React.useEffect(() => {
@@ -312,7 +399,112 @@ export default function MemberProfilePage() {
         </div>
         
         <div className="lg:col-span-2 space-y-6">
-            {/* Payment history and attendance sections are removed from here */}
+            <Card className="shadow-md">
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2"><Bell className="h-5 w-5" /> Notifications</CardTitle>
+                    <CardDescription>Manage push alerts on this device.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    {notifStatus === 'blocked' ? (
+                        <Alert variant="destructive">
+                            <BellOff className="h-4 w-4" />
+                            <AlertTitle>Notifications blocked</AlertTitle>
+                            <AlertDescription>
+                                Notifications are blocked in your browser or app settings. To receive alerts, allow notifications for this site and reload the page.
+                            </AlertDescription>
+                        </Alert>
+                    ) : (
+                        <div className="flex items-center justify-between gap-4 rounded-lg border p-4">
+                            <div className="space-y-0.5 min-w-0">
+                                <p className="font-medium text-sm flex items-center gap-2">
+                                    {notifStatus === 'on'
+                                        ? <Bell className="h-4 w-4 text-primary flex-shrink-0" />
+                                        : <BellOff className="h-4 w-4 text-muted-foreground flex-shrink-0" />}
+                                    {notifStatus === 'on' ? 'Enabled on this device' : 'Currently off'}
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                    {notifStatus === 'on'
+                                        ? "You'll receive library alerts and announcements here."
+                                        : 'Turn on to get alerts about payments, closures and announcements.'}
+                                </p>
+                            </div>
+                            {notifStatus === 'on' ? (
+                                <Button variant="outline" size="sm" onClick={handleDisableNotifications} disabled={isUpdatingNotif} className="flex-shrink-0">
+                                    {isUpdatingNotif ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <BellOff className="mr-2 h-4 w-4" />} Turn off
+                                </Button>
+                            ) : (
+                                <Button size="sm" onClick={handleEnableNotifications} disabled={isUpdatingNotif} className="flex-shrink-0">
+                                    {isUpdatingNotif ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Bell className="mr-2 h-4 w-4" />} Enable
+                                </Button>
+                            )}
+                        </div>
+                    )}
+                </CardContent>
+            </Card>
+
+            <Card className="shadow-md">
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2"><Armchair className="h-5 w-5" /> Seat &amp; Shift</CardTitle>
+                    <CardDescription>Currently {shiftLabel(memberDetails.shift)} shift, seat {memberDetails.seatNumber || 'N/A'}.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <Dialog open={isRequestDialogOpen} onOpenChange={setIsRequestDialogOpen}>
+                        <DialogTrigger asChild>
+                            <Button variant="outline" className="w-full" disabled={memberDetails.activityStatus === 'Left'}>
+                                <Armchair className="mr-2 h-4 w-4" /> Request seat or shift change
+                            </Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                            <DialogHeader>
+                                <DialogTitle>Request a seat or shift change</DialogTitle>
+                                <DialogDescription>
+                                    Tell the admin what you&apos;d like. They&apos;ll review availability and update your seat/shift.
+                                </DialogDescription>
+                            </DialogHeader>
+                            <div className="space-y-4 py-2">
+                                <div className="space-y-1.5">
+                                    <label className="text-sm font-medium">Preferred shift</label>
+                                    <Select value={requestedShift} onValueChange={(v) => setRequestedShift(v as Student['shift'])} disabled={isSubmittingRequest}>
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Select a shift (optional)" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="morning">Morning (7 AM – 2 PM)</SelectItem>
+                                            <SelectItem value="evening">Evening (2 PM – 9:30 PM)</SelectItem>
+                                            <SelectItem value="fullday">Full Day (7 AM – 9:30 PM)</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="text-sm font-medium">Preferred seat number</label>
+                                    <Input
+                                        value={requestedSeat}
+                                        onChange={(e) => setRequestedSeat(e.target.value)}
+                                        placeholder="e.g. 12 (optional)"
+                                        disabled={isSubmittingRequest}
+                                    />
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="text-sm font-medium">Reason / notes</label>
+                                    <Textarea
+                                        value={requestReason}
+                                        onChange={(e) => setRequestReason(e.target.value)}
+                                        placeholder="Anything that helps us place you (optional)"
+                                        className="min-h-[80px]"
+                                        disabled={isSubmittingRequest}
+                                    />
+                                </div>
+                            </div>
+                            <DialogFooter>
+                                <Button onClick={handleSubmitChangeRequest} disabled={isSubmittingRequest}>
+                                    {isSubmittingRequest ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
+                                    Send request
+                                </Button>
+                            </DialogFooter>
+                        </DialogContent>
+                    </Dialog>
+                </CardContent>
+            </Card>
         </div>
       </div>
     </>

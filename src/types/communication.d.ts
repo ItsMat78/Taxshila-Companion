@@ -1,5 +1,5 @@
 
-export type FeedbackType = "Suggestion" | "Complaint" | "Issue" | "Compliment";
+export type FeedbackType = "Suggestion" | "Complaint" | "Issue" | "Compliment" | "Request";
 export type FeedbackStatus = "Open" | "Resolved" | "Archived";
 
 export interface FeedbackItem {

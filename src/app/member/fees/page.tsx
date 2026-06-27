@@ -2,7 +2,6 @@
 "use client";
 
 import * as React from 'react';
-import Image from 'next/image';
 import { PageTitle } from '@/components/shared/page-title';
 import {
   Card,
@@ -11,16 +10,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -31,7 +21,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Receipt, History, Download, IndianRupee, Loader2, Briefcase, CalendarClock, AlertTriangle, CheckCircle, CreditCard, Sun, Moon, Sparkles, Smartphone, ExternalLink } from 'lucide-react';
+import { History, Download, IndianRupee, Loader2, CalendarClock, AlertTriangle, CheckCircle, CreditCard } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
 import { getStudentByEmail, getFeeStructure, getStudentByCustomId } from '@/services/student-service';
 import type { Student, PaymentRecord, FeeStructure as FeeStructureType, Shift } from '@/types/student';
@@ -294,59 +284,6 @@ export default function MemberFeesPage() {
   const [feeStructure, setFeeStructure] = React.useState<FeeStructureType | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
   const [showHistory, setShowHistory] = React.useState(false);
-  const [showUpiReturn, setShowUpiReturn] = React.useState(false);
-  const [upiPending, setUpiPending] = React.useState(false);
-  const [lastUpiTn, setLastUpiTn] = React.useState<string>('');
-
-  const getFeeAmount = (): number => {
-    if (!feeStructure || !studentData) return 0;
-    switch (studentData.shift) {
-      case 'morning': return feeStructure.morningFee;
-      case 'evening': return feeStructure.eveningFee;
-      case 'fullday': return feeStructure.fullDayFee;
-      default: return 0;
-    }
-  };
-
-  const handleUpiPayment = () => {
-    if (!studentData || !feeStructure) return;
-    const amount = getFeeAmount();
-    const tn = `TXNONL${studentData.studentId}${format(new Date(), 'ddMMyyHHmmss')}`;
-    const upiUri = `upi://pay?pa=kartikey.code@okhdfcbank&pn=Taxshila%20Digital%20Library&am=${amount}&cu=INR&tn=${encodeURIComponent(tn)}`;
-    setUpiPending(true);
-
-    const med = (window as any).median;
-    if (med?.android?.intent) {
-      med.android.intent({
-        uri: upiUri,
-        callback: (result: { status?: string; txnId?: string; txnRef?: string }) => {
-          setUpiPending(false);
-          const status = (result?.status || '').toUpperCase();
-          if (status === 'SUCCESS') {
-            const txnId = result.txnId || result.txnRef || tn;
-            toast({ title: 'Payment received!', description: `Transaction ID: ${txnId}. Admin has been notified to verify your account.` });
-            fetch('/api/send-notification', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                type: 'payment-alert',
-                studentName: studentData!.name,
-                studentId: studentData!.studentId,
-                amount,
-                txnId,
-              }),
-            }).catch(console.error);
-          } else {
-            setLastUpiTn(tn);
-            setShowUpiReturn(true);
-          }
-        },
-      });
-    } else {
-      setLastUpiTn(tn);
-      window.location.href = upiUri;
-    }
-  };
 
   React.useEffect(() => {
     setIsLoading(true);
@@ -384,39 +321,6 @@ export default function MemberFeesPage() {
     };
     fetchInitialData();
   }, [user, toast]);
-
-  React.useEffect(() => {
-    if (!upiPending) return;
-    const handleVisibility = () => {
-      if (document.visibilityState === 'visible') {
-        setShowUpiReturn(true);
-        setUpiPending(false);
-      }
-    };
-    document.addEventListener('visibilitychange', handleVisibility);
-    return () => document.removeEventListener('visibilitychange', handleVisibility);
-  }, [upiPending]);
-
-  const handlePaymentConfirmed = () => {
-    setShowUpiReturn(false);
-    if (!studentData) return;
-    const amount = getFeeAmount();
-    fetch('/api/send-notification', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        type: 'payment-alert',
-        studentName: studentData.name,
-        studentId: studentData.studentId,
-        amount,
-        txnId: lastUpiTn || undefined,
-      }),
-    }).catch(console.error);
-    toast({
-      title: 'Admin Notified',
-      description: 'Admin has been alerted to verify your payment. Your account will be updated shortly.',
-    });
-  };
 
   const getMonthlyFeeDisplay = (shift?: Student['shift'], currentFeeStructure?: FeeStructureType | null): string => {
     if (!shift || !currentFeeStructure) return "N/A";
@@ -487,31 +391,26 @@ export default function MemberFeesPage() {
         </CardContent>
       </Card>
 
-      {studentData && studentData.feeStatus !== 'Paid' && (
-        <Card className="mt-4 overflow-hidden border-0 shadow-lg">
-          <div className="bg-gradient-to-br from-primary to-primary/80 dark:from-indigo-500 dark:to-violet-600 px-5 pt-4 pb-3 text-white">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <p className="text-xs font-medium uppercase tracking-wider opacity-75">Monthly Membership</p>
-                <p className="text-xs font-mono opacity-60 mt-0.5">kartikey.code@okhdfcbank</p>
-              </div>
-              <div className="text-right">
-                <p className="text-2xl font-bold tracking-tight">Rs. {getFeeAmount()}</p>
-                <p className="text-xs opacity-70">{studentData.shift === 'fullday' ? 'Full Day' : studentData.shift.charAt(0).toUpperCase() + studentData.shift.slice(1)} Shift</p>
-              </div>
-            </div>
-          </div>
-          <CardContent className="p-4 space-y-2">
-            <button
-              onClick={handleUpiPayment}
-              className="w-full flex items-center justify-between gap-3 rounded-xl bg-white border border-border shadow-sm px-5 py-4 active:scale-[0.98] transition-transform hover:bg-gray-50"
-            >
-              <Image src="/upi-logo.svg" alt="UPI" width={64} height={24} className="h-6 w-auto" />
-              <span className="font-bold text-base text-foreground">Pay Now &mdash; Rs. {getFeeAmount()}</span>
-              <ExternalLink className="h-4 w-4 text-muted-foreground shrink-0" />
-            </button>
-            <p className="text-xs text-muted-foreground text-center leading-relaxed pt-1">
-              Opens your UPI app. Return here after payment — admin will verify and update your account.
+      {studentData && studentData.activityStatus !== 'Left' && studentData.feeStatus !== 'Paid' && (
+        <Card className="mt-4 shadow-lg">
+          <CardHeader>
+            <CardTitle className="flex items-center text-base">
+              <IndianRupee className="mr-2 h-5 w-5" />
+              How to Pay
+            </CardTitle>
+            <CardDescription>Settle your dues at the library.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <Alert className="border-primary/30 bg-primary/5">
+              <CreditCard className="h-4 w-4 text-primary" />
+              <AlertTitle className="text-primary">Pay at the reception desk</AlertTitle>
+              <AlertDescription>
+                Scan the UPI QR code displayed at the desk, or pay by cash. Your fee status will be
+                updated here once the admin confirms your payment.
+              </AlertDescription>
+            </Alert>
+            <p className="text-xs text-muted-foreground">
+              For any payment-related help, please contact the library administration.
             </p>
           </CardContent>
         </Card>
@@ -569,28 +468,15 @@ export default function MemberFeesPage() {
                     </div>
                   </>
                 ) : (
-                  <p className="text-muted-foreground text-center py-4">No payment history available.</p>
+                  <div className="flex flex-col items-center justify-center text-center py-8">
+                    <History className="h-10 w-10 text-muted-foreground/60 mb-3" />
+                    <p className="text-muted-foreground font-medium">No payments recorded yet</p>
+                    <p className="text-xs text-muted-foreground mt-1">Your payment receipts will appear here once the admin records a payment.</p>
+                  </div>
                 )
             )}
         </CardContent>
       </Card>
-
-      <AlertDialog open={showUpiReturn} onOpenChange={setShowUpiReturn}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Did your payment go through?</AlertDialogTitle>
-            <AlertDialogDescription>
-              If your UPI payment was successful, please inform the admin with your transaction ID. Your account will be updated after verification.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>No, I&apos;ll try again</AlertDialogCancel>
-            <AlertDialogAction onClick={handlePaymentConfirmed}>
-              Yes, I paid — notify admin!
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </>
   );
 }

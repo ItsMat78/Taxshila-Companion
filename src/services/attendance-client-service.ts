@@ -14,7 +14,7 @@ import {
 } from '@/lib/firebase';
 import type { QueryDocumentSnapshot, QuerySnapshot, DocumentData } from 'firebase/firestore';
 import type { Student, AttendanceRecord, CheckedInStudentInfo } from '@/types/student';
-import { format, parseISO, isValid, startOfMonth, endOfMonth, isAfter, getHours, getMinutes, differenceInMilliseconds } from 'date-fns';
+import { format, parseISO, isValid, startOfMonth, endOfMonth, isAfter, getHours, getMinutes, differenceInMilliseconds, isToday, startOfWeek, endOfWeek, eachDayOfInterval, subDays } from 'date-fns';
 
 // --- Collections ---
 const STUDENTS_COLLECTION = "students";
@@ -205,6 +205,102 @@ export async function getAttendanceForDateRange(studentId: string, startDate: st
 
   filteredRecords.sort((a, b) => a.date.localeCompare(b.date));
   return filteredRecords;
+}
+
+/**
+ * Shift-aware end time for a check-in that has no explicit check-out.
+ * Mirrors the logic used on the member attendance page: morning shift ends
+ * 2:00 PM, all others 9:30 PM. For an open session today, the session is
+ * capped at "now" until the shift end time passes.
+ */
+function sessionEndForOpenRecord(checkInDate: Date, shift: Student['shift'] | undefined): Date {
+  let shiftEndHour = 21;
+  let shiftEndMinute = 30;
+  if (shift === 'morning') {
+    shiftEndHour = 14;
+    shiftEndMinute = 0;
+  }
+  const shiftEnd = new Date(checkInDate);
+  shiftEnd.setHours(shiftEndHour, shiftEndMinute, 0, 0);
+
+  if (isToday(checkInDate)) {
+    const now = new Date();
+    return isAfter(now, shiftEnd) ? shiftEnd : now;
+  }
+  return shiftEnd;
+}
+
+/**
+ * Aggregates attendance records into total studied milliseconds per day
+ * (keyed by 'yyyy-MM-dd'). Single source of truth for study-hour math shared
+ * by the member dashboard stats and the attendance page chart/grid.
+ */
+export function aggregateDailyStudyMillis(
+  records: AttendanceRecord[],
+  shift: Student['shift'] | undefined
+): Map<string, number> {
+  const dailyMillis = new Map<string, number>();
+  records.forEach(record => {
+    if (!record || !record.checkInTime) return;
+    const checkInDate = parseISO(record.checkInTime);
+    if (!isValid(checkInDate)) return;
+
+    const sessionEnd = record.checkOutTime && isValid(parseISO(record.checkOutTime))
+      ? parseISO(record.checkOutTime)
+      : sessionEndForOpenRecord(checkInDate, shift);
+
+    if (isAfter(sessionEnd, checkInDate)) {
+      const dateKey = format(checkInDate, 'yyyy-MM-dd');
+      dailyMillis.set(dateKey, (dailyMillis.get(dateKey) || 0) + differenceInMilliseconds(sessionEnd, checkInDate));
+    }
+  });
+  return dailyMillis;
+}
+
+export interface MemberStudyStats {
+  /** Total study hours for the current week (Sun–today). */
+  weeklyHours: number;
+  /** Consecutive days (ending today, or yesterday if not yet checked in today) with any study time. */
+  currentStreak: number;
+}
+
+/**
+ * Computes the member's current-week study hours and current check-in streak
+ * from a single attendance fetch (last ~60 days). Used by the dashboard.
+ */
+export async function getMemberStudyStats(
+  studentId: string,
+  shift: Student['shift'] | undefined,
+  refDate: Date = new Date()
+): Promise<MemberStudyStats> {
+  const lookbackStart = subDays(refDate, 60);
+  const records = await getAttendanceForDateRange(
+    studentId,
+    format(lookbackStart, 'yyyy-MM-dd'),
+    format(refDate, 'yyyy-MM-dd')
+  );
+  const dailyMillis = aggregateDailyStudyMillis(records, shift);
+
+  // Weekly hours: sum from the start of this week up to the reference day.
+  const weekStart = startOfWeek(refDate, { weekStartsOn: 0 });
+  let weeklyMillis = 0;
+  eachDayOfInterval({ start: weekStart, end: refDate }).forEach(day => {
+    weeklyMillis += dailyMillis.get(format(day, 'yyyy-MM-dd')) || 0;
+  });
+
+  // Streak: walk backwards over consecutive studied days. If today has no
+  // study yet, the streak is measured ending yesterday so it isn't reset
+  // mid-day before the member checks in.
+  const studied = (d: Date) => (dailyMillis.get(format(d, 'yyyy-MM-dd')) || 0) > 0;
+  let cursor = new Date(refDate);
+  if (!studied(cursor)) cursor = subDays(cursor, 1);
+  let currentStreak = 0;
+  while (studied(cursor)) {
+    currentStreak++;
+    cursor = subDays(cursor, 1);
+  }
+
+  return { weeklyHours: weeklyMillis / (1000 * 60 * 60), currentStreak };
 }
 
 export async function getAttendanceRecordsForDateRangeAll(startDate: string, endDate: string): Promise<AttendanceRecord[]> {
