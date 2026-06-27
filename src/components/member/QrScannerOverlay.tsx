@@ -57,16 +57,27 @@ export function QrScannerOverlay({ expectedPayload, onSuccess, onClose }: QrScan
           { facingMode: "environment" },
           {
             fps: 10,
+            // Use the browser's native BarcodeDetector when available (modern
+            // Android Chrome): it's hardware-accelerated and decodes the full frame
+            // near-instantly, whereas the ZXing WASM/JS fallback grinds through
+            // every pixel on the CPU. html5-qrcode falls back to ZXing automatically
+            // where the native API is missing, so this only ever helps.
+            experimentalFeatures: { useBarCodeDetectorIfSupported: true },
+            // QR codes are never mirrored at the desk. By default html5-qrcode
+            // re-decodes a horizontally-flipped copy of every frame that misses,
+            // doubling the per-frame cost for nothing — turn it off.
+            disableFlip: true,
             // Resolution/orientation hints MUST go through `videoConstraints`: the
             // first argument only accepts `facingMode`/`deviceId` and throws on any
             // other key — passing width/height there is what stopped the camera from
-            // opening. Nudge a portrait, high-res rear stream so the landscape sensor
-            // isn't aggressively zoom-cropped by the fullscreen `object-fit: cover`
-            // preview. `ideal` constraints never fail, so this degrades gracefully.
+            // opening. Keep a *portrait* rear stream so the sensor isn't aggressively
+            // zoom-cropped by the fullscreen `object-fit: cover` preview, but only
+            // 720p-class: plenty of detail for a QR code and far cheaper to decode
+            // than 1080p. `ideal` constraints never fail, so this degrades gracefully.
             videoConstraints: {
               facingMode: "environment",
-              width: { ideal: 1080 },
-              height: { ideal: 1920 },
+              width: { ideal: 720 },
+              height: { ideal: 1280 },
             },
             // No `qrbox`: scan the full camera frame. html5-qrcode maps the qrbox
             // into the source frame using videoWidth/clientWidth and
@@ -75,7 +86,8 @@ export function QrScannerOverlay({ expectedPayload, onSuccess, onClose }: QrScan
             // those ratios diverge, so a fixed qrbox sampled a distorted, off-centre
             // region (the "weird crop") and the library also drew its own misaligned
             // shaded overlay. Full-frame scanning maps the whole frame 1:1 and lets
-            // our custom viewfinder be the only guide.
+            // our custom viewfinder be the only guide — and with the native detector
+            // above, scanning the full frame is fast, so a qrbox buys us nothing.
           },
           async (decodedText: string) => {
             if (!mountedRef.current || hasDetected.current) return;
