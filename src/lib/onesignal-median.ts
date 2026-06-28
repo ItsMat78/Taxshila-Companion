@@ -20,8 +20,6 @@ interface MedianOneSignalInfo {
 interface MedianBridge {
   onesignal?: {
     info?: () => Promise<MedianOneSignalInfo>;
-    /** Triggers the native push-permission prompt + OneSignal registration. */
-    register?: () => void;
   };
 }
 
@@ -75,26 +73,21 @@ export async function getOneSignalState(): Promise<'on' | 'off' | 'unavailable'>
 }
 
 /**
- * Explicit opt-in for OneSignal native push (the "turn on notifications" gesture
- * inside the Median app). Triggers the native permission prompt via the bridge,
- * then polls for the resulting subscription id and persists it so the backend can
- * target this device. Returns true once an opted-in id is captured.
+ * Captures this device's OneSignal subscription id and persists it so the backend
+ * can target it. The Median app auto-registers (and shows the OS permission prompt)
+ * on first launch, so there's nothing to re-prompt — we just harvest the id. This
+ * is the same mechanism `registerOneSignalPlayerId` uses on login; the toggle calls
+ * it to re-target this device after it was muted. Returns true once an id is saved,
+ * false if the user has push disabled at the OS level.
  */
-export async function promptOneSignalRegistration(firestoreId: string, role: Role): Promise<boolean> {
-  const median = getMedian();
-  if (!median?.onesignal) return false;
-
-  try {
-    median.onesignal.register?.();
-  } catch (err) {
-    console.error('[OneSignal] register() failed:', err);
-  }
+export async function harvestOneSignalId(firestoreId: string, role: Role): Promise<boolean> {
+  if (!getMedian()?.onesignal?.info) return false;
 
   const storageKey = `oneSignalPlayerId_${firestoreId}`;
-  const deadline = Date.now() + 15000;
+  const deadline = Date.now() + 8000;
   while (Date.now() < deadline) {
     const data = await readOneSignalInfo();
-    if (data?.subscription?.optedIn === false) return false; // user declined the prompt
+    if (data?.subscription?.optedIn === false) return false; // disabled at the OS level
     const id = subscriptionIdFrom(data);
     if (id) {
       if (localStorage.getItem(storageKey) !== id) {
@@ -103,7 +96,7 @@ export async function promptOneSignalRegistration(firestoreId: string, role: Rol
       }
       return true;
     }
-    await sleep(1200);
+    await sleep(1000);
   }
   return false;
 }

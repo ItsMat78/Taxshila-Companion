@@ -55,6 +55,7 @@
     "genkit": "^1.8.0",
     "html5-qrcode": "^2.3.8",
     "json2csv": "^6.0.0-alpha.2",
+    "jsqr": "^1.4.0",
     "jszip": "^3.10.1",
     "lucide-react": "^0.475.0",
     "next": "^15.5.7",

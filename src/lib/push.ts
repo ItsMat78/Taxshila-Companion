@@ -1,7 +1,7 @@
 "use client";
 
 import { setupPushNotifications, removePushNotifications } from './notification-setup';
-import { isMedianApp, promptOneSignalRegistration, disableOneSignal, getOneSignalState } from './onesignal-median';
+import { isMedianApp, harvestOneSignalId, disableOneSignal, getOneSignalState } from './onesignal-median';
 
 type Role = 'admin' | 'member';
 
@@ -15,7 +15,8 @@ export type EnablePushResult = 'enabled' | 'blocked' | 'dismissed' | 'failed';
  */
 export async function enablePush(firestoreId: string, role: Role): Promise<EnablePushResult> {
   if (isMedianApp()) {
-    return (await promptOneSignalRegistration(firestoreId, role)) ? 'enabled' : 'failed';
+    // The app auto-registers OneSignal on launch — just (re)capture the id.
+    return (await harvestOneSignalId(firestoreId, role)) ? 'enabled' : 'failed';
   }
 
   await setupPushNotifications(firestoreId, role);

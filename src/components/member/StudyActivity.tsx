@@ -92,7 +92,7 @@ export function StudyActivity({ daily, loading }: { daily?: DailyDatum[]; loadin
 
   if (loading) {
     return (
-      <div className="rounded-lg border border-white/60 bg-white/40 p-4 backdrop-blur-md dark:border-white/5 dark:bg-slate-900/60 md:p-5">
+      <div className="rounded-lg border border-white/60 bg-white/95 p-4 dark:border-white/5 dark:bg-slate-900/95 md:p-5">
         <div className="animate-pulse space-y-3">
           <div className="h-4 w-32 rounded bg-gray-200/70 dark:bg-white/10" />
           <div className="h-24 w-full rounded bg-gray-200/70 dark:bg-white/10" />
@@ -102,7 +102,7 @@ export function StudyActivity({ daily, loading }: { daily?: DailyDatum[]; loadin
   }
 
   return (
-    <div className="rounded-lg border border-white/60 bg-white/40 p-4 shadow-[0_4px_16px_rgb(0,0,0,0.04)] backdrop-blur-md dark:border-white/5 dark:bg-slate-900/60 dark:shadow-xl md:p-5">
+    <div className="rounded-lg border border-white/60 bg-white/95 p-4 shadow-[0_4px_16px_rgb(0,0,0,0.04)] dark:border-white/5 dark:bg-slate-900/95 dark:shadow-xl md:p-5">
       {/* Header */}
       <div className="mb-3 flex items-start justify-between gap-2">
         <div className="min-w-0">

@@ -76,7 +76,7 @@ export function StreakCard({ streak, loading }: { streak?: number; loading?: boo
   return (
     <div
       className={cn(
-        "relative flex h-full min-h-[112px] flex-col justify-between overflow-hidden rounded-lg border bg-white/40 p-4 shadow-[0_4px_16px_rgb(0,0,0,0.04)] backdrop-blur-md dark:bg-slate-900/60 dark:shadow-xl md:min-h-[128px] md:p-5",
+        "relative flex h-full min-h-[112px] flex-col justify-between overflow-hidden rounded-lg border bg-white/95 p-4 shadow-[0_4px_16px_rgb(0,0,0,0.04)] dark:bg-slate-900/95 dark:shadow-xl md:min-h-[128px] md:p-5",
         tier.ring,
       )}
     >

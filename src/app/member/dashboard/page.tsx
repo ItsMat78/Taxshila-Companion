@@ -63,7 +63,7 @@ function formatStudyHours(hours: number): string {
 // Frosted card, mirrors the admin dashboard's GlassCard look.
 const GlassCard = ({ children, className = "", interactive = false }: { children: React.ReactNode; className?: string; interactive?: boolean }) => (
   <div className={cn(
-    "rounded-lg border border-white/60 bg-white/40 shadow-[0_4px_16px_rgb(0,0,0,0.04)] backdrop-blur-md dark:border-white/5 dark:bg-slate-900/60 dark:shadow-xl md:backdrop-blur-xl",
+    "rounded-lg border border-white/60 bg-white/95 shadow-[0_4px_16px_rgb(0,0,0,0.04)] dark:border-white/5 dark:bg-slate-900/95 dark:shadow-xl",
     interactive && "h-full transition-all active:scale-[0.99]",
     className
   )}>
