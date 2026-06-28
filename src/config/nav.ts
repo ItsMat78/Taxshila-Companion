@@ -28,7 +28,6 @@ import {
   Wifi,
   Notebook,
   FileText,
-  Trophy,
 } from 'lucide-react';
 import { NavItem } from '@/types/nav';
 
@@ -90,12 +89,6 @@ export const mainNav: NavItem[] = [
     title: 'Check Attendance',
     href: '/attendance/calendar',
     icon: CalendarDays,
-    roles: ['admin'],
-  },
-  {
-    title: 'Leaderboard',
-    href: '/admin/leaderboard',
-    icon: Trophy,
     roles: ['admin'],
   },
   {
@@ -206,12 +199,6 @@ export const mainNav: NavItem[] = [
     title: 'My Attendance',
     href: '/member/attendance',
     icon: CalendarDays,
-    roles: ['member'],
-  },
-  {
-    title: 'Leaderboard',
-    href: '/member/leaderboard',
-    icon: Trophy,
     roles: ['member'],
   },
   {

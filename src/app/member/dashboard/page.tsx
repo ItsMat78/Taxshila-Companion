@@ -156,7 +156,7 @@ export default function MemberDashboardPage() {
   const [currentStudent, setCurrentStudent] = React.useState<Student | null>(null);
   const [studentId, setStudentId] = React.useState<string | null>(null);
   const [studentFirstName, setStudentFirstName] = React.useState<string | null>(null);
-  const [hasUnreadAlerts, setHasUnreadAlerts] = React.useState(false);
+  const [unreadAlertsCount, setUnreadAlertsCount] = React.useState(0);
   const [isLoadingStudentData, setIsLoadingStudentData] = React.useState(true);
 
   const [activeCheckInRecord, setActiveCheckInRecord] = React.useState<AttendanceRecord | null>(null);
@@ -192,7 +192,7 @@ export default function MemberDashboardPage() {
 
         setStudentFirstName(null);
         setStudentId(null);
-        setHasUnreadAlerts(false);
+        setUnreadAlertsCount(0);
         setActiveCheckInRecord(null);
         setStudentFeeStatus(null);
         setStudentNextDueDate(null);
@@ -230,7 +230,7 @@ export default function MemberDashboardPage() {
           setIsLoadingStudentData(false);
 
           const alerts = await getAlertsForStudent(studentDetails.studentId);
-          setHasUnreadAlerts(alerts.some(alert => !alert.isRead));
+          setUnreadAlertsCount(alerts.filter(alert => !alert.isRead).length);
 
         } else {
             toast({ title: "Error", description: "Could not find your student record.", variant: "destructive" });
@@ -243,7 +243,7 @@ export default function MemberDashboardPage() {
         if (isManualRefresh) setIsRefreshing(false);
         if (!studentDetailsFetchedSuccessfully) {
             setStudentFirstName(null); setStudentId(null);
-            setHasUnreadAlerts(false);
+            setUnreadAlertsCount(0);
             setStudentFeeStatus(null); setStudentNextDueDate(null);
             setCurrentStudent(null);
         }
@@ -251,7 +251,7 @@ export default function MemberDashboardPage() {
     } else {
       setIsLoadingStudentData(false); setIsLoadingCurrentSession(false);
       setStudentFirstName(null); setStudentId(null);
-      setHasUnreadAlerts(false); setActiveCheckInRecord(null);
+      setUnreadAlertsCount(0); setActiveCheckInRecord(null);
       setStudentFeeStatus(null); setStudentNextDueDate(null);
       setCurrentStudent(null);
     }
@@ -415,6 +415,20 @@ export default function MemberDashboardPage() {
             </h1>
             <p className="mt-1 font-body text-xs text-gray-500 dark:text-gray-400 md:text-sm">{dateline}</p>
           </div>
+          {currentStudent?.seatNumber && (
+            <Link
+              href="/member/profile"
+              aria-label={`Seat ${currentStudent.seatNumber}${shiftMeta ? `, ${shiftMeta.label} shift` : ''}`}
+              className="shrink-0 rounded-xl border border-white/60 bg-white/40 px-3 py-1.5 text-right shadow-sm backdrop-blur-md transition-colors hover:bg-white/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 dark:border-white/10 dark:bg-slate-900/60 dark:hover:bg-slate-800/60"
+            >
+              <span className="flex items-center justify-end gap-1 text-[10px] font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">
+                <Armchair className={cn("h-3 w-3", shiftMeta ? shiftMeta.icon : 'text-yellow-600')} />
+                Seat
+              </span>
+              <span className="block text-xl font-semibold leading-tight text-gray-900 dark:text-white">{currentStudent.seatNumber}</span>
+              {shiftMeta && <span className="block text-[10px] text-gray-400 dark:text-gray-500">{shiftMeta.label}</span>}
+            </Link>
+          )}
         </div>
 
         <div className="space-y-3">
@@ -498,12 +512,13 @@ export default function MemberDashboardPage() {
               href="/member/fees"
             />
             <StatCard
-              label="Your seat"
-              value={currentStudent?.seatNumber || '-'}
-              sub={shiftMeta ? shiftMeta.label : undefined}
-              icon={Armchair}
-              iconClass={shiftMeta ? shiftMeta.icon : 'text-gray-400'}
-              href="/member/profile"
+              label="Alerts"
+              value={isLoadingStudentData ? '-' : unreadAlertsCount}
+              sub={isLoadingStudentData ? undefined : unreadAlertsCount > 0 ? 'unread' : 'all caught up'}
+              icon={Bell}
+              iconClass={unreadAlertsCount > 0 ? 'text-blue-500' : 'text-gray-400'}
+              valueClass={unreadAlertsCount > 0 ? 'text-blue-600 dark:text-blue-400' : undefined}
+              href="/member/alerts"
             />
           </div>
 
@@ -518,14 +533,6 @@ export default function MemberDashboardPage() {
               labelClass="text-teal-700 dark:text-teal-300"
               hoverClass="hover:bg-teal-600/10 dark:hover:bg-teal-500/10"
               href="/member/attendance"
-            />
-            <QuickAction
-              icon={Bell} label="Alerts"
-              chipClass="bg-blue-100 text-blue-600 dark:bg-blue-900/50 dark:text-blue-400"
-              labelClass="text-blue-700 dark:text-blue-300"
-              hoverClass="hover:bg-blue-600/10 dark:hover:bg-blue-500/10"
-              href="/member/alerts"
-              showDot={hasUnreadAlerts}
             />
             <QuickAction
               icon={MessageSquare} label="Feedback"

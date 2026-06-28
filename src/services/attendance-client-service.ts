@@ -13,7 +13,7 @@ import {
   onSnapshot,
 } from '@/lib/firebase';
 import type { QueryDocumentSnapshot, QuerySnapshot, DocumentData } from 'firebase/firestore';
-import type { Student, AttendanceRecord, CheckedInStudentInfo, Shift } from '@/types/student';
+import type { Student, AttendanceRecord, CheckedInStudentInfo } from '@/types/student';
 import { format, parseISO, isValid, startOfMonth, endOfMonth, isAfter, getHours, getMinutes, differenceInMilliseconds, isToday, startOfWeek, endOfWeek, eachDayOfInterval, subDays } from 'date-fns';
 
 // --- Collections ---
@@ -327,75 +327,6 @@ export async function getMemberStudyStats(
     currentStreak: streakFromDaily(dailyMillis, refDate),
     daily,
   };
-}
-
-export interface LeaderboardEntry {
-  rank: number;
-  studentId: string;
-  name: string;
-  profilePictureUrl?: string | null;
-  shift?: Shift;
-  seatNumber?: string | null;
-  /** Study hours this week — the ranking metric. */
-  weeklyHours: number;
-  /** Current check-in streak — secondary stat / tiebreaker. */
-  currentStreak: number;
-}
-
-// History fetched for the leaderboard. Bounds the all-students attendance query;
-// 35 days is enough for this week's hours plus a ~5-week streak.
-const LEADERBOARD_LOOKBACK_DAYS = 35;
-
-/**
- * Ranks all active students by study hours this week (Sun–today). Computed
- * entirely client-side from one students fetch + one windowed attendance fetch.
- * Only students who studied this week are ranked. Returns the top `limit`, and —
- * when `currentStudentId` is given — that student's own entry (with their true
- * rank) so the member page can show "your position" even outside the top.
- */
-export async function getStudyLeaderboard(opts?: {
-  limit?: number;
-  currentStudentId?: string;
-  refDate?: Date;
-}): Promise<{ top: LeaderboardEntry[]; me: LeaderboardEntry | null }> {
-  const limit = opts?.limit ?? 7;
-  const refDate = opts?.refDate ?? new Date();
-  const lookbackStart = subDays(refDate, LEADERBOARD_LOOKBACK_DAYS);
-
-  const [students, records] = await Promise.all([
-    getStudentSeatAssignments(),
-    getAttendanceRecordsForDateRangeAll(format(lookbackStart, 'yyyy-MM-dd'), format(refDate, 'yyyy-MM-dd')),
-  ]);
-
-  const byStudent = new Map<string, AttendanceRecord[]>();
-  for (const r of records) {
-    if (!r.studentId) continue;
-    const arr = byStudent.get(r.studentId);
-    if (arr) arr.push(r);
-    else byStudent.set(r.studentId, [r]);
-  }
-
-  const ranked: LeaderboardEntry[] = students
-    .map(s => {
-      const dailyMillis = aggregateDailyStudyMillis(byStudent.get(s.studentId) ?? [], s.shift);
-      return {
-        rank: 0,
-        studentId: s.studentId,
-        name: s.name,
-        profilePictureUrl: s.profilePictureUrl ?? null,
-        shift: s.shift,
-        seatNumber: s.seatNumber ?? null,
-        weeklyHours: weeklyHoursFromDaily(dailyMillis, refDate),
-        currentStreak: streakFromDaily(dailyMillis, refDate),
-      };
-    })
-    .filter(e => e.weeklyHours > 0)
-    .sort((a, b) => b.weeklyHours - a.weeklyHours || b.currentStreak - a.currentStreak || a.name.localeCompare(b.name))
-    .map((e, i) => ({ ...e, rank: i + 1 }));
-
-  const top = ranked.slice(0, limit);
-  const me = opts?.currentStudentId ? ranked.find(e => e.studentId === opts.currentStudentId) ?? null : null;
-  return { top, me };
 }
 
 export async function getAttendanceRecordsForDateRangeAll(startDate: string, endDate: string): Promise<AttendanceRecord[]> {

@@ -1,8 +1,7 @@
 "use client";
 
 import * as React from 'react';
-import Link from 'next/link';
-import { Flame, Trophy } from 'lucide-react';
+import { Flame } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 // The streak warms up as it grows — the accents (flame, number, glow) get hotter
@@ -90,19 +89,9 @@ export function StreakCard({ streak, loading }: { streak?: number; loading?: boo
         )}
       />
 
-      {/* Header: leaderboard button (the only tap target) + flame */}
-      <div className="relative mb-2 flex items-center justify-between">
-        <div className="flex min-w-0 items-center gap-2">
-          <Link
-            href="/member/leaderboard"
-            aria-label="See leaderboard"
-            title="See leaderboard"
-            className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-amber-200/80 bg-amber-100 text-amber-700 shadow-sm transition-all hover:bg-amber-200 active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 dark:border-amber-500/20 dark:bg-amber-500/15 dark:text-amber-300 dark:hover:bg-amber-500/25"
-          >
-            <Trophy className="h-4 w-4" />
-          </Link>
-          <span className="truncate text-xs font-medium text-gray-500 dark:text-gray-400 md:text-sm">Day streak</span>
-        </div>
+      {/* Header */}
+      <div className="relative mb-2 flex items-start justify-between">
+        <span className="text-xs font-medium text-gray-500 dark:text-gray-400 md:text-sm">Day streak</span>
         <Flame className={cn("h-5 w-5 shrink-0", tier.flame, tier.screaming && "motion-safe:animate-flame-flicker")} />
       </div>
 

@@ -104,22 +104,22 @@ export function StudyActivity({ daily, loading }: { daily?: DailyDatum[]; loadin
   return (
     <div className="rounded-lg border border-white/60 bg-white/40 p-4 shadow-[0_4px_16px_rgb(0,0,0,0.04)] backdrop-blur-md dark:border-white/5 dark:bg-slate-900/60 dark:shadow-xl md:p-5">
       {/* Header */}
-      <div className="mb-3 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Link
-            href="/member/attendance"
-            aria-label="View attendance"
-            title="View attendance"
-            className="inline-flex items-center justify-center rounded-lg border border-emerald-200/80 bg-emerald-100 p-1.5 text-emerald-600 shadow-sm transition-all hover:bg-emerald-200 active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-1 dark:border-emerald-500/20 dark:bg-emerald-900/50 dark:text-emerald-400 dark:hover:bg-emerald-800/60"
-          >
-            <Activity className="h-4 w-4" />
-          </Link>
+      <div className="mb-3 flex items-start justify-between gap-2">
+        <div className="min-w-0">
           <h2 className="text-base font-semibold text-gray-900 dark:text-white md:text-lg">Study activity</h2>
+          <span className="mt-0.5 flex items-center gap-1 text-xs font-medium text-gray-500 dark:text-gray-400">
+            <Flame className="h-3.5 w-3.5 text-[#F05454]" />
+            {activeDays} active {activeDays === 1 ? 'day' : 'days'}
+          </span>
         </div>
-        <span className="flex items-center gap-1 text-xs font-medium text-gray-500 dark:text-gray-400">
-          <Flame className="h-3.5 w-3.5 text-[#F05454]" />
-          {activeDays} active {activeDays === 1 ? 'day' : 'days'}
-        </span>
+        <Link
+          href="/member/attendance"
+          aria-label="View attendance"
+          title="View attendance"
+          className="inline-flex shrink-0 items-center justify-center rounded-lg border border-emerald-200/80 bg-emerald-100 p-1.5 text-emerald-600 shadow-sm transition-all hover:bg-emerald-200 active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-1 dark:border-emerald-500/20 dark:bg-emerald-900/50 dark:text-emerald-400 dark:hover:bg-emerald-800/60"
+        >
+          <Activity className="h-4 w-4" />
+        </Link>
       </div>
 
       {/* Contribution heatmap */}
