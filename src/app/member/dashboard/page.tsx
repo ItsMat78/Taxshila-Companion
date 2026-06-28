@@ -29,7 +29,7 @@ import { getStudentByEmail, getAlertsForStudent, addCheckIn, addCheckOut, getStu
 import type { MemberStudyStats } from '@/services/student-service';
 import type { Student, AttendanceRecord, FeeStatus, Shift, WifiConfig } from '@/types/student';
 import { format, parseISO, isValid } from 'date-fns';
-import { setupPushNotifications } from '@/lib/notification-setup';
+import { enablePush, getPushState } from '@/lib/push';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { getInitials } from '@/lib/utils';
 import { CheckInTimer } from '@/components/member/CheckInTimer';
@@ -73,17 +73,33 @@ const GlassCard = ({ children, className = "", interactive = false }: { children
 
 function NotificationPrompt({ onDismiss }: { onDismiss: () => void }) {
   const { user } = useAuth();
+  const { toast } = useToast();
+  const [isEnabling, setIsEnabling] = React.useState(false);
   const handleEnableNotifications = async () => {
-    if (user && user.firestoreId && user.role) {
-      await setupPushNotifications(user.firestoreId, user.role);
+    if (!user?.firestoreId || !user.role) return;
+    setIsEnabling(true);
+    try {
+      const result = await enablePush(user.firestoreId, user.role);
+      if (result === 'enabled') {
+        toast({ title: "Notifications enabled", description: "You'll now receive alerts on this device." });
+        onDismiss();
+      } else if (result === 'blocked') {
+        toast({ title: "Notifications blocked", description: "Allow notifications in your settings to receive alerts.", variant: "destructive" });
+        onDismiss();
+      } else {
+        toast({ title: "Not enabled", description: "Permission wasn't granted. You can try again anytime.", variant: "destructive" });
+      }
+    } finally {
+      setIsEnabling(false);
     }
-    onDismiss();
   };
   return (
     <div className="mb-3 flex items-center gap-3 rounded-lg border border-primary/20 bg-primary/5 px-4 py-2.5">
       <Bell className="h-4 w-4 shrink-0 text-primary" />
       <p className="flex-1 text-sm text-foreground/80">Turn on notifications for alerts &amp; announcements.</p>
-      <Button size="sm" onClick={handleEnableNotifications} className="h-8">Enable</Button>
+      <Button size="sm" onClick={handleEnableNotifications} disabled={isEnabling} className="h-8">
+        {isEnabling ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Enable'}
+      </Button>
       <button onClick={onDismiss} aria-label="Dismiss" className="text-muted-foreground transition-colors hover:text-foreground">
         <X className="h-4 w-4" />
       </button>
@@ -176,10 +192,15 @@ export default function MemberDashboardPage() {
   }, []);
 
   React.useEffect(() => {
-    if (typeof window !== 'undefined' && 'Notification' in window) {
-      setShowNotificationPrompt(Notification.permission === 'default');
-    }
-  }, []);
+    const firestoreId = user?.firestoreId;
+    if (!firestoreId) return;
+    let cancelled = false;
+    // Channel-aware: OneSignal opt-in inside the Median app, web permission on the web.
+    getPushState(firestoreId).then(state => {
+      if (!cancelled) setShowNotificationPrompt(state === 'off');
+    });
+    return () => { cancelled = true; };
+  }, [user?.firestoreId]);
 
   const handleDismissPrompt = () => setShowNotificationPrompt(false);
 
@@ -398,8 +419,10 @@ export default function MemberDashboardPage() {
 
         {showNotificationPrompt && <NotificationPrompt onDismiss={handleDismissPrompt} />}
 
-        {/* Welcome header */}
-        <div className="mb-5 flex items-center gap-3.5 pt-1">
+        {/* Welcome header. translateZ(0) pins it to its own GPU layer so the
+            WebView always repaints it — without this, scrolling away and back
+            occasionally left the name area blank (a backdrop-filter repaint bug). */}
+        <div className="mb-5 flex items-center gap-3.5 pt-1 [transform:translateZ(0)]">
           <Link href="/member/profile" aria-label="Open your profile" className="shrink-0 rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
             <Avatar className="h-14 w-14 border-2 border-white/70 shadow-md dark:border-white/10">
               <AvatarImage src={currentStudent?.profilePictureUrl || user?.profilePictureUrl || undefined} alt={currentStudent?.name} data-ai-hint="profile person" />
@@ -419,7 +442,7 @@ export default function MemberDashboardPage() {
             <Link
               href="/member/profile"
               aria-label={`Seat ${currentStudent.seatNumber}${shiftMeta ? `, ${shiftMeta.label} shift` : ''}`}
-              className="shrink-0 rounded-xl border border-white/60 bg-white/40 px-3 py-1.5 text-right shadow-sm backdrop-blur-md transition-colors hover:bg-white/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 dark:border-white/10 dark:bg-slate-900/60 dark:hover:bg-slate-800/60"
+              className="shrink-0 rounded-xl border border-white/60 bg-white/80 px-3 py-1.5 text-right shadow-sm transition-colors hover:bg-white focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 dark:border-white/10 dark:bg-slate-800/80 dark:hover:bg-slate-800"
             >
               <span className="flex items-center justify-end gap-1 text-[10px] font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">
                 <Armchair className={cn("h-3 w-3", shiftMeta ? shiftMeta.icon : 'text-yellow-600')} />

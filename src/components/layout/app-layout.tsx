@@ -17,7 +17,7 @@ import { useNotificationContext } from '@/contexts/notification-context';
 import { useTheme } from "next-themes";
 import { useNotificationCounts } from '@/hooks/use-notification-counts';
 import { setupPushNotifications } from '@/lib/notification-setup';
-import { registerOneSignalPlayerId } from '@/lib/onesignal-median';
+import { registerOneSignalPlayerId, isMedianApp } from '@/lib/onesignal-median';
 
 function NotificationIconArea() {
   const { user } = useAuth();
@@ -106,11 +106,10 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     const role = user?.role;
     if (!firestoreId || !role) return;
 
-    // 1. Firebase Web Push.
-    // Prompt unless the user has explicitly denied. `setupPushNotifications`
-    // handles requestPermission + token persistence; previously this was gated
-    // behind `=== 'granted'`, so brand-new users were never asked.
-    if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission !== 'denied') {
+    // 1. Firebase Web Push — web/PWA only. Inside the Median app, OneSignal is the
+    // push channel, so FCM (and its web permission prompt) would just be noise.
+    // Prompt unless the user has explicitly denied.
+    if (!isMedianApp() && typeof window !== 'undefined' && 'Notification' in window && Notification.permission !== 'denied') {
       setupPushNotifications(firestoreId, role);
     }
 

@@ -17,7 +17,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from '@/contexts/auth-context';
 import { getStudentByEmail, getStudentByCustomId, updateProfilePicture, submitFeedback } from '@/services/student-service';
-import { setupPushNotifications, removePushNotifications } from '@/lib/notification-setup';
+import { enablePush, disablePush, getPushState } from '@/lib/push';
 import type { Student } from '@/types/student';
 import { UserCircle, Save, Mail, Phone, Briefcase, Loader2, Camera, View, VideoOff, BadgeIndianRupee, Armchair, Bell, BellOff, Send } from 'lucide-react';
 import { Dialog, DialogContent, DialogTrigger, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
@@ -118,29 +118,30 @@ export default function MemberProfilePage() {
   const [requestReason, setRequestReason] = React.useState('');
   const [isSubmittingRequest, setIsSubmittingRequest] = React.useState(false);
 
-  const computeNotifStatus = React.useCallback((): 'on' | 'off' | 'blocked' => {
-    if (typeof window === 'undefined' || !('Notification' in window)) return 'off';
-    if (Notification.permission === 'denied') return 'blocked';
+  // Channel-aware: OneSignal opt-in inside the Median app, FCM web push on the web.
+  const refreshNotifStatus = React.useCallback(async () => {
     const firestoreId = memberDetails?.firestoreId;
-    const hasToken = !!(firestoreId && localStorage.getItem(`fcmToken_${firestoreId}`));
-    return Notification.permission === 'granted' && hasToken ? 'on' : 'off';
+    if (!firestoreId) return;
+    const state = await getPushState(firestoreId);
+    setNotifStatus(state === 'blocked' ? 'blocked' : state === 'on' ? 'on' : 'off');
   }, [memberDetails?.firestoreId]);
 
   React.useEffect(() => {
-    setNotifStatus(computeNotifStatus());
-  }, [computeNotifStatus]);
+    void refreshNotifStatus();
+  }, [refreshNotifStatus]);
 
   const handleEnableNotifications = async () => {
     if (!memberDetails?.firestoreId) return;
     setIsUpdatingNotif(true);
     try {
-      await setupPushNotifications(memberDetails.firestoreId, 'member');
-      const status = computeNotifStatus();
-      setNotifStatus(status);
-      if (status === 'on') {
+      const result = await enablePush(memberDetails.firestoreId, 'member');
+      await refreshNotifStatus();
+      if (result === 'enabled') {
         toast({ title: "Notifications enabled", description: "You'll now receive library alerts on this device." });
-      } else if (typeof window !== 'undefined' && Notification.permission === 'denied') {
-        toast({ title: "Notifications blocked", description: "Allow notifications in your browser settings to receive alerts.", variant: "destructive" });
+      } else if (result === 'blocked') {
+        toast({ title: "Notifications blocked", description: "Allow notifications in your settings to receive alerts.", variant: "destructive" });
+      } else {
+        toast({ title: "Not enabled", description: "Permission wasn't granted. You can try again anytime.", variant: "destructive" });
       }
     } finally {
       setIsUpdatingNotif(false);
@@ -151,8 +152,8 @@ export default function MemberProfilePage() {
     if (!memberDetails?.firestoreId) return;
     setIsUpdatingNotif(true);
     try {
-      await removePushNotifications(memberDetails.firestoreId, 'member');
-      setNotifStatus(computeNotifStatus());
+      await disablePush(memberDetails.firestoreId, 'member');
+      await refreshNotifStatus();
       toast({ title: "Notifications turned off", description: "You won't receive alerts on this device." });
     } finally {
       setIsUpdatingNotif(false);

@@ -38,25 +38,25 @@ export function QrScannerOverlay({ expectedPayload, onSuccess, onClose }: QrScan
   // blurry frame — the #1 reason a clearly-visible QR "scans only rarely".
   // Everything is best-effort and capability-gated: unsupported keys throw an
   // OverconstrainedError which we swallow, so this only ever helps.
-  const tuneCameraTrack = React.useCallback(async (stream: MediaStream) => {
+  // Returns true once capabilities are readable (so the caller knows it doesn't
+  // need to retry). We apply *only* continuous autofocus — deliberately not
+  // exposure/zoom: changing several constraints at once makes some Android
+  // devices briefly stop+restart the stream, which looked like the camera
+  // "restarting" mid-aim. One focus constraint, applied once, avoids that.
+  const tuneCameraTrack = React.useCallback(async (stream: MediaStream): Promise<boolean> => {
     const track = stream.getVideoTracks()[0];
-    if (!track || typeof track.getCapabilities !== 'function') return;
+    if (!track || typeof track.getCapabilities !== 'function') return false;
     const caps = track.getCapabilities() as MediaTrackCapabilities & {
       focusMode?: string[];
-      exposureMode?: string[];
       torch?: boolean;
     };
-    const advanced: MediaTrackConstraintSet[] = [];
+    // Capabilities can be an empty object for a moment after the track goes live.
+    const ready = !!(caps && (caps.focusMode || 'torch' in caps));
     if (caps.focusMode?.includes('continuous')) {
-      advanced.push({ focusMode: 'continuous' } as MediaTrackConstraintSet);
-    }
-    if (caps.exposureMode?.includes('continuous')) {
-      advanced.push({ exposureMode: 'continuous' } as MediaTrackConstraintSet);
-    }
-    if (advanced.length) {
-      try { await track.applyConstraints({ advanced }); } catch {}
+      try { await track.applyConstraints({ advanced: [{ focusMode: 'continuous' } as MediaTrackConstraintSet] }); } catch {}
     }
     if (mountedRef.current && caps.torch === true) setTorchSupported(true);
+    return ready;
   }, []);
 
   const toggleTorch = React.useCallback(async () => {
@@ -136,6 +136,8 @@ export function QrScannerOverlay({ expectedPayload, onSuccess, onClose }: QrScan
 
             if (decodedText === expectedPayload) {
               if (!mountedRef.current) return;
+              // Haptic confirmation that the code was read (Median/Android WebView).
+              try { navigator.vibrate?.(90); } catch {}
               setIsProcessing(true);
               try {
                 stopCamera();
@@ -180,12 +182,14 @@ export function QrScannerOverlay({ expectedPayload, onSuccess, onClose }: QrScan
           if (videoEl?.srcObject) {
             const stream = videoEl.srcObject as MediaStream;
             streamRef.current = stream;
-            // Capabilities aren't always populated the instant the track goes
-            // live, so tune immediately and once more shortly after.
-            tuneCameraTrack(stream);
-            setTimeout(() => {
-              if (mountedRef.current && streamRef.current) tuneCameraTrack(streamRef.current);
-            }, 800);
+            // Apply focus once. Only retry if capabilities weren't ready yet —
+            // re-applying when they already were just restarts the camera again.
+            const applied = await tuneCameraTrack(stream);
+            if (!applied) {
+              setTimeout(() => {
+                if (mountedRef.current && streamRef.current) tuneCameraTrack(streamRef.current);
+              }, 800);
+            }
           }
           setIsReady(true);
         }
@@ -237,6 +241,15 @@ export function QrScannerOverlay({ expectedPayload, onSuccess, onClose }: QrScan
           <div className="flex items-center gap-2 text-white">
             <ScanLine className="h-5 w-5 text-primary" />
             <span className="font-semibold tracking-wide text-sm">Scan QR Code</span>
+            {isReady && !isProcessing && !cameraError && (
+              <span className="ml-1 flex items-center gap-1.5 text-[11px] font-medium text-emerald-300">
+                <span className="relative flex h-2 w-2">
+                  <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400/70 animate-ping" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" />
+                </span>
+                Scanning
+              </span>
+            )}
           </div>
           <div className="flex items-center gap-2">
             {torchSupported && (
