@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { createPortal } from 'react-dom';
-import { Loader2, X, ScanLine } from 'lucide-react';
+import { Loader2, X, ScanLine, Zap, ZapOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 
@@ -27,8 +27,49 @@ export function QrScannerOverlay({ expectedPayload, onSuccess, onClose }: QrScan
   const [isReady, setIsReady] = React.useState(false);
   const [isProcessing, setIsProcessing] = React.useState(false);
   const [cameraError, setCameraError] = React.useState<string | null>(null);
+  const [torchSupported, setTorchSupported] = React.useState(false);
+  const [torchOn, setTorchOn] = React.useState(false);
   const hasDetected = React.useRef(false);
   const mountedRef = React.useRef(true);
+
+  // Coax the live camera track into the state a desk QR scan needs: a sharp,
+  // well-exposed image. html5-qrcode never sets these, so by default Android
+  // WebViews often hover at a hunting/fixed focus at ~20-30cm and decode a
+  // blurry frame — the #1 reason a clearly-visible QR "scans only rarely".
+  // Everything is best-effort and capability-gated: unsupported keys throw an
+  // OverconstrainedError which we swallow, so this only ever helps.
+  const tuneCameraTrack = React.useCallback(async (stream: MediaStream) => {
+    const track = stream.getVideoTracks()[0];
+    if (!track || typeof track.getCapabilities !== 'function') return;
+    const caps = track.getCapabilities() as MediaTrackCapabilities & {
+      focusMode?: string[];
+      exposureMode?: string[];
+      torch?: boolean;
+    };
+    const advanced: MediaTrackConstraintSet[] = [];
+    if (caps.focusMode?.includes('continuous')) {
+      advanced.push({ focusMode: 'continuous' } as MediaTrackConstraintSet);
+    }
+    if (caps.exposureMode?.includes('continuous')) {
+      advanced.push({ exposureMode: 'continuous' } as MediaTrackConstraintSet);
+    }
+    if (advanced.length) {
+      try { await track.applyConstraints({ advanced }); } catch {}
+    }
+    if (mountedRef.current && caps.torch === true) setTorchSupported(true);
+  }, []);
+
+  const toggleTorch = React.useCallback(async () => {
+    const track = streamRef.current?.getVideoTracks()[0];
+    if (!track) return;
+    const next = !torchOn;
+    try {
+      await track.applyConstraints({ advanced: [{ torch: next } as MediaTrackConstraintSet] });
+      setTorchOn(next);
+    } catch {
+      toast({ title: "Flash unavailable", description: "This device wouldn't let us toggle the torch.", variant: "destructive" });
+    }
+  }, [torchOn, toast]);
 
   const stopCamera = React.useCallback(() => {
     if (streamRef.current) {
@@ -56,7 +97,7 @@ export function QrScannerOverlay({ expectedPayload, onSuccess, onClose }: QrScan
         await scanner.start(
           { facingMode: "environment" },
           {
-            fps: 10,
+            fps: 15,
             // Use the browser's native BarcodeDetector when available (modern
             // Android Chrome): it's hardware-accelerated and decodes the full frame
             // near-instantly, whereas the ZXing WASM/JS fallback grinds through
@@ -136,7 +177,16 @@ export function QrScannerOverlay({ expectedPayload, onSuccess, onClose }: QrScan
 
         if (mountedRef.current) {
           const videoEl = document.getElementById(QR_FEED_ID)?.querySelector('video');
-          if (videoEl?.srcObject) streamRef.current = videoEl.srcObject as MediaStream;
+          if (videoEl?.srcObject) {
+            const stream = videoEl.srcObject as MediaStream;
+            streamRef.current = stream;
+            // Capabilities aren't always populated the instant the track goes
+            // live, so tune immediately and once more shortly after.
+            tuneCameraTrack(stream);
+            setTimeout(() => {
+              if (mountedRef.current && streamRef.current) tuneCameraTrack(streamRef.current);
+            }, 800);
+          }
           setIsReady(true);
         }
       } catch {
@@ -188,14 +238,31 @@ export function QrScannerOverlay({ expectedPayload, onSuccess, onClose }: QrScan
             <ScanLine className="h-5 w-5 text-primary" />
             <span className="font-semibold tracking-wide text-sm">Scan QR Code</span>
           </div>
-          <button
-            onClick={onClose}
-            disabled={isProcessing}
-            aria-label="Close scanner"
-            className="h-9 w-9 rounded-full bg-white/10 border border-white/20 flex items-center justify-center text-white hover:bg-white/25 active:bg-white/30 transition-colors disabled:opacity-40"
-          >
-            <X className="h-4 w-4" />
-          </button>
+          <div className="flex items-center gap-2">
+            {torchSupported && (
+              <button
+                onClick={toggleTorch}
+                disabled={isProcessing}
+                aria-label={torchOn ? "Turn off flash" : "Turn on flash"}
+                aria-pressed={torchOn}
+                className={`h-9 w-9 rounded-full border flex items-center justify-center transition-colors disabled:opacity-40 ${
+                  torchOn
+                    ? 'bg-primary text-primary-foreground border-primary'
+                    : 'bg-white/10 border-white/20 text-white hover:bg-white/25 active:bg-white/30'
+                }`}
+              >
+                {torchOn ? <Zap className="h-4 w-4" /> : <ZapOff className="h-4 w-4" />}
+              </button>
+            )}
+            <button
+              onClick={onClose}
+              disabled={isProcessing}
+              aria-label="Close scanner"
+              className="h-9 w-9 rounded-full bg-white/10 border border-white/20 flex items-center justify-center text-white hover:bg-white/25 active:bg-white/30 transition-colors disabled:opacity-40"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
         </div>
 
         {/* Viewfinder — centered vertically in the remaining space */}
