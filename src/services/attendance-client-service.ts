@@ -13,7 +13,7 @@ import {
   onSnapshot,
 } from '@/lib/firebase';
 import type { QueryDocumentSnapshot, QuerySnapshot, DocumentData } from 'firebase/firestore';
-import type { Student, AttendanceRecord, CheckedInStudentInfo } from '@/types/student';
+import type { Student, AttendanceRecord, CheckedInStudentInfo, Shift } from '@/types/student';
 import { format, parseISO, isValid, startOfMonth, endOfMonth, isAfter, getHours, getMinutes, differenceInMilliseconds, isToday, startOfWeek, endOfWeek, eachDayOfInterval, subDays } from 'date-fns';
 
 // --- Collections ---
@@ -327,6 +327,55 @@ export async function getMemberStudyStats(
     currentStreak: streakFromDaily(dailyMillis, refDate),
     daily,
   };
+}
+
+export interface MemberRankEntry {
+  studentId: string;
+  name: string;
+  profilePictureUrl?: string | null;
+  shift?: Shift;
+  seatNumber?: string | null;
+  /** Study hours this week (Sun–today). */
+  weeklyHours: number;
+  /** Current consecutive-day study streak. */
+  currentStreak: number;
+}
+
+// Days of attendance pulled for the admin rankings: enough for this week's hours
+// plus a ~5-week streak. One students fetch + one windowed attendance fetch.
+const RANKINGS_LOOKBACK_DAYS = 35;
+
+/**
+ * Per-member study hours (this week) and current streak for every active student.
+ * Unsorted — the admin page slices it into a "top hours" and a "top streaks" list.
+ */
+export async function getMemberStudyRankings(refDate: Date = new Date()): Promise<MemberRankEntry[]> {
+  const lookbackStart = subDays(refDate, RANKINGS_LOOKBACK_DAYS);
+  const [students, records] = await Promise.all([
+    getStudentSeatAssignments(),
+    getAttendanceRecordsForDateRangeAll(format(lookbackStart, 'yyyy-MM-dd'), format(refDate, 'yyyy-MM-dd')),
+  ]);
+
+  const byStudent = new Map<string, AttendanceRecord[]>();
+  for (const r of records) {
+    if (!r.studentId) continue;
+    const arr = byStudent.get(r.studentId);
+    if (arr) arr.push(r);
+    else byStudent.set(r.studentId, [r]);
+  }
+
+  return students.map(s => {
+    const dailyMillis = aggregateDailyStudyMillis(byStudent.get(s.studentId) ?? [], s.shift);
+    return {
+      studentId: s.studentId,
+      name: s.name,
+      profilePictureUrl: s.profilePictureUrl ?? null,
+      shift: s.shift,
+      seatNumber: s.seatNumber ?? null,
+      weeklyHours: weeklyHoursFromDaily(dailyMillis, refDate),
+      currentStreak: streakFromDaily(dailyMillis, refDate),
+    };
+  });
 }
 
 export async function getAttendanceRecordsForDateRangeAll(startDate: string, endDate: string): Promise<AttendanceRecord[]> {
