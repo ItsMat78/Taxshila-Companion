@@ -13,7 +13,7 @@ import {
   onSnapshot,
 } from '@/lib/firebase';
 import type { QueryDocumentSnapshot, QuerySnapshot, DocumentData } from 'firebase/firestore';
-import type { Student, AttendanceRecord, CheckedInStudentInfo } from '@/types/student';
+import type { Student, AttendanceRecord, CheckedInStudentInfo, Shift } from '@/types/student';
 import { format, parseISO, isValid, startOfMonth, endOfMonth, isAfter, getHours, getMinutes, differenceInMilliseconds, isToday, startOfWeek, endOfWeek, eachDayOfInterval, subDays } from 'date-fns';
 
 // --- Collections ---
@@ -262,45 +262,140 @@ export interface MemberStudyStats {
   weeklyHours: number;
   /** Consecutive days (ending today, or yesterday if not yet checked in today) with any study time. */
   currentStreak: number;
+  /**
+   * Per-day studied hours over the lookback window. Sparse — only days with any
+   * study time appear, keyed by 'yyyy-MM-dd'. Powers the dashboard's
+   * contribution heatmap and recent-activity chart.
+   */
+  daily: Array<{ date: string; hours: number }>;
+}
+
+const MS_PER_HOUR = 1000 * 60 * 60;
+
+// Days of history to load for the dashboard. The query already fetches all of a
+// student's records and filters in memory, so a wider window costs nothing extra
+// and gives the contribution heatmap (~18 weeks) enough days to fill.
+const STUDY_LOOKBACK_DAYS = 132;
+
+/**
+ * Consecutive studied days ending today — or yesterday if today has no study yet,
+ * so the streak isn't reset mid-day before the member checks in. Shared by the
+ * dashboard stats and the leaderboard.
+ */
+function streakFromDaily(dailyMillis: Map<string, number>, refDate: Date): number {
+  const studied = (d: Date) => (dailyMillis.get(format(d, 'yyyy-MM-dd')) || 0) > 0;
+  let cursor = new Date(refDate);
+  if (!studied(cursor)) cursor = subDays(cursor, 1);
+  let streak = 0;
+  while (studied(cursor)) {
+    streak++;
+    cursor = subDays(cursor, 1);
+  }
+  return streak;
+}
+
+/** Total study hours from the start of refDate's week (Sunday) up to refDate. */
+function weeklyHoursFromDaily(dailyMillis: Map<string, number>, refDate: Date): number {
+  const weekStart = startOfWeek(refDate, { weekStartsOn: 0 });
+  let ms = 0;
+  eachDayOfInterval({ start: weekStart, end: refDate }).forEach(day => {
+    ms += dailyMillis.get(format(day, 'yyyy-MM-dd')) || 0;
+  });
+  return ms / MS_PER_HOUR;
 }
 
 /**
- * Computes the member's current-week study hours and current check-in streak
- * from a single attendance fetch (last ~60 days). Used by the dashboard.
+ * Computes the member's current-week study hours, current check-in streak, and
+ * per-day study breakdown from a single attendance fetch. Used by the dashboard.
  */
 export async function getMemberStudyStats(
   studentId: string,
   shift: Student['shift'] | undefined,
   refDate: Date = new Date()
 ): Promise<MemberStudyStats> {
-  const lookbackStart = subDays(refDate, 60);
+  const lookbackStart = subDays(refDate, STUDY_LOOKBACK_DAYS);
   const records = await getAttendanceForDateRange(
     studentId,
     format(lookbackStart, 'yyyy-MM-dd'),
     format(refDate, 'yyyy-MM-dd')
   );
   const dailyMillis = aggregateDailyStudyMillis(records, shift);
+  const daily = Array.from(dailyMillis, ([date, ms]) => ({ date, hours: ms / MS_PER_HOUR }));
 
-  // Weekly hours: sum from the start of this week up to the reference day.
-  const weekStart = startOfWeek(refDate, { weekStartsOn: 0 });
-  let weeklyMillis = 0;
-  eachDayOfInterval({ start: weekStart, end: refDate }).forEach(day => {
-    weeklyMillis += dailyMillis.get(format(day, 'yyyy-MM-dd')) || 0;
-  });
+  return {
+    weeklyHours: weeklyHoursFromDaily(dailyMillis, refDate),
+    currentStreak: streakFromDaily(dailyMillis, refDate),
+    daily,
+  };
+}
 
-  // Streak: walk backwards over consecutive studied days. If today has no
-  // study yet, the streak is measured ending yesterday so it isn't reset
-  // mid-day before the member checks in.
-  const studied = (d: Date) => (dailyMillis.get(format(d, 'yyyy-MM-dd')) || 0) > 0;
-  let cursor = new Date(refDate);
-  if (!studied(cursor)) cursor = subDays(cursor, 1);
-  let currentStreak = 0;
-  while (studied(cursor)) {
-    currentStreak++;
-    cursor = subDays(cursor, 1);
+export interface LeaderboardEntry {
+  rank: number;
+  studentId: string;
+  name: string;
+  profilePictureUrl?: string | null;
+  shift?: Shift;
+  seatNumber?: string | null;
+  /** Study hours this week — the ranking metric. */
+  weeklyHours: number;
+  /** Current check-in streak — secondary stat / tiebreaker. */
+  currentStreak: number;
+}
+
+// History fetched for the leaderboard. Bounds the all-students attendance query;
+// 35 days is enough for this week's hours plus a ~5-week streak.
+const LEADERBOARD_LOOKBACK_DAYS = 35;
+
+/**
+ * Ranks all active students by study hours this week (Sun–today). Computed
+ * entirely client-side from one students fetch + one windowed attendance fetch.
+ * Only students who studied this week are ranked. Returns the top `limit`, and —
+ * when `currentStudentId` is given — that student's own entry (with their true
+ * rank) so the member page can show "your position" even outside the top.
+ */
+export async function getStudyLeaderboard(opts?: {
+  limit?: number;
+  currentStudentId?: string;
+  refDate?: Date;
+}): Promise<{ top: LeaderboardEntry[]; me: LeaderboardEntry | null }> {
+  const limit = opts?.limit ?? 7;
+  const refDate = opts?.refDate ?? new Date();
+  const lookbackStart = subDays(refDate, LEADERBOARD_LOOKBACK_DAYS);
+
+  const [students, records] = await Promise.all([
+    getStudentSeatAssignments(),
+    getAttendanceRecordsForDateRangeAll(format(lookbackStart, 'yyyy-MM-dd'), format(refDate, 'yyyy-MM-dd')),
+  ]);
+
+  const byStudent = new Map<string, AttendanceRecord[]>();
+  for (const r of records) {
+    if (!r.studentId) continue;
+    const arr = byStudent.get(r.studentId);
+    if (arr) arr.push(r);
+    else byStudent.set(r.studentId, [r]);
   }
 
-  return { weeklyHours: weeklyMillis / (1000 * 60 * 60), currentStreak };
+  const ranked: LeaderboardEntry[] = students
+    .map(s => {
+      const dailyMillis = aggregateDailyStudyMillis(byStudent.get(s.studentId) ?? [], s.shift);
+      return {
+        rank: 0,
+        studentId: s.studentId,
+        name: s.name,
+        profilePictureUrl: s.profilePictureUrl ?? null,
+        shift: s.shift,
+        seatNumber: s.seatNumber ?? null,
+        weeklyHours: weeklyHoursFromDaily(dailyMillis, refDate),
+        currentStreak: streakFromDaily(dailyMillis, refDate),
+      };
+    })
+    .filter(e => e.weeklyHours > 0)
+    .sort((a, b) => b.weeklyHours - a.weeklyHours || b.currentStreak - a.currentStreak || a.name.localeCompare(b.name))
+    .map((e, i) => ({ ...e, rank: i + 1 }));
+
+  const top = ranked.slice(0, limit);
+  const me = opts?.currentStudentId ? ranked.find(e => e.studentId === opts.currentStudentId) ?? null : null;
+  return { top, me };
 }
 
 export async function getAttendanceRecordsForDateRangeAll(startDate: string, endDate: string): Promise<AttendanceRecord[]> {

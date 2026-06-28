@@ -23,7 +23,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/auth-context';
-import { IndianRupee, MessageSquare, Bell, ScrollText, Star, Loader2, ScanLine, LogOut, AlertCircle, X, RefreshCw, Wifi, Copy, Flame, Clock, Armchair, CalendarDays } from 'lucide-react';
+import { IndianRupee, MessageSquare, Bell, ScrollText, Star, Loader2, ScanLine, LogOut, AlertCircle, X, RefreshCw, Wifi, Copy, Clock, Armchair, CalendarDays } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getStudentByEmail, getAlertsForStudent, addCheckIn, addCheckOut, getStudentByCustomId, getWifiConfiguration, subscribeToActiveCheckIn, getMemberStudyStats } from '@/services/student-service';
 import type { MemberStudyStats } from '@/services/student-service';
@@ -34,6 +34,8 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { getInitials } from '@/lib/utils';
 import { CheckInTimer } from '@/components/member/CheckInTimer';
 import { QrScannerOverlay } from '@/components/member/QrScannerOverlay';
+import { StudyActivity } from '@/components/member/StudyActivity';
+import { StreakCard } from '@/components/member/StreakCard';
 
 const LIBRARY_QR_CODE_PAYLOAD = "TAXSHILA_LIBRARY_CHECKIN_QR_V1";
 const REVIEW_URL = "https://g.page/r/CS-yYFo4JxNXEBM/review";
@@ -102,14 +104,14 @@ type StatCardProps = {
 function StatCard({ label, value, sub, icon: Icon, iconClass, valueClass, href }: StatCardProps) {
   return (
     <Link href={href} className="rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
-      <GlassCard interactive className="flex h-full flex-col justify-between p-3 hover:bg-white/55 dark:hover:bg-slate-800/60 md:p-4">
+      <GlassCard interactive className="flex h-full min-h-[112px] flex-col justify-between p-4 hover:bg-white/55 dark:hover:bg-slate-800/60 md:min-h-[128px] md:p-5">
         <div className="mb-2 flex items-start justify-between">
-          <span className="text-[10px] font-medium text-gray-500 dark:text-gray-400 md:text-xs">{label}</span>
-          <Icon className={cn("h-4 w-4", iconClass)} />
+          <span className="text-xs font-medium text-gray-500 dark:text-gray-400 md:text-sm">{label}</span>
+          <Icon className={cn("h-5 w-5", iconClass)} />
         </div>
         <div>
-          <p className={cn("text-2xl font-light leading-none tracking-tight md:text-3xl", valueClass)}>{value}</p>
-          {sub && <p className="mt-1.5 truncate font-body text-[10px] text-gray-400 dark:text-gray-500">{sub}</p>}
+          <p className={cn("text-3xl font-light leading-none tracking-tight md:text-4xl", valueClass)}>{value}</p>
+          {sub && <p className="mt-2 truncate font-body text-xs text-gray-400 dark:text-gray-500">{sub}</p>}
         </div>
       </GlassCard>
     </Link>
@@ -130,12 +132,12 @@ type QuickActionProps = {
 };
 function QuickAction({ icon: Icon, label, chipClass, labelClass, hoverClass, href, action, external, showDot }: QuickActionProps) {
   const card = (
-    <GlassCard interactive className={cn("group relative flex flex-col items-center justify-center gap-1.5 p-3 md:p-4", hoverClass)}>
-      {showDot && <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-[#F05454] ring-2 ring-white dark:ring-slate-900" />}
-      <div className={cn("rounded-xl p-1.5 transition-transform group-hover:scale-110 md:p-2", chipClass)}>
-        <Icon className="h-4 w-4 md:h-5 md:w-5" />
+    <GlassCard interactive className={cn("group relative flex min-h-[96px] flex-col items-center justify-center gap-2 p-4 md:min-h-[108px] md:p-5", hoverClass)}>
+      {showDot && <span className="absolute right-2.5 top-2.5 h-2.5 w-2.5 rounded-full bg-[#F05454] ring-2 ring-white dark:ring-slate-900" />}
+      <div className={cn("rounded-xl p-2.5 transition-transform group-hover:scale-110 md:p-3", chipClass)}>
+        <Icon className="h-5 w-5 md:h-6 md:w-6" />
       </div>
-      <span className={cn("text-[11px] font-semibold md:text-sm", labelClass)}>{label}</span>
+      <span className={cn("text-xs font-semibold md:text-sm", labelClass)}>{label}</span>
     </GlassCard>
   );
   const cls = "rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2";
@@ -397,19 +399,22 @@ export default function MemberDashboardPage() {
         {showNotificationPrompt && <NotificationPrompt onDismiss={handleDismissPrompt} />}
 
         {/* Welcome header */}
-        <div className="mb-4 flex items-end justify-between gap-3 pt-1">
-          <div className="min-w-0">
-            <h1 className="truncate text-3xl font-light leading-none tracking-tight text-gray-900 dark:text-white md:text-4xl">
-              Welcome back, {firstName}
-            </h1>
-            <p className="mt-1.5 font-body text-xs text-gray-500 dark:text-gray-400 md:text-sm">{dateline}</p>
-          </div>
+        <div className="mb-5 flex items-center gap-3.5 pt-1">
           <Link href="/member/profile" aria-label="Open your profile" className="shrink-0 rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
-            <Avatar className="h-11 w-11 border-2 border-white/70 shadow-md dark:border-white/10">
+            <Avatar className="h-14 w-14 border-2 border-white/70 shadow-md dark:border-white/10">
               <AvatarImage src={currentStudent?.profilePictureUrl || user?.profilePictureUrl || undefined} alt={currentStudent?.name} data-ai-hint="profile person" />
               <AvatarFallback className="bg-gradient-to-br from-indigo-100 to-purple-100 text-indigo-700 dark:from-indigo-900 dark:to-slate-900 dark:text-indigo-300">{getInitials(currentStudent?.name)}</AvatarFallback>
             </Avatar>
           </Link>
+          <div className="min-w-0 flex-1">
+            <p className="font-body text-[11px] font-medium uppercase tracking-[0.08em] text-gray-400 dark:text-gray-500 md:text-xs">
+              Welcome back
+            </p>
+            <h1 className="truncate text-3xl font-light leading-tight tracking-tight text-gray-900 dark:text-white md:text-4xl">
+              {firstName}
+            </h1>
+            <p className="mt-1 font-body text-xs text-gray-500 dark:text-gray-400 md:text-sm">{dateline}</p>
+          </div>
         </div>
 
         <div className="space-y-3">
@@ -441,11 +446,11 @@ export default function MemberDashboardPage() {
                   {checkInTime ? <CheckInTimer checkInTime={checkInTime} /> : "00:00"}
                 </div>
                 <div className="mt-4 flex items-center gap-2">
-                  <Button onClick={handleDashboardCheckOut} disabled={isProcessingCheckout} className="h-11 flex-1 bg-emerald-600 text-base font-semibold text-white hover:bg-emerald-700">
+                  <Button onClick={handleDashboardCheckOut} disabled={isProcessingCheckout} className="h-14 flex-1 animate-gradient-sweep-green text-lg font-semibold text-white shadow-lg shadow-emerald-900/20 hover:opacity-95">
                     {isProcessingCheckout ? <Loader2 aria-hidden="true" className="mr-2 h-5 w-5 animate-spin" /> : <LogOut className="mr-2 h-5 w-5" />}
-                    Check out
+                    Tap to Check Out
                   </Button>
-                  <Button onClick={() => fetchAllDashboardData(true)} disabled={isRefreshing} variant="outline" size="icon" aria-label="Refresh session" className="h-11 w-11 border-white/60 bg-white/30 dark:border-white/10 dark:bg-white/5">
+                  <Button onClick={() => fetchAllDashboardData(true)} disabled={isRefreshing} variant="outline" size="icon" aria-label="Refresh session" className="h-14 w-14 shrink-0 border-white/60 bg-white/30 dark:border-white/10 dark:bg-white/5">
                     <RefreshCw className={cn("h-5 w-5", isRefreshing && "animate-spin")} />
                   </Button>
                 </div>
@@ -474,14 +479,7 @@ export default function MemberDashboardPage() {
 
           {/* Stat cards */}
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-            <StatCard
-              label="Day streak"
-              value={studyStats ? studyStats.currentStreak : '-'}
-              sub={studyStats ? (studyStats.currentStreak === 1 ? 'day in a row' : 'days in a row') : undefined}
-              icon={Flame}
-              iconClass="text-[#F05454]"
-              href="/member/attendance"
-            />
+            <StreakCard streak={studyStats?.currentStreak} loading={!studyStats} />
             <StatCard
               label="This week"
               value={studyStats ? formatStudyHours(studyStats.weeklyHours) : '-'}
@@ -508,6 +506,9 @@ export default function MemberDashboardPage() {
               href="/member/profile"
             />
           </div>
+
+          {/* Study activity — GitHub-style contribution heatmap + recent days */}
+          {studentId && <StudyActivity daily={studyStats?.daily} loading={!studyStats} />}
 
           {/* Quick actions */}
           <div className="grid grid-cols-3 gap-2 lg:grid-cols-6">

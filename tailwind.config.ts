@@ -121,6 +121,24 @@ export default {
           '0%': { top: '4px' },
           '100%': { top: 'calc(100% - 4px)' },
         },
+        // Streak fire: a flame that flickers + leans like a real flame.
+        'flame-flicker': {
+          '0%, 100%': { transform: 'scale(1) rotate(-1.5deg)', opacity: '1' },
+          '25%': { transform: 'scale(1.12) rotate(2deg)', opacity: '0.92' },
+          '50%': { transform: 'scale(0.96) rotate(-2deg)', opacity: '1' },
+          '75%': { transform: 'scale(1.08) rotate(1.5deg)', opacity: '0.95' },
+        },
+        // Pulsing heat glow behind the streak card.
+        'streak-glow': {
+          '0%, 100%': { opacity: '0.45', transform: 'scale(1)' },
+          '50%': { opacity: '0.8', transform: 'scale(1.15)' },
+        },
+        // Count "pop" when the streak number mounts/changes.
+        'streak-pop': {
+          '0%': { transform: 'scale(0.6)', opacity: '0' },
+          '60%': { transform: 'scale(1.18)' },
+          '100%': { transform: 'scale(1)', opacity: '1' },
+        },
         'accordion-down': {
           from: {
             height: '0',
@@ -142,6 +160,9 @@ export default {
         'accordion-down': 'accordion-down 0.2s ease-out',
         'accordion-up': 'accordion-up 0.2s ease-out',
         'scanner-line': 'scanner-line 2s ease-in-out infinite alternate',
+        'flame-flicker': 'flame-flicker 1.4s ease-in-out infinite',
+        'streak-glow': 'streak-glow 2.4s ease-in-out infinite',
+        'streak-pop': 'streak-pop 0.5s cubic-bezier(0.34,1.56,0.64,1) both',
       },
     },
   },
