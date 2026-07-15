@@ -14,9 +14,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useAuth } from '@/contexts/auth-context';
-import { Loader2, Download, Smartphone, Home, Eye, EyeOff } from 'lucide-react';
+import { Loader2, Download, Smartphone, Home, Eye, EyeOff, Share, X } from 'lucide-react';
 import { LoggingInDialog } from '@/components/shared/logging-in-dialog';
 import { useToast } from '@/hooks/use-toast';
+import { getInstallPlatform, isStandalonePWA } from '@/lib/device';
+
+const IOS_BANNER_DISMISSED_KEY = 'taxshila-ios-install-banner-dismissed';
 
 const COVER_IMAGE_URL = '/cover.png';
 const LOGO_URL = '/logo.png';
@@ -49,6 +52,18 @@ export default function RootLoginPage() {
   // --- PWA Install State ---
   const [deferredPrompt, setDeferredPrompt] = React.useState<BeforeInstallPromptEvent | null>(null);
   const [canInstallPWA, setCanInstallPWA] = React.useState(false);
+  const [showIosInstallBanner, setShowIosInstallBanner] = React.useState(false);
+
+  React.useEffect(() => {
+    if (getInstallPlatform() !== 'ios' || isStandalonePWA()) return;
+    if (localStorage.getItem(IOS_BANNER_DISMISSED_KEY) === '1') return;
+    setShowIosInstallBanner(true);
+  }, []);
+
+  const dismissIosInstallBanner = () => {
+    localStorage.setItem(IOS_BANNER_DISMISSED_KEY, '1');
+    setShowIosInstallBanner(false);
+  };
 
   React.useEffect(() => {
     // This effect now correctly handles the delayed redirect AFTER the dialog is shown.
@@ -283,6 +298,32 @@ export default function RootLoginPage() {
                 <Download className="mr-2 h-4 w-4" />
                 Install App
               </Button>
+            </CardContent>
+          </Card>
+        )}
+
+        {showIosInstallBanner && (
+          <Card className="z-10 w-full max-w-md md:max-w-sm shadow-xl bg-white/40 dark:bg-black/40 backdrop-blur-xl rounded-2xl border-white/60 dark:border-white/10 relative">
+            <button
+              onClick={dismissIosInstallBanner}
+              aria-label="Dismiss"
+              className="absolute right-2 top-2 rounded-full p-1 text-muted-foreground hover:bg-black/5 dark:hover:bg-white/10"
+            >
+              <X className="h-4 w-4" />
+            </button>
+            <CardContent className="p-3 flex flex-col items-center text-center">
+              <div className="flex items-center gap-2 mb-1">
+                <Smartphone className="h-5 w-5 text-primary" />
+                <p className="text-sm font-medium text-foreground">
+                  Install Taxshila Companion App
+                </p>
+              </div>
+              <p className="text-xs text-muted-foreground mb-1">
+                Apple doesn&apos;t allow one-tap installs, but it only takes two taps:
+              </p>
+              <p className="text-xs text-foreground flex items-center justify-center gap-1.5 font-medium">
+                Tap <Share className="h-3.5 w-3.5 inline" aria-label="Share icon" /> Share, then &quot;Add to Home Screen&quot;
+              </p>
             </CardContent>
           </Card>
         )}
