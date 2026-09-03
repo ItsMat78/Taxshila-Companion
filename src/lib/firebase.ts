@@ -1,8 +1,11 @@
 
 
 import { initializeApp, getApp, getApps } from 'firebase/app';
-import { 
+import {
   getFirestore,
+  initializeFirestore,
+  persistentLocalCache,
+  persistentMultipleTabManager,
   collection,
   getDocs,
   getDoc,
@@ -43,7 +46,26 @@ const firebaseConfig = {
 
 // Initialize Firebase
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
-const db = getFirestore(app);
+
+// Firestore with an IndexedDB-backed cache in the browser: repeat reads are
+// served locally instead of re-billing Firestore. Browser-only (IndexedDB does
+// not exist during SSR), and falls back to plain getFirestore if Firestore was
+// already initialized for this app (e.g. a Fast Refresh re-run of this module).
+function initFirestore() {
+  if (typeof window === 'undefined') {
+    return getFirestore(app);
+  }
+  try {
+    return initializeFirestore(app, {
+      localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
+    });
+  } catch (error) {
+    console.error("Firestore persistent cache could not be enabled:", error);
+    return getFirestore(app);
+  }
+}
+
+const db = initFirestore();
 const storage = getStorage(app);
 const auth = getAuth(app); // Initialize and export auth
 

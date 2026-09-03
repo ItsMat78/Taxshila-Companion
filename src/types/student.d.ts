@@ -22,6 +22,9 @@ export interface Student {
   nextDueDate?: string;
   leftDate?: string; // New field for when student is marked as left
   lastAttendanceDate?: string; // ISO date string of most recent check-in
+  currentStreak?: number; // Denormalized: consecutive studied days, refreshed on check-in/out
+  weeklyStudyHours?: number; // Denormalized: study hours this week, refreshed on check-in/out
+  readGeneralAlertIds?: string[]; // IDs of general/broadcast alerts this student has read
   amountDue?: string;
   paymentHistory?: PaymentRecord[];
   profilePictureUrl?: string;

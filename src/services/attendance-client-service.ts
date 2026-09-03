@@ -68,6 +68,29 @@ async function getStudentByCustomIdInternal(studentId: string): Promise<Student 
   return getStudentByCustomId(studentId);
 }
 
+/**
+ * Recomputes the member's streak + weekly hours and denormalizes them onto the
+ * student document, so the dashboard can render both straight from the student
+ * record it already fetches (zero extra attendance reads per page load).
+ *
+ * Called after check-in / check-out only. Never throws — a failure here must not
+ * fail the attendance action that triggered it.
+ */
+async function refreshDenormalizedStudyStats(studentId: string): Promise<void> {
+  try {
+    const student = await getStudentByCustomIdInternal(studentId);
+    if (!student?.firestoreId) return;
+
+    const stats = await getMemberStudyStats(studentId, student.shift);
+    await updateDoc(doc(db, STUDENTS_COLLECTION, student.firestoreId), {
+      currentStreak: stats.currentStreak,
+      weeklyStudyHours: stats.weeklyHours,
+    });
+  } catch (error) {
+    console.error(`[AttendanceService] Failed to refresh denormalized study stats for ${studentId}:`, error);
+  }
+}
+
 export type StudentSeatAssignment = Pick<Student, 'studentId' | 'name' | 'shift' | 'seatNumber' | 'activityStatus' | 'profilePictureUrl'>;
 
 export async function getStudentSeatAssignments(): Promise<StudentSeatAssignment[]> {
@@ -161,6 +184,8 @@ export async function addCheckIn(studentId: string): Promise<AttendanceRecord> {
   const studentDocRef = doc(db, STUDENTS_COLLECTION, student.firestoreId);
   await updateDoc(studentDocRef, { lastAttendanceDate: Timestamp.fromDate(now) });
 
+  await refreshDenormalizedStudyStats(studentId);
+
   return {
     recordId: docRef.id,
     studentId: newRecordData.studentId,
@@ -176,7 +201,13 @@ export async function addCheckOut(recordId: string): Promise<AttendanceRecord | 
 
   await updateDoc(recordDocRef, { checkOutTime: Timestamp.fromDate(new Date()) });
   const updatedSnap = await getDoc(recordDocRef);
-  return updatedSnap.exists() ? attendanceRecordFromDoc(updatedSnap) : undefined;
+  if (!updatedSnap.exists()) return undefined;
+
+  const updatedRecord = attendanceRecordFromDoc(updatedSnap);
+  if (updatedRecord.studentId) {
+    await refreshDenormalizedStudyStats(updatedRecord.studentId);
+  }
+  return updatedRecord;
 }
 
 export async function getAttendanceForDate(studentId: string, date: string): Promise<AttendanceRecord[]> {
@@ -192,19 +223,20 @@ export async function getAttendanceForDate(studentId: string, date: string): Pro
 }
 
 export async function getAttendanceForDateRange(studentId: string, startDate: string, endDate: string): Promise<AttendanceRecord[]> {
+  // The date range is bounded server-side (not filtered client-side) so Firestore
+  // only bills for docs inside the window instead of the student's whole history.
+  // Requires the composite index on (studentId ASC, date ASC) in firestore.indexes.json.
   const q = query(
     collection(db, ATTENDANCE_COLLECTION),
-    where("studentId", "==", studentId)
+    where("studentId", "==", studentId),
+    where("date", ">=", startDate),
+    where("date", "<=", endDate)
   );
   const querySnapshot = await getDocs(q);
-  const allRecords = querySnapshot.docs.map(doc => attendanceRecordFromDoc(doc));
+  const records = querySnapshot.docs.map(doc => attendanceRecordFromDoc(doc));
 
-  const filteredRecords = allRecords.filter(record => {
-      return record.date >= startDate && record.date <= endDate;
-  });
-
-  filteredRecords.sort((a, b) => a.date.localeCompare(b.date));
-  return filteredRecords;
+  records.sort((a, b) => a.date.localeCompare(b.date));
+  return records;
 }
 
 /**
@@ -272,9 +304,9 @@ export interface MemberStudyStats {
 
 const MS_PER_HOUR = 1000 * 60 * 60;
 
-// Days of history to load for the dashboard. The query already fetches all of a
-// student's records and filters in memory, so a wider window costs nothing extra
-// and gives the contribution heatmap (~18 weeks) enough days to fill.
+// Days of history to load for the dashboard — enough to fill the contribution
+// heatmap (~18 weeks). The query is bounded to this window server-side, so
+// widening it directly increases the number of documents read (and billed).
 const STUDY_LOOKBACK_DAYS = 132;
 
 /**
@@ -387,22 +419,6 @@ export async function getAttendanceRecordsForDateRangeAll(startDate: string, end
   );
   const querySnapshot = await getDocs(q);
   return querySnapshot.docs.map(doc => attendanceRecordFromDoc(doc));
-}
-
-export async function getAllAttendanceRecords(): Promise<AttendanceRecord[]> {
-    const q = query(collection(db, ATTENDANCE_COLLECTION));
-    const querySnapshot = await getDocs(q);
-    const records = querySnapshot.docs.map(doc => attendanceRecordFromDoc(doc));
-    records.sort((a,b) => parseISO(b.checkInTime).getTime() - parseISO(a.checkInTime).getTime());
-    return records;
-}
-
-export async function getAttendanceRecordsByStudentId(studentId: string): Promise<AttendanceRecord[]> {
-  const q = query(collection(db, ATTENDANCE_COLLECTION), where("studentId", "==", studentId));
-  const querySnapshot = await getDocs(q);
-  const records = querySnapshot.docs.map(doc => attendanceRecordFromDoc(doc));
-  records.sort((a, b) => parseISO(b.checkInTime).getTime() - parseISO(a.checkInTime).getTime());
-  return records;
 }
 
 export async function getTodaysActiveAttendanceRecords() {

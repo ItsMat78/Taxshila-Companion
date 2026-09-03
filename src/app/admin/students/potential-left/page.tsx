@@ -22,7 +22,7 @@ import {
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { Loader2, UserX, UserCheck, Edit, Eye, CalendarClock } from 'lucide-react';
-import { getAllStudents, getAllAttendanceRecords } from '@/services/student-service';
+import { getAllStudents } from '@/services/student-service';
 import type { Student } from '@/types/student';
 import { useToast } from '@/hooks/use-toast';
 import { format, parseISO, isValid, differenceInDays } from 'date-fns';
@@ -75,24 +75,15 @@ export default function AbsentStudentsPage() {
     const fetchStudents = async () => {
       setIsLoading(true);
       try {
-        const [allStudents, allAttendance] = await Promise.all([
-          getAllStudents(),
-          getAllAttendanceRecords(),
-        ]);
+        // `lastAttendanceDate` is denormalized onto the student doc on every
+        // check-in, so there is no need to scan the attendance collection here.
+        const allStudents = await getAllStudents();
 
-        const lastAttendedMap = new Map<string, string>();
-        allAttendance.forEach(record => {
-          const existing = lastAttendedMap.get(record.studentId);
-          if (!existing || new Date(record.checkInTime) > new Date(existing)) {
-            lastAttendedMap.set(record.studentId, record.checkInTime);
-          }
-        });
-        
         const today = new Date();
 
         const filteredStudents = allStudents
           .map((student): PotentialLeftStudent => {
-            const lastAttendanceDate = lastAttendedMap.get(student.studentId);
+            const lastAttendanceDate = student.lastAttendanceDate;
             let daysSinceLastAttended: number | null = null;
             let referenceDate: string | undefined = lastAttendanceDate || student.registrationDate;
 

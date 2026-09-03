@@ -295,7 +295,7 @@ export default function MemberDashboardPage() {
 
   React.useEffect(() => {
     fetchAllDashboardData();
-    const intervalId = setInterval(() => fetchAllDashboardData(true), 300000); // Refresh every 5 minutes
+    const intervalId = setInterval(() => fetchAllDashboardData(true), 1200000); // Refresh every 20 minutes
     return () => clearInterval(intervalId);
   }, [user, fetchAllDashboardData]);
 
@@ -311,8 +311,10 @@ export default function MemberDashboardPage() {
     return unsubscribe;
   }, [studentId]);
 
-  // Study streak + weekly hours. Recomputed when the active session changes
-  // (i.e. on check-in / check-out) so the numbers stay fresh. Non-fatal on error.
+  // Per-day study history for the activity heatmap only. The streak and weekly
+  // hours now come denormalized off the student doc (refreshed on check-in /
+  // check-out), so this bounded attendance query only needs to run once per
+  // mount / student switch — not on every session change. Non-fatal on error.
   React.useEffect(() => {
     if (!currentStudent?.studentId) return;
     let cancelled = false;
@@ -320,7 +322,7 @@ export default function MemberDashboardPage() {
       .then((stats) => { if (!cancelled) setStudyStats(stats); })
       .catch((err) => console.error("Could not load study stats:", err));
     return () => { cancelled = true; };
-  }, [currentStudent?.studentId, currentStudent?.shift, activeCheckInRecord]);
+  }, [currentStudent?.studentId, currentStudent?.shift]);
 
   const handleCloseScanner = React.useCallback(() => setIsScannerOpen(false), []);
 
@@ -516,11 +518,13 @@ export default function MemberDashboardPage() {
 
           {/* Stat cards */}
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-            <StreakCard streak={studyStats?.currentStreak} loading={!studyStats} />
+            {/* Streak + weekly hours read straight off the student doc already
+                fetched by fetchAllDashboardData — no extra attendance reads. */}
+            <StreakCard streak={currentStudent ? (currentStudent.currentStreak ?? 0) : undefined} loading={!currentStudent} />
             <StatCard
               label="This week"
-              value={studyStats ? formatStudyHours(studyStats.weeklyHours) : '-'}
-              sub={studyStats ? 'studied' : undefined}
+              value={currentStudent ? formatStudyHours(currentStudent.weeklyStudyHours ?? 0) : '-'}
+              sub={currentStudent ? 'studied' : undefined}
               icon={Clock}
               iconClass="text-indigo-500"
               href="/member/attendance"

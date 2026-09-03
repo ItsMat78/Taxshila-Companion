@@ -29,7 +29,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Loader2, UserPlus, UserMinus, Eye, Edit } from 'lucide-react';
-import { getAllStudents, getAllAttendanceRecords } from '@/services/student-service';
+import { getAllStudents } from '@/services/student-service';
 import type { Student as StudentData } from '@/types/student';
 import { format, parseISO, isValid, isWithinInterval, startOfMonth, endOfMonth, subMonths, parse, compareDesc } from 'date-fns';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";

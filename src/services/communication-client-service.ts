@@ -197,10 +197,9 @@ export async function getAlertsForStudent(customStudentId: string): Promise<Aler
   const student = await getStudentByCustomIdInternal(customStudentId);
   if (!student || !student.firestoreId) return [];
 
-  const studentDocRef = doc(db, STUDENTS_COLLECTION, student.firestoreId);
-  const studentSnap = await getDoc(studentDocRef);
-  const studentData = studentSnap.data() as Student | undefined;
-  const readGeneralAlertIdsSet = new Set(studentData?.readGeneralAlertIds || []);
+  // `student` already carries every raw Firestore field (studentFromDoc spreads
+  // the doc data), so readGeneralAlertIds needs no second fetch.
+  const readGeneralAlertIdsSet = new Set(student.readGeneralAlertIds || []);
   const registrationDate = parseISO(student.registrationDate);
 
   const targetedQuery = query(
@@ -208,9 +207,13 @@ export async function getAlertsForStudent(customStudentId: string): Promise<Aler
     where("studentId", "==", customStudentId)
   );
 
+  // Bounded server-side by registration date so we don't read (and pay for)
+  // every broadcast ever sent. Requires the composite index on
+  // (studentId ASC, dateSent ASC) in firestore.indexes.json.
   const generalAlertsQuery = query(
       collection(db, ALERTS_COLLECTION),
-      where("studentId", "==", null)
+      where("studentId", "==", null),
+      where("dateSent", ">=", Timestamp.fromDate(registrationDate))
   );
 
   const targetedAlertsSnapshot = await getDocs(targetedQuery);
