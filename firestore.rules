@@ -48,7 +48,15 @@ service cloud.firestore {
 
     // 4. Everything Else (Feedback, Config, Alerts)
     match /{collection}/{id} {
-      allow read, list, update: if true;
+      allow read, list: if true;
+      // Firestore grants access if ANY matching rule allows it, and this
+      // wildcard matches every single-segment collection path — including
+      // students, admins, and attendanceRecords above, which each define
+      // their own stricter update rules. An unconditional `update: if true`
+      // here would silently override those and allow unauthenticated writes
+      // to any document in the app. Excluded so their own rules are the only
+      // ones that apply.
+      allow update: if !(collection in ['students', 'admins', 'attendanceRecords']);
       allow write: if isAdmin() && !isReviewer();
     }
 

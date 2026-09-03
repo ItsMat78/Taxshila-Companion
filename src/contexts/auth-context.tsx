@@ -239,18 +239,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = async () => {
     try {
         if (user) {
-            // Revoke OneSignal subscription id for this device.
+            // Revoke OneSignal subscription id for this device. Awaited —
+            // otherwise this write can lose the race against signOut()/the
+            // route change below (or the Median app backgrounding right
+            // after logout) and never reach Firestore, leaving the device
+            // stuck on the outgoing account.
             const storageKey = `oneSignalPlayerId_${user.firestoreId}`;
             const playerId = localStorage.getItem(storageKey);
             if (playerId) {
-                removeOneSignalPlayerId(user.firestoreId, user.role, playerId)
+                await removeOneSignalPlayerId(user.firestoreId, user.role, playerId)
                     .catch(err => console.error("Failed to remove OneSignal ID:", err));
                 localStorage.removeItem(storageKey);
             }
 
             // Revoke this device's FCM web-push token so the previous user
             // stops receiving pushes on a shared device.
-            removePushNotifications(user.firestoreId, user.role)
+            await removePushNotifications(user.firestoreId, user.role)
                 .catch(err => console.error("Failed to remove FCM token:", err));
         }
     } catch (error) {

@@ -535,6 +535,27 @@ export async function updateProfilePicture(firestoreId: string, role: 'admin' | 
 }
 
 
+/**
+ * A device's OneSignal id must belong to exactly one account. Logout is
+ * supposed to remove it from the outgoing account, but that can be skipped by
+ * a force-quit, a crash, or a slow network racing the sign-out — so before
+ * attaching this id to a (new) account, strip it from every other student/admin
+ * doc that still has it. Self-healing: fixes any stale id left behind by a past
+ * failure, not just the current login.
+ */
+async function evictOneSignalIdFromOtherUsers(playerId: string, currentCollection: string, currentFirestoreId: string): Promise<void> {
+  for (const collectionName of [STUDENTS_COLLECTION, ADMINS_COLLECTION]) {
+    const q = query(collection(db, collectionName), where("oneSignalPlayerIds", "array-contains", playerId));
+    const snapshot = await getDocs(q);
+    for (const docSnap of snapshot.docs) {
+      if (collectionName === currentCollection && docSnap.id === currentFirestoreId) continue;
+      await updateDoc(docSnap.ref, { oneSignalPlayerIds: arrayRemove(playerId) }).catch(error =>
+        console.error(`Failed to evict stale OneSignal id from ${collectionName}/${docSnap.id}:`, error)
+      );
+    }
+  }
+}
+
 export async function saveOneSignalPlayerId(firestoreId: string, role: 'admin' | 'member', playerId: string): Promise<void> {
   if (!firestoreId || !role || !playerId) {
     console.error("Missing required data to save OneSignal Player ID.");
@@ -543,6 +564,7 @@ export async function saveOneSignalPlayerId(firestoreId: string, role: 'admin' |
   const collectionName = role === 'admin' ? ADMINS_COLLECTION : STUDENTS_COLLECTION;
   const userDocRef = doc(db, collectionName, firestoreId);
   try {
+    await evictOneSignalIdFromOtherUsers(playerId, collectionName, firestoreId);
     await updateDoc(userDocRef, {
       oneSignalPlayerIds: arrayUnion(playerId)
     });
