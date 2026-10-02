@@ -16,7 +16,7 @@ import {
 import type { QueryDocumentSnapshot, DocumentSnapshot, DocumentData } from 'firebase/firestore';
 import type { Student, Shift, FeeStatus, PaymentRecord, FeeStructure } from '@/types/student';
 import type { AlertItem } from '@/types/communication';
-import { format, parseISO, isValid, addDays, isAfter, startOfDay, differenceInDays, startOfMonth, endOfMonth, isWithinInterval, parse } from 'date-fns';
+import { format, parseISO, isValid, addDays, addMonths, isAfter, startOfDay, differenceInDays, startOfMonth, endOfMonth, isWithinInterval, parse } from 'date-fns';
 
 // --- Collections ---
 const STUDENTS_COLLECTION = "students";
@@ -180,10 +180,10 @@ export async function recordStudentPayment(
       baseDateForCalculation = today;
   }
   // Use the admin's manually chosen due date when valid; otherwise auto-compute
-  // (previous due date / today + 30 days per month paid).
+  // (previous due date / today + one calendar month per month paid).
   const newNextDueDate = customNextDueDateString && isValid(parseISO(customNextDueDateString))
     ? startOfDay(parseISO(customNextDueDateString))
-    : addDays(baseDateForCalculation, 30 * numberOfMonthsPaid);
+    : addMonths(baseDateForCalculation, numberOfMonthsPaid);
   const newDueDateString = format(newNextDueDate, 'yyyy-MM-dd');
 
   const newPaymentRecord: PaymentRecord = {

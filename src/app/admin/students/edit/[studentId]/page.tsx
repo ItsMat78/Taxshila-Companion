@@ -51,7 +51,7 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { getStudentById, updateStudent, getAvailableSeats, recordStudentPayment, getFeeStructure } from '@/services/student-service';
 import type { Student, Shift, FeeStructure, PaymentRecord } from '@/types/student';
-import { format, parseISO, isValid, addDays } from 'date-fns';
+import { format, parseISO, isValid, addDays, addMonths } from 'date-fns';
 import { Calendar } from '@/components/ui/calendar'
 import {
   Popover,
@@ -173,9 +173,9 @@ export default function EditStudentPage() {
   };
 
   const newDueDateForPayment = React.useMemo(() => {
-    if (!studentData?.nextDueDate) return format(addDays(new Date(), 30), 'yyyy-MM-dd');
+    if (!studentData?.nextDueDate) return format(addMonths(new Date(), 1), 'yyyy-MM-dd');
     const baseDate = isValid(parseISO(studentData.nextDueDate)) ? parseISO(studentData.nextDueDate) : new Date();
-    return format(addDays(baseDate, 30), 'yyyy-MM-dd');
+    return format(addMonths(baseDate, 1), 'yyyy-MM-dd');
   }, [studentData?.nextDueDate]);
 
   // The student's monthly fee for their shift (used to pro-rate the due date).
@@ -190,16 +190,18 @@ export default function EditStudentPage() {
   }, [feeStructure, studentData]);
 
   // Pro-rate the next due date by how much of a full month's fee was paid:
-  // full fee → +30 days, half fee → +15 days, etc. (measured from the current
-  // due date, or today if none). Falls back to +30 when amount/fee isn't usable.
+  // each full fee → +1 calendar month, any remainder → pro-rated days (half fee
+  // → +15 days). Measured from the current due date, or today if none. Falls
+  // back to +1 month when amount/fee isn't usable.
   const dueDateFromAmount = React.useCallback((amount: number): string => {
     const base = studentData?.nextDueDate && isValid(parseISO(studentData.nextDueDate))
       ? parseISO(studentData.nextDueDate)
       : new Date();
-    const days = amount > 0 && monthlyFee > 0
-      ? Math.max(1, Math.round((30 * amount) / monthlyFee))
-      : 30;
-    return format(addDays(base, days), 'yyyy-MM-dd');
+    if (!(amount > 0 && monthlyFee > 0)) return format(addMonths(base, 1), 'yyyy-MM-dd');
+    const months = Math.floor(amount / monthlyFee);
+    const days = Math.round((30 * (amount - months * monthlyFee)) / monthlyFee);
+    const next = addDays(addMonths(base, months), months === 0 ? Math.max(1, days) : days);
+    return format(next, 'yyyy-MM-dd');
   }, [studentData, monthlyFee]);
 
   const amountDueDisplay = getAmountDueDisplay();
@@ -880,7 +882,7 @@ export default function EditStudentPage() {
                                             setManualTransactionId("");
                                             setMixedCash("");
                                             setMixedOnline("");
-                                            // Switching to Mixed clears the split (total 0 → default +30);
+                                            // Switching to Mixed clears the split (total 0 → default +1 month);
                                             // other methods re-derive from the single amount field.
                                             setCustomDueDate(dueDateFromAmount(method === 'Mixed' ? 0 : parseRupees(paymentAmount)));
                                         }}
